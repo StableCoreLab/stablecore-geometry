@@ -35,6 +35,36 @@ public:
         return SegmentKind2::Arc;
     }
 
+    [[nodiscard]] PointType GetCenter() const
+    {
+        return center_;
+    }
+
+    [[nodiscard]] T GetRadius() const
+    {
+        return radius_;
+    }
+
+    [[nodiscard]] T GetStartAngle() const
+    {
+        return startAngle_;
+    }
+
+    [[nodiscard]] T GetEndAngle() const
+    {
+        return endAngle_;
+    }
+
+    [[nodiscard]] ArcDirection GetDirection() const
+    {
+        return direction_;
+    }
+
+    [[nodiscard]] double GetSignedSweep() const
+    {
+        return SignedSweep();
+    }
+
     [[nodiscard]] PointType GetStartPoint() const override
     {
         return PointAtAngle(AngleAsDouble(startAngle_));

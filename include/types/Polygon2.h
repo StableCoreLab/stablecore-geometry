@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "algorithm/Predicate2.h"
+#include "types/ArcSegment2.h"
 #include "types/Box2.h"
 #include "types/Polyline2.h"
 
@@ -161,57 +162,147 @@ public:
     }
 
 private:
+    struct RingMoment
+    {
+        MeasureType signedArea{};
+        MeasureType firstMomentX{};
+        MeasureType firstMomentY{};
+    };
+
     [[nodiscard]] static MeasureType RingSignedArea(const PolylineType& ring)
     {
-        const std::size_t vertexCount = ring.GetVertexCount();
-        if (vertexCount < 3)
-        {
-            return MeasureType{};
-        }
-
-        MeasureType twiceArea{};
-        for (std::size_t i = 0; i < vertexCount; ++i)
-        {
-            const PointType current = ring.GetVertex(i);
-            const PointType next = ring.GetVertex((i + 1) % vertexCount);
-            twiceArea += static_cast<MeasureType>(current.x) * static_cast<MeasureType>(next.y) -
-                         static_cast<MeasureType>(next.x) * static_cast<MeasureType>(current.y);
-        }
-
-        return twiceArea / static_cast<MeasureType>(2);
+        return RingMomentIntegral(ring).signedArea;
     }
 
     [[nodiscard]] static std::pair<Point2<MeasureType>, MeasureType> RingCentroidAndArea(
         const PolylineType& ring)
     {
-        const std::size_t vertexCount = ring.GetVertexCount();
-        if (vertexCount < 3)
+        const RingMoment moment = RingMomentIntegral(ring);
+        if (IsZero(moment.signedArea))
         {
             return {Point2<MeasureType>{}, MeasureType{}};
         }
 
-        MeasureType twiceArea{};
-        MeasureType cx{};
-        MeasureType cy{};
-        for (std::size_t i = 0; i < vertexCount; ++i)
+        return {
+            Point2<MeasureType>(
+                moment.firstMomentX / moment.signedArea,
+                moment.firstMomentY / moment.signedArea),
+            moment.signedArea};
+    }
+
+    [[nodiscard]] static RingMoment RingMomentIntegral(const PolylineType& ring)
+    {
+        RingMoment total{};
+        const std::size_t segmentCount = ring.GetSegmentCount();
+        for (std::size_t i = 0; i < segmentCount; ++i)
         {
-            const PointType current = ring.GetVertex(i);
-            const PointType next = ring.GetVertex((i + 1) % vertexCount);
-            const MeasureType cross = static_cast<MeasureType>(current.x) * static_cast<MeasureType>(next.y) -
-                                      static_cast<MeasureType>(next.x) * static_cast<MeasureType>(current.y);
-            twiceArea += cross;
-            cx += (static_cast<MeasureType>(current.x) + static_cast<MeasureType>(next.x)) * cross;
-            cy += (static_cast<MeasureType>(current.y) + static_cast<MeasureType>(next.y)) * cross;
+            const auto& segment = ring.GetSegment(i);
+            switch (segment.GetKind())
+            {
+            case SegmentKind2::Line:
+                AccumulateLineSegmentMoment(segment.GetStartPoint(), segment.GetEndPoint(), total);
+                break;
+            case SegmentKind2::Arc:
+                AccumulateArcSegmentMoment(segment, total);
+                break;
+            default:
+                break;
+            }
         }
 
-        const MeasureType area = twiceArea / static_cast<MeasureType>(2);
-        if (IsZero(area))
+        return total;
+    }
+
+    static void AccumulateLineSegmentMoment(
+        const PointType& startPoint,
+        const PointType& endPoint,
+        RingMoment& total)
+    {
+        const MeasureType x0 = static_cast<MeasureType>(startPoint.x);
+        const MeasureType y0 = static_cast<MeasureType>(startPoint.y);
+        const MeasureType x1 = static_cast<MeasureType>(endPoint.x);
+        const MeasureType y1 = static_cast<MeasureType>(endPoint.y);
+        const MeasureType cross = x0 * y1 - x1 * y0;
+
+        total.signedArea += cross / static_cast<MeasureType>(2);
+        total.firstMomentX += (y1 - y0) * (x0 * x0 + x0 * x1 + x1 * x1) / static_cast<MeasureType>(6);
+        total.firstMomentY += (x0 - x1) * (y0 * y0 + y0 * y1 + y1 * y1) / static_cast<MeasureType>(6);
+    }
+
+    static void AccumulateArcSegmentMoment(const Segment2<T>& segment, RingMoment& total)
+    {
+        const auto* arc = dynamic_cast<const ArcSegment2<T>*>(&segment);
+        assert(arc != nullptr);
+        if (arc == nullptr)
         {
-            return {Point2<MeasureType>{}, MeasureType{}};
+            return;
         }
 
-        const MeasureType factor = static_cast<MeasureType>(1) / (static_cast<MeasureType>(3) * twiceArea);
-        return {Point2<MeasureType>(cx * factor, cy * factor), area};
+        const MeasureType cx = static_cast<MeasureType>(arc->GetCenter().x);
+        const MeasureType cy = static_cast<MeasureType>(arc->GetCenter().y);
+        const MeasureType radius = static_cast<MeasureType>(arc->GetRadius());
+        const MeasureType startAngle = static_cast<MeasureType>(arc->GetStartAngle());
+        const MeasureType sweep = static_cast<MeasureType>(arc->GetSignedSweep());
+        const MeasureType endAngle = startAngle + sweep;
+
+        const MeasureType sinStart = static_cast<MeasureType>(std::sin(static_cast<double>(startAngle)));
+        const MeasureType cosStart = static_cast<MeasureType>(std::cos(static_cast<double>(startAngle)));
+        const MeasureType sinEnd = static_cast<MeasureType>(std::sin(static_cast<double>(endAngle)));
+        const MeasureType cosEnd = static_cast<MeasureType>(std::cos(static_cast<double>(endAngle)));
+
+        total.signedArea += (cx * radius * (sinEnd - sinStart) -
+                             cy * radius * (cosEnd - cosStart) +
+                             radius * radius * sweep) /
+                            static_cast<MeasureType>(2);
+
+        total.firstMomentX += ArcFirstMomentX(cx, radius, startAngle, endAngle);
+        total.firstMomentY += ArcFirstMomentY(cy, radius, startAngle, endAngle);
+    }
+
+    [[nodiscard]] static MeasureType ArcFirstMomentX(
+        MeasureType centerX,
+        MeasureType radius,
+        MeasureType startAngle,
+        MeasureType endAngle)
+    {
+        return ArcFirstMomentXPrimitive(centerX, radius, endAngle) -
+               ArcFirstMomentXPrimitive(centerX, radius, startAngle);
+    }
+
+    [[nodiscard]] static MeasureType ArcFirstMomentXPrimitive(
+        MeasureType centerX,
+        MeasureType radius,
+        MeasureType angle)
+    {
+        const MeasureType sinAngle = static_cast<MeasureType>(std::sin(static_cast<double>(angle)));
+        const MeasureType cosAngle = static_cast<MeasureType>(std::cos(static_cast<double>(angle)));
+        return (centerX * centerX * radius * sinAngle +
+                centerX * radius * radius * (angle + sinAngle * cosAngle) +
+                radius * radius * radius * (sinAngle - sinAngle * sinAngle * sinAngle / static_cast<MeasureType>(3))) /
+               static_cast<MeasureType>(2);
+    }
+
+    [[nodiscard]] static MeasureType ArcFirstMomentY(
+        MeasureType centerY,
+        MeasureType radius,
+        MeasureType startAngle,
+        MeasureType endAngle)
+    {
+        return ArcFirstMomentYPrimitive(centerY, radius, endAngle) -
+               ArcFirstMomentYPrimitive(centerY, radius, startAngle);
+    }
+
+    [[nodiscard]] static MeasureType ArcFirstMomentYPrimitive(
+        MeasureType centerY,
+        MeasureType radius,
+        MeasureType angle)
+    {
+        const MeasureType sinAngle = static_cast<MeasureType>(std::sin(static_cast<double>(angle)));
+        const MeasureType cosAngle = static_cast<MeasureType>(std::cos(static_cast<double>(angle)));
+        return (-centerY * centerY * radius * cosAngle +
+                centerY * radius * radius * (angle - sinAngle * cosAngle) +
+                radius * radius * radius * (-cosAngle + cosAngle * cosAngle * cosAngle / static_cast<MeasureType>(3))) /
+               static_cast<MeasureType>(2);
     }
 
     PolylineType outerRing_{};
