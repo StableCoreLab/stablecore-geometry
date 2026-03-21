@@ -147,6 +147,8 @@ docs/
 - `box-design.md`：负责 `Box2<T>` 的包围盒语义、有效性规则和基础接口
 - `polyline-design.md`：负责 `Polyline2<T>` 的有序连续路径语义、闭合语义、整体参数化和顶点访问语义
 - `polygon-design.md`：负责 `Polygon2<T>` 的区域语义、外环/洞环结构、面积语义和方向规则
+- `sdk-design.md`：负责未来 `DLL + lib + headers` 发布形态下的模板边界、SDK 导出边界和 ABI 收敛策略
+- `export-design.md`：负责未来 DLL 导出宏、显式实例化、SDK 头文件组织和复杂对象 ABI 暴露边界
 
 执行要求：
 
