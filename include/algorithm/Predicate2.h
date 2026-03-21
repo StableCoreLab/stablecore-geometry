@@ -9,8 +9,10 @@
 namespace geometry
 {
 template <typename T>
+//requires std::is_signed_v<T>
 [[nodiscard]] constexpr T AbsValue(T value)
 {
+    static_assert(std::is_signed<T>::value, "T must be signed");
     return value < T{} ? -value : value;
 }
 
