@@ -6,7 +6,9 @@ option(STABLECORE_GEOMETRY_BUILD_TESTS "Build stablecore geometry tests" ON)
 
 add_library(stablecore_geometry
     src/serialize/GeometryText.cpp
+    src/sdk/ArcSegment2d.cpp
     src/sdk/GeometryAlgorithms.cpp
+    src/sdk/LineSegment2d.cpp
     src/sdk/Polyline2d.cpp
     src/sdk/Polygon2d.cpp)
 add_library(stablecore::geometry ALIAS stablecore_geometry)

@@ -1,5 +1,6 @@
 #include <cassert>
 #include <cmath>
+#include <memory>
 #include <numbers>
 
 #include "sdk/Geometry.h"
@@ -16,6 +17,7 @@ using geometry::sdk::Polygon2d;
 using geometry::sdk::ProjectPointToSegment;
 using geometry::sdk::Polyline2d;
 using geometry::sdk::PolylineClosure;
+using geometry::sdk::Segment2d;
 using geometry::sdk::Vector2d;
 
 int main()
@@ -41,6 +43,7 @@ int main()
         Box2d::FromMinMax(Point2d{0.0, 0.0}, Point2d{3.0, 4.0}),
         1e-12);
     assert(line.DebugString().find("LineSegment2d{start=") == 0);
+    assert(line.Kind() == geometry::SegmentKind2::Line);
 
     const ArcSegment2d arc = ArcSegment2d::FromCenterRadiusStartSweep(
         Point2d{0.0, 0.0},
@@ -59,6 +62,16 @@ int main()
         Box2d::FromMinMax(Point2d{0.0, 0.0}, Point2d{1.0, 1.0}),
         1e-12);
     assert(arc.DebugString().find("ArcSegment2d{center=") == 0);
+    assert(arc.Kind() == geometry::SegmentKind2::Arc);
+
+    std::unique_ptr<Segment2d> lineSegment = line.Clone();
+    std::unique_ptr<Segment2d> arcSegment = arc.Clone();
+    assert(lineSegment->Kind() == geometry::SegmentKind2::Line);
+    assert(arcSegment->Kind() == geometry::SegmentKind2::Arc);
+    GEOMETRY_TEST_ASSERT_NEAR(lineSegment->Length(), 5.0, 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(arcSegment->Length(), std::numbers::pi_v<double> * 0.5, 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(lineSegment->StartPoint(), a, 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(arcSegment->EndPoint(), arcEnd, 1e-12);
 
     const auto projection = ProjectPointToSegment(Point2d{3.0, 1.0}, a, b);
     const geometry::sdk::SegmentProjection2d expectedProjection{
