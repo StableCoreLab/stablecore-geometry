@@ -233,3 +233,23 @@
 - 未来若进入正式 SDK 阶段，必须单独设计导出层，而不是直接把当前内部头文件整体外发
 
 本文档即为后续几何库发布形态与二进制接口设计依据。
+
+## 11. 当前落地入口
+
+当前仓库已经补齐一个最小的 SDK 入口层，建议外部调用方优先包含：
+
+```cpp
+#include "sdk/Geometry.h"
+```
+
+当前实际落地的第一版 SDK 面是：
+
+- `geometry::sdk::GeoPoint2d`
+- `geometry::sdk::GeoVector2d`
+- `geometry::sdk::GeoBox2d`
+- `geometry::sdk::ProjectionResult2d`
+- `Distance`、`DistanceSquared`
+- `ProjectPointToSegment`
+- `Contains`、`Intersects` 的 box 查询入口
+
+当前不把 `Polyline2d`、`Polygon2d` 作为 SDK 首发面的一部分，也不把内部多态段容器作为对外 ABI 承诺。

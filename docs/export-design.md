@@ -189,8 +189,10 @@ include/
   export/
     GeometryExport.h
   sdk/
-    GeometryTypes.h
+    Geometry.h
     GeometryApi.h
+    GeometryTypes.h
+    GeometryAlgorithms.h
   types/
   algorithm/
 ```
@@ -235,6 +237,17 @@ include/
 这意味着当前开发方向不用推翻，但以后不能再默认认为：
 
 - “头文件里有什么，SDK 就直接给什么”
+
+## 11. 当前实现约束
+
+当前仓库的 SDK 入口层先采用更窄的发布面，优先导出值类型和自由函数，而不是直接把复杂类型图作为第一版 ABI。
+
+这意味着：
+
+- `GeoPoint2d`、`GeoVector2d`、`GeoBox2d` 可以作为当前 SDK 的稳定起点
+- `ProjectionResult2d` 这类结果结构体适合作为算法返回值
+- `Polyline2d`、`Polygon2d` 暂不作为当前 SDK 的首发 ABI 面
+- 后续如果要把线段、多段线、多边形纳入导出层，仍然要先补齐更正式的 ABI 收敛方案
 
 ## 11. 当前执行清单
 
