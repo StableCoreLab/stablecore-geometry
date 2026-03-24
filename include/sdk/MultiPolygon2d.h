@@ -23,7 +23,6 @@ public:
     [[nodiscard]] bool IsValid() const;
 
     void Clear();
-    void Add(const Polygon2d& polygon);
     void Add(Polygon2d polygon);
 
     [[nodiscard]] const Polygon2d& PolygonAt(std::size_t index) const;

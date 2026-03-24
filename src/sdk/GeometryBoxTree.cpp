@@ -1,6 +1,7 @@
 #include "sdk/GeometryBoxTree.h"
 
 #include <algorithm>
+#include <memory>
 #include <sstream>
 #include <utility>
 
@@ -10,9 +11,125 @@ namespace geometry::sdk
 {
 namespace
 {
-[[nodiscard]] bool Matches(const BoxTreeEntry2d& entry, std::size_t id)
+struct BoxNode
 {
-    return entry.id == id;
+    Box2d bounds{};
+    std::vector<std::size_t> leafIndices{};
+    std::unique_ptr<BoxNode> left{};
+    std::unique_ptr<BoxNode> right{};
+
+    [[nodiscard]] bool IsLeaf() const
+    {
+        return left == nullptr && right == nullptr;
+    }
+};
+
+[[nodiscard]] double CenterCoordinate(const Box2d& box, int axis)
+{
+    const Point2d center = box.Center();
+    return axis == 0 ? center.x : center.y;
+}
+
+[[nodiscard]] Box2d ComputeBounds(
+    const std::vector<BoxTreeEntry2d>& entries,
+    const std::vector<std::size_t>& indices)
+{
+    Box2d bounds;
+    for (std::size_t index : indices)
+    {
+        bounds.ExpandToInclude(entries[index].box);
+    }
+    return bounds;
+}
+
+[[nodiscard]] std::unique_ptr<BoxNode> BuildBoxTree(
+    const std::vector<BoxTreeEntry2d>& entries,
+    std::vector<std::size_t> indices,
+    int depth)
+{
+    if (indices.empty())
+    {
+        return {};
+    }
+
+    auto node = std::make_unique<BoxNode>();
+    node->bounds = ComputeBounds(entries, indices);
+    if (indices.size() <= 4)
+    {
+        node->leafIndices = std::move(indices);
+        return node;
+    }
+
+    const int axis = depth % 2;
+    std::sort(
+        indices.begin(),
+        indices.end(),
+        [&entries, axis](std::size_t lhs, std::size_t rhs) {
+            return CenterCoordinate(entries[lhs].box, axis) < CenterCoordinate(entries[rhs].box, axis);
+        });
+
+    const std::size_t mid = indices.size() / 2;
+    std::vector<std::size_t> leftIndices(indices.begin(), indices.begin() + static_cast<std::ptrdiff_t>(mid));
+    std::vector<std::size_t> rightIndices(indices.begin() + static_cast<std::ptrdiff_t>(mid), indices.end());
+    node->left = BuildBoxTree(entries, std::move(leftIndices), depth + 1);
+    node->right = BuildBoxTree(entries, std::move(rightIndices), depth + 1);
+    return node;
+}
+
+void QueryBox(
+    const BoxNode* node,
+    const std::vector<BoxTreeEntry2d>& entries,
+    const Box2d& box,
+    double eps,
+    std::vector<std::size_t>& result)
+{
+    if (node == nullptr || !Intersects(node->bounds, box, eps))
+    {
+        return;
+    }
+
+    if (node->IsLeaf())
+    {
+        for (std::size_t index : node->leafIndices)
+        {
+            if (Intersects(entries[index].box, box, eps))
+            {
+                result.push_back(entries[index].id);
+            }
+        }
+        return;
+    }
+
+    QueryBox(node->left.get(), entries, box, eps, result);
+    QueryBox(node->right.get(), entries, box, eps, result);
+}
+
+void QueryPoint(
+    const BoxNode* node,
+    const std::vector<BoxTreeEntry2d>& entries,
+    const Point2d& point,
+    double eps,
+    std::vector<std::size_t>& result)
+{
+    if (node == nullptr || !geometry::sdk::Contains(node->bounds, point, eps))
+    {
+        return;
+    }
+
+    if (node->IsLeaf())
+    {
+        for (std::size_t index : node->leafIndices)
+        {
+            if (geometry::sdk::Contains(entries[index].box, point, eps))
+            {
+                result.push_back(entries[index].id);
+            }
+        }
+        return;
+    }
+
+    QueryPoint(node->left.get(), entries, point, eps, result);
+    QueryPoint(node->right.get(), entries, point, eps, result);
 }
 } // namespace
 
@@ -93,27 +210,29 @@ const BoxTreeEntry2d* GeometryBoxTree2d::Find(std::size_t id) const
 
 std::vector<std::size_t> GeometryBoxTree2d::Query(const Box2d& box, double eps) const
 {
-    std::vector<std::size_t> result;
-    for (const auto& entry : entries_)
+    std::vector<std::size_t> indices(entries_.size());
+    for (std::size_t i = 0; i < entries_.size(); ++i)
     {
-        if (Intersects(entry.box, box, eps))
-        {
-            result.push_back(entry.id);
-        }
+        indices[i] = i;
     }
+    const std::unique_ptr<BoxNode> root = BuildBoxTree(entries_, std::move(indices), 0);
+
+    std::vector<std::size_t> result;
+    QueryBox(root.get(), entries_, box, eps, result);
     return result;
 }
 
 std::vector<std::size_t> GeometryBoxTree2d::QueryContaining(const Point2d& point, double eps) const
 {
-    std::vector<std::size_t> result;
-    for (const auto& entry : entries_)
+    std::vector<std::size_t> indices(entries_.size());
+    for (std::size_t i = 0; i < entries_.size(); ++i)
     {
-        if (geometry::sdk::Contains(entry.box, point, eps))
-        {
-            result.push_back(entry.id);
-        }
+        indices[i] = i;
     }
+    const std::unique_ptr<BoxNode> root = BuildBoxTree(entries_, std::move(indices), 0);
+
+    std::vector<std::size_t> result;
+    QueryPoint(root.get(), entries_, point, eps, result);
     return result;
 }
 

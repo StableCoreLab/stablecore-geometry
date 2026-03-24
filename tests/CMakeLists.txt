@@ -1,5 +1,6 @@
 set(STABLECORE_GEOMETRY_TEST_SOURCES
     test_box.cpp
+    test_shapes_pathops.cpp
     test_relation_boolean.cpp
     test_sdk_multigeometry.cpp
     test_topology_indexing.cpp

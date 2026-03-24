@@ -1,6 +1,8 @@
 #pragma once
 
 #include "sdk/ArcSegment2d.h"
+#include "sdk/Circle2d.h"
+#include "sdk/Ellipse2d.h"
 #include "sdk/GeometryBoolean.h"
 #include "sdk/GeometryAlgorithms.h"
 #include "sdk/GeometryEditing.h"
@@ -9,6 +11,7 @@
 #include "sdk/GeometryOffset.h"
 #include "sdk/GeometryBoxTree.h"
 #include "sdk/GeometryKDTree.h"
+#include "sdk/GeometryPathOps.h"
 #include "sdk/GeometrySegmentSearch.h"
 #include "sdk/GeometryTopology.h"
 #include "sdk/GeometryRelation.h"
@@ -19,4 +22,5 @@
 #include "sdk/MultiPolygon2d.h"
 #include "sdk/Polyline2d.h"
 #include "sdk/Polygon2d.h"
+#include "sdk/Rectangle2d.h"
 #include "sdk/GeometryTypes.h"

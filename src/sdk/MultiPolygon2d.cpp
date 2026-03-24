@@ -50,11 +50,6 @@ void MultiPolygon2d::Clear()
     polygons_.clear();
 }
 
-void MultiPolygon2d::Add(const Polygon2d& polygon)
-{
-    polygons_.push_back(polygon);
-}
-
 void MultiPolygon2d::Add(Polygon2d polygon)
 {
     polygons_.push_back(std::move(polygon));

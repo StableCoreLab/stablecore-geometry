@@ -23,7 +23,6 @@ public:
     [[nodiscard]] bool IsValid() const;
 
     void Clear();
-    void Add(const Polyline2d& polyline);
     void Add(Polyline2d polyline);
 
     [[nodiscard]] const Polyline2d& PolylineAt(std::size_t index) const;

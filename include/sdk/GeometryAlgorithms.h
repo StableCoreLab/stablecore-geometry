@@ -1,11 +1,14 @@
 #pragma once
 
+#include "sdk/Circle2d.h"
+#include "sdk/Ellipse2d.h"
 #include "sdk/GeometryBoolean.h"
 #include "sdk/GeometryAxisOps.h"
 #include "sdk/GeometryBoxTree.h"
 #include "sdk/GeometryEditing.h"
 #include "sdk/GeometryIntersection.h"
 #include "sdk/GeometryKDTree.h"
+#include "sdk/GeometryPathOps.h"
 #include "sdk/GeometryRelation.h"
 #include "sdk/GeometryMetrics.h"
 #include "sdk/GeometryOffset.h"
@@ -17,3 +20,4 @@
 #include "sdk/GeometryTopology.h"
 #include "sdk/GeometryValidation.h"
 #include "sdk/GeometryTransform.h"
+#include "sdk/Rectangle2d.h"

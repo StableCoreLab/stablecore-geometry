@@ -3,11 +3,13 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <limits>
 #include <utility>
 #include <vector>
 
 #include "common/Epsilon.h"
+#include "sdk/GeometryEditing.h"
+#include "sdk/GeometryMetrics.h"
+#include "sdk/GeometryValidation.h"
 #include "sdk/GeometryShapeOps.h"
 
 namespace geometry::sdk
@@ -55,7 +57,8 @@ namespace
 [[nodiscard]] std::vector<Point2d> BuildOffsetVertices(
     const std::vector<Point2d>& vertices,
     bool closed,
-    double distance)
+    double distance,
+    const OffsetOptions2d& options)
 {
     std::vector<Point2d> result;
     if (vertices.size() < 2)
@@ -96,10 +99,13 @@ namespace
                 nextPoint,
                 directions[next],
                 success);
-            if (!success)
+            const double maxJoinDistance = std::abs(distance) * std::max(1.0, options.miterLimit);
+            if (!success || Distance(joined, vertices[i]) > maxJoinDistance)
             {
                 const Vector2d blended = normals[prev] + normals[next];
-                joined = vertices[i] + (IsZeroVector(blended) ? normals[next] : blended / blended.Length()) * distance;
+                const Vector2d direction =
+                    IsZeroVector(blended) ? normals[next] : blended / blended.Length();
+                joined = vertices[i] + direction * std::min(std::abs(distance), maxJoinDistance);
             }
             result.push_back(joined);
         }
@@ -120,10 +126,13 @@ namespace
             nextPoint,
             directions[next],
             success);
-        if (!success)
+        const double maxJoinDistance = std::abs(distance) * std::max(1.0, options.miterLimit);
+        if (!success || Distance(joined, vertices[i]) > maxJoinDistance)
         {
             const Vector2d blended = normals[prev] + normals[next];
-            joined = vertices[i] + (IsZeroVector(blended) ? normals[next] : blended / blended.Length()) * distance;
+            const Vector2d direction =
+                IsZeroVector(blended) ? normals[next] : blended / blended.Length();
+            joined = vertices[i] + direction * std::min(std::abs(distance), maxJoinDistance);
         }
         result.push_back(joined);
     }
@@ -140,7 +149,15 @@ namespace
         return Polyline2d(closed ? PolylineClosure::Closed : PolylineClosure::Open);
     }
 
-    return Polyline2d(std::move(vertices), closed ? PolylineClosure::Closed : PolylineClosure::Open);
+    return Normalize(
+        Polyline2d(std::move(vertices), closed ? PolylineClosure::Closed : PolylineClosure::Open));
+}
+
+[[nodiscard]] double RingDistance(const Polyline2d& ring, double distance, bool isHole)
+{
+    const bool ccw = Orientation(ring) == RingOrientation2d::CounterClockwise;
+    const double outward = ccw ? -distance : distance;
+    return isHole ? -outward : outward;
 }
 } // namespace
 
@@ -171,10 +188,14 @@ ArcSegment2d Offset(const ArcSegment2d& segment, double distance)
     const double adjustedRadius =
         segment.Direction() == ArcDirection::CounterClockwise ? segment.radius - distance
                                                               : segment.radius + distance;
+    if (!(adjustedRadius > geometry::kDefaultEpsilon))
+    {
+        return ArcSegment2d{};
+    }
     return ArcSegment2d(segment.center, adjustedRadius, segment.startAngle, segment.sweepAngle);
 }
 
-Polyline2d Offset(const Polyline2d& polyline, double distance)
+Polyline2d Offset(const Polyline2d& polyline, double distance, OffsetOptions2d options)
 {
     if (!polyline.IsValid() || polyline.PointCount() < 2)
     {
@@ -189,11 +210,11 @@ Polyline2d Offset(const Polyline2d& polyline, double distance)
     }
 
     return BuildPolylineFromVertices(
-        BuildOffsetVertices(vertices, polyline.IsClosed(), distance),
+        BuildOffsetVertices(vertices, polyline.IsClosed(), distance, options),
         polyline.IsClosed());
 }
 
-Polygon2d Offset(const Polygon2d& polygon, double distance)
+Polygon2d Offset(const Polygon2d& polygon, double distance, OffsetOptions2d options)
 {
     if (!polygon.IsValid())
     {
@@ -201,19 +222,53 @@ Polygon2d Offset(const Polygon2d& polygon, double distance)
     }
 
     const Polyline2d outerRing = polygon.OuterRing();
-    const double outerDistance =
-        Orientation(outerRing) == RingOrientation2d::CounterClockwise ? -distance : distance;
-    Polyline2d offsetOuter = Offset(outerRing, outerDistance);
+    Polyline2d offsetOuter = Offset(outerRing, RingDistance(outerRing, distance, false), options);
+    if (!Validate(offsetOuter).valid)
+    {
+        return Polygon2d();
+    }
 
     std::vector<Polyline2d> offsetHoles;
     offsetHoles.reserve(polygon.HoleCount());
     for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
     {
         const Polyline2d hole = polygon.HoleAt(i);
-        const double holeDistance = -distance;
-        offsetHoles.push_back(Offset(hole, holeDistance));
+        Polyline2d offsetHole = Offset(hole, RingDistance(hole, distance, true), options);
+        if (offsetHole.IsValid() && Validate(offsetHole).valid)
+        {
+            offsetHoles.push_back(std::move(offsetHole));
+        }
     }
 
-    return Polygon2d(std::move(offsetOuter), std::move(offsetHoles));
+    Polygon2d result(std::move(offsetOuter), std::move(offsetHoles));
+    return result.IsValid() ? result : Polygon2d();
+}
+
+MultiPolyline2d Offset(const MultiPolyline2d& polylines, double distance, OffsetOptions2d options)
+{
+    MultiPolyline2d result;
+    for (std::size_t i = 0; i < polylines.Count(); ++i)
+    {
+        Polyline2d offset = Offset(polylines[i], distance, options);
+        if (offset.IsValid())
+        {
+            result.Add(std::move(offset));
+        }
+    }
+    return result;
+}
+
+MultiPolygon2d Offset(const MultiPolygon2d& polygons, double distance, OffsetOptions2d options)
+{
+    MultiPolygon2d result;
+    for (std::size_t i = 0; i < polygons.Count(); ++i)
+    {
+        Polygon2d offset = Offset(polygons[i], distance, options);
+        if (offset.IsValid())
+        {
+            result.Add(std::move(offset));
+        }
+    }
+    return result;
 }
 } // namespace geometry::sdk

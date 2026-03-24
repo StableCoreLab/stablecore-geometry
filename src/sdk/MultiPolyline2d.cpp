@@ -50,11 +50,6 @@ void MultiPolyline2d::Clear()
     polylines_.clear();
 }
 
-void MultiPolyline2d::Add(const Polyline2d& polyline)
-{
-    polylines_.push_back(polyline);
-}
-
 void MultiPolyline2d::Add(Polyline2d polyline)
 {
     polylines_.push_back(std::move(polyline));
