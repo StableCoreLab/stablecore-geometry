@@ -52,5 +52,31 @@ int main()
     const auto topology = geometry::sdk::BuildPolygonTopology(MultiPolygon2d{{outer, inner}});
     assert(topology.Roots().size() == 1);
 
+    const Polygon2d touching(
+        Polyline2d(
+            {Point2d{10.0, 2.0}, Point2d{12.0, 2.0}, Point2d{12.0, 4.0}, Point2d{10.0, 4.0}},
+            PolylineClosure::Closed));
+    assert(geometry::sdk::Relate(outer, touching) == PolygonContainment2d::Touching);
+
+    const Polygon2d intersecting(
+        Polyline2d(
+            {Point2d{8.0, 8.0}, Point2d{12.0, 8.0}, Point2d{12.0, 12.0}, Point2d{8.0, 12.0}},
+            PolylineClosure::Closed));
+    assert(geometry::sdk::Relate(outer, intersecting) == PolygonContainment2d::Intersecting);
+
+    const Polygon2d holePolygon(
+        Polyline2d(
+            {Point2d{0.0, 0.0}, Point2d{10.0, 0.0}, Point2d{10.0, 10.0}, Point2d{0.0, 10.0}},
+            PolylineClosure::Closed),
+        {Polyline2d(
+            {Point2d{3.0, 3.0}, Point2d{7.0, 3.0}, Point2d{7.0, 7.0}, Point2d{3.0, 7.0}},
+            PolylineClosure::Closed)});
+    assert(geometry::sdk::Contains(holePolygon, inner));
+    const Polygon2d insideHole(
+        Polyline2d(
+            {Point2d{4.0, 4.0}, Point2d{6.0, 4.0}, Point2d{6.0, 6.0}, Point2d{4.0, 6.0}},
+            PolylineClosure::Closed));
+    assert(!geometry::sdk::Contains(holePolygon, insideHole));
+
     return 0;
 }

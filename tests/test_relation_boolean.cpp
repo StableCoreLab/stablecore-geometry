@@ -59,5 +59,44 @@ int main()
     const auto difference = geometry::sdk::Difference(square, inner);
     GEOMETRY_TEST_ASSERT_NEAR(TotalArea(difference), 12.0, 1e-9);
 
+    const Polygon2d horizontalBar(
+        Polyline2d(
+            {Point2d{0.0, 1.0}, Point2d{4.0, 1.0}, Point2d{4.0, 3.0}, Point2d{0.0, 3.0}},
+            PolylineClosure::Closed));
+    const Polygon2d verticalBar(
+        Polyline2d(
+            {Point2d{1.0, 0.0}, Point2d{3.0, 0.0}, Point2d{3.0, 4.0}, Point2d{1.0, 4.0}},
+            PolylineClosure::Closed));
+
+    const auto crossUnion = geometry::sdk::Union(horizontalBar, verticalBar);
+    assert(crossUnion.Count() == 1);
+    GEOMETRY_TEST_ASSERT_NEAR(TotalArea(crossUnion), 12.0, 1e-9);
+
+    const auto crossDifference = geometry::sdk::Difference(horizontalBar, verticalBar);
+    assert(crossDifference.Count() == 2);
+    GEOMETRY_TEST_ASSERT_NEAR(TotalArea(crossDifference), 4.0, 1e-9);
+
+    const Polygon2d outer(
+        Polyline2d(
+            {Point2d{0.0, 0.0}, Point2d{6.0, 0.0}, Point2d{6.0, 6.0}, Point2d{0.0, 6.0}},
+            PolylineClosure::Closed));
+    const Polygon2d nested(
+        Polyline2d(
+            {Point2d{2.0, 2.0}, Point2d{4.0, 2.0}, Point2d{4.0, 4.0}, Point2d{2.0, 4.0}},
+            PolylineClosure::Closed));
+
+    const auto containedUnion = geometry::sdk::Union(outer, nested);
+    assert(containedUnion.Count() == 1);
+    GEOMETRY_TEST_ASSERT_NEAR(TotalArea(containedUnion), 36.0, 1e-9);
+
+    const auto containedIntersection = geometry::sdk::Intersect(outer, nested);
+    assert(containedIntersection.Count() == 1);
+    GEOMETRY_TEST_ASSERT_NEAR(TotalArea(containedIntersection), 4.0, 1e-9);
+
+    const auto containedDifference = geometry::sdk::Difference(outer, nested);
+    assert(containedDifference.Count() == 1);
+    assert(containedDifference[0].HoleCount() == 1);
+    GEOMETRY_TEST_ASSERT_NEAR(TotalArea(containedDifference), 32.0, 1e-9);
+
     return 0;
 }

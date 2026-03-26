@@ -53,15 +53,49 @@ int main()
     GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Area(cut.left[0]), 8.0, 1e-9);
     GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Area(cut.right[0]), 8.0, 1e-9);
 
-    const MultiPolyline2d lines{
+    const MultiPolyline2d closedLines{
         Polyline2d(
             {Point2d{0.0, 0.0}, Point2d{2.0, 0.0}, Point2d{2.0, 2.0}, Point2d{0.0, 2.0}},
             PolylineClosure::Closed),
         Polyline2d(
             {Point2d{5.0, 5.0}, Point2d{6.0, 5.0}, Point2d{6.0, 6.0}, Point2d{5.0, 6.0}},
             PolylineClosure::Closed)};
-    const auto multi = BuildMultiPolygonByLines(lines);
-    assert(multi.Count() == 2);
+    const auto closedMulti = BuildMultiPolygonByLines(closedLines);
+    assert(closedMulti.Count() == 2);
+
+    const MultiPolyline2d openSquareLines{
+        Polyline2d({Point2d{0.0, 0.0}, Point2d{4.0, 0.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{4.0, 0.0}, Point2d{4.0, 4.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{4.0, 4.0}, Point2d{0.0, 4.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{0.0, 4.0}, Point2d{0.0, 0.0}}, PolylineClosure::Open)};
+    const auto openSquare = BuildMultiPolygonByLines(openSquareLines);
+    assert(openSquare.Count() == 1);
+    assert(openSquare[0].HoleCount() == 0);
+    GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Area(openSquare[0]), 16.0, 1e-9);
+
+    const MultiPolyline2d nestedOpenLines{
+        Polyline2d({Point2d{0.0, 0.0}, Point2d{6.0, 0.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{6.0, 0.0}, Point2d{6.0, 6.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{6.0, 6.0}, Point2d{0.0, 6.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{0.0, 6.0}, Point2d{0.0, 0.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{2.0, 2.0}, Point2d{4.0, 2.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{4.0, 2.0}, Point2d{4.0, 4.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{4.0, 4.0}, Point2d{2.0, 4.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{2.0, 4.0}, Point2d{2.0, 2.0}}, PolylineClosure::Open)};
+    const auto nested = BuildMultiPolygonByLines(nestedOpenLines);
+    assert(nested.Count() == 1);
+    assert(nested[0].HoleCount() == 1);
+    GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Area(nested[0]), 32.0, 1e-9);
+
+    const MultiPolyline2d branchedLines{
+        Polyline2d({Point2d{0.0, 0.0}, Point2d{4.0, 0.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{4.0, 0.0}, Point2d{4.0, 4.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{4.0, 4.0}, Point2d{0.0, 4.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{0.0, 4.0}, Point2d{0.0, 0.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{2.0, -1.0}, Point2d{2.0, 2.0}}, PolylineClosure::Open)};
+    const auto branched = BuildMultiPolygonByLines(branchedLines);
+    assert(branched.Count() == 1);
+    GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Area(branched[0]), 16.0, 1e-9);
 
     return 0;
 }

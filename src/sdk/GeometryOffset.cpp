@@ -9,8 +9,9 @@
 #include "common/Epsilon.h"
 #include "sdk/GeometryEditing.h"
 #include "sdk/GeometryMetrics.h"
-#include "sdk/GeometryValidation.h"
+#include "sdk/GeometryPathOps.h"
 #include "sdk/GeometryShapeOps.h"
+#include "sdk/GeometryValidation.h"
 
 namespace geometry::sdk
 {
@@ -140,9 +141,7 @@ namespace
     return result;
 }
 
-[[nodiscard]] Polyline2d BuildPolylineFromVertices(
-    std::vector<Point2d> vertices,
-    bool closed)
+[[nodiscard]] Polyline2d BuildPolylineFromVertices(std::vector<Point2d> vertices, bool closed)
 {
     if (vertices.size() < 2)
     {
@@ -158,6 +157,45 @@ namespace
     const bool ccw = Orientation(ring) == RingOrientation2d::CounterClockwise;
     const double outward = ccw ? -distance : distance;
     return isHole ? -outward : outward;
+}
+
+void AppendOffsetRing(const Polyline2d& ring, MultiPolyline2d& output)
+{
+    if (ring.PointCount() >= 2)
+    {
+        output.Add(ring);
+    }
+}
+
+[[nodiscard]] MultiPolygon2d BuildOffsetPolygons(const MultiPolyline2d& rings, double eps)
+{
+    if (rings.IsEmpty())
+    {
+        return {};
+    }
+    return BuildMultiPolygonByLines(rings, eps);
+}
+
+[[nodiscard]] Polygon2d LargestPolygon(const MultiPolygon2d& polygons)
+{
+    if (polygons.IsEmpty())
+    {
+        return {};
+    }
+
+    std::size_t bestIndex = 0;
+    double bestArea = Area(polygons[0]);
+    for (std::size_t i = 1; i < polygons.Count(); ++i)
+    {
+        const double area = Area(polygons[i]);
+        if (area > bestArea)
+        {
+            bestArea = area;
+            bestIndex = i;
+        }
+    }
+
+    return polygons[bestIndex];
 }
 } // namespace
 
@@ -221,27 +259,17 @@ Polygon2d Offset(const Polygon2d& polygon, double distance, OffsetOptions2d opti
         return Polygon2d();
     }
 
+    MultiPolyline2d offsetRings;
     const Polyline2d outerRing = polygon.OuterRing();
-    Polyline2d offsetOuter = Offset(outerRing, RingDistance(outerRing, distance, false), options);
-    if (!Validate(offsetOuter).valid)
-    {
-        return Polygon2d();
-    }
-
-    std::vector<Polyline2d> offsetHoles;
-    offsetHoles.reserve(polygon.HoleCount());
+    AppendOffsetRing(Offset(outerRing, RingDistance(outerRing, distance, false), options), offsetRings);
     for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
     {
         const Polyline2d hole = polygon.HoleAt(i);
-        Polyline2d offsetHole = Offset(hole, RingDistance(hole, distance, true), options);
-        if (offsetHole.IsValid() && Validate(offsetHole).valid)
-        {
-            offsetHoles.push_back(std::move(offsetHole));
-        }
+        AppendOffsetRing(Offset(hole, RingDistance(hole, distance, true), options), offsetRings);
     }
 
-    Polygon2d result(std::move(offsetOuter), std::move(offsetHoles));
-    return result.IsValid() ? result : Polygon2d();
+    const MultiPolygon2d rebuilt = BuildOffsetPolygons(offsetRings, geometry::kDefaultEpsilon);
+    return LargestPolygon(rebuilt);
 }
 
 MultiPolyline2d Offset(const MultiPolyline2d& polylines, double distance, OffsetOptions2d options)
@@ -250,7 +278,7 @@ MultiPolyline2d Offset(const MultiPolyline2d& polylines, double distance, Offset
     for (std::size_t i = 0; i < polylines.Count(); ++i)
     {
         Polyline2d offset = Offset(polylines[i], distance, options);
-        if (offset.IsValid())
+        if (offset.PointCount() >= 2)
         {
             result.Add(std::move(offset));
         }
@@ -260,15 +288,24 @@ MultiPolyline2d Offset(const MultiPolyline2d& polylines, double distance, Offset
 
 MultiPolygon2d Offset(const MultiPolygon2d& polygons, double distance, OffsetOptions2d options)
 {
-    MultiPolygon2d result;
+    MultiPolyline2d offsetRings;
     for (std::size_t i = 0; i < polygons.Count(); ++i)
     {
-        Polygon2d offset = Offset(polygons[i], distance, options);
-        if (offset.IsValid())
+        const Polygon2d& polygon = polygons[i];
+        if (!polygon.IsValid())
         {
-            result.Add(std::move(offset));
+            continue;
+        }
+
+        const Polyline2d outerRing = polygon.OuterRing();
+        AppendOffsetRing(Offset(outerRing, RingDistance(outerRing, distance, false), options), offsetRings);
+        for (std::size_t holeIndex = 0; holeIndex < polygon.HoleCount(); ++holeIndex)
+        {
+            const Polyline2d hole = polygon.HoleAt(holeIndex);
+            AppendOffsetRing(Offset(hole, RingDistance(hole, distance, true), options), offsetRings);
         }
     }
-    return result;
+
+    return BuildOffsetPolygons(offsetRings, geometry::kDefaultEpsilon);
 }
 } // namespace geometry::sdk

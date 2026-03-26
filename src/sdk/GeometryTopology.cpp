@@ -1,11 +1,103 @@
 #include "sdk/GeometryTopology.h"
 
 #include <sstream>
+#include <vector>
 
+#include "sdk/GeometryIntersection.h"
 #include "sdk/GeometryRelation.h"
 
 namespace geometry::sdk
 {
+namespace
+{
+enum class BoundaryContact2d
+{
+    None,
+    Touching,
+    Crossing
+};
+
+void CollectRingSegments(const Polyline2d& ring, std::vector<LineSegment2d>& segments)
+{
+    if (!ring.IsClosed() || ring.PointCount() < 2)
+    {
+        return;
+    }
+
+    for (std::size_t i = 0; i < ring.PointCount(); ++i)
+    {
+        segments.emplace_back(ring.PointAt(i), ring.PointAt((i + 1) % ring.PointCount()));
+    }
+}
+
+[[nodiscard]] std::vector<LineSegment2d> CollectPolygonSegments(const Polygon2d& polygon)
+{
+    std::vector<LineSegment2d> segments;
+    CollectRingSegments(polygon.OuterRing(), segments);
+    for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
+    {
+        CollectRingSegments(polygon.HoleAt(i), segments);
+    }
+    return segments;
+}
+
+[[nodiscard]] bool IsEndpointParameter(double parameter, double eps)
+{
+    return std::abs(parameter) <= eps || std::abs(parameter - 1.0) <= eps;
+}
+
+[[nodiscard]] BoundaryContact2d ClassifyBoundaryContact(
+    const Polygon2d& first,
+    const Polygon2d& second,
+    double eps)
+{
+    const std::vector<LineSegment2d> firstSegments = CollectPolygonSegments(first);
+    const std::vector<LineSegment2d> secondSegments = CollectPolygonSegments(second);
+
+    BoundaryContact2d contact = BoundaryContact2d::None;
+    for (const LineSegment2d& lhs : firstSegments)
+    {
+        for (const LineSegment2d& rhs : secondSegments)
+        {
+            const SegmentIntersection2d intersection = Intersect(lhs, rhs, eps);
+            if (!intersection.HasIntersection())
+            {
+                continue;
+            }
+            if (intersection.kind == IntersectionKind2d::Overlap)
+            {
+                return BoundaryContact2d::Crossing;
+            }
+
+            for (std::size_t i = 0; i < intersection.pointCount; ++i)
+            {
+                const bool endpointOnFirst = IsEndpointParameter(intersection.points[i].parameterOnFirst, eps);
+                const bool endpointOnSecond = IsEndpointParameter(intersection.points[i].parameterOnSecond, eps);
+                if (!endpointOnFirst || !endpointOnSecond)
+                {
+                    return BoundaryContact2d::Crossing;
+                }
+                contact = BoundaryContact2d::Touching;
+            }
+        }
+    }
+
+    return contact;
+}
+
+[[nodiscard]] bool HasStrictInteriorPoint(const Polygon2d& container, const Polygon2d& candidate, double eps)
+{
+    for (std::size_t i = 0; i < candidate.OuterRing().PointCount(); ++i)
+    {
+        if (LocatePoint(candidate.OuterRing().PointAt(i), container, eps) == PointContainment2d::Inside)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+} // namespace
+
 PolygonTopology2d::PolygonTopology2d(const MultiPolygon2d& polygons, double eps)
 {
     Build(polygons, eps);
@@ -28,14 +120,18 @@ bool PolygonTopology2d::Build(const MultiPolygon2d& polygons, double eps)
             {
                 continue;
             }
-            if (Contains(polygons[j], polygons[i], eps))
+
+            const PolygonContainment2d relation = Relate(polygons[j], polygons[i], eps);
+            if (relation != PolygonContainment2d::FirstContainsSecond && relation != PolygonContainment2d::Equal)
             {
-                const double area = Area(polygons[j]);
-                if (bestParent == static_cast<std::size_t>(-1) || area < bestArea)
-                {
-                    bestParent = j;
-                    bestArea = area;
-                }
+                continue;
+            }
+
+            const double area = Area(polygons[j]);
+            if (bestParent == static_cast<std::size_t>(-1) || area < bestArea)
+            {
+                bestParent = j;
+                bestArea = area;
             }
         }
         nodes_[i].parentIndex = bestParent;
@@ -85,31 +181,64 @@ bool ContainsPoint(const Polygon2d& polygon, const Point2d& point, double eps)
 
 bool Contains(const Polygon2d& outer, const Polygon2d& inner, double eps)
 {
+    if (!outer.IsValid() || !inner.IsValid())
+    {
+        return false;
+    }
+
+    if (ClassifyBoundaryContact(outer, inner, eps) == BoundaryContact2d::Crossing)
+    {
+        return false;
+    }
+
     for (std::size_t i = 0; i < inner.OuterRing().PointCount(); ++i)
     {
-        const PointContainment2d containment = LocatePoint(inner.OuterRing().PointAt(i), outer, eps);
-        if (containment == PointContainment2d::Outside)
+        if (LocatePoint(inner.OuterRing().PointAt(i), outer, eps) == PointContainment2d::Outside)
         {
             return false;
         }
     }
+
     return true;
 }
 
 PolygonContainment2d Relate(const Polygon2d& first, const Polygon2d& second, double eps)
 {
-    if (Contains(first, second, eps) && Contains(second, first, eps))
+    if (!first.IsValid() || !second.IsValid())
+    {
+        return PolygonContainment2d::Disjoint;
+    }
+
+    const bool firstContainsSecond = Contains(first, second, eps);
+    const bool secondContainsFirst = Contains(second, first, eps);
+    if (firstContainsSecond && secondContainsFirst)
     {
         return PolygonContainment2d::Equal;
     }
-    if (Contains(first, second, eps))
+    if (firstContainsSecond)
     {
         return PolygonContainment2d::FirstContainsSecond;
     }
-    if (Contains(second, first, eps))
+    if (secondContainsFirst)
     {
         return PolygonContainment2d::SecondContainsFirst;
     }
+
+    const BoundaryContact2d contact = ClassifyBoundaryContact(first, second, eps);
+    if (contact == BoundaryContact2d::Crossing)
+    {
+        return PolygonContainment2d::Intersecting;
+    }
+    if (contact == BoundaryContact2d::Touching)
+    {
+        return PolygonContainment2d::Touching;
+    }
+
+    if (HasStrictInteriorPoint(first, second, eps) || HasStrictInteriorPoint(second, first, eps))
+    {
+        return PolygonContainment2d::Intersecting;
+    }
+
     return PolygonContainment2d::Disjoint;
 }
 
