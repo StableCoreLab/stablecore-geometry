@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -26,6 +27,8 @@ struct DirectedEdge
     std::size_t to{0};
     std::size_t twin{0};
     double angle{0.0};
+    double length{0.0};
+    bool synthetic{false};
     bool visited{false};
 };
 
@@ -33,6 +36,15 @@ struct RawSegment
 {
     Point2d start{};
     Point2d end{};
+    bool synthetic{false};
+};
+
+struct RingCandidate
+{
+    Polyline2d ring{};
+    double area{0.0};
+    double perimeter{0.0};
+    double syntheticPerimeter{0.0};
 };
 
 struct VertexGraph2d
@@ -181,7 +193,7 @@ void CollectRawSegments(const Polyline2d& polyline, std::vector<RawSegment>& seg
         const Point2d end = normalized.PointAt((i + 1) % normalized.PointCount());
         if (!start.AlmostEquals(end, eps))
         {
-            segments.push_back(RawSegment{start, end});
+            segments.push_back(RawSegment{start, end, false});
         }
     }
 }
@@ -255,7 +267,7 @@ void AddParameter(std::vector<double>& parameters, double value, double eps)
             const Point2d end = segment.PointAt(params[k + 1]);
             if (!start.AlmostEquals(end, eps))
             {
-                splitSegments.push_back(RawSegment{start, end});
+                splitSegments.push_back(RawSegment{start, end, rawSegments[i].synthetic});
             }
         }
     }
@@ -323,7 +335,7 @@ void AddParameter(std::vector<double>& parameters, double value, double eps)
 {
     std::vector<RawSegment> unique;
     std::vector<Point2d> vertices;
-    std::unordered_set<std::uint64_t> edgeKeys;
+    std::unordered_map<std::uint64_t, std::size_t> edgeKeys;
     unique.reserve(segments.size());
     for (const RawSegment& segment : segments)
     {
@@ -339,9 +351,15 @@ void AddParameter(std::vector<double>& parameters, double value, double eps)
             continue;
         }
 
-        if (edgeKeys.insert(MakeUndirectedEdgeKey(from, to)).second)
+        const std::uint64_t key = MakeUndirectedEdgeKey(from, to);
+        const auto [it, inserted] = edgeKeys.emplace(key, unique.size());
+        if (inserted)
         {
             unique.push_back(segment);
+        }
+        else if (unique[it->second].synthetic && !segment.synthetic)
+        {
+            unique[it->second] = segment;
         }
     }
     return unique;
@@ -415,7 +433,7 @@ void AutoCloseDanglingEndpoints(std::vector<RawSegment>& segments, double repair
         {
             used[i] = true;
             used[bestIndex] = true;
-            segments.push_back(RawSegment{first, graph.vertices[endpoints[bestIndex]]});
+            segments.push_back(RawSegment{first, graph.vertices[endpoints[bestIndex]], true});
         }
     }
 }
@@ -466,7 +484,7 @@ void AutoExtendDanglingEndpoints(std::vector<RawSegment>& segments, double repai
 
         if (found)
         {
-            segments.push_back(RawSegment{endpoint, bestProjection.point});
+            segments.push_back(RawSegment{endpoint, bestProjection.point, true});
         }
     }
 }
@@ -533,8 +551,22 @@ void AppendSplitEdges(
         const Vector2d backward = vertices[from] - vertices[to];
 
         const std::size_t forwardIndex = edges.size();
-        edges.push_back(DirectedEdge{from, to, forwardIndex + 1, std::atan2(forward.y, forward.x), false});
-        edges.push_back(DirectedEdge{to, from, forwardIndex, std::atan2(backward.y, backward.x), false});
+        edges.push_back(DirectedEdge{
+            from,
+            to,
+            forwardIndex + 1,
+            std::atan2(forward.y, forward.x),
+            forward.Length(),
+            segment.synthetic,
+            false});
+        edges.push_back(DirectedEdge{
+            to,
+            from,
+            forwardIndex,
+            std::atan2(backward.y, backward.x),
+            backward.Length(),
+            segment.synthetic,
+            false});
 
         const std::size_t required = std::max(from, to) + 1;
         if (outgoing.size() < required)
@@ -609,13 +641,56 @@ void SortOutgoing(const std::vector<DirectedEdge>& edges, std::vector<std::vecto
     return simplified;
 }
 
-[[nodiscard]] std::vector<Polyline2d> ExtractCandidateRings(
+[[nodiscard]] double ComputeAreaTolerance(const std::vector<RawSegment>& segments, double repairTol, double eps)
+{
+    if (segments.empty())
+    {
+        return 256.0 * eps * eps;
+    }
+
+    double minX = segments.front().start.x;
+    double minY = segments.front().start.y;
+    double maxX = minX;
+    double maxY = minY;
+    for (const RawSegment& segment : segments)
+    {
+        minX = std::min({minX, segment.start.x, segment.end.x});
+        minY = std::min({minY, segment.start.y, segment.end.y});
+        maxX = std::max({maxX, segment.start.x, segment.end.x});
+        maxY = std::max({maxY, segment.start.y, segment.end.y});
+    }
+
+    const double dx = maxX - minX;
+    const double dy = maxY - minY;
+    const double diagonal = std::sqrt(dx * dx + dy * dy);
+    return std::max(256.0 * eps * eps, diagonal * std::max(repairTol, 16.0 * eps) * 1e-3);
+}
+
+[[nodiscard]] bool RejectRingCandidate(const RingCandidate& candidate, double repairTol, double areaTol, double eps)
+{
+    if (candidate.area <= areaTol || candidate.perimeter <= eps)
+    {
+        return true;
+    }
+
+    if (candidate.syntheticPerimeter <= eps)
+    {
+        return false;
+    }
+
+    const double syntheticRatio = candidate.syntheticPerimeter / candidate.perimeter;
+    return syntheticRatio >= 0.25 && candidate.area <= candidate.syntheticPerimeter * std::max(repairTol, 16.0 * eps);
+}
+
+[[nodiscard]] std::vector<RingCandidate> ExtractCandidateRings(
     std::vector<DirectedEdge>& edges,
     const std::vector<Point2d>& vertices,
     const std::vector<std::vector<std::size_t>>& outgoing,
+    double repairTol,
+    double areaTol,
     double eps)
 {
-    std::vector<Polyline2d> rings;
+    std::vector<RingCandidate> rings;
     for (std::size_t start = 0; start < edges.size(); ++start)
     {
         if (edges[start].visited)
@@ -624,6 +699,8 @@ void SortOutgoing(const std::vector<DirectedEdge>& edges, std::vector<std::vecto
         }
 
         std::vector<Point2d> loopPoints;
+        double perimeter = 0.0;
+        double syntheticPerimeter = 0.0;
         std::size_t current = start;
         bool closed = false;
         for (std::size_t steps = 0; steps <= edges.size(); ++steps)
@@ -636,6 +713,11 @@ void SortOutgoing(const std::vector<DirectedEdge>& edges, std::vector<std::vecto
 
             edge.visited = true;
             loopPoints.push_back(vertices[edge.from]);
+            perimeter += edge.length;
+            if (edge.synthetic)
+            {
+                syntheticPerimeter += edge.length;
+            }
 
             const std::size_t next = NextFaceEdge(edges, outgoing, current);
             if (next == std::numeric_limits<std::size_t>::max())
@@ -671,7 +753,17 @@ void SortOutgoing(const std::vector<DirectedEdge>& edges, std::vector<std::vecto
             continue;
         }
 
-        rings.push_back(std::move(ring));
+        const RingCandidate candidate{
+            ring,
+            std::abs(Area(Polygon2d(ring))),
+            perimeter,
+            syntheticPerimeter};
+        if (RejectRingCandidate(candidate, repairTol, areaTol, eps))
+        {
+            continue;
+        }
+
+        rings.push_back(candidate);
     }
 
     return rings;
@@ -723,7 +815,7 @@ void SortOutgoing(const std::vector<DirectedEdge>& edges, std::vector<std::vecto
     return depth;
 }
 
-[[nodiscard]] MultiPolygon2d BuildFilledPolygonsFromCandidateRings(const std::vector<Polyline2d>& rings, double eps)
+[[nodiscard]] MultiPolygon2d BuildFilledPolygonsFromCandidateRings(const std::vector<RingCandidate>& rings, double eps)
 {
     MultiPolygon2d result;
     if (rings.empty())
@@ -733,9 +825,9 @@ void SortOutgoing(const std::vector<DirectedEdge>& edges, std::vector<std::vecto
 
     std::vector<Polygon2d> loopPolygons;
     loopPolygons.reserve(rings.size());
-    for (const Polyline2d& ring : rings)
+    for (const RingCandidate& candidate : rings)
     {
-        Polygon2d polygon(ring);
+        Polygon2d polygon(candidate.ring);
         if (polygon.IsValid())
         {
             loopPolygons.push_back(std::move(polygon));
@@ -839,6 +931,7 @@ MultiPolygon2d BuildMultiPolygonByLines(const MultiPolyline2d& polylines, double
     {
         return {};
     }
+    const double areaTol = ComputeAreaTolerance(splitSegments, repairTol, eps);
 
     std::vector<Point2d> vertices;
     std::vector<DirectedEdge> edges;
@@ -851,7 +944,8 @@ MultiPolygon2d BuildMultiPolygonByLines(const MultiPolyline2d& polylines, double
     }
 
     SortOutgoing(edges, outgoing);
-    const std::vector<Polyline2d> rings = ExtractCandidateRings(edges, vertices, outgoing, eps);
+    const std::vector<RingCandidate> rings =
+        ExtractCandidateRings(edges, vertices, outgoing, repairTol, areaTol, eps);
     return BuildFilledPolygonsFromCandidateRings(rings, eps);
 }
 } // namespace geometry::sdk

@@ -10,6 +10,7 @@
 #include "sdk/GeometryEditing.h"
 #include "sdk/GeometryMetrics.h"
 #include "sdk/GeometryPathOps.h"
+#include "sdk/GeometryRelation.h"
 #include "sdk/GeometryShapeOps.h"
 #include "sdk/GeometryValidation.h"
 
@@ -161,10 +162,24 @@ namespace
 
 void AppendOffsetRing(const Polyline2d& ring, MultiPolyline2d& output)
 {
-    if (ring.PointCount() >= 2)
+    const Polyline2d normalized = Normalize(ring, geometry::kDefaultEpsilon);
+    if (!normalized.IsValid())
     {
-        output.Add(ring);
+        return;
     }
+    if (normalized.IsClosed())
+    {
+        if (normalized.PointCount() < 3 || std::abs(SignedArea(normalized)) <= 256.0 * geometry::kDefaultEpsilon * geometry::kDefaultEpsilon)
+        {
+            return;
+        }
+    }
+    else if (normalized.PointCount() < 2)
+    {
+        return;
+    }
+
+    output.Add(normalized);
 }
 
 [[nodiscard]] MultiPolygon2d BuildOffsetPolygons(const MultiPolyline2d& rings, double eps)
@@ -176,21 +191,68 @@ void AppendOffsetRing(const Polyline2d& ring, MultiPolyline2d& output)
     return BuildMultiPolygonByLines(rings, eps);
 }
 
-[[nodiscard]] Polygon2d LargestPolygon(const MultiPolygon2d& polygons)
+[[nodiscard]] Point2d PrimaryReferencePoint(const Polygon2d& polygon, double eps)
+{
+    const Point2d centroid = Centroid(polygon);
+    if (LocatePoint(centroid, polygon, eps) != PointContainment2d::Outside)
+    {
+        return centroid;
+    }
+
+    const Polyline2d& outer = polygon.OuterRing();
+    for (std::size_t i = 0; i < outer.PointCount(); ++i)
+    {
+        const Point2d start = outer.PointAt(i);
+        const Point2d end = outer.PointAt((i + 1) % outer.PointCount());
+        const Point2d midpoint{0.5 * (start.x + end.x), 0.5 * (start.y + end.y)};
+        if (LocatePoint(midpoint, polygon, eps) != PointContainment2d::Outside)
+        {
+            return midpoint;
+        }
+    }
+
+    return outer.PointAt(0);
+}
+
+[[nodiscard]] Polygon2d SelectBestOffsetPolygon(const Polygon2d& source, const MultiPolygon2d& polygons, double distance, double eps)
 {
     if (polygons.IsEmpty())
     {
         return {};
     }
 
+    const Point2d reference = PrimaryReferencePoint(source, eps);
+    const bool outward = distance >= 0.0;
     std::size_t bestIndex = 0;
-    double bestArea = Area(polygons[0]);
-    for (std::size_t i = 1; i < polygons.Count(); ++i)
+    double bestScore = -1.0;
+    for (std::size_t i = 0; i < polygons.Count(); ++i)
     {
-        const double area = Area(polygons[i]);
-        if (area > bestArea)
+        const Polygon2d& candidate = polygons[i];
+        double score = Area(candidate);
+        const PointContainment2d referenceContainment = LocatePoint(reference, candidate, eps);
+        const PointContainment2d candidateContainment = LocatePoint(Centroid(candidate), source, eps);
+        if (outward)
         {
-            bestArea = area;
+            if (referenceContainment != PointContainment2d::Outside)
+            {
+                score += 1e9;
+            }
+        }
+        else
+        {
+            if (candidateContainment != PointContainment2d::Outside)
+            {
+                score += 1e9;
+            }
+            if (referenceContainment != PointContainment2d::Outside)
+            {
+                score += 1e6;
+            }
+        }
+
+        if (score > bestScore)
+        {
+            bestScore = score;
             bestIndex = i;
         }
     }
@@ -269,7 +331,7 @@ Polygon2d Offset(const Polygon2d& polygon, double distance, OffsetOptions2d opti
     }
 
     const MultiPolygon2d rebuilt = BuildOffsetPolygons(offsetRings, geometry::kDefaultEpsilon);
-    return LargestPolygon(rebuilt);
+    return SelectBestOffsetPolygon(polygon, rebuilt, distance, geometry::kDefaultEpsilon);
 }
 
 MultiPolyline2d Offset(const MultiPolyline2d& polylines, double distance, OffsetOptions2d options)

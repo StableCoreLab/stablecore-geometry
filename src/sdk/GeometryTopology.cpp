@@ -66,7 +66,8 @@ void CollectRingSegments(const Polyline2d& ring, std::vector<LineSegment2d>& seg
             }
             if (intersection.kind == IntersectionKind2d::Overlap)
             {
-                return BoundaryContact2d::Crossing;
+                contact = BoundaryContact2d::Touching;
+                continue;
             }
 
             for (std::size_t i = 0; i < intersection.pointCount; ++i)
@@ -87,9 +88,18 @@ void CollectRingSegments(const Polyline2d& ring, std::vector<LineSegment2d>& seg
 
 [[nodiscard]] bool HasStrictInteriorPoint(const Polygon2d& container, const Polygon2d& candidate, double eps)
 {
-    for (std::size_t i = 0; i < candidate.OuterRing().PointCount(); ++i)
+    const Polyline2d& ring = candidate.OuterRing();
+    for (std::size_t i = 0; i < ring.PointCount(); ++i)
     {
-        if (LocatePoint(candidate.OuterRing().PointAt(i), container, eps) == PointContainment2d::Inside)
+        const Point2d point = ring.PointAt(i);
+        if (LocatePoint(point, container, eps) == PointContainment2d::Inside)
+        {
+            return true;
+        }
+
+        const Point2d next = ring.PointAt((i + 1) % ring.PointCount());
+        const Point2d midpoint{0.5 * (point.x + next.x), 0.5 * (point.y + next.y)};
+        if (LocatePoint(midpoint, container, eps) == PointContainment2d::Inside)
         {
             return true;
         }

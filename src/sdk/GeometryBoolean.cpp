@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -12,6 +13,7 @@
 #include "sdk/GeometryIntersection.h"
 #include "sdk/GeometryPathOps.h"
 #include "sdk/GeometryRelation.h"
+#include "sdk/GeometryTopology.h"
 #include "sdk/GeometryShapeOps.h"
 #include "sdk/GeometryValidation.h"
 
@@ -181,6 +183,60 @@ void AddParameter(std::vector<double>& parameters, double value, double eps)
     const std::uint64_t a = static_cast<std::uint64_t>(std::min(first, second));
     const std::uint64_t b = static_cast<std::uint64_t>(std::max(first, second));
     return (a << 32U) | b;
+}
+
+[[nodiscard]] std::vector<RawSegment> RemoveDuplicateSegments(const std::vector<RawSegment>& segments, double eps)
+{
+    std::vector<RawSegment> unique;
+    std::vector<Point2d> vertices;
+    std::unordered_map<std::uint64_t, std::size_t> edgeKeys;
+    unique.reserve(segments.size());
+    for (const RawSegment& segment : segments)
+    {
+        if (segment.start.AlmostEquals(segment.end, eps))
+        {
+            continue;
+        }
+
+        const std::size_t from = FindOrAddVertex(vertices, segment.start, eps);
+        const std::size_t to = FindOrAddVertex(vertices, segment.end, eps);
+        if (from == to)
+        {
+            continue;
+        }
+
+        const std::uint64_t key = MakeUndirectedEdgeKey(from, to);
+        if (edgeKeys.emplace(key, unique.size()).second)
+        {
+            unique.push_back(segment);
+        }
+    }
+    return unique;
+}
+
+[[nodiscard]] double ComputeAreaTolerance(const std::vector<RawSegment>& segments, double eps)
+{
+    if (segments.empty())
+    {
+        return 256.0 * eps * eps;
+    }
+
+    double minX = segments.front().start.x;
+    double minY = segments.front().start.y;
+    double maxX = minX;
+    double maxY = minY;
+    for (const RawSegment& segment : segments)
+    {
+        minX = std::min({minX, segment.start.x, segment.end.x});
+        minY = std::min({minY, segment.start.y, segment.end.y});
+        maxX = std::max({maxX, segment.start.x, segment.end.x});
+        maxY = std::max({maxY, segment.start.y, segment.end.y});
+    }
+
+    const double dx = maxX - minX;
+    const double dy = maxY - minY;
+    const double diagonal = std::sqrt(dx * dx + dy * dy);
+    return std::max(256.0 * eps * eps, diagonal * std::max(64.0 * eps, diagonal * 1e-6));
 }
 
 void AppendSplitEdges(
@@ -394,7 +450,10 @@ void SortOutgoing(const std::vector<DirectedEdge>& edges, std::vector<std::vecto
     return parents;
 }
 
-[[nodiscard]] std::vector<Polygon2d> BuildBoundedFacesFromCandidateRings(const std::vector<Polyline2d>& rings, double eps)
+[[nodiscard]] std::vector<Polygon2d> BuildBoundedFacesFromCandidateRings(
+    const std::vector<Polyline2d>& rings,
+    double areaTol,
+    double eps)
 {
     std::vector<Polygon2d> faces;
     if (rings.empty())
@@ -444,7 +503,7 @@ void SortOutgoing(const std::vector<DirectedEdge>& edges, std::vector<std::vecto
         }
 
         Polygon2d polygon(outerRing, std::move(holes));
-        if (polygon.IsValid() && Validate(polygon, eps).valid)
+        if (polygon.IsValid() && Validate(polygon, eps).valid && Area(polygon) > areaTol)
         {
             faces.push_back(std::move(polygon));
         }
@@ -495,6 +554,95 @@ void AppendFaceBoundaries(const Polygon2d& polygon, MultiPolyline2d& polylines)
     }
 }
 
+[[nodiscard]] MultiPolygon2d MakeSinglePolygonResult(const Polygon2d& polygon)
+{
+    MultiPolygon2d result;
+    if (polygon.IsValid())
+    {
+        result.Add(Polygon2d(polygon));
+    }
+    return result;
+}
+
+[[nodiscard]] MultiPolygon2d MakePairResult(const Polygon2d& first, const Polygon2d& second)
+{
+    MultiPolygon2d result;
+    if (first.IsValid())
+    {
+        result.Add(Polygon2d(first));
+    }
+    if (second.IsValid())
+    {
+        result.Add(Polygon2d(second));
+    }
+    return result;
+}
+
+[[nodiscard]] MultiPolygon2d BooleanFastPath(
+    const Polygon2d& first,
+    const Polygon2d& second,
+    PolygonContainment2d relation,
+    BooleanOp op)
+{
+    switch (relation)
+    {
+    case PolygonContainment2d::Equal:
+        if (op == BooleanOp::Difference)
+        {
+            return {};
+        }
+        return MakeSinglePolygonResult(first);
+    case PolygonContainment2d::Disjoint:
+        if (op == BooleanOp::Intersection)
+        {
+            return {};
+        }
+        if (op == BooleanOp::Union)
+        {
+            return MakePairResult(first, second);
+        }
+        return MakeSinglePolygonResult(first);
+    case PolygonContainment2d::FirstContainsSecond:
+        if (op == BooleanOp::Intersection)
+        {
+            return MakeSinglePolygonResult(second);
+        }
+        if (op == BooleanOp::Union)
+        {
+            return MakeSinglePolygonResult(first);
+        }
+        break;
+    case PolygonContainment2d::SecondContainsFirst:
+        if (op == BooleanOp::Intersection)
+        {
+            return MakeSinglePolygonResult(first);
+        }
+        if (op == BooleanOp::Union)
+        {
+            return MakeSinglePolygonResult(second);
+        }
+        if (op == BooleanOp::Difference)
+        {
+            return {};
+        }
+        break;
+    case PolygonContainment2d::Touching:
+        if (op == BooleanOp::Intersection)
+        {
+            return {};
+        }
+        if (op == BooleanOp::Difference)
+        {
+            return MakeSinglePolygonResult(first);
+        }
+        break;
+    case PolygonContainment2d::Intersecting:
+        break;
+    }
+
+    return MultiPolygon2d{};
+}
+
 [[nodiscard]] MultiPolygon2d BooleanCompose(
     const Polygon2d& first,
     const Polygon2d& second,
@@ -507,17 +655,27 @@ void AppendFaceBoundaries(const Polygon2d& polygon, MultiPolyline2d& polylines)
         return result;
     }
 
-    const std::vector<RawSegment> rawSegments = CollectBoundarySegments(first, second, eps);
+    const PolygonContainment2d relation = Relate(first, second, eps);
+    result = BooleanFastPath(first, second, relation, op);
+    if (!result.IsEmpty() || relation != PolygonContainment2d::Intersecting)
+    {
+        return result;
+    }
+
+    std::vector<RawSegment> rawSegments = CollectBoundarySegments(first, second, eps);
     if (rawSegments.empty())
     {
         return result;
     }
 
+    rawSegments = RemoveDuplicateSegments(rawSegments, eps);
     const std::vector<RawSegment> splitSegments = SubdivideRawSegments(rawSegments, eps);
     if (splitSegments.empty())
     {
         return result;
     }
+
+    const double areaTol = ComputeAreaTolerance(splitSegments, eps);
 
     std::vector<Point2d> vertices;
     std::vector<DirectedEdge> edges;
@@ -531,7 +689,7 @@ void AppendFaceBoundaries(const Polygon2d& polygon, MultiPolyline2d& polylines)
 
     SortOutgoing(edges, outgoing);
     const std::vector<Polyline2d> rings = ExtractCandidateRings(edges, vertices, outgoing, eps);
-    const std::vector<Polygon2d> faces = BuildBoundedFacesFromCandidateRings(rings, eps);
+    const std::vector<Polygon2d> faces = BuildBoundedFacesFromCandidateRings(rings, areaTol, eps);
     if (faces.empty())
     {
         return result;

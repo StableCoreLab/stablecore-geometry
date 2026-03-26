@@ -57,6 +57,8 @@ int main()
             {Point2d{10.0, 2.0}, Point2d{12.0, 2.0}, Point2d{12.0, 4.0}, Point2d{10.0, 4.0}},
             PolylineClosure::Closed));
     assert(geometry::sdk::Relate(outer, touching) == PolygonContainment2d::Touching);
+    assert(geometry::sdk::Relate(outer, outer) == PolygonContainment2d::Equal);
+    assert(geometry::sdk::Contains(outer, outer));
 
     const Polygon2d intersecting(
         Polyline2d(

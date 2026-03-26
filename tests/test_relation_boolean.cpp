@@ -98,5 +98,40 @@ int main()
     assert(containedDifference[0].HoleCount() == 1);
     GEOMETRY_TEST_ASSERT_NEAR(TotalArea(containedDifference), 32.0, 1e-9);
 
+    const Polygon2d overlapStripA(
+        Polyline2d(
+            {Point2d{0.0, 0.0}, Point2d{4.0, 0.0}, Point2d{4.0, 2.0}, Point2d{0.0, 2.0}},
+            PolylineClosure::Closed));
+    const Polygon2d overlapStripB(
+        Polyline2d(
+            {Point2d{2.0, 0.0}, Point2d{6.0, 0.0}, Point2d{6.0, 2.0}, Point2d{2.0, 2.0}},
+            PolylineClosure::Closed));
+    GEOMETRY_TEST_ASSERT_NEAR(TotalArea(geometry::sdk::Intersect(overlapStripA, overlapStripB)), 4.0, 1e-9);
+    GEOMETRY_TEST_ASSERT_NEAR(TotalArea(geometry::sdk::Union(overlapStripA, overlapStripB)), 12.0, 1e-9);
+    GEOMETRY_TEST_ASSERT_NEAR(TotalArea(geometry::sdk::Difference(overlapStripA, overlapStripB)), 4.0, 1e-9);
+
+    const auto equalIntersection = geometry::sdk::Intersect(square, square);
+    assert(equalIntersection.Count() == 1);
+    GEOMETRY_TEST_ASSERT_NEAR(TotalArea(equalIntersection), 16.0, 1e-9);
+
+    const auto equalDifference = geometry::sdk::Difference(square, square);
+    assert(equalDifference.Count() == 0);
+
+    const Polygon2d disjointOther(
+        Polyline2d(
+            {Point2d{10.0, 0.0}, Point2d{12.0, 0.0}, Point2d{12.0, 2.0}, Point2d{10.0, 2.0}},
+            PolylineClosure::Closed));
+    const auto disjointUnion = geometry::sdk::Union(square, disjointOther);
+    assert(disjointUnion.Count() == 2);
+    GEOMETRY_TEST_ASSERT_NEAR(TotalArea(disjointUnion), 20.0, 1e-9);
+
+    const Polygon2d edgeTouch(
+        Polyline2d(
+            {Point2d{4.0, 1.0}, Point2d{6.0, 1.0}, Point2d{6.0, 3.0}, Point2d{4.0, 3.0}},
+            PolylineClosure::Closed));
+    const auto touchingDifference = geometry::sdk::Difference(square, edgeTouch);
+    assert(touchingDifference.Count() == 1);
+    GEOMETRY_TEST_ASSERT_NEAR(TotalArea(touchingDifference), 16.0, 1e-9);
+
     return 0;
 }

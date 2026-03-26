@@ -118,5 +118,17 @@ int main()
     assert(autoExtended.Count() == 1);
     GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Area(autoExtended[0]), 16.0, 1e-6);
 
+    const MultiPolyline2d ambiguousFakeLines{
+        Polyline2d({Point2d{0.0, 0.0}, Point2d{4.0, 0.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{4.0, 0.0}, Point2d{4.0, 4.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{4.0, 4.0}, Point2d{0.0, 4.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{0.0, 4.0}, Point2d{0.0, 0.25}}, PolylineClosure::Open),
+        Polyline2d({Point2d{-0.15, 0.25}, Point2d{-0.15, 0.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{-0.15, 0.0}, Point2d{0.15, 0.0}}, PolylineClosure::Open)};
+    const auto ambiguousFake = BuildMultiPolygonByLines(ambiguousFakeLines);
+    assert(ambiguousFake.Count() == 1);
+    assert(ambiguousFake[0].HoleCount() == 0);
+    GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Area(ambiguousFake[0]), 16.0, 1e-6);
+
     return 0;
 }
