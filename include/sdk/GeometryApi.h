@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "sdk/ArcSegment2d.h"
 #include "sdk/Circle2d.h"
@@ -24,3 +24,5 @@
 #include "sdk/Polygon2d.h"
 #include "sdk/Rectangle2d.h"
 #include "sdk/GeometryTypes.h"
+#include "sdk/GeometryProjection.h"
+#include "sdk/GeometryIntersection.h"

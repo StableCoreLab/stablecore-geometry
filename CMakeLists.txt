@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+﻿cmake_minimum_required(VERSION 3.16)
 
 project(stablecore_geometry LANGUAGES CXX)
 
@@ -17,12 +17,15 @@ add_library(stablecore_geometry
     src/sdk/GeometryAxisOps.cpp
     src/sdk/GeometryBoxTree.cpp
     src/sdk/GeometryIntersection.cpp
+    src/sdk/GeometryIntersection3d.cpp
     src/sdk/GeometryMetrics.cpp
     src/sdk/GeometryKDTree.cpp
     src/sdk/GeometryOffset.cpp
     src/sdk/GeometryPathOps.cpp
     src/sdk/GeometryProjection.cpp
+    src/sdk/GeometryProjection3d.cpp
     src/sdk/GeometryRelation.cpp
+    src/sdk/GeometryRelation3d.cpp
     src/sdk/GeometrySampling.cpp
     src/sdk/GeometrySegmentSearch.cpp
     src/sdk/GeometryShapeOps.cpp

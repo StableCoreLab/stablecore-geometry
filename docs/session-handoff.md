@@ -266,3 +266,59 @@ When returning to 3D design, the most reliable next tasks are:
 - choose one first implementation slice, most likely value types plus tolerance/context plus first-batch 3D services
 - then connect that code skeleton to `PlaneSurface`, `LineCurve3d`, and a minimal plane-dominant polyhedron section path
 - keep `section / tessellation / validation` sharing the same service and diagnostics infrastructure from the start
+
+## First 3D Implementation Slice Added In This Session
+
+Confirmed and landed in local files during this session:
+- new 3D value-type headers:
+  - `include/types/Point3.h`
+  - `include/types/Vector3.h`
+  - `include/types/Interval.h`
+  - `include/types/Box3.h`
+  - `include/types/Plane.h`
+  - `include/types/Line3.h`
+- `include/sdk/GeometryTypes.h`
+  - now exposes `Point3d`, `Vector3d`, `Box3d`, `Intervald`, `Plane`, `Line3d`
+  - adds `GeometryTolerance3d`, `GeometryContext3d`, `LineProjection3d`, `PlaneProjection3d`, `LinePlaneIntersection3d`, `PlanePlaneIntersection3d`
+- `include/sdk/GeometryProjection.h`
+  - adds `ProjectPointToLine(...)` and `ProjectPointToPlane(...)`
+- `include/sdk/GeometryIntersection.h`
+  - adds `Intersect(line, plane, tolerance)` and `Intersect(plane, plane, tolerance)`
+- `include/sdk/GeometryRelation.h`
+  - adds `PointPlaneSide3d`, `LocatePoint(point, plane, tolerance)`, `IsParallel(Vector3d, Vector3d, tolerance)`, `IsPerpendicular(Vector3d, Vector3d, tolerance)`
+- `include/sdk/GeometryApi.h`
+  - now pulls `GeometryProjection.h` and `GeometryIntersection.h` into the umbrella API
+- new 3D service implementation files:
+  - `src/sdk/GeometryProjection3d.cpp`
+  - `src/sdk/GeometryIntersection3d.cpp`
+  - `src/sdk/GeometryRelation3d.cpp`
+- `CMakeLists.txt`
+  - now registers the three new 3D `.cpp` files in `stablecore_geometry`
+
+## Current Code State To Remember
+
+This is the first real 3D code slice, not only design work.
+
+What now exists in code:
+- minimal 3D value types for point / vector / interval / box / plane / line
+- explicit 3D tolerance/context objects
+- first-batch 3D services for:
+  - point-to-line projection
+  - point-to-plane projection
+  - line-plane intersection
+  - plane-plane intersection
+  - point-plane side classification
+  - vector parallel / perpendicular predicates
+
+Important constraints of the current slice:
+- no compile was run yet
+- no tests were added yet
+- `PlaneSurface`, `LineCurve3d`, and richer 3D object protocols are still design-only
+- this slice intentionally stops before section/tessellation/body code
+
+## Recommended Next Code Action
+
+The most reliable next code steps are:
+- manually compile just the library target first and report any compile errors
+- then, if compile is clean, add `PlaneSurface` and `LineCurve3d` headers/skeletons on top of the new value/service layer
+- after that, start the minimal plane-dominant polyhedron section path that the design docs already identified
