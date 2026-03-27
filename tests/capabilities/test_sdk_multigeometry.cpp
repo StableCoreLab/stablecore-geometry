@@ -1,4 +1,4 @@
-﻿#include <gtest/gtest.h>
+#include <gtest/gtest.h>
 #include <cassert>
 #include <cmath>
 #include <memory>
@@ -59,7 +59,7 @@ TEST(SdkMultigeometryTest, CoversCurrentCapabilities)
     assert(geometry::sdk::Relate(outerPolygon, innerPolygon) == PolygonContainment2d::FirstContainsSecond);
 
     PolygonTopology2d topology = geometry::sdk::BuildPolygonTopology(multiPolygon);
-    assert(topology.PolygonCount() == 3);
+    assert(topology.Count() == 3);
     assert(topology.Roots().size() == 2);
     assert(topology.ParentOf(1) == 0);
     assert(topology.ChildrenOf(0).size() == 1);
@@ -98,5 +98,6 @@ TEST(SdkMultigeometryTest, CoversCurrentCapabilities)
     assert(nearestSegment.has_value());
     assert(nearestSegment->id == lineId);
 }
+
 
 

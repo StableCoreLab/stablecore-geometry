@@ -42,7 +42,7 @@ public:
 
     bool Build(const MultiPolygon2d& polygons, double eps = 1e-9);
 
-    [[nodiscard]] std::size_t PolygonCount() const;
+    [[nodiscard]] std::size_t Count() const;
     [[nodiscard]] bool IsEmpty() const;
     [[nodiscard]] bool IsValid() const;
 
@@ -70,3 +70,4 @@ private:
     const MultiPolygon2d& polygons,
     double eps = 1e-9);
 } // namespace geometry::sdk
+

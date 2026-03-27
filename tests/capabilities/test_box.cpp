@@ -1,4 +1,4 @@
-﻿#include <gtest/gtest.h>
+#include <gtest/gtest.h>
 #include <cassert>
 #include <cmath>
 
@@ -37,16 +37,16 @@ TEST(BoxTest, CoversCurrentCapabilities)
     Box2i expanded;
     expanded.ExpandToInclude(Point2i(5, 7));
     assert(expanded.IsValid());
-    assert(expanded.GetMinPoint() == Point2i(5, 7));
-    assert(expanded.GetMaxPoint() == Point2i(5, 7));
+    assert(expanded.MinPoint() == Point2i(5, 7));
+    assert(expanded.MaxPoint() == Point2i(5, 7));
 
     expanded.ExpandToInclude(Point2i(2, 9));
-    assert(expanded.GetMinPoint() == Point2i(2, 7));
-    assert(expanded.GetMaxPoint() == Point2i(5, 9));
+    assert(expanded.MinPoint() == Point2i(2, 7));
+    assert(expanded.MaxPoint() == Point2i(5, 9));
 
     expanded.ExpandToInclude(Box2i(Point2i(0, 1), Point2i(3, 8)));
-    assert(expanded.GetMinPoint() == Point2i(0, 1));
-    assert(expanded.GetMaxPoint() == Point2i(5, 9));
+    assert(expanded.MinPoint() == Point2i(0, 1));
+    assert(expanded.MaxPoint() == Point2i(5, 9));
 
     const Box2i beforeIgnored = expanded;
     expanded.ExpandToInclude(Box2i(Point2i(10, 10), Point2i(4, 12)));
@@ -73,5 +73,6 @@ TEST(BoxTest, CoversCurrentCapabilities)
     assert(sameA != different);
     GEOMETRY_TEST_ASSERT_BOX_NEAR(sameA, sameB, 0.0);
 }
+
 
 

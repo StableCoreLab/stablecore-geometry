@@ -1,4 +1,4 @@
-﻿#include <gtest/gtest.h>
+#include <gtest/gtest.h>
 #include <cassert>
 
 #include "sdk/Geometry.h"
@@ -23,7 +23,7 @@ TEST(ShapesPathopsTest, CoversCurrentCapabilities)
     const Circle2d circle(Point2d{1.0, 2.0}, 3.0);
     assert(circle.IsValid());
     GEOMETRY_TEST_ASSERT_NEAR(circle.Area(), 28.274333882308138, 1e-9);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(circle.Bounds().GetMinPoint(), (Point2d{-2.0, -1.0}), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(circle.Bounds().MinPoint(), (Point2d{-2.0, -1.0}), 1e-12);
     assert(circle.ToPolygon(16).IsValid());
 
     const Rectangle2d rectangle(Point2d{0.0, 0.0}, 4.0, 2.0, 0.0);
@@ -132,5 +132,6 @@ TEST(ShapesPathopsTest, CoversCurrentCapabilities)
     assert(ambiguousFake[0].HoleCount() == 0);
     GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Area(ambiguousFake[0]), 16.0, 1e-6);
 }
+
 
 

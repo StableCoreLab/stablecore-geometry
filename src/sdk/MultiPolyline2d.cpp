@@ -22,11 +22,6 @@ std::size_t MultiPolyline2d::Count() const
     return polylines_.size();
 }
 
-std::size_t MultiPolyline2d::PolylineCount() const
-{
-    return polylines_.size();
-}
-
 bool MultiPolyline2d::IsEmpty() const
 {
     return polylines_.empty();
@@ -126,3 +121,5 @@ std::vector<Polyline2d>& MultiPolyline2d::Data()
     return polylines_;
 }
 } // namespace geometry::sdk
+
+

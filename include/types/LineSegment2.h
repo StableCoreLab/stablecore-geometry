@@ -21,17 +21,17 @@ public:
     {
     }
 
-    [[nodiscard]] SegmentKind2 GetKind() const override
+    [[nodiscard]] SegmentKind2 Kind() const override
     {
         return SegmentKind2::Line;
     }
 
-    [[nodiscard]] PointType GetStartPoint() const override
+    [[nodiscard]] PointType StartPoint() const override
     {
         return startPoint_;
     }
 
-    [[nodiscard]] PointType GetEndPoint() const override
+    [[nodiscard]] PointType EndPoint() const override
     {
         return endPoint_;
     }
@@ -41,7 +41,7 @@ public:
         return (endPoint_ - startPoint_).Length();
     }
 
-    [[nodiscard]] Box2<T> GetBoundingBox() const override
+    [[nodiscard]] Box2<T> Bounds() const override
     {
         if (!IsValid())
         {
@@ -54,12 +54,12 @@ public:
         return box;
     }
 
-    [[nodiscard]] PointType GetPointAt(double parameter) const override
+    [[nodiscard]] PointType PointAt(double parameter) const override
     {
-        return GetPointAtLength(static_cast<LengthType>(parameter) * Length(), false);
+        return PointAtLength(static_cast<LengthType>(parameter) * Length(), false);
     }
 
-    [[nodiscard]] PointType GetPointAtLength(LengthType distanceFromStart, bool clampToSegment = false) const override
+    [[nodiscard]] PointType PointAtLength(LengthType distanceFromStart, bool clampToSegment = false) const override
     {
         if (!IsValid())
         {
@@ -105,3 +105,4 @@ private:
 using LineSegment2d = LineSegment2<double>;
 using LineSegment2i = LineSegment2<int>;
 }
+

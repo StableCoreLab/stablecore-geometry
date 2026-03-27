@@ -18,7 +18,6 @@ public:
     MultiPolygon2d(std::initializer_list<Polygon2d> polygons);
 
     [[nodiscard]] std::size_t Count() const;
-    [[nodiscard]] std::size_t PolygonCount() const;
     [[nodiscard]] bool IsEmpty() const;
     [[nodiscard]] bool IsValid() const;
 
@@ -44,3 +43,4 @@ private:
     std::vector<Polygon2d> polygons_{};
 };
 } // namespace geometry::sdk
+

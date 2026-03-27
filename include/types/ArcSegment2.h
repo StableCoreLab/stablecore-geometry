@@ -30,47 +30,47 @@ public:
     {
     }
 
-    [[nodiscard]] SegmentKind2 GetKind() const override
+    [[nodiscard]] SegmentKind2 Kind() const override
     {
         return SegmentKind2::Arc;
     }
 
-    [[nodiscard]] PointType GetCenter() const
+    [[nodiscard]] PointType Center() const
     {
         return center_;
     }
 
-    [[nodiscard]] T GetRadius() const
+    [[nodiscard]] T Radius() const
     {
         return radius_;
     }
 
-    [[nodiscard]] T GetStartAngle() const
+    [[nodiscard]] T StartAngle() const
     {
         return startAngle_;
     }
 
-    [[nodiscard]] T GetEndAngle() const
+    [[nodiscard]] T EndAngle() const
     {
         return endAngle_;
     }
 
-    [[nodiscard]] ArcDirection GetDirection() const
+    [[nodiscard]] ArcDirection Direction() const
     {
         return direction_;
     }
 
-    [[nodiscard]] double GetSignedSweep() const
+    [[nodiscard]] double SignedSweep() const
     {
-        return SignedSweep();
+        return detail::SignedSweep(AngleAsDouble(startAngle_), AngleAsDouble(endAngle_), direction_);
     }
 
-    [[nodiscard]] PointType GetStartPoint() const override
+    [[nodiscard]] PointType StartPoint() const override
     {
         return PointAtAngle(AngleAsDouble(startAngle_));
     }
 
-    [[nodiscard]] PointType GetEndPoint() const override
+    [[nodiscard]] PointType EndPoint() const override
     {
         return PointAtAngle(AngleAsDouble(endAngle_));
     }
@@ -86,7 +86,7 @@ public:
         return static_cast<LengthType>(std::abs(sweep) * static_cast<double>(radius_));
     }
 
-    [[nodiscard]] Box2<T> GetBoundingBox() const override
+    [[nodiscard]] Box2<T> Bounds() const override
     {
         if (!IsValid())
         {
@@ -94,8 +94,8 @@ public:
         }
 
         Box2<T> box;
-        box.ExpandToInclude(GetStartPoint());
-        box.ExpandToInclude(GetEndPoint());
+        box.ExpandToInclude(StartPoint());
+        box.ExpandToInclude(EndPoint());
 
         const double startAngle = AngleAsDouble(startAngle_);
         const double signedSweep = SignedSweep();
@@ -118,22 +118,22 @@ public:
         return box;
     }
 
-    [[nodiscard]] PointType GetPointAt(double parameter) const override
+    [[nodiscard]] PointType PointAt(double parameter) const override
     {
-        return GetPointAtLength(static_cast<LengthType>(parameter) * Length(), false);
+        return PointAtLength(static_cast<LengthType>(parameter) * Length(), false);
     }
 
-    [[nodiscard]] PointType GetPointAtLength(LengthType distanceFromStart, bool clampToSegment = false) const override
+    [[nodiscard]] PointType PointAtLength(LengthType distanceFromStart, bool clampToSegment = false) const override
     {
         if (!IsValid())
         {
-            return GetStartPoint();
+            return StartPoint();
         }
 
         const LengthType length = Length();
         if (length <= LengthType{})
         {
-            return GetStartPoint();
+            return StartPoint();
         }
 
         const LengthType clampedDistance = clampToSegment
@@ -198,3 +198,5 @@ private:
 using ArcSegment2d = ArcSegment2<double>;
 using ArcSegment2i = ArcSegment2<int>;
 }
+
+

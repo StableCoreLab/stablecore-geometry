@@ -39,19 +39,19 @@ public:
     {
     }
 
-    [[nodiscard]] std::size_t GetSegmentCount() const
+    [[nodiscard]] std::size_t SegmentCount() const
     {
         return segments_.size();
     }
 
-    [[nodiscard]] const SegmentType& GetSegment(std::size_t index) const
+    [[nodiscard]] const SegmentType& SegmentAt(std::size_t index) const
     {
         assert(index < segments_.size());
         assert(segments_[index] != nullptr);
         return *segments_[index];
     }
 
-    [[nodiscard]] PolylineClosure GetClosure() const
+    [[nodiscard]] PolylineClosure Closure() const
     {
         return closure_;
     }
@@ -61,7 +61,7 @@ public:
         return closure_ == PolylineClosure::Closed;
     }
 
-    [[nodiscard]] std::size_t GetVertexCount() const
+    [[nodiscard]] std::size_t VertexCount() const
     {
         if (segments_.empty())
         {
@@ -71,9 +71,9 @@ public:
         return IsClosed() ? segments_.size() : segments_.size() + 1;
     }
 
-    [[nodiscard]] PointType GetVertex(std::size_t index) const
+    [[nodiscard]] PointType VertexAt(std::size_t index) const
     {
-        assert(index < GetVertexCount());
+        assert(index < VertexCount());
         if (segments_.empty())
         {
             return PointType{};
@@ -81,30 +81,30 @@ public:
 
         if (!IsClosed() && index == segments_.size())
         {
-            return GetSegment(segments_.size() - 1).GetEndPoint();
+            return SegmentAt(segments_.size() - 1).EndPoint();
         }
 
-        return GetSegment(index).GetStartPoint();
+        return SegmentAt(index).StartPoint();
     }
 
-    [[nodiscard]] PointType GetStartPoint() const
+    [[nodiscard]] PointType StartPoint() const
     {
         if (segments_.empty() || segments_.front() == nullptr)
         {
             return PointType{};
         }
 
-        return segments_.front()->GetStartPoint();
+        return segments_.front()->StartPoint();
     }
 
-    [[nodiscard]] PointType GetEndPoint() const
+    [[nodiscard]] PointType EndPoint() const
     {
         if (segments_.empty() || segments_.back() == nullptr)
         {
             return PointType{};
         }
 
-        return segments_.back()->GetEndPoint();
+        return segments_.back()->EndPoint();
     }
 
     [[nodiscard]] LengthType Length() const
@@ -121,7 +121,7 @@ public:
         return total;
     }
 
-    [[nodiscard]] Box2<T> GetBoundingBox() const
+    [[nodiscard]] Box2<T> Bounds() const
     {
         if (!IsValid())
         {
@@ -131,18 +131,18 @@ public:
         Box2<T> box;
         for (const auto& segment : segments_)
         {
-            box.ExpandToInclude(segment->GetBoundingBox());
+            box.ExpandToInclude(segment->Bounds());
         }
 
         return box;
     }
 
-    [[nodiscard]] PointType GetPointAt(double parameter) const
+    [[nodiscard]] PointType PointAt(double parameter) const
     {
-        return GetPointAtLength(GetLengthAt(parameter), false);
+        return PointAtLength(LengthAt(parameter), false);
     }
 
-    [[nodiscard]] PointType GetPointAtLength(LengthType distanceFromStart, bool clampToPath = false) const
+    [[nodiscard]] PointType PointAtLength(LengthType distanceFromStart, bool clampToPath = false) const
     {
         if (segments_.empty())
         {
@@ -151,13 +151,13 @@ public:
 
         if (!IsValid())
         {
-            return GetStartPoint();
+            return StartPoint();
         }
 
         const LengthType totalLength = Length();
         if (totalLength <= LengthType{})
         {
-            return GetStartPoint();
+            return StartPoint();
         }
 
         if (clampToPath)
@@ -167,12 +167,12 @@ public:
 
         if (distanceFromStart < LengthType{})
         {
-            return segments_.front()->GetPointAtLength(distanceFromStart, false);
+            return segments_.front()->PointAtLength(distanceFromStart, false);
         }
 
         if (distanceFromStart > totalLength)
         {
-            return segments_.back()->GetPointAtLength(
+            return segments_.back()->PointAtLength(
                 distanceFromStart - PrefixLength(segments_.size() - 1),
                 false);
         }
@@ -184,19 +184,19 @@ public:
             const LengthType segmentEnd = segmentStart + segmentLength;
             if (distanceFromStart <= segmentEnd || i + 1 == segments_.size())
             {
-                return segments_[i]->GetPointAtLength(distanceFromStart - segmentStart, false);
+                return segments_[i]->PointAtLength(distanceFromStart - segmentStart, false);
             }
         }
 
-        return GetEndPoint();
+        return EndPoint();
     }
 
-    [[nodiscard]] LengthType GetLengthAt(double parameter) const
+    [[nodiscard]] LengthType LengthAt(double parameter) const
     {
         return static_cast<LengthType>(parameter) * Length();
     }
 
-    [[nodiscard]] double GetParameterAtLength(LengthType distanceFromStart, bool clampToPath = false) const
+    [[nodiscard]] double ParameterAtLength(LengthType distanceFromStart, bool clampToPath = false) const
     {
         const LengthType totalLength = Length();
         if (totalLength <= LengthType{})
@@ -229,7 +229,7 @@ public:
             }
 
             totalLength += segment->Length();
-            if (i > 0 && !IsEqual(segments_[i - 1]->GetEndPoint(), segment->GetStartPoint()))
+            if (i > 0 && !IsEqual(segments_[i - 1]->EndPoint(), segment->StartPoint()))
             {
                 return false;
             }
@@ -242,7 +242,7 @@ public:
 
         if (IsClosed())
         {
-            return IsEqual(segments_.back()->GetEndPoint(), segments_.front()->GetStartPoint());
+            return IsEqual(segments_.back()->EndPoint(), segments_.front()->StartPoint());
         }
 
         return true;
@@ -279,3 +279,4 @@ private:
 using Polyline2d = Polyline2<double>;
 using Polyline2i = Polyline2<int>;
 }
+

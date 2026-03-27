@@ -133,8 +133,8 @@ bool FromText(std::string_view text, sdk::Vector2d& value)
 
 std::string ToText(const sdk::Box2d& value)
 {
-    const sdk::Point2d minPoint = value.GetMinPoint();
-    const sdk::Point2d maxPoint = value.GetMaxPoint();
+    const sdk::Point2d minPoint = value.MinPoint();
+    const sdk::Point2d maxPoint = value.MaxPoint();
     return MakeText("Box2d", minPoint.x, minPoint.y, maxPoint.x, maxPoint.y);
 }
 
@@ -397,3 +397,4 @@ bool FromText(std::string_view text, sdk::Polygon2d& value)
     return value.IsValid();
 }
 } // namespace geometry::serialize
+

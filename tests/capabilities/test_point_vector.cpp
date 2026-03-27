@@ -1,4 +1,4 @@
-﻿#include <gtest/gtest.h>
+#include <gtest/gtest.h>
 #include <cassert>
 #include <concepts>
 #include <cmath>
@@ -108,8 +108,8 @@ TEST(PointVectorTest, CoversCurrentCapabilities)
 
     emptyBox.ExpandToInclude(Point2i(2, 3));
     assert(emptyBox.IsValid());
-    assert(emptyBox.GetMinPoint() == Point2i(2, 3));
-    assert(emptyBox.GetMaxPoint() == Point2i(2, 3));
+    assert(emptyBox.MinPoint() == Point2i(2, 3));
+    assert(emptyBox.MaxPoint() == Point2i(2, 3));
     assert(emptyBox.Width() == 0.0);
     assert(emptyBox.Height() == 0.0);
 
@@ -121,21 +121,21 @@ TEST(PointVectorTest, CoversCurrentCapabilities)
     GEOMETRY_TEST_ASSERT_POINT_NEAR(boxA.Center(), Point2d(2.5, 4.0), 1e-12);
 
     const LineSegment2d line(Point2d(1.0, 2.0), Point2d(4.0, 6.0));
-    assert(line.GetKind() == SegmentKind2::Line);
+    assert(line.Kind() == SegmentKind2::Line);
     assert(line.IsValid());
     assert(std::abs(line.Length() - 5.0) < 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(line.GetPointAt(0.5), Point2d(2.5, 4.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(line.GetPointAtLength(2.5), Point2d(2.5, 4.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(line.GetPointAtLength(-2.5, true), Point2d(1.0, 2.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(line.PointAt(0.5), Point2d(2.5, 4.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(line.PointAtLength(2.5), Point2d(2.5, 4.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(line.PointAtLength(-2.5, true), Point2d(1.0, 2.0), 1e-12);
 
-    const Box2d lineBox = line.GetBoundingBox();
+    const Box2d lineBox = line.Bounds();
     assert(lineBox.IsValid());
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(lineBox.GetMinPoint(), Point2d(1.0, 2.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(lineBox.GetMaxPoint(), Point2d(4.0, 6.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(lineBox.MinPoint(), Point2d(1.0, 2.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(lineBox.MaxPoint(), Point2d(4.0, 6.0), 1e-12);
 
     const Segment2d& lineAsSegment = line;
-    assert(lineAsSegment.GetKind() == SegmentKind2::Line);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(lineAsSegment.GetPointAt(0.5), Point2d(2.5, 4.0), 1e-12);
+    assert(lineAsSegment.Kind() == SegmentKind2::Line);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(lineAsSegment.PointAt(0.5), Point2d(2.5, 4.0), 1e-12);
 
     const ArcSegment2d arc(
         Point2d(0.0, 0.0),
@@ -143,20 +143,21 @@ TEST(PointVectorTest, CoversCurrentCapabilities)
         0.0,
         kPi / 2.0,
         ArcDirection::CounterClockwise);
-    assert(arc.GetKind() == SegmentKind2::Arc);
+    assert(arc.Kind() == SegmentKind2::Arc);
     assert(arc.IsValid());
     assert(std::abs(arc.Length() - (kPi / 2.0)) < 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(arc.GetStartPoint(), Point2d(1.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(arc.GetEndPoint(), Point2d(0.0, 1.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(arc.StartPoint(), Point2d(1.0, 0.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(arc.EndPoint(), Point2d(0.0, 1.0), 1e-12);
     GEOMETRY_TEST_ASSERT_POINT_NEAR(
-        arc.GetPointAt(0.5),
+        arc.PointAt(0.5),
         Point2d(std::sqrt(2.0) / 2.0, std::sqrt(2.0) / 2.0),
         1e-12);
 
-    const Box2d arcBox = arc.GetBoundingBox();
+    const Box2d arcBox = arc.Bounds();
     assert(arcBox.IsValid());
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(arcBox.GetMinPoint(), Point2d(0.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(arcBox.GetMaxPoint(), Point2d(1.0, 1.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(arcBox.MinPoint(), Point2d(0.0, 0.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(arcBox.MaxPoint(), Point2d(1.0, 1.0), 1e-12);
 }
+
 
 

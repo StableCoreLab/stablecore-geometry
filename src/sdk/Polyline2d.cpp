@@ -103,22 +103,22 @@ bool Polyline2d::IsClosed() const
 
 std::size_t Polyline2d::PointCount() const
 {
-    return impl_->polyline.GetVertexCount();
+    return impl_->polyline.VertexCount();
 }
 
 std::size_t Polyline2d::SegmentCount() const
 {
-    return impl_->polyline.GetSegmentCount();
+    return impl_->polyline.SegmentCount();
 }
 
 Point2d Polyline2d::PointAt(std::size_t index) const
 {
-    return impl_->polyline.GetVertex(index);
+    return impl_->polyline.VertexAt(index);
 }
 
 Box2d Polyline2d::Bounds() const
 {
-    return impl_->polyline.GetBoundingBox();
+    return impl_->polyline.Bounds();
 }
 
 std::string Polyline2d::DebugString() const
@@ -132,3 +132,4 @@ std::string Polyline2d::DebugString() const
     return stream.str();
 }
 } // namespace geometry::sdk
+

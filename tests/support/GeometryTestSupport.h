@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <cmath>
 #include <cstdlib>
@@ -35,8 +35,8 @@ concept HasMinMaxFields = requires(const T& value) {
 
 template <typename T>
 concept HasMinMaxGetters = requires(const T& value) {
-    value.GetMinPoint();
-    value.GetMaxPoint();
+    value.MinPoint();
+    value.MaxPoint();
 };
 
 template <typename T>
@@ -73,7 +73,7 @@ concept HasIsValid = requires(const T& value) {
 };
 
 template <typename T>
-[[nodiscard]] decltype(auto) GetMinPointLike(const T& value)
+[[nodiscard]] decltype(auto) MinPointLike(const T& value)
 {
     if constexpr (HasMinMaxFields<T>)
     {
@@ -81,12 +81,12 @@ template <typename T>
     }
     else
     {
-        return (value.GetMinPoint());
+        return (value.MinPoint());
     }
 }
 
 template <typename T>
-[[nodiscard]] decltype(auto) GetMaxPointLike(const T& value)
+[[nodiscard]] decltype(auto) MaxPointLike(const T& value)
 {
     if constexpr (HasMinMaxFields<T>)
     {
@@ -94,7 +94,7 @@ template <typename T>
     }
     else
     {
-        return (value.GetMaxPoint());
+        return (value.MaxPoint());
     }
 }
 
@@ -146,8 +146,8 @@ template <typename T>
     out << '{';
     if constexpr (HasMinMaxFields<T>)
     {
-        out << "min=" << DescribePointLike(GetMinPointLike(value))
-            << ", max=" << DescribePointLike(GetMaxPointLike(value));
+        out << "min=" << DescribePointLike(MinPointLike(value))
+            << ", max=" << DescribePointLike(MaxPointLike(value));
         if constexpr (HasIsValid<T>)
         {
             out << ", valid=" << (value.IsValid() ? "true" : "false");
@@ -155,8 +155,8 @@ template <typename T>
     }
     else if constexpr (HasMinMaxGetters<T>)
     {
-        out << "min=" << DescribePointLike(GetMinPointLike(value))
-            << ", max=" << DescribePointLike(GetMaxPointLike(value));
+        out << "min=" << DescribePointLike(MinPointLike(value))
+            << ", max=" << DescribePointLike(MaxPointLike(value));
         if constexpr (HasIsValid<T>)
         {
             out << ", valid=" << (value.IsValid() ? "true" : "false");
@@ -321,16 +321,16 @@ inline void AssertBoxNear(
     }
 
     AssertPointNear(
-        detail::GetMinPointLike(actual),
-        detail::GetMinPointLike(expected),
+        detail::MinPointLike(actual),
+        detail::MinPointLike(expected),
         eps,
         actualExpr,
         expectedExpr,
         file,
         line);
     AssertPointNear(
-        detail::GetMaxPointLike(actual),
-        detail::GetMaxPointLike(expected),
+        detail::MaxPointLike(actual),
+        detail::MaxPointLike(expected),
         eps,
         actualExpr,
         expectedExpr,
@@ -513,4 +513,6 @@ inline void AssertPolygonNear(
 
 #define GEOMETRY_TEST_ASSERT_POLYGON_NEAR(actual, expected, eps) \
     ::geometry::test::AssertPolygonNear((actual), (expected), (eps), #actual, #expected, __FILE__, __LINE__)
+
+
 

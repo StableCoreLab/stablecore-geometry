@@ -38,17 +38,17 @@ public:
     {
     }
 
-    [[nodiscard]] const PolylineType& GetOuterRing() const
+    [[nodiscard]] const PolylineType& OuterRing() const
     {
         return outerRing_;
     }
 
-    [[nodiscard]] std::size_t GetHoleCount() const
+    [[nodiscard]] std::size_t HoleCount() const
     {
         return holes_.size();
     }
 
-    [[nodiscard]] const PolylineType& GetHole(std::size_t index) const
+    [[nodiscard]] const PolylineType& HoleAt(std::size_t index) const
     {
         assert(index < holes_.size());
         return holes_[index];
@@ -115,17 +115,17 @@ public:
         return Point2<MeasureType>(weightedX / signedArea, weightedY / signedArea);
     }
 
-    [[nodiscard]] Box2<T> GetBoundingBox() const
+    [[nodiscard]] Box2<T> Bounds() const
     {
         if (!IsValid())
         {
             return Box2<T>();
         }
 
-        Box2<T> box = outerRing_.GetBoundingBox();
+        Box2<T> box = outerRing_.Bounds();
         for (const auto& hole : holes_)
         {
-            box.ExpandToInclude(hole.GetBoundingBox());
+            box.ExpandToInclude(hole.Bounds());
         }
 
         return box;
@@ -193,14 +193,14 @@ private:
     [[nodiscard]] static RingMoment RingMomentIntegral(const PolylineType& ring)
     {
         RingMoment total{};
-        const std::size_t segmentCount = ring.GetSegmentCount();
+        const std::size_t segmentCount = ring.SegmentCount();
         for (std::size_t i = 0; i < segmentCount; ++i)
         {
-            const auto& segment = ring.GetSegment(i);
-            switch (segment.GetKind())
+            const auto& segment = ring.SegmentAt(i);
+            switch (segment.Kind())
             {
             case SegmentKind2::Line:
-                AccumulateLineSegmentMoment(segment.GetStartPoint(), segment.GetEndPoint(), total);
+                AccumulateLineSegmentMoment(segment.StartPoint(), segment.EndPoint(), total);
                 break;
             case SegmentKind2::Arc:
                 AccumulateArcSegmentMoment(segment, total);
@@ -238,11 +238,11 @@ private:
             return;
         }
 
-        const MeasureType cx = static_cast<MeasureType>(arc->GetCenter().x);
-        const MeasureType cy = static_cast<MeasureType>(arc->GetCenter().y);
-        const MeasureType radius = static_cast<MeasureType>(arc->GetRadius());
-        const MeasureType startAngle = static_cast<MeasureType>(arc->GetStartAngle());
-        const MeasureType sweep = static_cast<MeasureType>(arc->GetSignedSweep());
+        const MeasureType cx = static_cast<MeasureType>(arc->Center().x);
+        const MeasureType cy = static_cast<MeasureType>(arc->Center().y);
+        const MeasureType radius = static_cast<MeasureType>(arc->Radius());
+        const MeasureType startAngle = static_cast<MeasureType>(arc->StartAngle());
+        const MeasureType sweep = static_cast<MeasureType>(arc->SignedSweep());
         const MeasureType endAngle = startAngle + sweep;
 
         const MeasureType sinStart = static_cast<MeasureType>(std::sin(static_cast<double>(startAngle)));
@@ -312,3 +312,4 @@ private:
 using Polygon2d = Polygon2<double>;
 using Polygon2i = Polygon2<int>;
 }
+

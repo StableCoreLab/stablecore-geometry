@@ -161,7 +161,7 @@ bool PolygonTopology2d::Build(const MultiPolygon2d& polygons, double eps)
     return true;
 }
 
-std::size_t PolygonTopology2d::PolygonCount() const { return polygons_.Count(); }
+std::size_t PolygonTopology2d::Count() const { return polygons_.Count(); }
 bool PolygonTopology2d::IsEmpty() const { return polygons_.IsEmpty(); }
 bool PolygonTopology2d::IsValid() const { return nodes_.size() == polygons_.Count(); }
 const MultiPolygon2d& PolygonTopology2d::Polygons() const { return polygons_; }
@@ -173,7 +173,7 @@ std::size_t PolygonTopology2d::ParentOf(std::size_t index) const { return nodes_
 std::string PolygonTopology2d::DebugString() const
 {
     std::ostringstream stream;
-    stream << "PolygonTopology2d{polygonCount=" << PolygonCount() << ", rootCount=" << roots_.size() << "}";
+    stream << "PolygonTopology2d{polygonCount=" << Count() << ", rootCount=" << roots_.size() << "}";
     return stream.str();
 }
 
@@ -257,3 +257,4 @@ PolygonTopology2d BuildPolygonTopology(const MultiPolygon2d& polygons, double ep
     return PolygonTopology2d(polygons, eps);
 }
 } // namespace geometry::sdk
+

@@ -90,16 +90,17 @@ public:
 
     virtual ~Segment2() = default;
 
-    [[nodiscard]] virtual SegmentKind2 GetKind() const = 0;
-    [[nodiscard]] virtual PointType GetStartPoint() const = 0;
-    [[nodiscard]] virtual PointType GetEndPoint() const = 0;
+    [[nodiscard]] virtual SegmentKind2 Kind() const = 0;
+    [[nodiscard]] virtual PointType StartPoint() const = 0;
+    [[nodiscard]] virtual PointType EndPoint() const = 0;
     [[nodiscard]] virtual LengthType Length() const = 0;
-    [[nodiscard]] virtual Box2<T> GetBoundingBox() const = 0;
-    [[nodiscard]] virtual PointType GetPointAt(double parameter) const = 0;
-    [[nodiscard]] virtual PointType GetPointAtLength(LengthType distanceFromStart, bool clampToSegment = false) const = 0;
+    [[nodiscard]] virtual Box2<T> Bounds() const = 0;
+    [[nodiscard]] virtual PointType PointAt(double parameter) const = 0;
+    [[nodiscard]] virtual PointType PointAtLength(LengthType distanceFromStart, bool clampToSegment = false) const = 0;
     [[nodiscard]] virtual bool IsValid() const = 0;
 };
 
 using Segment2d = Segment2<double>;
 using Segment2i = Segment2<int>;
 }
+

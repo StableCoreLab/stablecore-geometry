@@ -75,10 +75,10 @@ bool Contains(const Box2d& box, const Point2d& point, double eps)
         return false;
     }
 
-    return point.x >= internalBox.GetMinPoint().x - eps &&
-           point.y >= internalBox.GetMinPoint().y - eps &&
-           point.x <= internalBox.GetMaxPoint().x + eps &&
-           point.y <= internalBox.GetMaxPoint().y + eps;
+    return point.x >= internalBox.MinPoint().x - eps &&
+           point.y >= internalBox.MinPoint().y - eps &&
+           point.x <= internalBox.MaxPoint().x + eps &&
+           point.y <= internalBox.MaxPoint().y + eps;
 }
 
 bool Intersects(const Box2d& lhs, const Box2d& rhs, double eps)
@@ -90,9 +90,10 @@ bool Intersects(const Box2d& lhs, const Box2d& rhs, double eps)
         return false;
     }
 
-    return !(left.GetMaxPoint().x < right.GetMinPoint().x - eps ||
-             left.GetMaxPoint().y < right.GetMinPoint().y - eps ||
-             right.GetMaxPoint().x < left.GetMinPoint().x - eps ||
-             right.GetMaxPoint().y < left.GetMinPoint().y - eps);
+    return !(left.MaxPoint().x < right.MinPoint().x - eps ||
+             left.MaxPoint().y < right.MinPoint().y - eps ||
+             right.MaxPoint().x < left.MinPoint().x - eps ||
+             right.MaxPoint().y < left.MinPoint().y - eps);
 }
 } // namespace geometry::sdk
+

@@ -18,7 +18,6 @@ public:
     MultiPolyline2d(std::initializer_list<Polyline2d> polylines);
 
     [[nodiscard]] std::size_t Count() const;
-    [[nodiscard]] std::size_t PolylineCount() const;
     [[nodiscard]] bool IsEmpty() const;
     [[nodiscard]] bool IsValid() const;
 
@@ -43,3 +42,4 @@ private:
     std::vector<Polyline2d> polylines_{};
 };
 } // namespace geometry::sdk
+

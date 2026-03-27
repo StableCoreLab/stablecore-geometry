@@ -1,4 +1,4 @@
-﻿#include <gtest/gtest.h>
+#include <gtest/gtest.h>
 #include <cassert>
 #include <cmath>
 #include <memory>
@@ -28,8 +28,8 @@ TEST(PolylineTest, CoversCurrentCapabilities)
 {
     Polyline2d emptyPath;
     assert(!emptyPath.IsValid());
-    assert(emptyPath.GetSegmentCount() == 0);
-    assert(emptyPath.GetVertexCount() == 0);
+    assert(emptyPath.SegmentCount() == 0);
+    assert(emptyPath.VertexCount() == 0);
 
     auto first = std::make_shared<LineSegment2d>(Point2d(0.0, 0.0), Point2d(3.0, 0.0));
     auto second = std::make_shared<LineSegment2d>(Point2d(3.0, 0.0), Point2d(3.0, 4.0));
@@ -37,27 +37,27 @@ TEST(PolylineTest, CoversCurrentCapabilities)
 
     assert(openPath.IsValid());
     assert(!openPath.IsClosed());
-    assert(openPath.GetSegmentCount() == 2);
-    assert(openPath.GetVertexCount() == 3);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.GetVertex(0), Point2d(0.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.GetVertex(1), Point2d(3.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.GetVertex(2), Point2d(3.0, 4.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.GetStartPoint(), Point2d(0.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.GetEndPoint(), Point2d(3.0, 4.0), 1e-12);
+    assert(openPath.SegmentCount() == 2);
+    assert(openPath.VertexCount() == 3);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.VertexAt(0), Point2d(0.0, 0.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.VertexAt(1), Point2d(3.0, 0.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.VertexAt(2), Point2d(3.0, 4.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.StartPoint(), Point2d(0.0, 0.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.EndPoint(), Point2d(3.0, 4.0), 1e-12);
     assert(std::abs(openPath.Length() - 7.0) < 1e-12);
-    assert(std::abs(openPath.GetLengthAt(0.5) - 3.5) < 1e-12);
-    assert(std::abs(openPath.GetParameterAtLength(3.5) - 0.5) < 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.GetPointAt(0.5), Point2d(3.0, 0.5), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.GetPointAtLength(3.5), Point2d(3.0, 0.5), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.GetPointAtLength(-2.0, true), Point2d(0.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.GetPointAtLength(9.0, true), Point2d(3.0, 4.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.GetPointAtLength(-2.0, false), Point2d(-2.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.GetPointAtLength(9.0, false), Point2d(3.0, 6.0), 1e-12);
+    assert(std::abs(openPath.LengthAt(0.5) - 3.5) < 1e-12);
+    assert(std::abs(openPath.ParameterAtLength(3.5) - 0.5) < 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.PointAt(0.5), Point2d(3.0, 0.5), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.PointAtLength(3.5), Point2d(3.0, 0.5), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.PointAtLength(-2.0, true), Point2d(0.0, 0.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.PointAtLength(9.0, true), Point2d(3.0, 4.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.PointAtLength(-2.0, false), Point2d(-2.0, 0.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.PointAtLength(9.0, false), Point2d(3.0, 6.0), 1e-12);
 
-    const Box2d openBox = openPath.GetBoundingBox();
+    const Box2d openBox = openPath.Bounds();
     assert(openBox.IsValid());
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openBox.GetMinPoint(), Point2d(0.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openBox.GetMaxPoint(), Point2d(3.0, 4.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(openBox.MinPoint(), Point2d(0.0, 0.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(openBox.MaxPoint(), Point2d(3.0, 4.0), 1e-12);
 
     auto broken = std::make_shared<LineSegment2d>(Point2d(10.0, 10.0), Point2d(11.0, 10.0));
     Polyline2d invalidOpen({first, broken}, PolylineClosure::Open);
@@ -70,9 +70,9 @@ TEST(PolylineTest, CoversCurrentCapabilities)
 
     assert(closedPath.IsValid());
     assert(closedPath.IsClosed());
-    assert(closedPath.GetVertexCount() == 3);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(closedPath.GetStartPoint(), Point2d(0.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(closedPath.GetEndPoint(), Point2d(0.0, 0.0), 1e-12);
+    assert(closedPath.VertexCount() == 3);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(closedPath.StartPoint(), Point2d(0.0, 0.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(closedPath.EndPoint(), Point2d(0.0, 0.0), 1e-12);
 
     auto line = std::make_shared<LineSegment2d>(Point2d(0.0, 0.0), Point2d(1.0, 0.0));
     auto arc = std::make_shared<ArcSegment2d>(
@@ -85,10 +85,11 @@ TEST(PolylineTest, CoversCurrentCapabilities)
 
     assert(mixedPath.IsValid());
     assert(std::abs(mixedPath.Length() - (1.0 + kPi / 2.0)) < 1e-12);
-    const Box2d mixedBox = mixedPath.GetBoundingBox();
+    const Box2d mixedBox = mixedPath.Bounds();
     assert(mixedBox.IsValid());
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(mixedBox.GetMinPoint(), Point2d(0.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(mixedBox.GetMaxPoint(), Point2d(2.0, 1.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(mixedBox.MinPoint(), Point2d(0.0, 0.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(mixedBox.MaxPoint(), Point2d(2.0, 1.0), 1e-12);
 }
+
 
 

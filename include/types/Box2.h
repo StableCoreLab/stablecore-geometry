@@ -40,12 +40,12 @@ public:
         return valid_ && min_.IsValid() && max_.IsValid() && IsOrdered(min_, max_);
     }
 
-    [[nodiscard]] constexpr const Point2<T>& GetMinPoint() const
+    [[nodiscard]] constexpr const Point2<T>& MinPoint() const
     {
         return min_;
     }
 
-    [[nodiscard]] constexpr const Point2<T>& GetMaxPoint() const
+    [[nodiscard]] constexpr const Point2<T>& MaxPoint() const
     {
         return max_;
     }
@@ -169,3 +169,4 @@ private:
 using Box2d = Box2<double>;
 using Box2i = Box2<int>;
 }
+

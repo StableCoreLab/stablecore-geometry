@@ -22,11 +22,6 @@ std::size_t MultiPolygon2d::Count() const
     return polygons_.size();
 }
 
-std::size_t MultiPolygon2d::PolygonCount() const
-{
-    return polygons_.size();
-}
-
 bool MultiPolygon2d::IsEmpty() const
 {
     return polygons_.empty();
@@ -137,3 +132,5 @@ std::vector<Polygon2d>& MultiPolygon2d::Data()
     return polygons_;
 }
 } // namespace geometry::sdk
+
+

@@ -1,4 +1,4 @@
-﻿#include <gtest/gtest.h>
+#include <gtest/gtest.h>
 #include <cassert>
 #include <cmath>
 #include <memory>
@@ -53,18 +53,18 @@ TEST(PolygonTest, CoversCurrentCapabilities)
 
     Polygon2d polygon(outerRing, {holeRing});
     assert(polygon.IsValid());
-    assert(polygon.GetOuterRing().IsClosed());
-    assert(polygon.GetHoleCount() == 1);
-    assert(polygon.GetHole(0).IsClosed());
+    assert(polygon.OuterRing().IsClosed());
+    assert(polygon.HoleCount() == 1);
+    assert(polygon.HoleAt(0).IsClosed());
 
     assert(std::abs(polygon.Area() - 12.0) < 1e-12);
     assert(std::abs(polygon.Perimeter() - 24.0) < 1e-12);
     GEOMETRY_TEST_ASSERT_POINT_NEAR(polygon.Centroid(), Point2d(2.0, 2.0), 1e-12);
 
-    const Box2d box = polygon.GetBoundingBox();
+    const Box2d box = polygon.Bounds();
     assert(box.IsValid());
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(box.GetMinPoint(), Point2d(0.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(box.GetMaxPoint(), Point2d(4.0, 4.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(box.MinPoint(), Point2d(0.0, 0.0), 1e-12);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(box.MaxPoint(), Point2d(4.0, 4.0), 1e-12);
 
     Polyline2d badHole = MakeClosedRing({
         {Point2d(1.0, 1.0), Point2d(3.0, 1.0)},
@@ -94,5 +94,6 @@ TEST(PolygonTest, CoversCurrentCapabilities)
         Point2d(4.0 / (3.0 * std::acos(-1.0)), 4.0 / (3.0 * std::acos(-1.0))),
         1e-12);
 }
+
 
 
