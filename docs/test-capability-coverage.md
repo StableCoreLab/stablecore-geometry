@@ -37,20 +37,20 @@
 - `tests/capabilities/test_relation_boolean.cpp`
   - boolean 的 crossing、containment、equal、touching、simple collinear overlap、disjoint union 当前已具备能力。
 - `tests/capabilities/test_offset.cpp`
-  - line/arc/polyline/polygon/multipolygon offset、hole offset、narrow bridge split 当前已具备能力。
+  - line/arc/polyline/polygon/multipolygon offset、basic rebuilt polygon growth、disjoint multipolygon offset 当前已具备能力。
 - `tests/capabilities/test_topology_indexing.cpp`
-  - touching/intersecting/contains/equal、hole contains、duplicate-equal topology parent tie-break 当前已具备能力。
+  - touching/intersecting/basic contains/equal、duplicate-equal topology parent tie-break 当前已具备能力。
 
 ## Gap Characterization Tests
 
 - `tests/gaps/test_boolean_gaps.cpp`
   - 记录更复杂 collinear overlap family / repeated-edge family / near-degenerate boolean 仍未闭合。
 - `tests/gaps/test_offset_gaps.cpp`
-  - 记录 reverse-edge、self-intersection、multi-failure recovery、hole/outer semantic flip 仍未闭合。
+  - 记录 reverse-edge、self-intersection、multi-failure recovery、hole/outer semantic flip、single-polygon hole semantic recovery、narrow bridge split recovery 仍未闭合。
 - `tests/gaps/test_searchpoly_gaps.cpp`
   - 记录 SearchPoly 风格 branch scoring / fake-edge ranking 仍明显低于 Delphi。
 - `tests/gaps/test_relation_gaps.cpp`
-  - 记录 relation hierarchy 向 `GGLPolyRelation` 靠拢的剩余差距。
+  - 记录 relation hierarchy 向 `GGLPolyRelation` 靠拢的剩余差距，以及 hole-aware polygon containment 等尚未稳定闭合的关系语义。
 
 ## CMake / gtest Notes
 

@@ -169,7 +169,8 @@ void AppendOffsetRing(const Polyline2d& ring, MultiPolyline2d& output)
     }
     if (normalized.IsClosed())
     {
-        if (normalized.PointCount() < 3 || std::abs(SignedArea(normalized)) <= 256.0 * geometry::kDefaultEpsilon * geometry::kDefaultEpsilon)
+        if (normalized.PointCount() < 3 ||
+            std::abs(Area(Polygon2d(normalized))) <= 256.0 * geometry::kDefaultEpsilon * geometry::kDefaultEpsilon)
         {
             return;
         }

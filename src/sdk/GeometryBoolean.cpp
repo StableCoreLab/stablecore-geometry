@@ -43,6 +43,12 @@ struct RawSegment
     Point2d end{};
 };
 
+struct BooleanFastPathResult
+{
+    MultiPolygon2d polygons{};
+    bool handled{false};
+};
+
 [[nodiscard]] bool Evaluate(BooleanOp op, bool inFirst, bool inSecond)
 {
     switch (op)
@@ -734,7 +740,7 @@ void AppendFaceBoundaries(const Polygon2d& polygon, MultiPolyline2d& polylines)
     return result;
 }
 
-[[nodiscard]] MultiPolygon2d BooleanFastPath(
+[[nodiscard]] BooleanFastPathResult BooleanFastPath(
     const Polygon2d& first,
     const Polygon2d& second,
     PolygonContainment2d relation,
@@ -743,60 +749,70 @@ void AppendFaceBoundaries(const Polygon2d& polygon, MultiPolyline2d& polylines)
     switch (relation)
     {
     case PolygonContainment2d::Equal:
+    {
         if (op == BooleanOp::Difference)
         {
-            return {};
+            return {MultiPolygon2d{}, true};
         }
-        return MakeSinglePolygonResult(first);
+        return {MakeSinglePolygonResult(first), true};
+    }
     case PolygonContainment2d::Disjoint:
+    {
         if (op == BooleanOp::Intersection)
         {
-            return {};
+            return {MultiPolygon2d{}, true};
         }
         if (op == BooleanOp::Union)
         {
-            return MakePairResult(first, second);
+            return {MakePairResult(first, second), true};
         }
-        return MakeSinglePolygonResult(first);
+        return {MakeSinglePolygonResult(first), true};
+    }
     case PolygonContainment2d::FirstContainsSecond:
+    {
         if (op == BooleanOp::Intersection)
         {
-            return MakeSinglePolygonResult(second);
+            return {MakeSinglePolygonResult(second), true};
         }
         if (op == BooleanOp::Union)
         {
-            return MakeSinglePolygonResult(first);
+            return {MakeSinglePolygonResult(first), true};
         }
         break;
+    }
     case PolygonContainment2d::SecondContainsFirst:
+    {
         if (op == BooleanOp::Intersection)
         {
-            return MakeSinglePolygonResult(first);
+            return {MakeSinglePolygonResult(first), true};
         }
         if (op == BooleanOp::Union)
         {
-            return MakeSinglePolygonResult(second);
+            return {MakeSinglePolygonResult(second), true};
         }
         if (op == BooleanOp::Difference)
         {
-            return {};
+            return {MultiPolygon2d{}, true};
         }
         break;
+    }
     case PolygonContainment2d::Touching:
+    {
         if (op == BooleanOp::Intersection)
         {
-            return {};
+            return {MultiPolygon2d{}, true};
         }
         if (op == BooleanOp::Difference)
         {
-            return MakeSinglePolygonResult(first);
+            return {MakeSinglePolygonResult(first), true};
         }
         break;
+    }
     case PolygonContainment2d::Intersecting:
         break;
     }
 
-    return MultiPolygon2d{};
+    return {};
 }
 
 [[nodiscard]] MultiPolygon2d BooleanCompose(
@@ -812,10 +828,10 @@ void AppendFaceBoundaries(const Polygon2d& polygon, MultiPolyline2d& polylines)
     }
 
     const PolygonContainment2d relation = Relate(first, second, eps);
-    result = BooleanFastPath(first, second, relation, op);
-    if (!result.IsEmpty() || relation != PolygonContainment2d::Intersecting)
+    const BooleanFastPathResult fastPath = BooleanFastPath(first, second, relation, op);
+    if (fastPath.handled)
     {
-        return result;
+        return fastPath.polygons;
     }
 
     std::vector<RawSegment> rawSegments = CollectBoundarySegments(first, second, eps);

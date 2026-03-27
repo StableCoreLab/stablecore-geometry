@@ -19,7 +19,7 @@ struct Intervald
         return Intervald{minValue, maxValue};
     }
 
-    [[nodiscard]] constexpr bool IsValid() const
+    [[nodiscard]] bool IsValid() const
     {
         return std::isfinite(min) && std::isfinite(max) && min <= max;
     }
@@ -34,7 +34,7 @@ struct Intervald
         return value >= min - eps && value <= max + eps;
     }
 
-    [[nodiscard]] constexpr bool AlmostEquals(const Intervald& other, double eps = kDefaultEpsilon) const
+    [[nodiscard]] bool AlmostEquals(const Intervald& other, double eps = kDefaultEpsilon) const
     {
         return std::abs(min - other.min) <= eps && std::abs(max - other.max) <= eps;
     }

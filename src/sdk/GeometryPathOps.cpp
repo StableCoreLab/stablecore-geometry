@@ -15,6 +15,7 @@
 #include "sdk/GeometryProjection.h"
 #include "sdk/GeometryRelation.h"
 #include "sdk/GeometryShapeOps.h"
+#include "sdk/GeometryTopology.h"
 #include "sdk/GeometryValidation.h"
 
 namespace geometry::sdk

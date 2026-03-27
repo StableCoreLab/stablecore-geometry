@@ -175,11 +175,6 @@ private:
         return static_cast<double>(angle);
     }
 
-    [[nodiscard]] double SignedSweep() const
-    {
-        return detail::SignedSweep(AngleAsDouble(startAngle_), AngleAsDouble(endAngle_), direction_);
-    }
-
     [[nodiscard]] PointType PointAtAngle(double angle) const
     {
         const double radius = static_cast<double>(radius_);
