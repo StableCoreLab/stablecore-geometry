@@ -67,6 +67,24 @@ double Length(const Curve3d& curve, std::size_t sampleCount)
     return total;
 }
 
+double Length(const CurveOnSurface& curveOnSurface)
+{
+    if (!curveOnSurface.IsValid() || curveOnSurface.PointCount() < 2)
+    {
+        return 0.0;
+    }
+
+    double total = 0.0;
+    Point3d previous = curveOnSurface.PointAt(0);
+    for (std::size_t i = 1; i < curveOnSurface.PointCount(); ++i)
+    {
+        const Point3d current = curveOnSurface.PointAt(i);
+        total += Distance(previous, current);
+        previous = current;
+    }
+    return total;
+}
+
 double Area(const Triangle3d& triangle)
 {
     return triangle.Area();
@@ -81,6 +99,34 @@ double Area(const PolyhedronFace3d& face, const GeometryTolerance3d& tolerance)
     }
 
     return std::abs(geometry::sdk::Area(projection.polygon));
+}
+
+double Area(const BrepFace& face, double eps)
+{
+    if (face.OuterTrim().SupportSurface() == nullptr || !face.OuterTrim().IsValid())
+    {
+        return 0.0;
+    }
+
+    Polygon2d polygon(face.OuterTrim().UvCurve());
+    if (!polygon.IsValid())
+    {
+        return 0.0;
+    }
+
+    std::vector<Polyline2d> holes;
+    holes.reserve(face.HoleTrims().size());
+    for (const CurveOnSurface& trim : face.HoleTrims())
+    {
+        if (!trim.IsValid())
+        {
+            return 0.0;
+        }
+        holes.push_back(trim.UvCurve());
+    }
+
+    polygon = Polygon2d(face.OuterTrim().UvCurve(), std::move(holes));
+    return std::abs(geometry::sdk::Area(polygon));
 }
 
 double Area(const TriangleMesh& mesh)
@@ -110,6 +156,17 @@ double Volume(const PolyhedronBody& body, double eps)
     return Volume(conversion.mesh);
 }
 
+double Volume(const BrepBody& body, double eps)
+{
+    const PolyhedronMeshConversion3d conversion = ConvertToTriangleMesh(body, eps);
+    if (!conversion.success)
+    {
+        return 0.0;
+    }
+
+    return Volume(conversion.mesh);
+}
+
 Box3d Bounds(const Curve3d& curve)
 {
     return curve.Bounds();
@@ -120,12 +177,22 @@ Box3d Bounds(const Surface& surface)
     return surface.Bounds();
 }
 
+Box3d Bounds(const CurveOnSurface& curveOnSurface)
+{
+    return curveOnSurface.Bounds();
+}
+
 Box3d Bounds(const TriangleMesh& mesh)
 {
     return mesh.Bounds();
 }
 
 Box3d Bounds(const PolyhedronBody& body)
+{
+    return body.Bounds();
+}
+
+Box3d Bounds(const BrepBody& body)
 {
     return body.Bounds();
 }

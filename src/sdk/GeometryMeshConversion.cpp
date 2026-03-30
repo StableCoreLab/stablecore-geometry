@@ -14,6 +14,91 @@ namespace geometry::sdk
 {
 namespace
 {
+[[nodiscard]] bool AppendLoopVerticesFromBrepLoop(
+    const BrepBody& body,
+    const BrepLoop& loop,
+    std::vector<Point3d>& vertices,
+    double eps)
+{
+    vertices.clear();
+    if (!loop.IsValid())
+    {
+        return false;
+    }
+
+    vertices.reserve(loop.CoedgeCount());
+    for (std::size_t i = 0; i < loop.CoedgeCount(); ++i)
+    {
+        const BrepCoedge coedge = loop.CoedgeAt(i);
+        if (coedge.EdgeIndex() >= body.EdgeCount())
+        {
+            return false;
+        }
+
+        const BrepEdge edge = body.EdgeAt(coedge.EdgeIndex());
+        const std::size_t vertexIndex = coedge.Reversed() ? edge.EndVertexIndex() : edge.StartVertexIndex();
+        if (vertexIndex >= body.VertexCount())
+        {
+            return false;
+        }
+
+        const Point3d point = body.VertexAt(vertexIndex).Point();
+        if (vertices.empty() || !vertices.back().AlmostEquals(point, eps))
+        {
+            vertices.push_back(point);
+        }
+    }
+
+    while (vertices.size() >= 2 && vertices.front().AlmostEquals(vertices.back(), eps))
+    {
+        vertices.pop_back();
+    }
+
+    return vertices.size() >= 3;
+}
+
+[[nodiscard]] bool BuildPolyhedronFaceFromBrepFace(
+    const BrepBody& body,
+    const BrepFace& face,
+    PolyhedronFace3d& polyFace,
+    double eps)
+{
+    if (!face.IsValid(GeometryTolerance3d{eps, eps, eps}))
+    {
+        return false;
+    }
+
+    const auto* planeSurface = dynamic_cast<const PlaneSurface*>(face.SupportSurface());
+    if (planeSurface == nullptr)
+    {
+        return false;
+    }
+
+    std::vector<Point3d> outerVertices;
+    if (!AppendLoopVerticesFromBrepLoop(body, face.OuterLoop(), outerVertices, eps))
+    {
+        return false;
+    }
+
+    std::vector<PolyhedronLoop3d> holes;
+    holes.reserve(face.HoleCount());
+    for (std::size_t i = 0; i < face.HoleCount(); ++i)
+    {
+        std::vector<Point3d> holeVertices;
+        if (!AppendLoopVerticesFromBrepLoop(body, face.HoleAt(i), holeVertices, eps))
+        {
+            return false;
+        }
+        holes.emplace_back(std::move(holeVertices));
+    }
+
+    polyFace = PolyhedronFace3d(
+        planeSurface->SupportPlane(),
+        PolyhedronLoop3d(std::move(outerVertices)),
+        std::move(holes));
+    return polyFace.IsValid(eps);
+}
+
 [[nodiscard]] double SignedArea2d(const std::vector<Point2d>& points)
 {
     double area = 0.0;
@@ -452,7 +537,7 @@ PolyhedronMeshConversion3d ConvertToTriangleMesh(const PolyhedronBody& body, dou
 {
     if (!body.IsValid(eps))
     {
-        return {false, MeshConversionIssue3d::InvalidFace, 0, {}};
+        return {false, MeshConversionIssue3d::InvalidBody, 0, {}};
     }
 
     std::vector<Point3d> vertices;
@@ -475,6 +560,51 @@ PolyhedronMeshConversion3d ConvertToTriangleMesh(const PolyhedronBody& body, dou
                 tri[0] + offset,
                 tri[1] + offset,
                 tri[2] + offset});
+        }
+    }
+
+    return {true, MeshConversionIssue3d::None, 0, TriangleMesh(std::move(vertices), std::move(triangles))};
+}
+
+PolyhedronMeshConversion3d ConvertToTriangleMesh(const BrepBody& body, double eps)
+{
+    const GeometryTolerance3d tolerance{eps, eps, eps};
+    if (!body.IsValid(tolerance))
+    {
+        return {false, MeshConversionIssue3d::InvalidBody, 0, {}};
+    }
+
+    std::vector<Point3d> vertices;
+    std::vector<TriangleMesh::TriangleIndices> triangles;
+    std::size_t faceIndex = 0;
+    for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
+    {
+        const BrepShell shell = body.ShellAt(shellIndex);
+        for (std::size_t localFaceIndex = 0; localFaceIndex < shell.FaceCount(); ++localFaceIndex, ++faceIndex)
+        {
+            PolyhedronFace3d polyFace{};
+            if (!BuildPolyhedronFaceFromBrepFace(body, shell.FaceAt(localFaceIndex), polyFace, eps))
+            {
+                return {false, MeshConversionIssue3d::UnsupportedSurface, faceIndex, {}};
+            }
+
+            const PolyhedronMeshConversion3d converted = ConvertToTriangleMesh(polyFace, eps);
+            if (!converted.success)
+            {
+                return {false, converted.issue, faceIndex, {}};
+            }
+
+            const std::size_t offset = vertices.size();
+            const auto& faceVertices = converted.mesh.Vertices();
+            const auto& faceTriangles = converted.mesh.Triangles();
+            vertices.insert(vertices.end(), faceVertices.begin(), faceVertices.end());
+            for (const TriangleMesh::TriangleIndices& tri : faceTriangles)
+            {
+                triangles.push_back(TriangleMesh::TriangleIndices{
+                    tri[0] + offset,
+                    tri[1] + offset,
+                    tri[2] + offset});
+            }
         }
     }
 

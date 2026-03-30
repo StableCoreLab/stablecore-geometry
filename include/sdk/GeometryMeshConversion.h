@@ -2,6 +2,7 @@
 
 #include <cstddef>
 
+#include "sdk/BrepBody.h"
 #include "export/GeometryExport.h"
 #include "sdk/PolyhedronBody.h"
 #include "sdk/TriangleMesh.h"
@@ -12,6 +13,8 @@ enum class MeshConversionIssue3d
 {
     None,
     InvalidFace,
+    InvalidBody,
+    UnsupportedSurface,
     UnsupportedHoles,
     TriangulationFailed
 };
@@ -35,5 +38,9 @@ struct GEOMETRY_API PolyhedronMeshConversion3d
 
 [[nodiscard]] GEOMETRY_API PolyhedronMeshConversion3d ConvertToTriangleMesh(
     const PolyhedronBody& body,
+    double eps = 1e-9);
+
+[[nodiscard]] GEOMETRY_API PolyhedronMeshConversion3d ConvertToTriangleMesh(
+    const BrepBody& body,
     double eps = 1e-9);
 } // namespace geometry::sdk

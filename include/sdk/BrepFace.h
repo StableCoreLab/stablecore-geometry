@@ -16,8 +16,17 @@ class GEOMETRY_API BrepFace
 {
 public:
     BrepFace() = default;
-    BrepFace(std::shared_ptr<Surface> supportSurface, BrepLoop outerLoop, std::vector<BrepLoop> holes = {})
-        : supportSurface_(std::move(supportSurface)), outerLoop_(std::move(outerLoop)), holes_(std::move(holes))
+    BrepFace(
+        std::shared_ptr<Surface> supportSurface,
+        BrepLoop outerLoop,
+        std::vector<BrepLoop> holes = {},
+        CurveOnSurface outerTrim = {},
+        std::vector<CurveOnSurface> holeTrims = {})
+        : supportSurface_(std::move(supportSurface)),
+          outerLoop_(std::move(outerLoop)),
+          holes_(std::move(holes)),
+          outerTrim_(std::move(outerTrim)),
+          holeTrims_(std::move(holeTrims))
     {
     }
 
@@ -28,9 +37,20 @@ public:
             return false;
         }
 
-        for (const BrepLoop& hole : holes_)
+        if ((outerTrim_.SupportSurface() != nullptr && !outerTrim_.IsValid(tolerance)) ||
+            (!holeTrims_.empty() && holeTrims_.size() != holes_.size()))
         {
-            if (!hole.IsValid())
+            return false;
+        }
+
+        for (std::size_t i = 0; i < holes_.size(); ++i)
+        {
+            if (!holes_[i].IsValid())
+            {
+                return false;
+            }
+
+            if (i < holeTrims_.size() && holeTrims_[i].SupportSurface() != nullptr && !holeTrims_[i].IsValid(tolerance))
             {
                 return false;
             }
@@ -64,6 +84,16 @@ public:
         return holes_;
     }
 
+    [[nodiscard]] const CurveOnSurface& OuterTrim() const
+    {
+        return outerTrim_;
+    }
+
+    [[nodiscard]] const std::vector<CurveOnSurface>& HoleTrims() const
+    {
+        return holeTrims_;
+    }
+
     [[nodiscard]] Box3d Bounds() const
     {
         return supportSurface_ != nullptr ? supportSurface_->Bounds() : Box3d{};
@@ -80,5 +110,7 @@ private:
     std::shared_ptr<Surface> supportSurface_{};
     BrepLoop outerLoop_{};
     std::vector<BrepLoop> holes_{};
+    CurveOnSurface outerTrim_{};
+    std::vector<CurveOnSurface> holeTrims_{};
 };
 } // namespace geometry::sdk

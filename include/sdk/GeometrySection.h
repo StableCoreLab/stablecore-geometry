@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "sdk/BrepBody.h"
 #include "export/GeometryExport.h"
 #include "sdk/GeometryTypes.h"
 #include "sdk/GeometryMeshConversion.h"
@@ -326,6 +327,11 @@ struct GEOMETRY_API SectionMeshSetConversion3d
 
 [[nodiscard]] GEOMETRY_API PolyhedronSection3d Section(
     const PolyhedronBody& body,
+    const Plane& plane,
+    const GeometryTolerance3d& tolerance = {});
+
+[[nodiscard]] GEOMETRY_API PolyhedronSection3d Section(
+    const BrepBody& body,
     const Plane& plane,
     const GeometryTolerance3d& tolerance = {});
 

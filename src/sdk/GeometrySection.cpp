@@ -780,6 +780,305 @@ PolyhedronSection3d Section(
     return result;
 }
 
+PolyhedronSection3d Section(
+    const BrepBody& body,
+    const Plane& plane,
+    const GeometryTolerance3d& tolerance)
+{
+    PolyhedronSection3d result{};
+    if (!plane.IsValid(tolerance.distanceEpsilon))
+    {
+        result.issue = SectionIssue3d::InvalidPlane;
+        return result;
+    }
+
+    if (!body.IsValid(tolerance))
+    {
+        result.issue = SectionIssue3d::InvalidBody;
+        return result;
+    }
+
+    const PlaneProjectionBasis basis = BuildPlaneProjectionBasis(plane, tolerance.distanceEpsilon);
+    result.origin = plane.origin;
+    result.uAxis = basis.u;
+    result.vAxis = basis.v;
+
+    bool hasCoplanarFace = false;
+    for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
+    {
+        const BrepShell shell = body.ShellAt(shellIndex);
+        for (std::size_t faceIndex = 0; faceIndex < shell.FaceCount(); ++faceIndex)
+        {
+            const BrepFace face = shell.FaceAt(faceIndex);
+            const auto* planeSurface = dynamic_cast<const PlaneSurface*>(face.SupportSurface());
+            if (planeSurface == nullptr || face.OuterTrim().SupportSurface() == nullptr || !face.OuterTrim().IsValid())
+            {
+                continue;
+            }
+
+            const Plane facePlane = planeSurface->SupportPlane();
+            const Vector3d faceNormal = facePlane.UnitNormal(tolerance.distanceEpsilon);
+            const Vector3d sectionNormal = plane.UnitNormal(tolerance.distanceEpsilon);
+            const bool normalsParallel =
+                Cross(faceNormal, sectionNormal).Length() <= tolerance.angleEpsilon &&
+                std::abs(facePlane.SignedDistanceTo(plane.origin, tolerance.distanceEpsilon)) <= tolerance.distanceEpsilon;
+            if (!normalsParallel)
+            {
+                continue;
+            }
+
+            hasCoplanarFace = true;
+            std::vector<Point3d> outer3d;
+            std::vector<Point2d> outer2d;
+            outer3d.reserve(face.OuterTrim().PointCount());
+            outer2d.reserve(face.OuterTrim().PointCount());
+            for (std::size_t i = 0; i < face.OuterTrim().PointCount(); ++i)
+            {
+                const Point3d point3d = face.OuterTrim().PointAt(i);
+                outer3d.push_back(point3d);
+                outer2d.push_back(ProjectToLocalPlaneCoordinates(point3d, plane, basis));
+            }
+            SimplifyLoop(outer3d, outer2d, tolerance.distanceEpsilon);
+            if (outer2d.size() < 3)
+            {
+                continue;
+            }
+
+            EnsureCounterClockwise(outer3d, outer2d);
+            std::vector<Polyline2d> holeRings;
+            for (const CurveOnSurface& trim : face.HoleTrims())
+            {
+                if (!trim.IsValid())
+                {
+                    continue;
+                }
+
+                std::vector<Point3d> hole3d;
+                std::vector<Point2d> hole2d;
+                hole3d.reserve(trim.PointCount());
+                hole2d.reserve(trim.PointCount());
+                for (std::size_t i = 0; i < trim.PointCount(); ++i)
+                {
+                    const Point3d point3d = trim.PointAt(i);
+                    hole3d.push_back(point3d);
+                    hole2d.push_back(ProjectToLocalPlaneCoordinates(point3d, plane, basis));
+                }
+                SimplifyLoop(hole3d, hole2d, tolerance.distanceEpsilon);
+                if (hole2d.size() < 3)
+                {
+                    continue;
+                }
+
+                EnsureClockwise(hole3d, hole2d);
+                result.contours.push_back(SectionPolyline3d{true, hole3d});
+                for (std::size_t i = 0; i < hole3d.size(); ++i)
+                {
+                    const std::size_t next = (i + 1) % hole3d.size();
+                    if (!ContainsUndirectedSegment(result.segments, hole3d[i], hole3d[next], tolerance.distanceEpsilon))
+                    {
+                        result.segments.push_back(LineSegment3d::FromStartEnd(hole3d[i], hole3d[next]));
+                    }
+                }
+                holeRings.emplace_back(std::move(hole2d), PolylineClosure::Closed);
+            }
+
+            result.contours.push_back(SectionPolyline3d{true, outer3d});
+            result.polygons.emplace_back(
+                Polyline2d(std::move(outer2d), PolylineClosure::Closed),
+                std::move(holeRings));
+            for (std::size_t i = 0; i < outer3d.size(); ++i)
+            {
+                const std::size_t next = (i + 1) % outer3d.size();
+                if (!ContainsUndirectedSegment(result.segments, outer3d[i], outer3d[next], tolerance.distanceEpsilon))
+                {
+                    result.segments.push_back(LineSegment3d::FromStartEnd(outer3d[i], outer3d[next]));
+                }
+            }
+        }
+    }
+
+    if (hasCoplanarFace)
+    {
+        result.success = true;
+        return result;
+    }
+
+    const auto meshConversion = ConvertToTriangleMesh(body, tolerance.distanceEpsilon);
+    if (!meshConversion.success)
+    {
+        result.issue = SectionIssue3d::MeshConversionFailed;
+        return result;
+    }
+
+    std::vector<LineSegment3d> rawSegments;
+    rawSegments.reserve(meshConversion.mesh.TriangleCount());
+    bool hasCoplanarTriangle = false;
+    for (std::size_t i = 0; i < meshConversion.mesh.TriangleCount(); ++i)
+    {
+        LineSegment3d segment{};
+        if (!SliceTriangle(
+                meshConversion.mesh.TriangleAt(i),
+                plane,
+                tolerance.distanceEpsilon,
+                segment,
+                hasCoplanarTriangle))
+        {
+            continue;
+        }
+
+        if (!ContainsUndirectedSegment(rawSegments, segment.startPoint, segment.endPoint, tolerance.distanceEpsilon))
+        {
+            rawSegments.push_back(segment);
+        }
+    }
+
+    result.segments = rawSegments;
+    if (result.segments.empty())
+    {
+        result.success = true;
+        return result;
+    }
+
+    std::vector<Point2d> projectedNodes;
+    std::vector<Point3d> nodePoints3d;
+    std::vector<IndexedSegment2d> indexedSegments;
+    indexedSegments.reserve(rawSegments.size());
+    for (const LineSegment3d& segment : rawSegments)
+    {
+        const Point2d first2d = ProjectToLocalPlaneCoordinates(segment.startPoint, plane, basis);
+        const Point2d second2d = ProjectToLocalPlaneCoordinates(segment.endPoint, plane, basis);
+        const std::size_t firstIndex = FindOrAddPoint2d(first2d, projectedNodes, tolerance.distanceEpsilon);
+        const std::size_t secondIndex = FindOrAddPoint2d(second2d, projectedNodes, tolerance.distanceEpsilon);
+        if (firstIndex == secondIndex)
+        {
+            continue;
+        }
+
+        while (nodePoints3d.size() < projectedNodes.size())
+        {
+            nodePoints3d.push_back(Point3d{});
+        }
+        nodePoints3d[firstIndex] = segment.startPoint;
+        nodePoints3d[secondIndex] = segment.endPoint;
+
+        bool duplicate = false;
+        for (const IndexedSegment2d& existing : indexedSegments)
+        {
+            if ((existing.first == firstIndex && existing.second == secondIndex) ||
+                (existing.first == secondIndex && existing.second == firstIndex))
+            {
+                duplicate = true;
+                break;
+            }
+        }
+
+        if (!duplicate)
+        {
+            indexedSegments.push_back(IndexedSegment2d{firstIndex, secondIndex});
+        }
+    }
+
+    std::vector<std::vector<std::size_t>> adjacency(projectedNodes.size());
+    for (const IndexedSegment2d& segment : indexedSegments)
+    {
+        adjacency[segment.first].push_back(segment.second);
+        adjacency[segment.second].push_back(segment.first);
+    }
+
+    for (const auto& neighbors : adjacency)
+    {
+        if (neighbors.size() > 2)
+        {
+            result.issue = SectionIssue3d::NonManifoldContour;
+            return result;
+        }
+    }
+
+    std::vector<bool> edgeVisited(indexedSegments.size(), false);
+    for (std::size_t nodeIndex = 0; nodeIndex < adjacency.size(); ++nodeIndex)
+    {
+        if (adjacency[nodeIndex].size() != 1 ||
+            !HasUnvisitedIncidentEdge(nodeIndex, adjacency, indexedSegments, edgeVisited))
+        {
+            continue;
+        }
+
+        const PolylineBuildResult polyline = BuildPolylineFromNode(
+            nodeIndex,
+            false,
+            adjacency,
+            indexedSegments,
+            edgeVisited);
+        if (!polyline.success)
+        {
+            result.issue = SectionIssue3d::OpenContour;
+            return result;
+        }
+
+        std::vector<Point3d> contour3d;
+        std::vector<Point2d> contour2d;
+        contour3d.reserve(polyline.nodeIndices.size());
+        contour2d.reserve(polyline.nodeIndices.size());
+        for (std::size_t contourNodeIndex : polyline.nodeIndices)
+        {
+            contour3d.push_back(nodePoints3d[contourNodeIndex]);
+            contour2d.push_back(projectedNodes[contourNodeIndex]);
+        }
+
+        SimplifyOpenPolyline(contour3d, contour2d, tolerance.distanceEpsilon);
+        if (contour2d.size() < 2)
+        {
+            result.issue = SectionIssue3d::InvalidContour;
+            return result;
+        }
+
+        result.contours.push_back(SectionPolyline3d{false, std::move(contour3d)});
+    }
+
+    for (std::size_t edgeIndex = 0; edgeIndex < indexedSegments.size(); ++edgeIndex)
+    {
+        if (edgeVisited[edgeIndex])
+        {
+            continue;
+        }
+
+        const PolylineBuildResult polyline = BuildPolylineFromNode(
+            indexedSegments[edgeIndex].first,
+            true,
+            adjacency,
+            indexedSegments,
+            edgeVisited);
+        if (!polyline.success)
+        {
+            result.issue = SectionIssue3d::InvalidContour;
+            return result;
+        }
+
+        std::vector<Point3d> contour3d;
+        std::vector<Point2d> contour2d;
+        contour3d.reserve(polyline.nodeIndices.size());
+        contour2d.reserve(polyline.nodeIndices.size());
+        for (std::size_t contourNodeIndex : polyline.nodeIndices)
+        {
+            contour3d.push_back(nodePoints3d[contourNodeIndex]);
+            contour2d.push_back(projectedNodes[contourNodeIndex]);
+        }
+
+        SimplifyLoop(contour3d, contour2d, tolerance.distanceEpsilon);
+        if (contour2d.size() < 3)
+        {
+            continue;
+        }
+
+        result.contours.push_back(SectionPolyline3d{true, contour3d});
+        EnsureCounterClockwise(contour3d, contour2d);
+        result.polygons.emplace_back(Polyline2d(std::move(contour2d), PolylineClosure::Closed));
+    }
+
+    result.success = true;
+    return result;
+}
+
 SectionFaceRebuild3d RebuildSectionFaces(const PolyhedronSection3d& section, double eps)
 {
     SectionFaceRebuild3d result{};

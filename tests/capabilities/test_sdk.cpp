@@ -368,6 +368,8 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(curveOnSurfaceBounds.IsValid());
     GEOMETRY_TEST_ASSERT_NEAR(curveOnSurfaceBounds.MinPoint().z, 5.0, 1e-12);
     GEOMETRY_TEST_ASSERT_NEAR(curveOnSurfaceBounds.MaxPoint().z, 5.0, 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Bounds(curveOnSurface).MinPoint().z, 5.0, 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Length(curveOnSurface), std::sqrt(8.0) * 2.0, 1e-12);
 
     GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Distance(Point3d{0.0, 0.0, 0.0}, Point3d{1.0, 2.0, 2.0}), 3.0, 1e-12);
     GEOMETRY_TEST_ASSERT_NEAR(
@@ -738,7 +740,18 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(brepOuterLoop.IsValid());
     const BrepFace brepFace(
         std::shared_ptr<Surface>(planeSurface.Clone().release()),
-        brepOuterLoop);
+        brepOuterLoop,
+        {},
+        CurveOnSurface(
+            std::shared_ptr<Surface>(planeSurface.Clone().release()),
+            Polyline2d(
+                {
+                    Point2d{-2.0, -3.0},
+                    Point2d{0.0, -3.0},
+                    Point2d{0.0, -1.0},
+                    Point2d{-2.0, -1.0},
+                },
+                PolylineClosure::Closed)));
     assert(brepFace.IsValid());
     const geometry::Box3d brepFaceBounds = brepFace.Bounds();
     assert(brepFaceBounds.IsValid());
@@ -764,6 +777,8 @@ TEST(SdkTest, CoversCurrentCapabilities)
     const auto brepValidation = Validate(brepBody);
     assert(brepValidation.valid);
     assert(brepValidation.issue == BrepValidationIssue3d::None);
+    GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Area(brepFace), 4.0, 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Bounds(brepBody).MinPoint().z, 5.0, 1e-12);
     const BrepHealing3d healedBrepBody = Heal(brepBody);
     assert(healedBrepBody.success);
     assert(healedBrepBody.issue == geometry::sdk::HealingIssue3d::None);
@@ -772,6 +787,18 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(brepBodyBounds.IsValid());
     assert(brepBodyBounds.MinPoint().AlmostEquals(Point3d{0.0, 0.0, 5.0}, 1e-12));
     assert(brepBodyBounds.MaxPoint().AlmostEquals(Point3d{2.0, 2.0, 5.0}, 1e-12));
+    GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Volume(brepBody), 0.0, 1e-12);
+    const auto brepMesh = ConvertToTriangleMesh(brepBody);
+    assert(brepMesh.success);
+    assert(brepMesh.mesh.IsValid());
+    assert(brepMesh.mesh.TriangleCount() == 2);
+    GEOMETRY_TEST_ASSERT_NEAR(brepMesh.mesh.SurfaceArea(), 4.0, 1e-12);
+    const PolyhedronSection3d brepSection = Section(
+        brepBody,
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 5.0}, Vector3d{0.0, 0.0, 1.0}));
+    assert(brepSection.success);
+    assert(brepSection.polygons.size() == 1);
+    GEOMETRY_TEST_ASSERT_NEAR(Area(brepSection.polygons[0]), 4.0, 1e-12);
 
     const BrepBody invalidBrepBody(
         brepVertices,
