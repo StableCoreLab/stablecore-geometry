@@ -2,38 +2,18 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <vector>
+
+#include "sdk/GeometryIntersection.h"
+#include "sdk/GeometryProjection.h"
+#include "sdk/GeometryRelation.h"
+#include "sdk/GeometryShapeOps.h"
 
 namespace geometry::sdk
 {
 namespace
 {
-struct Basis2dOnPlane
-{
-    Vector3d u{};
-    Vector3d v{};
-};
-
-[[nodiscard]] Basis2dOnPlane BuildPlaneBasis(const Plane& plane, double eps)
-{
-    const Vector3d normal = plane.UnitNormal(eps);
-    const Vector3d axis = std::abs(normal.x) <= std::abs(normal.y) &&
-                                  std::abs(normal.x) <= std::abs(normal.z)
-                              ? Vector3d{1.0, 0.0, 0.0}
-                              : (std::abs(normal.y) <= std::abs(normal.z)
-                                     ? Vector3d{0.0, 1.0, 0.0}
-                                     : Vector3d{0.0, 0.0, 1.0});
-    const Vector3d u = Cross(normal, axis).Normalized(eps);
-    const Vector3d v = Cross(normal, u).Normalized(eps);
-    return {u, v};
-}
-
-[[nodiscard]] Point2d ProjectToPlane2d(const Point3d& point, const Plane& plane, const Basis2dOnPlane& basis)
-{
-    const Vector3d delta = point - plane.origin;
-    return Point2d{Dot(delta, basis.u), Dot(delta, basis.v)};
-}
-
 [[nodiscard]] double SignedArea2d(const std::vector<Point2d>& points)
 {
     double area = 0.0;
@@ -76,6 +56,11 @@ struct Basis2dOnPlane
     const Point2d& b = projected[current];
     const Point2d& c = projected[next];
 
+    if (a.AlmostEquals(b, eps) || b.AlmostEquals(c, eps) || a.AlmostEquals(c, eps))
+    {
+        return false;
+    }
+
     const double corner = Cross(b - a, c - b);
     if (orientationSign > 0.0 ? (corner <= eps) : (corner >= -eps))
     {
@@ -85,6 +70,13 @@ struct Basis2dOnPlane
     for (std::size_t candidate : polygon)
     {
         if (candidate == previous || candidate == current || candidate == next)
+        {
+            continue;
+        }
+
+        if (projected[candidate].AlmostEquals(a, eps) ||
+            projected[candidate].AlmostEquals(b, eps) ||
+            projected[candidate].AlmostEquals(c, eps))
         {
             continue;
         }
@@ -131,14 +123,22 @@ struct Basis2dOnPlane
         bool clipped = false;
         for (std::size_t i = 0; i < polygon.size(); ++i)
         {
+            const std::size_t previous = polygon[(i + polygon.size() - 1) % polygon.size()];
+            const std::size_t current = polygon[i];
+            const std::size_t next = polygon[(i + 1) % polygon.size()];
+            if (projected[previous].AlmostEquals(projected[current], eps) ||
+                projected[current].AlmostEquals(projected[next], eps))
+            {
+                polygon.erase(polygon.begin() + static_cast<std::ptrdiff_t>(i));
+                clipped = true;
+                break;
+            }
+
             if (!IsEar(polygon, i, projected, orientationSign, eps))
             {
                 continue;
             }
 
-            const std::size_t previous = polygon[(i + polygon.size() - 1) % polygon.size()];
-            const std::size_t current = polygon[i];
-            const std::size_t next = polygon[(i + 1) % polygon.size()];
             triangles.push_back(TriangleMesh::TriangleIndices{previous, current, next});
             polygon.erase(polygon.begin() + static_cast<std::ptrdiff_t>(i));
             clipped = true;
@@ -154,6 +154,260 @@ struct Basis2dOnPlane
     triangles.push_back(TriangleMesh::TriangleIndices{polygon[0], polygon[1], polygon[2]});
     return true;
 }
+
+[[nodiscard]] std::vector<Point2d> RingPoints(const Polyline2d& ring)
+{
+    std::vector<Point2d> points;
+    points.reserve(ring.PointCount());
+    for (std::size_t i = 0; i < ring.PointCount(); ++i)
+    {
+        points.push_back(ring.PointAt(i));
+    }
+    return points;
+}
+
+void EnsureOrientation(std::vector<Point2d>& points, bool ccw)
+{
+    if (points.size() < 3)
+    {
+        return;
+    }
+
+    const double area = SignedArea2d(points);
+    if ((ccw && area < 0.0) || (!ccw && area > 0.0))
+    {
+        std::reverse(points.begin(), points.end());
+    }
+}
+
+[[nodiscard]] std::vector<Point2d> RemoveAdjacentDuplicates(
+    const std::vector<Point2d>& points,
+    double eps)
+{
+    std::vector<Point2d> cleaned;
+    cleaned.reserve(points.size());
+    for (const Point2d& point : points)
+    {
+        if (cleaned.empty() || !cleaned.back().AlmostEquals(point, eps))
+        {
+            cleaned.push_back(point);
+        }
+    }
+
+    while (cleaned.size() >= 2 && cleaned.front().AlmostEquals(cleaned.back(), eps))
+    {
+        cleaned.pop_back();
+    }
+    return cleaned;
+}
+
+[[nodiscard]] std::size_t RightmostVertexIndex(const std::vector<Point2d>& ring)
+{
+    std::size_t index = 0;
+    for (std::size_t i = 1; i < ring.size(); ++i)
+    {
+        if (ring[i].x > ring[index].x ||
+            (std::abs(ring[i].x - ring[index].x) <= geometry::kDefaultEpsilon && ring[i].y < ring[index].y))
+        {
+            index = i;
+        }
+    }
+    return index;
+}
+
+[[nodiscard]] bool IsAllowedBridgeIntersection(
+    const SegmentIntersection2d& intersection,
+    const Point2d& bridgeStart,
+    const Point2d& bridgeEnd,
+    double eps)
+{
+    if (!intersection.HasIntersection())
+    {
+        return true;
+    }
+
+    if (intersection.kind == IntersectionKind2d::Overlap)
+    {
+        return false;
+    }
+
+    for (std::size_t i = 0; i < intersection.pointCount; ++i)
+    {
+        const Point2d& point = intersection.points[i].point;
+        if (!point.AlmostEquals(bridgeStart, eps) && !point.AlmostEquals(bridgeEnd, eps))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+[[nodiscard]] bool IsVisibleBridge(
+    const Point2d& holeVertex,
+    const Point2d& polygonVertex,
+    const std::vector<Point2d>& currentPolygon,
+    const Polygon2d& polygon,
+    double eps)
+{
+    const LineSegment2d bridge(holeVertex, polygonVertex);
+    if (!bridge.IsValid())
+    {
+        return false;
+    }
+
+    const Point2d midpoint = holeVertex + (polygonVertex - holeVertex) * 0.5;
+    if (LocatePoint(midpoint, polygon, eps) == PointContainment2d::Outside)
+    {
+        return false;
+    }
+
+    const Point2d sampleA = holeVertex + (polygonVertex - holeVertex) * 0.25;
+    const Point2d sampleB = holeVertex + (polygonVertex - holeVertex) * 0.75;
+    if (LocatePoint(sampleA, polygon, eps) == PointContainment2d::Outside ||
+        LocatePoint(sampleB, polygon, eps) == PointContainment2d::Outside)
+    {
+        return false;
+    }
+
+    for (std::size_t i = 0; i < currentPolygon.size(); ++i)
+    {
+        const Point2d& a = currentPolygon[i];
+        const Point2d& b = currentPolygon[(i + 1) % currentPolygon.size()];
+        const SegmentIntersection2d intersection = Intersect(bridge, LineSegment2d(a, b), eps);
+        if (!IsAllowedBridgeIntersection(intersection, holeVertex, polygonVertex, eps))
+        {
+            return false;
+        }
+    }
+
+    const Polyline2d outer = polygon.OuterRing();
+    for (std::size_t i = 0; i < outer.PointCount(); ++i)
+    {
+        const Point2d a = outer.PointAt(i);
+        const Point2d b = outer.PointAt((i + 1) % outer.PointCount());
+        const SegmentIntersection2d intersection = Intersect(bridge, LineSegment2d(a, b), eps);
+        if (!IsAllowedBridgeIntersection(intersection, holeVertex, polygonVertex, eps))
+        {
+            return false;
+        }
+    }
+
+    for (std::size_t h = 0; h < polygon.HoleCount(); ++h)
+    {
+        const Polyline2d hole = polygon.HoleAt(h);
+        for (std::size_t i = 0; i < hole.PointCount(); ++i)
+        {
+            const Point2d a = hole.PointAt(i);
+            const Point2d b = hole.PointAt((i + 1) % hole.PointCount());
+            const SegmentIntersection2d intersection = Intersect(bridge, LineSegment2d(a, b), eps);
+            if (!IsAllowedBridgeIntersection(intersection, holeVertex, polygonVertex, eps))
+            {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+[[nodiscard]] bool MergeHoleIntoPolygon(
+    const Polygon2d& polygon,
+    const std::vector<Point2d>& hole,
+    std::vector<Point2d>& currentPolygon,
+    double eps)
+{
+    if (hole.size() < 3 || currentPolygon.size() < 3)
+    {
+        return false;
+    }
+
+    const std::size_t holeIndex = RightmostVertexIndex(hole);
+    const Point2d& holeVertex = hole[holeIndex];
+
+    std::size_t outerIndex = currentPolygon.size();
+    double bestDistanceSquared = std::numeric_limits<double>::infinity();
+    for (std::size_t i = 0; i < currentPolygon.size(); ++i)
+    {
+        const Point2d& candidate = currentPolygon[i];
+        const double distanceSquared = (candidate - holeVertex).LengthSquared();
+        if (distanceSquared <= eps * eps)
+        {
+            continue;
+        }
+
+        if (!IsVisibleBridge(holeVertex, candidate, currentPolygon, polygon, eps))
+        {
+            continue;
+        }
+
+        if (distanceSquared < bestDistanceSquared)
+        {
+            bestDistanceSquared = distanceSquared;
+            outerIndex = i;
+        }
+    }
+
+    if (outerIndex == currentPolygon.size())
+    {
+        return false;
+    }
+
+    std::vector<Point2d> merged;
+    merged.reserve(currentPolygon.size() + hole.size() + 2);
+    for (std::size_t i = 0; i <= outerIndex; ++i)
+    {
+        merged.push_back(currentPolygon[i]);
+    }
+
+    merged.push_back(holeVertex);
+    for (std::size_t step = 1; step < hole.size(); ++step)
+    {
+        merged.push_back(hole[(holeIndex + step) % hole.size()]);
+    }
+    merged.push_back(holeVertex);
+    merged.push_back(currentPolygon[outerIndex]);
+
+    for (std::size_t i = outerIndex + 1; i < currentPolygon.size(); ++i)
+    {
+        merged.push_back(currentPolygon[i]);
+    }
+
+    currentPolygon = RemoveAdjacentDuplicates(merged, eps);
+    return currentPolygon.size() >= 3;
+}
+
+[[nodiscard]] bool BuildTriangulationContour(
+    const Polygon2d& polygon,
+    std::vector<Point2d>& contour,
+    double eps)
+{
+    contour = RemoveAdjacentDuplicates(RingPoints(polygon.OuterRing()), eps);
+    EnsureOrientation(contour, true);
+    if (contour.size() < 3)
+    {
+        return false;
+    }
+
+    for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
+    {
+        std::vector<Point2d> hole = RemoveAdjacentDuplicates(RingPoints(polygon.HoleAt(i)), eps);
+        EnsureOrientation(hole, false);
+        if (!MergeHoleIntoPolygon(polygon, hole, contour, eps))
+        {
+            return false;
+        }
+    }
+
+    return contour.size() >= 3;
+}
+
+[[nodiscard]] Point3d LiftToPlane(
+    const Point2d& point,
+    const FaceProjection3d& projectedFace)
+{
+    return projectedFace.origin + projectedFace.uAxis * point.x + projectedFace.vAxis * point.y;
+}
 } // namespace
 
 PolyhedronMeshConversion3d ConvertToTriangleMesh(const PolyhedronFace3d& face, double eps)
@@ -163,24 +417,30 @@ PolyhedronMeshConversion3d ConvertToTriangleMesh(const PolyhedronFace3d& face, d
         return {false, MeshConversionIssue3d::InvalidFace, 0, {}};
     }
 
-    if (face.HoleCount() > 0)
+    const FaceProjection3d projectedFace = ProjectFaceToPolygon2d(
+        face,
+        GeometryTolerance3d{eps, eps, eps});
+    if (!projectedFace.success || !projectedFace.polygon.IsValid())
     {
-        return {false, MeshConversionIssue3d::UnsupportedHoles, 0, {}};
+        return {false, MeshConversionIssue3d::TriangulationFailed, 0, {}};
     }
 
-    const PolyhedronLoop3d outer = face.OuterLoop();
-    const auto& vertices3d = outer.Vertices();
-    std::vector<Point2d> projected;
-    projected.reserve(vertices3d.size());
-    const Basis2dOnPlane basis = BuildPlaneBasis(face.SupportPlane(), eps);
-    for (const Point3d& vertex : vertices3d)
+    std::vector<Point2d> contour;
+    if (!BuildTriangulationContour(projectedFace.polygon, contour, eps))
     {
-        projected.push_back(ProjectToPlane2d(vertex, face.SupportPlane(), basis));
+        return {false, MeshConversionIssue3d::TriangulationFailed, 0, {}};
+    }
+
+    std::vector<Point3d> vertices3d;
+    vertices3d.reserve(contour.size());
+    for (const Point2d& point : contour)
+    {
+        vertices3d.push_back(LiftToPlane(point, projectedFace));
     }
 
     std::vector<TriangleMesh::TriangleIndices> triangles;
     triangles.reserve(vertices3d.size() >= 2 ? vertices3d.size() - 2 : 0);
-    if (!TriangulateSimplePolygon(projected, triangles, eps))
+    if (!TriangulateSimplePolygon(contour, triangles, eps))
     {
         return {false, MeshConversionIssue3d::TriangulationFailed, 0, {}};
     }

@@ -10,6 +10,7 @@
 
 using geometry::sdk::Contains;
 using geometry::sdk::Distance;
+using geometry::sdk::Area;
 using geometry::sdk::ArcSegment2d;
 using geometry::sdk::Box2d;
 using geometry::sdk::Intersects;
@@ -328,16 +329,18 @@ TEST(SdkTest, CoversCurrentCapabilities)
                 Point3d{1.5, 1.5, 0.0},
                 Point3d{0.5, 1.5, 0.0},
             })});
-    const auto holedFaceMesh = ConvertToTriangleMesh(holedFace);
-    assert(!holedFaceMesh.success);
-    assert(holedFaceMesh.issue == MeshConversionIssue3d::UnsupportedHoles);
-
     const auto projectedFace = ProjectFaceToPolygon2d(holedFace);
     assert(projectedFace.success);
     assert(projectedFace.polygon.IsValid());
     assert(projectedFace.polygon.HoleCount() == 1);
     GEOMETRY_TEST_ASSERT_NEAR(projectedFace.origin.z, 0.0, 1e-12);
     GEOMETRY_TEST_ASSERT_NEAR(geometry::Dot(projectedFace.uAxis, projectedFace.vAxis), 0.0, 1e-12);
+
+    const auto holedFaceMesh = ConvertToTriangleMesh(holedFace);
+    assert(holedFaceMesh.success);
+    assert(holedFaceMesh.issue == MeshConversionIssue3d::None);
+    assert(holedFaceMesh.mesh.IsValid());
+    GEOMETRY_TEST_ASSERT_NEAR(holedFaceMesh.mesh.SurfaceArea(), Area(projectedFace.polygon), 1e-12);
 }
 
 
