@@ -157,6 +157,23 @@ struct GEOMETRY_API LinePlaneIntersection3d
     }
 };
 
+struct GEOMETRY_API LineSurfaceIntersection3d
+{
+    bool intersects{false};
+    bool isParallel{false};
+    bool liesOnSurface{false};
+    double lineParameter{0.0};
+    double u{0.0};
+    double v{0.0};
+    Point3d point{};
+
+    [[nodiscard]] bool IsValid() const
+    {
+        return !intersects || (point.IsValid() && std::isfinite(lineParameter) && std::isfinite(u) &&
+                               std::isfinite(v));
+    }
+};
+
 struct GEOMETRY_API PlanePlaneIntersection3d
 {
     bool intersects{false};

@@ -395,6 +395,25 @@ TEST(SdkTest, CoversCurrentCapabilities)
     GEOMETRY_TEST_ASSERT_NEAR(nurbsSurfaceProjection.v, 0.7, 5e-2);
     GEOMETRY_TEST_ASSERT_NEAR(nurbsSurfaceProjection.point.z, 0.0, 1e-12);
 
+    const auto planeSurfaceIntersection = geometry::sdk::Intersect(
+        Line3d::FromOriginAndDirection(Point3d{0.5, -1.0, 8.0}, Vector3d{0.0, 0.0, -1.0}),
+        planeSurface);
+    assert(planeSurfaceIntersection.intersects);
+    assert(planeSurfaceIntersection.IsValid());
+    GEOMETRY_TEST_ASSERT_NEAR(planeSurfaceIntersection.lineParameter, 3.0, 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(planeSurfaceIntersection.u, 0.5, 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(planeSurfaceIntersection.v, -1.0, 1e-12);
+    assert(planeSurfaceIntersection.point.AlmostEquals(Point3d{0.5, -1.0, 5.0}, 1e-12));
+
+    const auto nurbsSurfaceIntersection = geometry::sdk::Intersect(
+        Line3d::FromOriginAndDirection(Point3d{0.6, 1.4, 1.0}, Vector3d{0.0, 0.0, -1.0}),
+        nurbsSurface);
+    assert(nurbsSurfaceIntersection.intersects);
+    assert(nurbsSurfaceIntersection.IsValid());
+    GEOMETRY_TEST_ASSERT_NEAR(nurbsSurfaceIntersection.u, 0.3, 5e-2);
+    GEOMETRY_TEST_ASSERT_NEAR(nurbsSurfaceIntersection.v, 0.7, 5e-2);
+    GEOMETRY_TEST_ASSERT_NEAR(nurbsSurfaceIntersection.point.z, 0.0, 1e-12);
+
     GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Distance(Point3d{0.0, 0.0, 0.0}, Point3d{1.0, 2.0, 2.0}), 3.0, 1e-12);
     GEOMETRY_TEST_ASSERT_NEAR(
         geometry::sdk::Distance(Point3d{0.0, 2.0, 0.0}, Line3d::FromOriginAndDirection(Point3d{0.0, 0.0, 0.0}, Vector3d{1.0, 0.0, 0.0})),

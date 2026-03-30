@@ -5,6 +5,7 @@
 #include "sdk/GeometryResults.h"
 #include "sdk/LineSegment2d.h"
 #include "sdk/Segment2d.h"
+#include "sdk/Surface.h"
 
 namespace geometry::sdk
 {
@@ -28,6 +29,10 @@ namespace geometry::sdk
 [[nodiscard]] GEOMETRY_API LinePlaneIntersection3d Intersect(
     const Line3d& line,
     const Plane& plane,
+    const GeometryTolerance3d& tolerance = {});
+[[nodiscard]] GEOMETRY_API LineSurfaceIntersection3d Intersect(
+    const Line3d& line,
+    const Surface& surface,
     const GeometryTolerance3d& tolerance = {});
 [[nodiscard]] GEOMETRY_API PlanePlaneIntersection3d Intersect(
     const Plane& first,
