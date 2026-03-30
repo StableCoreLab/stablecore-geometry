@@ -319,6 +319,7 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
 - `BrepVertex`、`BrepEdge`、`BrepCoedge`、`BrepLoop`、`BrepFace`、`BrepShell`、`BrepBody` 已不再只是名字 skeleton，已具备最小 topology ownership、bounds、validation 与 conservative healing 入口
 - 3D 服务层公开函数名已补齐并落了最小实现：`GeometryMeasure` / `GeometryHealing` / `Validate(BrepBody, ...)`
 - `BrepBody` 已接上受限 `TriangleMesh` conversion，当前支持 plane-surface + line-edge 主导的平面 BRep face
+- `BrepFace` 已接上基于 trim/UV triangulation 的最小 `TriangleMesh` conversion
 - `BrepBody` 已接上最小 `Section(BrepBody, Plane, ...)`，支持 coplanar planar face 回收与一般 mesh-slice 路径
 - `GeometryMeasure` 已扩到 `CurveOnSurface` / `BrepFace` / `BrepBody`
 - `Heal(BrepBody, ...)` 已可为 plane-surface + line-edge 主导的 planar face 自动回填缺失 trim/preimage，并保守重建 shell closed 标记

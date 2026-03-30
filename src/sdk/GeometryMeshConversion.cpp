@@ -99,6 +99,37 @@ namespace
     return polyFace.IsValid(eps);
 }
 
+[[nodiscard]] bool BuildPolygonFromBrepFaceTrims(
+    const BrepFace& face,
+    Polygon2d& polygon)
+{
+    if (face.OuterTrim().SupportSurface() == nullptr || !face.OuterTrim().IsValid())
+    {
+        return false;
+    }
+
+    std::vector<Polyline2d> holes;
+    holes.reserve(face.HoleTrims().size());
+    for (const CurveOnSurface& trim : face.HoleTrims())
+    {
+        if (!trim.IsValid())
+        {
+            return false;
+        }
+        holes.push_back(trim.UvCurve());
+    }
+
+    polygon = Polygon2d(face.OuterTrim().UvCurve(), std::move(holes));
+    return polygon.IsValid();
+}
+
+[[nodiscard]] Point3d LiftToSurface(
+    const Point2d& uv,
+    const Surface& surface)
+{
+    return surface.PointAt(uv.x, uv.y);
+}
+
 [[nodiscard]] double SignedArea2d(const std::vector<Point2d>& points)
 {
     double area = 0.0;
@@ -566,6 +597,49 @@ PolyhedronMeshConversion3d ConvertToTriangleMesh(const PolyhedronBody& body, dou
     return {true, MeshConversionIssue3d::None, 0, TriangleMesh(std::move(vertices), std::move(triangles))};
 }
 
+PolyhedronMeshConversion3d ConvertToTriangleMesh(const BrepFace& face, double eps)
+{
+    const GeometryTolerance3d tolerance{eps, eps, eps};
+    if (!face.IsValid(tolerance))
+    {
+        return {false, MeshConversionIssue3d::InvalidFace, 0, {}};
+    }
+
+    Polygon2d polygon{};
+    if (!BuildPolygonFromBrepFaceTrims(face, polygon))
+    {
+        return {false, MeshConversionIssue3d::TriangulationFailed, 0, {}};
+    }
+
+    std::vector<Point2d> contour;
+    if (!BuildTriangulationContour(polygon, contour, eps))
+    {
+        return {false, MeshConversionIssue3d::TriangulationFailed, 0, {}};
+    }
+
+    const Surface* supportSurface = face.SupportSurface();
+    if (supportSurface == nullptr)
+    {
+        return {false, MeshConversionIssue3d::UnsupportedSurface, 0, {}};
+    }
+
+    std::vector<Point3d> vertices3d;
+    vertices3d.reserve(contour.size());
+    for (const Point2d& uv : contour)
+    {
+        vertices3d.push_back(LiftToSurface(uv, *supportSurface));
+    }
+
+    std::vector<TriangleMesh::TriangleIndices> triangles;
+    triangles.reserve(vertices3d.size() >= 2 ? vertices3d.size() - 2 : 0);
+    if (!TriangulateSimplePolygon(contour, triangles, eps))
+    {
+        return {false, MeshConversionIssue3d::TriangulationFailed, 0, {}};
+    }
+
+    return {true, MeshConversionIssue3d::None, 0, TriangleMesh(std::move(vertices3d), std::move(triangles))};
+}
+
 PolyhedronMeshConversion3d ConvertToTriangleMesh(const BrepBody& body, double eps)
 {
     const GeometryTolerance3d tolerance{eps, eps, eps};
@@ -582,16 +656,21 @@ PolyhedronMeshConversion3d ConvertToTriangleMesh(const BrepBody& body, double ep
         const BrepShell shell = body.ShellAt(shellIndex);
         for (std::size_t localFaceIndex = 0; localFaceIndex < shell.FaceCount(); ++localFaceIndex, ++faceIndex)
         {
-            PolyhedronFace3d polyFace{};
-            if (!BuildPolyhedronFaceFromBrepFace(body, shell.FaceAt(localFaceIndex), polyFace, eps))
-            {
-                return {false, MeshConversionIssue3d::UnsupportedSurface, faceIndex, {}};
-            }
-
-            const PolyhedronMeshConversion3d converted = ConvertToTriangleMesh(polyFace, eps);
+            const BrepFace brepFace = shell.FaceAt(localFaceIndex);
+            PolyhedronMeshConversion3d converted = ConvertToTriangleMesh(brepFace, eps);
             if (!converted.success)
             {
-                return {false, converted.issue, faceIndex, {}};
+                PolyhedronFace3d polyFace{};
+                if (!BuildPolyhedronFaceFromBrepFace(body, brepFace, polyFace, eps))
+                {
+                    return {false, MeshConversionIssue3d::UnsupportedSurface, faceIndex, {}};
+                }
+
+                converted = ConvertToTriangleMesh(polyFace, eps);
+                if (!converted.success)
+                {
+                    return {false, converted.issue, faceIndex, {}};
+                }
             }
 
             const std::size_t offset = vertices.size();

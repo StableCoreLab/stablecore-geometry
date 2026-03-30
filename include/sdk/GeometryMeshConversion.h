@@ -41,6 +41,10 @@ struct GEOMETRY_API PolyhedronMeshConversion3d
     double eps = 1e-9);
 
 [[nodiscard]] GEOMETRY_API PolyhedronMeshConversion3d ConvertToTriangleMesh(
+    const BrepFace& face,
+    double eps = 1e-9);
+
+[[nodiscard]] GEOMETRY_API PolyhedronMeshConversion3d ConvertToTriangleMesh(
     const BrepBody& body,
     double eps = 1e-9);
 } // namespace geometry::sdk

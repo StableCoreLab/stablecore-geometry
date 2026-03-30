@@ -779,6 +779,11 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(brepValidation.issue == BrepValidationIssue3d::None);
     GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Area(brepFace), 4.0, 1e-12);
     GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Bounds(brepBody).MinPoint().z, 5.0, 1e-12);
+    const auto brepFaceMesh = ConvertToTriangleMesh(brepFace);
+    assert(brepFaceMesh.success);
+    assert(brepFaceMesh.mesh.IsValid());
+    assert(brepFaceMesh.mesh.TriangleCount() == 2);
+    GEOMETRY_TEST_ASSERT_NEAR(brepFaceMesh.mesh.SurfaceArea(), 4.0, 1e-12);
     const BrepHealing3d healedBrepBody = Heal(brepBody);
     assert(healedBrepBody.success);
     assert(healedBrepBody.issue == geometry::sdk::HealingIssue3d::None);
@@ -823,6 +828,9 @@ TEST(SdkTest, CoversCurrentCapabilities)
         geometry::sdk::Area(healedTrimmedBody.body.ShellAt(0).FaceAt(0)),
         4.0,
         1e-12);
+    const auto healedTrimmedFaceMesh = ConvertToTriangleMesh(healedTrimmedBody.body.ShellAt(0).FaceAt(0));
+    assert(healedTrimmedFaceMesh.success);
+    assert(healedTrimmedFaceMesh.mesh.IsValid());
     const auto healedTrimmedMesh = ConvertToTriangleMesh(healedTrimmedBody.body);
     assert(healedTrimmedMesh.success);
     assert(healedTrimmedMesh.mesh.IsValid());
