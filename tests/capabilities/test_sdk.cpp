@@ -808,6 +808,25 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(!invalidBrepValidation.valid);
     assert(invalidBrepValidation.issue == BrepValidationIssue3d::InvalidShell);
 
+    const BrepFace brepFaceWithoutTrim(
+        std::shared_ptr<Surface>(planeSurface.Clone().release()),
+        brepOuterLoop);
+    const BrepBody brepBodyWithoutTrim(brepVertices, brepEdges, {BrepShell({brepFaceWithoutTrim}, false)});
+    assert(brepBodyWithoutTrim.IsValid());
+    GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Area(brepFaceWithoutTrim), 0.0, 1e-12);
+    const BrepHealing3d healedTrimmedBody = Heal(brepBodyWithoutTrim);
+    assert(healedTrimmedBody.success);
+    assert(healedTrimmedBody.body.IsValid());
+    assert(healedTrimmedBody.body.ShellCount() == 1);
+    assert(healedTrimmedBody.body.ShellAt(0).FaceAt(0).OuterTrim().IsValid());
+    GEOMETRY_TEST_ASSERT_NEAR(
+        geometry::sdk::Area(healedTrimmedBody.body.ShellAt(0).FaceAt(0)),
+        4.0,
+        1e-12);
+    const auto healedTrimmedMesh = ConvertToTriangleMesh(healedTrimmedBody.body);
+    assert(healedTrimmedMesh.success);
+    assert(healedTrimmedMesh.mesh.IsValid());
+
     const PolyhedronBody cubeBody(
         {
             PolyhedronFace3d(

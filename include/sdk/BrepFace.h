@@ -96,6 +96,23 @@ public:
 
     [[nodiscard]] Box3d Bounds() const
     {
+        if (outerTrim_.IsValid())
+        {
+            Box3d bounds = outerTrim_.Bounds();
+            for (const CurveOnSurface& trim : holeTrims_)
+            {
+                const Box3d trimBounds = trim.Bounds();
+                if (!trimBounds.IsValid())
+                {
+                    continue;
+                }
+
+                bounds.ExpandToInclude(trimBounds.MinPoint());
+                bounds.ExpandToInclude(trimBounds.MaxPoint());
+            }
+            return bounds;
+        }
+
         return supportSurface_ != nullptr ? supportSurface_->Bounds() : Box3d{};
     }
 
