@@ -851,6 +851,10 @@ TEST(SdkTest, CoversCurrentCapabilities)
     const auto polyFaceFromUntrimmed = ConvertToPolyhedronFace(brepFaceWithoutTrim);
     assert(!polyFaceFromUntrimmed.success);
     assert(polyFaceFromUntrimmed.issue == BrepConversionIssue3d::InvalidTrim);
+    const auto polyBodyFromUntrimmed = ConvertToPolyhedronBody(brepBodyWithoutTrim);
+    assert(polyBodyFromUntrimmed.success);
+    assert(polyBodyFromUntrimmed.body.IsValid());
+    assert(polyBodyFromUntrimmed.body.FaceCount() == 1);
     const auto healedTrimmedMesh = ConvertToTriangleMesh(healedTrimmedBody.body);
     assert(healedTrimmedMesh.success);
     assert(healedTrimmedMesh.mesh.IsValid());

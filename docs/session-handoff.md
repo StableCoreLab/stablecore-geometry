@@ -323,6 +323,7 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
 - `BrepFace` 已接上基于 trim/UV triangulation 的最小 `TriangleMesh` conversion
 - `GeometryMeasure::Area(BrepFace)` 已改为消费 `BrepFace -> TriangleMesh`，因此不再局限于平面 trim 面积
 - 已新增 `GeometryBrepConversion`，支持 `BrepFace -> PolyhedronFace3d` 与 `BrepBody -> PolyhedronBody` 的平面 trim 回建桥
+- `ConvertToPolyhedronBody(BrepBody, ...)` 已带 topology fallback：对 trim 缺失但 plane-surface + line-edge 的 planar body，仍可直接回建 `PolyhedronBody`
 - `BrepBody` 已接上最小 `Section(BrepBody, Plane, ...)`，支持 coplanar planar face 回收与一般 mesh-slice 路径
 - `GeometryMeasure` 已扩到 `CurveOnSurface` / `BrepFace` / `BrepBody`
 - `Heal(BrepBody, ...)` 已可为 plane-surface + line-edge 主导的 planar face 自动回填缺失 trim/preimage，并保守重建 shell closed 标记
