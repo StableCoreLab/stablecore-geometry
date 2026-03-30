@@ -6,6 +6,7 @@
 
 #include "export/GeometryExport.h"
 #include "sdk/Curve3d.h"
+#include "sdk/GeometryTypes.h"
 
 namespace geometry::sdk
 {
@@ -26,6 +27,11 @@ public:
     [[nodiscard]] const Curve3d* Curve() const
     {
         return curve3d_.get();
+    }
+
+    [[nodiscard]] Box3d Bounds() const
+    {
+        return curve3d_ != nullptr ? curve3d_->Bounds() : Box3d{};
     }
 
     [[nodiscard]] std::size_t StartVertexIndex() const

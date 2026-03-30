@@ -106,6 +106,16 @@ public:
             vRange_);
     }
 
+    [[nodiscard]] const Curve3d* FirstCurve() const
+    {
+        return first_.get();
+    }
+
+    [[nodiscard]] const Curve3d* SecondCurve() const
+    {
+        return second_.get();
+    }
+
 private:
     std::shared_ptr<Curve3d> first_{};
     std::shared_ptr<Curve3d> second_{};

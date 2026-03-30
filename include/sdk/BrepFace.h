@@ -64,6 +64,11 @@ public:
         return holes_;
     }
 
+    [[nodiscard]] Box3d Bounds() const
+    {
+        return supportSurface_ != nullptr ? supportSurface_->Bounds() : Box3d{};
+    }
+
     [[nodiscard]] std::string DebugString() const
     {
         std::ostringstream stream;

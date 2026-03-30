@@ -60,7 +60,21 @@ public:
 
     [[nodiscard]] Box3d Bounds() const override
     {
-        return baseSurface_ != nullptr ? baseSurface_->Bounds() : Box3d{};
+        if (baseSurface_ == nullptr)
+        {
+            return {};
+        }
+
+        Box3d bounds = baseSurface_->Bounds();
+        if (!bounds.IsValid())
+        {
+            return bounds;
+        }
+
+        const double padding = std::abs(offsetDistance_);
+        bounds.ExpandToInclude(bounds.MinPoint() + Vector3d{-padding, -padding, -padding});
+        bounds.ExpandToInclude(bounds.MaxPoint() + Vector3d{padding, padding, padding});
+        return bounds;
     }
 
     [[nodiscard]] std::unique_ptr<Surface> Clone() const override
@@ -68,6 +82,16 @@ public:
         return std::make_unique<OffsetSurface>(
             baseSurface_ != nullptr ? std::shared_ptr<Surface>(baseSurface_->Clone().release()) : nullptr,
             offsetDistance_);
+    }
+
+    [[nodiscard]] const Surface* BaseSurface() const
+    {
+        return baseSurface_.get();
+    }
+
+    [[nodiscard]] double OffsetDistance() const
+    {
+        return offsetDistance_;
     }
 
 private:

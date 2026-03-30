@@ -57,6 +57,23 @@ public:
         return faces_;
     }
 
+    [[nodiscard]] Box3d Bounds() const
+    {
+        Box3d bounds{};
+        for (const BrepFace& face : faces_)
+        {
+            const Box3d faceBounds = face.Bounds();
+            if (!faceBounds.IsValid())
+            {
+                continue;
+            }
+
+            bounds.ExpandToInclude(faceBounds.MinPoint());
+            bounds.ExpandToInclude(faceBounds.MaxPoint());
+        }
+        return bounds;
+    }
+
     [[nodiscard]] std::string DebugString() const
     {
         std::ostringstream stream;

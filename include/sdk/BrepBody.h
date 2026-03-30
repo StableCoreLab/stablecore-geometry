@@ -139,6 +139,17 @@ public:
         {
             bounds.ExpandToInclude(vertex.Point());
         }
+        for (const BrepShell& shell : shells_)
+        {
+            const Box3d shellBounds = shell.Bounds();
+            if (!shellBounds.IsValid())
+            {
+                continue;
+            }
+
+            bounds.ExpandToInclude(shellBounds.MinPoint());
+            bounds.ExpandToInclude(shellBounds.MaxPoint());
+        }
         return bounds;
     }
 
