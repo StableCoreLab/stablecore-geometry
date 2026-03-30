@@ -17,6 +17,7 @@ struct EdgeRecord
 {
     std::vector<std::size_t> triangleIndices{};
     std::vector<std::size_t> edgeIndices{};
+    std::vector<std::array<std::size_t, 2>> directedEdges{};
 };
 
 struct EdgeKey
@@ -67,9 +68,21 @@ struct EdgeKeyHash
             EdgeRecord& record = edgeRecords[key];
             record.triangleIndices.push_back(triangleIndex);
             record.edgeIndices.push_back(edgeIndex);
+            record.directedEdges.push_back(edges[edgeIndex]);
         }
     }
     return edgeRecords;
+}
+
+[[nodiscard]] bool HasOppositeOrientation(const EdgeRecord& record)
+{
+    if (record.directedEdges.size() != 2)
+    {
+        return false;
+    }
+
+    return record.directedEdges[0][0] == record.directedEdges[1][1] &&
+           record.directedEdges[0][1] == record.directedEdges[1][0];
 }
 } // namespace
 
@@ -299,5 +312,93 @@ std::vector<std::vector<std::size_t>> ComputeTriangleConnectedComponents(const T
     }
 
     return components;
+}
+
+bool IsConsistentlyOrientedTriangleMesh(const TriangleMesh& mesh)
+{
+    if (!mesh.IsValid())
+    {
+        return false;
+    }
+
+    const auto edgeRecords = BuildEdgeRecords(mesh);
+    for (const auto& [key, record] : edgeRecords)
+    {
+        (void)key;
+        if (record.triangleIndices.size() <= 1)
+        {
+            continue;
+        }
+
+        if (record.triangleIndices.size() != 2 || !HasOppositeOrientation(record))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+std::vector<MeshShell3d> ComputeMeshShells(const TriangleMesh& mesh)
+{
+    std::vector<MeshShell3d> shells;
+    if (!mesh.IsValid())
+    {
+        return shells;
+    }
+
+    const auto components = ComputeTriangleConnectedComponents(mesh);
+    if (components.empty())
+    {
+        return shells;
+    }
+
+    std::vector<std::size_t> componentByTriangle(mesh.TriangleCount(), kNoTriangle);
+    shells.reserve(components.size());
+    for (std::size_t componentIndex = 0; componentIndex < components.size(); ++componentIndex)
+    {
+        MeshShell3d shell;
+        shell.triangleIndices = components[componentIndex];
+        shell.closed = true;
+        shell.manifold = true;
+        shell.consistentlyOriented = true;
+        for (std::size_t triangleIndex : components[componentIndex])
+        {
+            componentByTriangle[triangleIndex] = componentIndex;
+        }
+        shells.push_back(std::move(shell));
+    }
+
+    const auto edgeRecords = BuildEdgeRecords(mesh);
+    for (const auto& [key, record] : edgeRecords)
+    {
+        (void)key;
+        if (record.triangleIndices.empty())
+        {
+            continue;
+        }
+
+        const std::size_t shellIndex = componentByTriangle[record.triangleIndices.front()];
+        MeshShell3d& shell = shells[shellIndex];
+        if (record.triangleIndices.size() == 1)
+        {
+            shell.closed = false;
+            continue;
+        }
+
+        if (record.triangleIndices.size() != 2)
+        {
+            shell.manifold = false;
+            shell.consistentlyOriented = false;
+            continue;
+        }
+
+        if (!HasOppositeOrientation(record))
+        {
+            shell.consistentlyOriented = false;
+        }
+    }
+
+    return shells;
 }
 } // namespace geometry::sdk

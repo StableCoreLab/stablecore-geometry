@@ -19,6 +19,7 @@ using geometry::sdk::Line3d;
 using geometry::sdk::LineCurve3d;
 using geometry::sdk::MeshBoundaryEdge3d;
 using geometry::sdk::MeshNonManifoldEdge3d;
+using geometry::sdk::MeshShell3d;
 using geometry::sdk::MeshTriangleAdjacency3d;
 using geometry::sdk::MeshValidationIssue3d;
 using geometry::sdk::MeshConversionIssue3d;
@@ -43,6 +44,7 @@ using geometry::sdk::TriangleNormal;
 using geometry::sdk::ComputeTriangleAdjacency;
 using geometry::sdk::ComputeTriangleNormals;
 using geometry::sdk::ComputeTriangleConnectedComponents;
+using geometry::sdk::ComputeMeshShells;
 using geometry::sdk::ExtractBoundaryEdges;
 using geometry::sdk::ExtractNonManifoldEdges;
 using geometry::sdk::ConvertToTriangleMesh;
@@ -56,6 +58,7 @@ using geometry::sdk::Vector3d;
 using geometry::sdk::VertexNormal;
 using geometry::sdk::ComputeVertexNormals;
 using geometry::sdk::IsClosedTriangleMesh;
+using geometry::sdk::IsConsistentlyOrientedTriangleMesh;
 using geometry::sdk::IsManifoldTriangleMesh;
 
 TEST(SdkTest, CoversCurrentCapabilities)
@@ -275,9 +278,16 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(boundaryEdges[0].IsValid());
     assert(!IsClosedTriangleMesh(mesh));
     assert(IsManifoldTriangleMesh(mesh));
+    assert(!IsConsistentlyOrientedTriangleMesh(mesh));
     const auto meshComponents = ComputeTriangleConnectedComponents(mesh);
     assert(meshComponents.size() == 1);
     assert(meshComponents[0].size() == 2);
+    const std::vector<MeshShell3d> openShells = ComputeMeshShells(mesh);
+    assert(openShells.size() == 1);
+    assert(openShells[0].IsValid());
+    assert(!openShells[0].closed);
+    assert(openShells[0].manifold);
+    assert(!openShells[0].consistentlyOriented);
     const TriangleMesh tetraMesh(
         {
             Point3d{0.0, 0.0, 0.0},
@@ -295,6 +305,12 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(ExtractBoundaryEdges(tetraMesh).empty());
     assert(IsClosedTriangleMesh(tetraMesh));
     assert(IsManifoldTriangleMesh(tetraMesh));
+    assert(IsConsistentlyOrientedTriangleMesh(tetraMesh));
+    const std::vector<MeshShell3d> tetraShells = ComputeMeshShells(tetraMesh);
+    assert(tetraShells.size() == 1);
+    assert(tetraShells[0].closed);
+    assert(tetraShells[0].manifold);
+    assert(tetraShells[0].consistentlyOriented);
     const TriangleMesh disconnectedMesh(
         {
             Point3d{0.0, 0.0, 0.0},
@@ -313,6 +329,10 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(disconnectedComponents.size() == 2);
     assert(disconnectedComponents[0].size() == 1);
     assert(disconnectedComponents[1].size() == 1);
+    const std::vector<MeshShell3d> disconnectedShells = ComputeMeshShells(disconnectedMesh);
+    assert(disconnectedShells.size() == 2);
+    assert(!disconnectedShells[0].closed);
+    assert(!disconnectedShells[1].closed);
     const TriangleMesh nonManifoldMesh(
         {
             Point3d{0.0, 0.0, 0.0},
@@ -332,9 +352,15 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(nonManifoldEdges[0].IsValid());
     assert(nonManifoldEdges[0].incidentTriangles.size() == 3);
     assert(!IsManifoldTriangleMesh(nonManifoldMesh));
+    assert(!IsConsistentlyOrientedTriangleMesh(nonManifoldMesh));
     const auto nonManifoldComponents = ComputeTriangleConnectedComponents(nonManifoldMesh);
     assert(nonManifoldComponents.size() == 1);
     assert(nonManifoldComponents[0].size() == 3);
+    const std::vector<MeshShell3d> nonManifoldShells = ComputeMeshShells(nonManifoldMesh);
+    assert(nonManifoldShells.size() == 1);
+    assert(!nonManifoldShells[0].closed);
+    assert(!nonManifoldShells[0].manifold);
+    assert(!nonManifoldShells[0].consistentlyOriented);
     const TriangleMesh movedMesh = mesh.Transformed(geometry::Transform3d::Translation(Vector3d{2.0, -1.0, 3.0}));
     assert(movedMesh.IsValid());
     assert(movedMesh.VertexAt(0).AlmostEquals(Point3d{2.0, -1.0, 3.0}, 1e-12));

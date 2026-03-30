@@ -53,6 +53,19 @@ struct GEOMETRY_API MeshNonManifoldEdge3d
     }
 };
 
+struct GEOMETRY_API MeshShell3d
+{
+    std::vector<std::size_t> triangleIndices{};
+    bool closed{false};
+    bool manifold{false};
+    bool consistentlyOriented{false};
+
+    [[nodiscard]] bool IsValid() const
+    {
+        return !triangleIndices.empty();
+    }
+};
+
 [[nodiscard]] GEOMETRY_API Vector3d TriangleNormal(
     const TriangleMesh& mesh,
     std::size_t triangleIndex,
@@ -90,4 +103,8 @@ struct GEOMETRY_API MeshNonManifoldEdge3d
 
 [[nodiscard]] GEOMETRY_API std::vector<std::vector<std::size_t>> ComputeTriangleConnectedComponents(
     const TriangleMesh& mesh);
+
+[[nodiscard]] GEOMETRY_API bool IsConsistentlyOrientedTriangleMesh(const TriangleMesh& mesh);
+
+[[nodiscard]] GEOMETRY_API std::vector<MeshShell3d> ComputeMeshShells(const TriangleMesh& mesh);
 } // namespace geometry::sdk
