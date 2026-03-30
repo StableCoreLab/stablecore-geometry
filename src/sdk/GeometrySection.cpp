@@ -342,6 +342,18 @@ void SimplifyOpenPolyline(
     return origin + uAxis * point.x + vAxis * point.y;
 }
 
+[[nodiscard]] Point2d ProjectPointToSectionBasis(
+    const Point3d& point,
+    const PolyhedronSection3d& section)
+{
+    const Vector3d delta = point - section.origin;
+    const double uDenom = std::max(section.uAxis.LengthSquared(), geometry::kDefaultEpsilon);
+    const double vDenom = std::max(section.vAxis.LengthSquared(), geometry::kDefaultEpsilon);
+    return Point2d{
+        Dot(delta, section.uAxis) / uDenom,
+        Dot(delta, section.vAxis) / vDenom};
+}
+
 [[nodiscard]] std::size_t PolygonDepth(
     const PolygonTopology2d& topology,
     std::size_t index)
@@ -1184,6 +1196,92 @@ SectionFaceRebuild3d RebuildSectionFaces(const PolyhedronSection3d& section, dou
     return result;
 }
 
+SectionBrepFaceRebuild3d RebuildSectionBrepFaces(const PolyhedronSection3d& section, double eps)
+{
+    SectionBrepFaceRebuild3d result{};
+    if (!section.success || !section.IsValid(eps))
+    {
+        result.issue = SectionFaceRebuildIssue3d::InvalidSection;
+        return result;
+    }
+
+    const SectionFaceRebuild3d rebuiltFaces = RebuildSectionFaces(section, eps);
+    if (!rebuiltFaces.success)
+    {
+        result.issue = rebuiltFaces.issue;
+        return result;
+    }
+
+    const Plane supportPlane = Plane::FromPointAndNormal(section.origin, Cross(section.uAxis, section.vAxis));
+    if (!supportPlane.IsValid(eps))
+    {
+        result.issue = SectionFaceRebuildIssue3d::InvalidSection;
+        return result;
+    }
+
+    for (const PolyhedronFace3d& polyFace : rebuiltFaces.faces)
+    {
+        const PlaneSurface planeSurface(
+            supportPlane,
+            section.uAxis,
+            section.vAxis,
+            Intervald{-1.0e6, 1.0e6},
+            Intervald{-1.0e6, 1.0e6});
+
+        std::vector<Point3d> outerVertices;
+        outerVertices.reserve(polyFace.OuterLoop().VertexCount());
+        std::vector<Point2d> outerUv;
+        outerUv.reserve(polyFace.OuterLoop().VertexCount());
+        for (std::size_t i = 0; i < polyFace.OuterLoop().VertexCount(); ++i)
+        {
+            const Point3d point = polyFace.OuterLoop().VertexAt(i);
+            outerVertices.push_back(point);
+            outerUv.push_back(ProjectPointToSectionBasis(point, section));
+        }
+
+        std::vector<BrepCoedge> outerCoedges;
+        outerCoedges.reserve(outerVertices.size());
+        for (std::size_t i = 0; i < outerVertices.size(); ++i)
+        {
+            outerCoedges.emplace_back(i, false);
+        }
+
+        std::vector<BrepLoop> holeLoops;
+        std::vector<CurveOnSurface> holeTrims;
+        std::size_t edgeBase = outerVertices.size();
+        for (std::size_t holeIndex = 0; holeIndex < polyFace.HoleCount(); ++holeIndex)
+        {
+            const PolyhedronLoop3d hole = polyFace.HoleAt(holeIndex);
+            std::vector<BrepCoedge> holeCoedges;
+            std::vector<Point2d> holeUv;
+            holeCoedges.reserve(hole.VertexCount());
+            holeUv.reserve(hole.VertexCount());
+            for (std::size_t i = 0; i < hole.VertexCount(); ++i)
+            {
+                holeCoedges.emplace_back(edgeBase + i, false);
+                holeUv.push_back(ProjectPointToSectionBasis(hole.VertexAt(i), section));
+            }
+            edgeBase += hole.VertexCount();
+            holeLoops.emplace_back(std::move(holeCoedges));
+            holeTrims.emplace_back(
+                std::shared_ptr<Surface>(planeSurface.Clone().release()),
+                Polyline2d(std::move(holeUv), PolylineClosure::Closed));
+        }
+
+        result.faces.emplace_back(
+            std::shared_ptr<Surface>(planeSurface.Clone().release()),
+            BrepLoop(std::move(outerCoedges)),
+            std::move(holeLoops),
+            CurveOnSurface(
+                std::shared_ptr<Surface>(planeSurface.Clone().release()),
+                Polyline2d(std::move(outerUv), PolylineClosure::Closed)),
+            std::move(holeTrims));
+    }
+
+    result.success = true;
+    return result;
+}
+
 SectionBodyRebuild3d RebuildSectionBody(const PolyhedronSection3d& section, double eps)
 {
     SectionBodyRebuild3d result{};
@@ -1201,6 +1299,108 @@ SectionBodyRebuild3d RebuildSectionBody(const PolyhedronSection3d& section, doub
     }
 
     result.body = PolyhedronBody(rebuiltFaces.faces);
+    result.success = true;
+    return result;
+}
+
+SectionBrepBodyRebuild3d RebuildSectionBrepBody(const PolyhedronSection3d& section, double eps)
+{
+    SectionBrepBodyRebuild3d result{};
+    if (!section.success || !section.IsValid(eps))
+    {
+        result.issue = SectionBodyRebuildIssue3d::InvalidSection;
+        return result;
+    }
+
+    const SectionBrepFaceRebuild3d rebuiltFaces = RebuildSectionBrepFaces(section, eps);
+    if (!rebuiltFaces.success)
+    {
+        result.issue = SectionBodyRebuildIssue3d::FaceRebuildFailed;
+        return result;
+    }
+
+    if (rebuiltFaces.faces.empty())
+    {
+        result.success = true;
+        return result;
+    }
+
+    std::vector<BrepVertex> vertices;
+    std::vector<BrepEdge> edges;
+    std::vector<BrepFace> faces;
+    for (const BrepFace& face : rebuiltFaces.faces)
+    {
+        std::vector<Point3d> outerPoints;
+        outerPoints.reserve(face.OuterTrim().PointCount());
+        for (std::size_t i = 0; i < face.OuterTrim().PointCount(); ++i)
+        {
+            outerPoints.push_back(face.OuterTrim().PointAt(i));
+        }
+
+        const std::size_t outerVertexBase = vertices.size();
+        for (const Point3d& point : outerPoints)
+        {
+            vertices.emplace_back(point);
+        }
+
+        std::vector<BrepCoedge> outerCoedges;
+        outerCoedges.reserve(outerPoints.size());
+        for (std::size_t i = 0; i < outerPoints.size(); ++i)
+        {
+            const std::size_t next = (i + 1) % outerPoints.size();
+            edges.emplace_back(
+                std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+                    Line3d::FromOriginAndDirection(outerPoints[i], outerPoints[next] - outerPoints[i]),
+                    Intervald{0.0, 1.0})),
+                outerVertexBase + i,
+                outerVertexBase + next);
+            outerCoedges.emplace_back(edges.size() - 1, false);
+        }
+
+        std::vector<BrepLoop> holeLoops;
+        std::vector<CurveOnSurface> holeTrims;
+        for (const CurveOnSurface& trim : face.HoleTrims())
+        {
+            std::vector<Point3d> holePoints;
+            holePoints.reserve(trim.PointCount());
+            for (std::size_t i = 0; i < trim.PointCount(); ++i)
+            {
+                holePoints.push_back(trim.PointAt(i));
+            }
+
+            const std::size_t holeVertexBase = vertices.size();
+            for (const Point3d& point : holePoints)
+            {
+                vertices.emplace_back(point);
+            }
+
+            std::vector<BrepCoedge> holeCoedges;
+            holeCoedges.reserve(holePoints.size());
+            for (std::size_t i = 0; i < holePoints.size(); ++i)
+            {
+                const std::size_t next = (i + 1) % holePoints.size();
+                edges.emplace_back(
+                    std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+                        Line3d::FromOriginAndDirection(holePoints[i], holePoints[next] - holePoints[i]),
+                        Intervald{0.0, 1.0})),
+                    holeVertexBase + i,
+                    holeVertexBase + next);
+                holeCoedges.emplace_back(edges.size() - 1, false);
+            }
+
+            holeLoops.emplace_back(std::move(holeCoedges));
+            holeTrims.push_back(trim);
+        }
+
+        faces.emplace_back(
+            std::shared_ptr<Surface>(face.SupportSurface()->Clone().release()),
+            BrepLoop(std::move(outerCoedges)),
+            std::move(holeLoops),
+            face.OuterTrim(),
+            std::move(holeTrims));
+    }
+
+    result.body = BrepBody(std::move(vertices), std::move(edges), {BrepShell(std::move(faces), false)});
     result.success = true;
     return result;
 }

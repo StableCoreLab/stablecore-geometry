@@ -206,6 +206,43 @@ struct GEOMETRY_API SectionBodyRebuild3d
     }
 };
 
+struct GEOMETRY_API SectionBrepFaceRebuild3d
+{
+    bool success{false};
+    SectionFaceRebuildIssue3d issue{SectionFaceRebuildIssue3d::None};
+    std::vector<BrepFace> faces{};
+
+    [[nodiscard]] bool IsValid(const GeometryTolerance3d& tolerance = {}) const
+    {
+        if (!success)
+        {
+            return true;
+        }
+
+        for (const BrepFace& face : faces)
+        {
+            if (!face.IsValid(tolerance))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+};
+
+struct GEOMETRY_API SectionBrepBodyRebuild3d
+{
+    bool success{false};
+    SectionBodyRebuildIssue3d issue{SectionBodyRebuildIssue3d::None};
+    BrepBody body{};
+
+    [[nodiscard]] bool IsValid(const GeometryTolerance3d& tolerance = {}) const
+    {
+        return !success || body.IsValid(tolerance) || body.IsEmpty();
+    }
+};
+
 struct GEOMETRY_API SectionTopologyNode3d
 {
     std::size_t polygonIndex{0};
@@ -339,7 +376,15 @@ struct GEOMETRY_API SectionMeshSetConversion3d
     const PolyhedronSection3d& section,
     double eps = 1e-9);
 
+[[nodiscard]] GEOMETRY_API SectionBrepFaceRebuild3d RebuildSectionBrepFaces(
+    const PolyhedronSection3d& section,
+    double eps = 1e-9);
+
 [[nodiscard]] GEOMETRY_API SectionBodyRebuild3d RebuildSectionBody(
+    const PolyhedronSection3d& section,
+    double eps = 1e-9);
+
+[[nodiscard]] GEOMETRY_API SectionBrepBodyRebuild3d RebuildSectionBrepBody(
     const PolyhedronSection3d& section,
     double eps = 1e-9);
 
