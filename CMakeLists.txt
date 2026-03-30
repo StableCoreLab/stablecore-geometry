@@ -26,6 +26,7 @@ add_library(stablecore_geometry
     src/sdk/GeometryBoxTree.cpp
     src/sdk/GeometryIntersection.cpp
     src/sdk/GeometryIntersection3d.cpp
+    src/sdk/GeometryMeshConversion.cpp
     src/sdk/GeometryMetrics.cpp
     src/sdk/GeometryKDTree.cpp
     src/sdk/GeometryOffset.cpp

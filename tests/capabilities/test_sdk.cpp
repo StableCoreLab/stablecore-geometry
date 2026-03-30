@@ -17,6 +17,7 @@ using geometry::sdk::LineSegment2d;
 using geometry::sdk::Line3d;
 using geometry::sdk::LineCurve3d;
 using geometry::sdk::MeshValidationIssue3d;
+using geometry::sdk::MeshConversionIssue3d;
 using geometry::sdk::Plane;
 using geometry::sdk::PlaneSurface;
 using geometry::sdk::Point2d;
@@ -32,6 +33,7 @@ using geometry::sdk::PolylineClosure;
 using geometry::sdk::Segment2d;
 using geometry::sdk::Surface;
 using geometry::sdk::Tessellate;
+using geometry::sdk::ConvertToTriangleMesh;
 using geometry::sdk::Curve3d;
 using geometry::sdk::TriangleMesh;
 using geometry::sdk::Triangle3d;
@@ -301,6 +303,33 @@ TEST(SdkTest, CoversCurrentCapabilities)
         GEOMETRY_TEST_ASSERT_NEAR(supportPlane.SignedDistanceTo(vertex), 0.0, 1e-12);
     }
     GEOMETRY_TEST_ASSERT_NEAR(surfaceMesh.SurfaceArea(), 16.0, 1e-12);
+
+    const auto faceMesh = ConvertToTriangleMesh(face);
+    assert(faceMesh.success);
+    assert(faceMesh.issue == MeshConversionIssue3d::None);
+    assert(faceMesh.mesh.IsValid());
+    assert(faceMesh.mesh.TriangleCount() == 2);
+    GEOMETRY_TEST_ASSERT_NEAR(faceMesh.mesh.SurfaceArea(), 4.0, 1e-12);
+
+    const auto bodyMesh = ConvertToTriangleMesh(body);
+    assert(bodyMesh.success);
+    assert(bodyMesh.issue == MeshConversionIssue3d::None);
+    assert(bodyMesh.mesh.IsValid());
+    assert(bodyMesh.mesh.TriangleCount() == 2);
+
+    const PolyhedronFace3d holedFace(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, 0.0, 1.0}),
+        outerLoop,
+        {PolyhedronLoop3d(
+            {
+                Point3d{0.5, 0.5, 0.0},
+                Point3d{1.5, 0.5, 0.0},
+                Point3d{1.5, 1.5, 0.0},
+                Point3d{0.5, 1.5, 0.0},
+            })});
+    const auto holedFaceMesh = ConvertToTriangleMesh(holedFace);
+    assert(!holedFaceMesh.success);
+    assert(holedFaceMesh.issue == MeshConversionIssue3d::UnsupportedHoles);
 }
 
 

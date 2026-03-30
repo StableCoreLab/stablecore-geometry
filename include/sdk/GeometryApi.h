@@ -12,6 +12,7 @@
 #include "sdk/GeometryOffset.h"
 #include "sdk/GeometryBoxTree.h"
 #include "sdk/GeometryKDTree.h"
+#include "sdk/GeometryMeshConversion.h"
 #include "sdk/GeometryPathOps.h"
 #include "sdk/GeometrySegmentSearch.h"
 #include "sdk/GeometryTopology.h"

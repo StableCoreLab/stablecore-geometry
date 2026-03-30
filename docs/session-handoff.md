@@ -219,6 +219,7 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
   - `include/sdk/TriangleMesh.h`
   - `GeometryValidation` 已加入 `TriangleMesh` 的最小 validation 结果
   - `GeometryTessellation` 已加入 `PlaneSurface -> TriangleMesh` 的最小网格化入口
+  - `GeometryMeshConversion` 已加入无孔平面 `PolyhedronFace3d / PolyhedronBody -> TriangleMesh` 的最小转换入口
 - `polyhedron-core` 已起步：
   - `include/sdk/PolyhedronLoop3d.h`
   - `include/sdk/PolyhedronFace3d.h`
@@ -236,6 +237,7 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
   - `TriangleMesh`
   - `MeshValidation3d`
   - `Tessellate(PlaneSurface, ...)`
+  - `ConvertToTriangleMesh(PolyhedronFace3d / PolyhedronBody, ...)`
   - `PolyhedronLoop3d`
   - `PolyhedronFace3d`
   - `PolyhedronBody`
@@ -245,9 +247,10 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
 
 - 这批 3D 参数对象层目前是最小可用协议，不包含高阶 NURBS 或复杂投影 API
 - `PlaneSurface` 当前按有限参数域平面曲面实现，便于后续 bounds / tessellation / section 直接消费
-- `TriangleMesh` 已有最小值对象与 validation，尚未接入 tessellation / conversion
 - `TriangleMesh` 已接上 `PlaneSurface -> TriangleMesh` 的最小 tessellation 路径
+- `PolyhedronBody` 已接上无孔平面 face / body 到 `TriangleMesh` 的最小 conversion 路径
 - `PolyhedronBody` 已有平面 face / loop / body 的最小骨架，但尚未接 projected 2D polygon workflow
+- 带孔 `PolyhedronFace3d` 当前会在 mesh conversion 中显式返回未支持，而不是静默生成错误结果
 - `BrepBody` 仍未开始代码落地
 
 ## 推荐的下一个 3D 动作
@@ -255,7 +258,7 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
 如果继续沿路线图推进，当前最合理的下一步是：
 
 - 继续扩展 `trianglemesh-core`
-  - 补 mesh 法向、邻接，以及 polyhedron / surface 更广泛的 conversion 入口
+  - 补 mesh 法向、邻接，以及带孔 face / 更广泛 surface 的 conversion 入口
 - 或者进入 `polyhedron-core`
   - 将当前平面 face / loop / body 骨架接到 projected 2D polygon workflow
-  - 再补最小 planar polyhedron -> mesh 路径
+  - 再补 projected 2D polygon 驱动的带孔平面 face 路径
