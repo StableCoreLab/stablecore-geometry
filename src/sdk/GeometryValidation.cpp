@@ -116,4 +116,22 @@ MeshValidation3d Validate(const TriangleMesh& mesh, double eps)
 
     return {true, MeshValidationIssue3d::None, 0};
 }
+
+PolyhedronValidation3d Validate(const PolyhedronBody& body, double eps)
+{
+    if (body.IsEmpty())
+    {
+        return {false, PolyhedronValidationIssue3d::EmptyBody, 0};
+    }
+
+    for (std::size_t i = 0; i < body.FaceCount(); ++i)
+    {
+        if (!body.FaceAt(i).IsValid(eps))
+        {
+            return {false, PolyhedronValidationIssue3d::InvalidFace, i};
+        }
+    }
+
+    return {true, PolyhedronValidationIssue3d::None, 0};
+}
 } // namespace geometry::sdk

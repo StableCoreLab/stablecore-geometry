@@ -31,3 +31,6 @@
 #include "sdk/PlaneSurface.h"
 #include "sdk/Surface.h"
 #include "sdk/TriangleMesh.h"
+#include "sdk/PolyhedronLoop3d.h"
+#include "sdk/PolyhedronFace3d.h"
+#include "sdk/PolyhedronBody.h"

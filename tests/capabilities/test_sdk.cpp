@@ -21,6 +21,10 @@ using geometry::sdk::Plane;
 using geometry::sdk::PlaneSurface;
 using geometry::sdk::Point2d;
 using geometry::sdk::Point3d;
+using geometry::sdk::PolyhedronBody;
+using geometry::sdk::PolyhedronFace3d;
+using geometry::sdk::PolyhedronLoop3d;
+using geometry::sdk::PolyhedronValidationIssue3d;
 using geometry::sdk::Polygon2d;
 using geometry::sdk::ProjectPointToSegment;
 using geometry::sdk::Polyline2d;
@@ -243,6 +247,47 @@ TEST(SdkTest, CoversCurrentCapabilities)
     const auto invalidMeshValidation = Validate(invalidMesh);
     assert(!invalidMeshValidation.valid);
     assert(invalidMeshValidation.issue == MeshValidationIssue3d::DegenerateTriangle);
+
+    const PolyhedronLoop3d outerLoop(
+        {
+            Point3d{0.0, 0.0, 0.0},
+            Point3d{2.0, 0.0, 0.0},
+            Point3d{2.0, 2.0, 0.0},
+            Point3d{0.0, 2.0, 0.0},
+        });
+    assert(outerLoop.IsValid());
+    assert(outerLoop.VertexCount() == 4);
+    const PolyhedronFace3d face(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, 0.0, 1.0}),
+        outerLoop);
+    assert(face.IsValid());
+    assert(face.HoleCount() == 0);
+    const geometry::Box3d faceBounds = face.Bounds();
+    assert(faceBounds.IsValid());
+    assert(faceBounds.MinPoint().AlmostEquals(Point3d{0.0, 0.0, 0.0}, 1e-12));
+    assert(faceBounds.MaxPoint().AlmostEquals(Point3d{2.0, 2.0, 0.0}, 1e-12));
+    const PolyhedronBody body({face});
+    assert(body.IsValid());
+    assert(body.FaceCount() == 1);
+    const auto bodyValidation = Validate(body);
+    assert(bodyValidation.valid);
+    assert(bodyValidation.issue == PolyhedronValidationIssue3d::None);
+    const geometry::Box3d bodyBounds = body.Bounds();
+    assert(bodyBounds.IsValid());
+    assert(bodyBounds.MinPoint().AlmostEquals(Point3d{0.0, 0.0, 0.0}, 1e-12));
+    assert(bodyBounds.MaxPoint().AlmostEquals(Point3d{2.0, 2.0, 0.0}, 1e-12));
+
+    const PolyhedronFace3d invalidFace(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, 0.0, 1.0}),
+        PolyhedronLoop3d(
+            {
+                Point3d{0.0, 0.0, 0.0},
+                Point3d{1.0, 0.0, 1.0},
+                Point3d{0.0, 1.0, 0.0},
+            }));
+    const auto invalidBodyValidation = Validate(PolyhedronBody({invalidFace}));
+    assert(!invalidBodyValidation.valid);
+    assert(invalidBodyValidation.issue == PolyhedronValidationIssue3d::InvalidFace);
 }
 
 
