@@ -40,6 +40,24 @@
 - polygon offset：已具备 ring 重建、基础 split recovery 与 collapsed-ring 清理
 - SearchPoly 级别的高歧义恢复、以及更深层 offset / boolean recovery：仍低于 Delphi
 
+从当前源码、capability tests 与 gap tests 的实际状态看，如果只讨论 2D：
+
+- 基础几何内核与常规 polygon 工作流，大致已达到 Delphi 相关能力的 `70%~80%`
+- 高歧义线网、深退化 boolean、困难 offset 恢复等工程恢复层，大致仍只有 Delphi 相关能力的 `40%~60%`
+
+这里的比例是对“当前已落盘代码与测试覆盖范围”的粗略工程判断，不是跑分结果，也不代表生产可靠度百分比。
+
+如果把 3D 也纳入整体对比，则当前 C++ 仓库与 Delphi / GGP 参考系之间的落差更大：
+
+- 当前 3D 代码更接近“第一阶段基础库 + 最小 plane-based workflow”，而不是成熟工程 3D 几何库
+- 对照 Delphi `Geo3DLib` 与 GGP 的 3D 模块轮廓，当前 3D 大致仍只处于目标工程能力的 `20%~35%`
+- 当前 3D 还明显停留在底座建设阶段，距离完整 polyhedron / BRep / healing / section / lofting / exact body workflow 仍有阶段级差距
+
+换句话说：
+
+- 2D 已经进入“核心能力可用，但工程恢复深度仍明显低于 Delphi”的阶段
+- 3D 仍处在“底座与最小 workflow 已起步，但距离 Delphi / GGP 风格工程库还远”的阶段
+
 ## 4. 能力分类
 
 ### 4.1 已达到或基本达到
@@ -84,6 +102,19 @@
 - 面向 reverse-edge、无效圆、多轮失败恢复及更复杂自交情形的 offset 深层清理
 - 超出当前容差尺度的更难 arrangement degeneracy recovery
 - 围绕 `SearchPoly` 的 Delphi 级端到端 polygon search / build 工作流
+
+对于 3D，如果拿 Delphi `Geo3DLib` 与 GGP 的工程目标做参考，当前尚未达到的部分更多，而且不是“少几个接口”，而是还缺完整阶段：
+
+- 更广泛的 surface / section / tessellation / conversion 工作流，而不止平面主导路径
+- 更完整的 polyhedron face rebuild、shell stitching、boundary closing 与 repair
+- BRep skeleton 的代码落地，以及 coedge / loop / face / body 的基本 ownership 结构
+- 更强的 validation / healing 链路，而不只是 mesh 查询与局部 orientation repair
+- 更复杂 surface、lofting、body 级 boolean / offset / sewing 等成熟 3D 工程能力
+
+因此，当前仓库与 Delphi 的“尚未达到”状态，2D 与 3D 应分开理解：
+
+- 2D：主要差在恢复深度、歧义消解与更接近生产级的搜索 / 重建策略
+- 3D：主要差在整体阶段，当前仍远未形成 Delphi / GGP 风格的完整工程几何工作流
 
 ## 5. 当前差距清单
 
@@ -184,3 +215,10 @@
 - polygon search 中的分支评分与歧义消解
 - 更丰富的 polygon relation 层级行为
 - 所有 face 操作之前统一的几何预处理
+
+如果同时跟踪 3D，则优先级应单独列出，而不要与 2D parity 混在一起：
+
+- 将当前平面 polyhedron workflow 继续扩展到更一般的 section / face rebuild / face merge
+- 继续补 triangle mesh 的 stitching / boundary closing / shell repair
+- 逐步落 BRep skeleton，而不是过早转向 exact body boolean
+- 在 3D 中优先建立稳定的 conversion / validation / repair 闭环，再谈更高阶 surface 与 body 算法
