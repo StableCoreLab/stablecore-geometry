@@ -321,10 +321,13 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
 - `GeometryProjection` 已接上通用 `ProjectPointToSurface(...)`，当前对 `PlaneSurface` 走解析投影，对一般 `Surface` 走采样 + 局部细化
 - `GeometryProjection` 已接上 `ProjectPointToBrepFace(...)`，当前优先走支撑曲面投影 + trim containment，落到 trim 外时保守回退到 trim polyline 边界最近点
 - `GeometryProjection` 已接上 `ProjectPointToBrepBody(...)`，当前按 face 聚合最短投影，返回命中的 `faceIndex`
+- `GeometryProjection` 已接上 `ProjectPointToBrepEdge(...)`，当前对 `LineCurve3d` 走解析投影，对一般 `Curve3d` 走采样 + 局部细化
 - `GeometryMeasure` 已接上 `Distance(point, surface)` / `DistanceSquared(point, surface)`，可直接消费 `PlaneSurface` 与当前最小 `NurbsSurface`
 - `GeometryMeasure` 已接上 `Distance(point, BrepFace)` / `DistanceSquared(point, BrepFace)`，可直接消费 planar / trimmed non-planar `BrepFace`
 - `GeometryMeasure` 已接上 `Distance(point, BrepBody)` / `DistanceSquared(point, BrepBody)`，当前复用 `ProjectPointToBrepBody(...)`
+- `GeometryMeasure` 已接上 `Distance(point, BrepEdge)` / `DistanceSquared(point, BrepEdge)`
 - `GeometryIntersection3d` 已接上 `Intersect(Line3d, BrepFace, ...)` 与 `Intersect(Line3d, BrepBody, ...)`，当前复用 `line -> surface` 再走 trim containment / 多 face 聚合
+- `GeometryIntersection3d` 已接上 `Intersect(Line3d, BrepEdge, ...)`，当前对 `LineCurve3d` 走解析求交，对一般 `Curve3d` 走保守采样
 - `Validate(BrepBody, ...)` 已补最小 edge-use adjacency 校验：当前会拒绝 0 次引用或超过 2 次引用的 edge
 - `GeometryIntersection3d` 已接上 `Intersect(Line3d, Surface, ...)`，当前对 `PlaneSurface` 走解析求交，对一般 `Surface` 走保守采样 + 局部细化
 - `BrepVertex`、`BrepEdge`、`BrepCoedge`、`BrepLoop`、`BrepFace`、`BrepShell`、`BrepBody` 已不再只是名字 skeleton，已具备最小 topology ownership、bounds、validation 与 conservative healing 入口

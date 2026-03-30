@@ -4,6 +4,7 @@
 #include <array>
 
 #include "sdk/GeometryRelation.h"
+#include "sdk/LineCurve3d.h"
 #include "sdk/PlaneSurface.h"
 
 namespace geometry::sdk
@@ -180,6 +181,54 @@ struct PlaneProjectionBasis
 
     return improved;
 }
+
+[[nodiscard]] BrepEdgeProjection3d RefineCurveProjection(
+    const Point3d& point,
+    const Curve3d& curve,
+    double initialParameter,
+    const GeometryTolerance3d& tolerance)
+{
+    const Intervald range = curve.ParameterRange();
+    if (!range.IsValid())
+    {
+        return {};
+    }
+
+    double bestParameter = std::clamp(initialParameter, range.min, range.max);
+    Point3d bestPoint = curve.PointAt(bestParameter);
+    double bestDistanceSquared = (point - bestPoint).LengthSquared();
+    double step = std::max(range.Length() * 0.25, tolerance.parameterEpsilon);
+
+    for (int iteration = 0; iteration < 16; ++iteration)
+    {
+        bool improved = false;
+        for (const double dt : std::array<double, 3>{-step, 0.0, step})
+        {
+            const double candidateParameter = std::clamp(bestParameter + dt, range.min, range.max);
+            const Point3d candidatePoint = curve.PointAt(candidateParameter);
+            const double candidateDistanceSquared = (point - candidatePoint).LengthSquared();
+            if (candidateDistanceSquared + tolerance.distanceEpsilon * tolerance.distanceEpsilon < bestDistanceSquared)
+            {
+                bestParameter = candidateParameter;
+                bestPoint = candidatePoint;
+                bestDistanceSquared = candidateDistanceSquared;
+                improved = true;
+            }
+        }
+
+        if (!improved)
+        {
+            step *= 0.5;
+        }
+
+        if (step <= tolerance.parameterEpsilon)
+        {
+            break;
+        }
+    }
+
+    return {true, bestParameter, bestPoint, bestDistanceSquared};
+}
 } // namespace
 
 LineProjection3d ProjectPointToLine(
@@ -319,6 +368,55 @@ BrepFaceProjection3d ProjectPointToBrepFace(
         UpdateTrimClosestProjection(point, holeTrim, best, true);
     }
     return best;
+}
+
+BrepEdgeProjection3d ProjectPointToBrepEdge(
+    const Point3d& point,
+    const BrepEdge& edge,
+    const GeometryTolerance3d& tolerance)
+{
+    if (!edge.IsValid(tolerance) || edge.Curve() == nullptr)
+    {
+        return {};
+    }
+
+    if (const auto* lineCurve = dynamic_cast<const LineCurve3d*>(edge.Curve()))
+    {
+        const LineProjection3d lineProjection = ProjectPointToLine(point, lineCurve->SupportLine(), tolerance);
+        const Intervald range = lineCurve->ParameterRange();
+        const double parameter = std::clamp(lineProjection.parameter, range.min, range.max);
+        const Point3d projectedPoint = lineCurve->PointAt(parameter);
+        return {true, parameter, projectedPoint, (point - projectedPoint).LengthSquared()};
+    }
+
+    const Curve3d& curve = *edge.Curve();
+    const Intervald range = curve.ParameterRange();
+    if (!range.IsValid())
+    {
+        return {};
+    }
+
+    constexpr std::size_t sampleCount = 17;
+    double bestParameter = range.min;
+    Point3d bestPoint = curve.PointAt(bestParameter);
+    double bestDistanceSquared = (point - bestPoint).LengthSquared();
+    for (std::size_t i = 0; i < sampleCount; ++i)
+    {
+        const double parameter = i + 1 == sampleCount
+                                     ? range.max
+                                     : range.min + range.Length() * static_cast<double>(i) /
+                                                        static_cast<double>(sampleCount - 1);
+        const Point3d candidatePoint = curve.PointAt(parameter);
+        const double candidateDistanceSquared = (point - candidatePoint).LengthSquared();
+        if (candidateDistanceSquared < bestDistanceSquared)
+        {
+            bestParameter = parameter;
+            bestPoint = candidatePoint;
+            bestDistanceSquared = candidateDistanceSquared;
+        }
+    }
+
+    return RefineCurveProjection(point, curve, bestParameter, tolerance);
 }
 
 BrepBodyProjection3d ProjectPointToBrepBody(

@@ -173,6 +173,20 @@ struct GEOMETRY_API BrepBodyProjection3d
     }
 };
 
+struct GEOMETRY_API BrepEdgeProjection3d
+{
+    bool success{false};
+    double parameter{0.0};
+    Point3d point{};
+    double distanceSquared{0.0};
+
+    [[nodiscard]] bool IsValid() const
+    {
+        return !success || (point.IsValid() && std::isfinite(parameter) &&
+                            std::isfinite(distanceSquared) && distanceSquared >= 0.0);
+    }
+};
+
 struct GEOMETRY_API LinePlaneIntersection3d
 {
     bool intersects{false};
@@ -246,6 +260,19 @@ struct GEOMETRY_API LineBrepBodyIntersection3d
             }
         }
         return true;
+    }
+};
+
+struct GEOMETRY_API LineBrepEdgeIntersection3d
+{
+    bool intersects{false};
+    double lineParameter{0.0};
+    double edgeParameter{0.0};
+    Point3d point{};
+
+    [[nodiscard]] bool IsValid() const
+    {
+        return !intersects || (point.IsValid() && std::isfinite(lineParameter) && std::isfinite(edgeParameter));
     }
 };
 

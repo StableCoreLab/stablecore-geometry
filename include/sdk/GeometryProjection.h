@@ -5,6 +5,7 @@
 #include "sdk/GeometryTypes.h"
 #include "sdk/LineSegment2d.h"
 #include "sdk/Polygon2d.h"
+#include "sdk/BrepEdge.h"
 #include "sdk/PolyhedronFace3d.h"
 #include "sdk/BrepFace.h"
 #include "sdk/Segment2d.h"
@@ -51,6 +52,11 @@ namespace geometry::sdk
 [[nodiscard]] GEOMETRY_API BrepFaceProjection3d ProjectPointToBrepFace(
     const Point3d& point,
     const BrepFace& face,
+    const GeometryTolerance3d& tolerance = {});
+
+[[nodiscard]] GEOMETRY_API BrepEdgeProjection3d ProjectPointToBrepEdge(
+    const Point3d& point,
+    const BrepEdge& edge,
     const GeometryTolerance3d& tolerance = {});
 
 [[nodiscard]] GEOMETRY_API BrepBodyProjection3d ProjectPointToBrepBody(

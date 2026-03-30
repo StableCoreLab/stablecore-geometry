@@ -45,6 +45,14 @@ namespace geometry::sdk
     const GeometryTolerance3d& tolerance = {});
 [[nodiscard]] GEOMETRY_API double DistanceSquared(
     const Point3d& point,
+    const BrepEdge& edge,
+    const GeometryTolerance3d& tolerance = {});
+[[nodiscard]] GEOMETRY_API double Distance(
+    const Point3d& point,
+    const BrepEdge& edge,
+    const GeometryTolerance3d& tolerance = {});
+[[nodiscard]] GEOMETRY_API double DistanceSquared(
+    const Point3d& point,
     const BrepBody& body,
     const GeometryTolerance3d& tolerance = {});
 [[nodiscard]] GEOMETRY_API double Distance(

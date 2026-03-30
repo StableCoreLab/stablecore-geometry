@@ -827,6 +827,19 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(brepEdgeBounds.IsValid());
     assert(brepEdgeBounds.MinPoint().AlmostEquals(Point3d{0.0, 0.0, 5.0}, 1e-12));
     assert(brepEdgeBounds.MaxPoint().AlmostEquals(Point3d{2.0, 0.0, 5.0}, 1e-12));
+    const auto brepEdgeProjection = ProjectPointToBrepEdge(Point3d{1.0, 1.0, 5.0}, brepBody.EdgeAt(0));
+    assert(brepEdgeProjection.success);
+    assert(brepEdgeProjection.IsValid());
+    GEOMETRY_TEST_ASSERT_NEAR(brepEdgeProjection.parameter, 0.5, 1e-12);
+    assert(brepEdgeProjection.point.AlmostEquals(Point3d{1.0, 0.0, 5.0}, 1e-12));
+    GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Distance(Point3d{1.0, 1.0, 5.0}, brepBody.EdgeAt(0)), 1.0, 1e-12);
+    const auto brepEdgeLineIntersection = geometry::sdk::Intersect(
+        Line3d::FromOriginAndDirection(Point3d{1.0, -1.0, 5.0}, Vector3d{0.0, 1.0, 0.0}),
+        brepBody.EdgeAt(0));
+    assert(brepEdgeLineIntersection.intersects);
+    assert(brepEdgeLineIntersection.IsValid());
+    GEOMETRY_TEST_ASSERT_NEAR(brepEdgeLineIntersection.edgeParameter, 0.5, 1e-12);
+    assert(brepEdgeLineIntersection.point.AlmostEquals(Point3d{1.0, 0.0, 5.0}, 1e-12));
     const auto brepValidation = Validate(brepBody);
     assert(brepValidation.valid);
     assert(brepValidation.issue == BrepValidationIssue3d::None);

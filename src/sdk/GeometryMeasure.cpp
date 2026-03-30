@@ -60,6 +60,16 @@ double Distance(const Point3d& point, const BrepFace& face, const GeometryTolera
     return std::sqrt(DistanceSquared(point, face, tolerance));
 }
 
+double DistanceSquared(const Point3d& point, const BrepEdge& edge, const GeometryTolerance3d& tolerance)
+{
+    return ProjectPointToBrepEdge(point, edge, tolerance).distanceSquared;
+}
+
+double Distance(const Point3d& point, const BrepEdge& edge, const GeometryTolerance3d& tolerance)
+{
+    return std::sqrt(DistanceSquared(point, edge, tolerance));
+}
+
 double DistanceSquared(const Point3d& point, const BrepBody& body, const GeometryTolerance3d& tolerance)
 {
     return ProjectPointToBrepBody(point, body, tolerance).projection.distanceSquared;
