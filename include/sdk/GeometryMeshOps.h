@@ -22,6 +22,22 @@ struct GEOMETRY_API MeshTriangleAdjacency3d
     }
 };
 
+struct GEOMETRY_API MeshBoundaryEdge3d
+{
+    std::size_t triangleIndex{std::size_t(-1)};
+    std::size_t edgeIndex{0};
+    std::array<std::size_t, 2> vertexIndices{
+        std::size_t(-1),
+        std::size_t(-1)};
+
+    [[nodiscard]] bool IsValid() const
+    {
+        return triangleIndex != std::size_t(-1) &&
+               vertexIndices[0] != std::size_t(-1) &&
+               vertexIndices[1] != std::size_t(-1);
+    }
+};
+
 [[nodiscard]] GEOMETRY_API Vector3d TriangleNormal(
     const TriangleMesh& mesh,
     std::size_t triangleIndex,
@@ -46,4 +62,9 @@ struct GEOMETRY_API MeshTriangleAdjacency3d
 
 [[nodiscard]] GEOMETRY_API std::vector<MeshTriangleAdjacency3d> ComputeTriangleAdjacency(
     const TriangleMesh& mesh);
+
+[[nodiscard]] GEOMETRY_API std::vector<MeshBoundaryEdge3d> ExtractBoundaryEdges(
+    const TriangleMesh& mesh);
+
+[[nodiscard]] GEOMETRY_API bool IsClosedTriangleMesh(const TriangleMesh& mesh);
 } // namespace geometry::sdk

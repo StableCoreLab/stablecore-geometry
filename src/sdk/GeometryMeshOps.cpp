@@ -156,4 +156,45 @@ MeshTriangleAdjacency3d TriangleAdjacency(const TriangleMesh& mesh, std::size_t 
 
     return ComputeTriangleAdjacency(mesh).at(triangleIndex);
 }
+
+std::vector<MeshBoundaryEdge3d> ExtractBoundaryEdges(const TriangleMesh& mesh)
+{
+    std::vector<MeshBoundaryEdge3d> boundaryEdges;
+    if (!mesh.IsValid())
+    {
+        return boundaryEdges;
+    }
+
+    const auto adjacency = ComputeTriangleAdjacency(mesh);
+    boundaryEdges.reserve(mesh.TriangleCount());
+    for (std::size_t triangleIndex = 0; triangleIndex < mesh.TriangleCount(); ++triangleIndex)
+    {
+        const TriangleMesh::TriangleIndices tri = mesh.TriangleIndicesAt(triangleIndex);
+        const std::array<std::array<std::size_t, 2>, 3> edges{{
+            {tri[0], tri[1]},
+            {tri[1], tri[2]},
+            {tri[2], tri[0]},
+        }};
+
+        for (std::size_t edgeIndex = 0; edgeIndex < edges.size(); ++edgeIndex)
+        {
+            if (adjacency[triangleIndex].HasNeighbor(edgeIndex))
+            {
+                continue;
+            }
+
+            boundaryEdges.push_back(MeshBoundaryEdge3d{
+                triangleIndex,
+                edgeIndex,
+                edges[edgeIndex]});
+        }
+    }
+
+    return boundaryEdges;
+}
+
+bool IsClosedTriangleMesh(const TriangleMesh& mesh)
+{
+    return mesh.IsValid() && ExtractBoundaryEdges(mesh).empty();
+}
 } // namespace geometry::sdk

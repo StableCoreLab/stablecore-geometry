@@ -17,6 +17,7 @@ using geometry::sdk::Intersects;
 using geometry::sdk::LineSegment2d;
 using geometry::sdk::Line3d;
 using geometry::sdk::LineCurve3d;
+using geometry::sdk::MeshBoundaryEdge3d;
 using geometry::sdk::MeshTriangleAdjacency3d;
 using geometry::sdk::MeshValidationIssue3d;
 using geometry::sdk::MeshConversionIssue3d;
@@ -40,6 +41,7 @@ using geometry::sdk::TriangleAdjacency;
 using geometry::sdk::TriangleNormal;
 using geometry::sdk::ComputeTriangleAdjacency;
 using geometry::sdk::ComputeTriangleNormals;
+using geometry::sdk::ExtractBoundaryEdges;
 using geometry::sdk::ConvertToTriangleMesh;
 using geometry::sdk::Curve3d;
 using geometry::sdk::TriangleMesh;
@@ -50,6 +52,7 @@ using geometry::sdk::Vector2d;
 using geometry::sdk::Vector3d;
 using geometry::sdk::VertexNormal;
 using geometry::sdk::ComputeVertexNormals;
+using geometry::sdk::IsClosedTriangleMesh;
 
 TEST(SdkTest, CoversCurrentCapabilities)
 {
@@ -263,6 +266,26 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(adjacency.size() == mesh.TriangleCount());
     assert(adjacency[1].HasNeighbor(0));
     assert(adjacency[1].adjacentTriangles[0] == 0);
+    const std::vector<MeshBoundaryEdge3d> boundaryEdges = ExtractBoundaryEdges(mesh);
+    assert(boundaryEdges.size() == 4);
+    assert(boundaryEdges[0].IsValid());
+    assert(!IsClosedTriangleMesh(mesh));
+    const TriangleMesh tetraMesh(
+        {
+            Point3d{0.0, 0.0, 0.0},
+            Point3d{1.0, 0.0, 0.0},
+            Point3d{0.0, 1.0, 0.0},
+            Point3d{0.0, 0.0, 1.0},
+        },
+        {
+            TriangleMesh::TriangleIndices{0, 2, 1},
+            TriangleMesh::TriangleIndices{0, 1, 3},
+            TriangleMesh::TriangleIndices{1, 2, 3},
+            TriangleMesh::TriangleIndices{2, 0, 3},
+        });
+    assert(tetraMesh.IsValid());
+    assert(ExtractBoundaryEdges(tetraMesh).empty());
+    assert(IsClosedTriangleMesh(tetraMesh));
     const TriangleMesh movedMesh = mesh.Transformed(geometry::Transform3d::Translation(Vector3d{2.0, -1.0, 3.0}));
     assert(movedMesh.IsValid());
     assert(movedMesh.VertexAt(0).AlmostEquals(Point3d{2.0, -1.0, 3.0}, 1e-12));
@@ -329,6 +352,7 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(surfaceMesh.TriangleCount() == 12);
     const auto surfaceMeshValidation = Validate(surfaceMesh);
     assert(surfaceMeshValidation.valid);
+    assert(!IsClosedTriangleMesh(surfaceMesh));
     for (const Point3d& vertex : surfaceMesh.Vertices())
     {
         GEOMETRY_TEST_ASSERT_NEAR(supportPlane.SignedDistanceTo(vertex), 0.0, 1e-12);
