@@ -626,6 +626,18 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(coplanarSection.contours.size() == 1);
     assert(coplanarSection.polygons.size() == 1);
     GEOMETRY_TEST_ASSERT_NEAR(Area(coplanarSection.polygons[0]), 1.0, 1e-12);
+
+    const PolyhedronSection3d edgeOnlySection = Section(
+        cubeBody,
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{1.0, 1.0, 0.0}));
+    assert(edgeOnlySection.success);
+    assert(edgeOnlySection.issue == SectionIssue3d::None);
+    assert(edgeOnlySection.IsValid());
+    assert(edgeOnlySection.segments.size() == 1);
+    assert(edgeOnlySection.contours.size() == 1);
+    assert(!edgeOnlySection.contours[0].closed);
+    assert(edgeOnlySection.contours[0].points.size() == 2);
+    assert(edgeOnlySection.polygons.empty());
 }
 
 

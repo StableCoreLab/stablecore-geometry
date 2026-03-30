@@ -294,9 +294,9 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
 - `TriangleMesh` 已接上 multi planar boundary loops 的最小批量 closing repair
 - `PolyhedronBody` 已接上平面 face / body 到 `TriangleMesh` 的最小 conversion 路径
 - `PolyhedronFace3d` 已接上局部平面 `Polygon2d` 投影入口，开始进入 projected 2D polygon workflow
-- `PolyhedronBody` 已接上 `Plane x PolyhedronBody` 的最小 section 路径，当前支持横切 plane-dominant body，以及与平面 face 共面的截面回收
+- `PolyhedronBody` 已接上 `Plane x PolyhedronBody` 的最小 section 路径，当前支持横切 plane-dominant body、与平面 face 共面的截面回收、以及 edge-only 零面积截面的开链返回
 - 带孔 `PolyhedronFace3d` 已可经由 projected 2D polygon 工作流转成 `TriangleMesh`
-- 当前 `GeometrySection` 仍是保守入口：共面 face 截面已支持，但 edge-only 的零面积截面与更复杂 face merge / rebuild 仍未补
+- 当前 `GeometrySection` 仍是保守入口：edge-only 的零面积截面已返回 open contour，但 face rebuild / face merge / richer section topology 仍未补
 - `BrepBody` 仍未开始代码落地
 
 ## 推荐的下一个 3D 动作
@@ -306,5 +306,5 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
 - 继续扩展 `trianglemesh-core`
   - 补更广泛 surface 的 conversion 入口，以及非平面边界 / stitching / boundary merge 场景下的 mesh closing / shell repair
 - 或者进入 `polyhedron-core`
-  - 在当前 `GeometrySection` 的基础上继续补 edge-only section、face rebuild、face merge
+  - 在当前 `GeometrySection` 的基础上继续补 face rebuild、face merge 和 richer section topology
   - 再补 projected 2D polygon 驱动的多孔 / 更复杂 planar face 路径
