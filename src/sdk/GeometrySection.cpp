@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <cmath>
+#include <sstream>
 #include <vector>
 
 #include "sdk/GeometryMeshConversion.h"
@@ -898,5 +899,52 @@ SectionBodyRebuild3d RebuildSectionBody(const PolyhedronSection3d& section, doub
     result.body = PolyhedronBody(rebuiltFaces.faces);
     result.success = true;
     return result;
+}
+
+SectionTopology3d BuildSectionTopology(const PolyhedronSection3d& section, double eps)
+{
+    SectionTopology3d result{};
+    if (!section.success || !section.IsValid(eps))
+    {
+        return result;
+    }
+
+    MultiPolygon2d polygons;
+    for (const Polygon2d& polygon : section.polygons)
+    {
+        if (!polygon.IsValid())
+        {
+            return result;
+        }
+        polygons.Add(polygon);
+    }
+
+    const PolygonTopology2d topology = BuildPolygonTopology(polygons, eps);
+    if (!topology.IsValid())
+    {
+        return result;
+    }
+
+    result.valid_ = true;
+    result.nodes_.resize(topology.Count());
+    result.roots_ = topology.Roots();
+    for (std::size_t i = 0; i < topology.Count(); ++i)
+    {
+        result.nodes_[i].polygonIndex = i;
+        result.nodes_[i].parentIndex = topology.ParentOf(i);
+        result.nodes_[i].children = topology.ChildrenOf(i);
+        result.nodes_[i].depth = PolygonDepth(topology, i);
+    }
+
+    return result;
+}
+
+std::string SectionTopology3d::DebugString() const
+{
+    std::ostringstream stream;
+    stream << "SectionTopology3d{polygonCount=" << Count()
+           << ", rootCount=" << roots_.size()
+           << ", valid=" << (valid_ ? "true" : "false") << "}";
+    return stream.str();
 }
 } // namespace geometry::sdk

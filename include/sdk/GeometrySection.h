@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <string>
 #include <vector>
 
 #include "export/GeometryExport.h"
@@ -153,6 +154,64 @@ struct GEOMETRY_API SectionBodyRebuild3d
     }
 };
 
+struct GEOMETRY_API SectionTopologyNode3d
+{
+    std::size_t polygonIndex{0};
+    std::size_t parentIndex{static_cast<std::size_t>(-1)};
+    std::size_t depth{0};
+    std::vector<std::size_t> children{};
+};
+
+class GEOMETRY_API SectionTopology3d
+{
+public:
+    [[nodiscard]] bool IsValid() const
+    {
+        return valid_;
+    }
+
+    [[nodiscard]] std::size_t Count() const
+    {
+        return nodes_.size();
+    }
+
+    [[nodiscard]] bool IsEmpty() const
+    {
+        return nodes_.empty();
+    }
+
+    [[nodiscard]] const SectionTopologyNode3d& Node(std::size_t index) const
+    {
+        return nodes_.at(index);
+    }
+
+    [[nodiscard]] std::size_t ParentOf(std::size_t index) const
+    {
+        return nodes_.at(index).parentIndex;
+    }
+
+    [[nodiscard]] const std::vector<std::size_t>& ChildrenOf(std::size_t index) const
+    {
+        return nodes_.at(index).children;
+    }
+
+    [[nodiscard]] const std::vector<std::size_t>& Roots() const
+    {
+        return roots_;
+    }
+
+    [[nodiscard]] std::string DebugString() const;
+
+private:
+    friend GEOMETRY_API SectionTopology3d BuildSectionTopology(
+        const PolyhedronSection3d& section,
+        double eps);
+
+    bool valid_{false};
+    std::vector<SectionTopologyNode3d> nodes_{};
+    std::vector<std::size_t> roots_{};
+};
+
 [[nodiscard]] GEOMETRY_API PolyhedronSection3d Section(
     const PolyhedronBody& body,
     const Plane& plane,
@@ -163,6 +222,10 @@ struct GEOMETRY_API SectionBodyRebuild3d
     double eps = 1e-9);
 
 [[nodiscard]] GEOMETRY_API SectionBodyRebuild3d RebuildSectionBody(
+    const PolyhedronSection3d& section,
+    double eps = 1e-9);
+
+[[nodiscard]] GEOMETRY_API SectionTopology3d BuildSectionTopology(
     const PolyhedronSection3d& section,
     double eps = 1e-9);
 } // namespace geometry::sdk
