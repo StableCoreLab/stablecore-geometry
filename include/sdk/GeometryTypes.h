@@ -155,4 +155,64 @@ struct GEOMETRY_API PlanePlaneIntersection3d
     }
 };
 
+struct GEOMETRY_API CurveEval3d
+{
+    Point3d point{};
+    Vector3d firstDerivative{};
+    Vector3d secondDerivative{};
+    int derivativeOrder{0};
+
+    [[nodiscard]] bool IsValid() const
+    {
+        if (!point.IsValid() || derivativeOrder < 0 || derivativeOrder > 2)
+        {
+            return false;
+        }
+
+        if (derivativeOrder >= 1 && !firstDerivative.IsValid())
+        {
+            return false;
+        }
+
+        if (derivativeOrder >= 2 && !secondDerivative.IsValid())
+        {
+            return false;
+        }
+
+        return true;
+    }
+};
+
+struct GEOMETRY_API SurfaceEval3d
+{
+    Point3d point{};
+    Vector3d derivativeU{};
+    Vector3d derivativeV{};
+    Vector3d normal{};
+    int derivativeOrder{0};
+
+    [[nodiscard]] bool IsValid(double eps = geometry::kDefaultEpsilon) const
+    {
+        if (!point.IsValid() || derivativeOrder < 0 || derivativeOrder > 1)
+        {
+            return false;
+        }
+
+        if (derivativeOrder >= 1)
+        {
+            if (!derivativeU.IsValid() || !derivativeV.IsValid() || !normal.IsValid())
+            {
+                return false;
+            }
+
+            if (normal.Length() <= eps)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+};
+
 } // namespace geometry::sdk

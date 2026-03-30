@@ -14,13 +14,22 @@ using geometry::sdk::ArcSegment2d;
 using geometry::sdk::Box2d;
 using geometry::sdk::Intersects;
 using geometry::sdk::LineSegment2d;
+using geometry::sdk::Line3d;
+using geometry::sdk::LineCurve3d;
+using geometry::sdk::Plane;
+using geometry::sdk::PlaneSurface;
 using geometry::sdk::Point2d;
+using geometry::sdk::Point3d;
 using geometry::sdk::Polygon2d;
 using geometry::sdk::ProjectPointToSegment;
 using geometry::sdk::Polyline2d;
 using geometry::sdk::PolylineClosure;
 using geometry::sdk::Segment2d;
+using geometry::sdk::Surface;
+using geometry::sdk::Curve3d;
+using geometry::sdk::Intervald;
 using geometry::sdk::Vector2d;
+using geometry::sdk::Vector3d;
 
 TEST(SdkTest, CoversCurrentCapabilities)
 {
@@ -137,6 +146,53 @@ TEST(SdkTest, CoversCurrentCapabilities)
         Box2d::FromMinMax(Point2d{0.0, 0.0}, Point2d{4.0, 4.0}),
         1e-12);
     assert(polygon.DebugString().find("Polygon2d{holeCount=1") == 0);
+
+    const Line3d line3 = Line3d::FromOriginAndDirection(Point3d{1.0, 2.0, 3.0}, Vector3d{2.0, 0.0, 0.0});
+    const LineCurve3d lineCurve = LineCurve3d::FromLine(line3, Intervald{-2.0, 3.0});
+    assert(lineCurve.IsValid());
+    assert(!lineCurve.IsClosed());
+    assert(!lineCurve.IsPeriodic());
+    GEOMETRY_TEST_ASSERT_NEAR(lineCurve.StartT(), -2.0, 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(lineCurve.EndT(), 3.0, 1e-12);
+    assert(lineCurve.PointAt(0.5).AlmostEquals(Point3d{2.0, 2.0, 3.0}, 1e-12));
+    const auto lineEval = lineCurve.Evaluate(1.5, 2);
+    assert(lineEval.IsValid());
+    assert(lineEval.derivativeOrder == 2);
+    assert(lineEval.point.AlmostEquals(Point3d{4.0, 2.0, 3.0}, 1e-12));
+    assert(lineEval.firstDerivative.AlmostEquals(Vector3d{2.0, 0.0, 0.0}, 1e-12));
+    assert(lineEval.secondDerivative.AlmostEquals(Vector3d{0.0, 0.0, 0.0}, 1e-12));
+    const geometry::Box3d lineBounds = lineCurve.Bounds();
+    assert(lineBounds.IsValid());
+    assert(lineBounds.MinPoint().AlmostEquals(Point3d{-3.0, 2.0, 3.0}, 1e-12));
+    assert(lineBounds.MaxPoint().AlmostEquals(Point3d{7.0, 2.0, 3.0}, 1e-12));
+    std::unique_ptr<Curve3d> lineClone = lineCurve.Clone();
+    assert(lineClone && lineClone->IsValid());
+    assert(lineClone->PointAt(-2.0).AlmostEquals(Point3d{-3.0, 2.0, 3.0}, 1e-12));
+
+    const Plane supportPlane = Plane::FromPointAndNormal(Point3d{0.0, 0.0, 5.0}, Vector3d{0.0, 0.0, 1.0});
+    const PlaneSurface planeSurface = PlaneSurface::FromPlane(
+        supportPlane,
+        Intervald{-2.0, 2.0},
+        Intervald{-3.0, 1.0});
+    assert(planeSurface.IsValid());
+    GEOMETRY_TEST_ASSERT_NEAR(planeSurface.StartU(), -2.0, 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(planeSurface.EndU(), 2.0, 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(planeSurface.StartV(), -3.0, 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(planeSurface.EndV(), 1.0, 1e-12);
+    const Point3d planePoint = planeSurface.PointAt(0.5, -1.0);
+    GEOMETRY_TEST_ASSERT_NEAR(supportPlane.SignedDistanceTo(planePoint), 0.0, 1e-12);
+    const auto surfaceEval = planeSurface.Evaluate(0.25, 0.75, 1);
+    assert(surfaceEval.IsValid());
+    assert(surfaceEval.point.AlmostEquals(planeSurface.PointAt(0.25, 0.75), 1e-12));
+    GEOMETRY_TEST_ASSERT_NEAR(geometry::Dot(surfaceEval.derivativeU, surfaceEval.normal), 0.0, 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(geometry::Dot(surfaceEval.derivativeV, surfaceEval.normal), 0.0, 1e-12);
+    const geometry::Box3d surfaceBounds = planeSurface.Bounds();
+    assert(surfaceBounds.IsValid());
+    GEOMETRY_TEST_ASSERT_NEAR(surfaceBounds.MinPoint().z, 5.0, 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(surfaceBounds.MaxPoint().z, 5.0, 1e-12);
+    std::unique_ptr<Surface> surfaceClone = planeSurface.Clone();
+    assert(surfaceClone && surfaceClone->IsValid());
+    GEOMETRY_TEST_ASSERT_NEAR(supportPlane.SignedDistanceTo(surfaceClone->PointAt(-2.0, -3.0)), 0.0, 1e-12);
 }
 
 
