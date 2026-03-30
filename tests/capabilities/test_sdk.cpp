@@ -361,6 +361,13 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(lineCurveIntersection.intersects);
     assert(lineCurveIntersection.IsValid());
     GEOMETRY_TEST_ASSERT_NEAR(lineCurveIntersection.curveParameter, 0.25, 1e-12);
+    const auto planeCurveIntersection = geometry::sdk::Intersect(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, 0.0, 1.0}),
+        lowerRail);
+    assert(planeCurveIntersection.intersects);
+    assert(planeCurveIntersection.IsValid());
+    GEOMETRY_TEST_ASSERT_NEAR(planeCurveIntersection.curveParameter, 0.0, 1e-12);
+    assert(planeCurveIntersection.point.AlmostEquals(Point3d{0.0, 0.0, 0.0}, 1e-12));
     const RuledSurface ruledSurface = RuledSurface::FromCurves(lowerRail, upperRail);
     assert(ruledSurface.IsValid());
     assert(ruledSurface.FirstCurve() != nullptr);
@@ -410,6 +417,13 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(curveOnSurfaceIntersection.intersects);
     assert(curveOnSurfaceIntersection.IsValid());
     assert(curveOnSurfaceIntersection.point.AlmostEquals(Point3d{0.0, -1.0, 5.0}, 1e-12));
+    const auto planeCurveOnSurfaceIntersection = geometry::sdk::Intersect(
+        supportPlane,
+        curveOnSurface);
+    assert(planeCurveOnSurfaceIntersection.intersects);
+    assert(planeCurveOnSurfaceIntersection.IsValid());
+    assert(planeCurveOnSurfaceIntersection.uv.AlmostEquals(Point2d{-2.0, -3.0}, 1e-12));
+    assert(planeCurveOnSurfaceIntersection.point.AlmostEquals(Point3d{-2.0, -3.0, 5.0}, 1e-12));
 
     const auto planeSurfaceProjection = ProjectPointToSurface(Point3d{0.5, -1.0, 8.0}, planeSurface);
     assert(planeSurfaceProjection.success);
@@ -907,6 +921,13 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(brepEdgeLineIntersection.IsValid());
     GEOMETRY_TEST_ASSERT_NEAR(brepEdgeLineIntersection.edgeParameter, 0.5, 1e-12);
     assert(brepEdgeLineIntersection.point.AlmostEquals(Point3d{1.0, 0.0, 5.0}, 1e-12));
+    const auto brepEdgePlaneIntersection = geometry::sdk::Intersect(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 5.0}, Vector3d{0.0, 0.0, 1.0}),
+        brepBody.EdgeAt(0));
+    assert(brepEdgePlaneIntersection.intersects);
+    assert(brepEdgePlaneIntersection.IsValid());
+    GEOMETRY_TEST_ASSERT_NEAR(brepEdgePlaneIntersection.edgeParameter, 0.0, 1e-12);
+    assert(brepEdgePlaneIntersection.point.AlmostEquals(Point3d{0.0, 0.0, 5.0}, 1e-12));
     const auto brepValidation = Validate(brepBody);
     assert(brepValidation.valid);
     assert(brepValidation.issue == BrepValidationIssue3d::None);

@@ -336,6 +336,9 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
 - `GeometryIntersection3d` 已接上 `Intersect(Line3d, Curve3d, ...)`，当前对 `LineCurve3d` 走解析求交，对一般 `Curve3d` 走保守采样
 - `GeometryIntersection3d` 已接上 `Intersect(Line3d, CurveOnSurface, ...)`，当前按 3D polyline segment 做逐段求交
 - `GeometryIntersection3d` 已接上 `Intersect(Line3d, TriangleMesh, ...)`，当前逐 triangle 做 plane hit + triangle containment
+- `GeometryIntersection3d` 已接上 `Intersect(Plane, Curve3d, ...)`，当前对 `LineCurve3d` 走解析求交，对一般 `Curve3d` 走采样符号变号定位
+- `GeometryIntersection3d` 已接上 `Intersect(Plane, CurveOnSurface, ...)`，当前按 3D polyline segment 做逐段平面穿越检测，并回写 UV
+- `GeometryIntersection3d` 已接上 `Intersect(Plane, BrepEdge, ...)`，当前复用 `plane -> curve` 路径
 - `GeometryMeasure` 已接上 `Distance(point, BrepFace)` / `DistanceSquared(point, BrepFace)`，可直接消费 planar / trimmed non-planar `BrepFace`
 - `GeometryMeasure` 已接上 `Distance(point, BrepBody)` / `DistanceSquared(point, BrepBody)`，当前复用 `ProjectPointToBrepBody(...)`
 - `GeometryMeasure` 已接上 `Distance(point, BrepEdge)` / `DistanceSquared(point, BrepEdge)`

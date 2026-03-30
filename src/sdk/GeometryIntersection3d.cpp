@@ -774,6 +774,121 @@ LineTriangleMeshIntersection3d Intersect(
     return result;
 }
 
+PlaneCurveIntersection3d Intersect(
+    const Plane& plane,
+    const Curve3d& curve,
+    const GeometryTolerance3d& tolerance)
+{
+    if (!plane.IsValid(tolerance.distanceEpsilon) || !curve.IsValid(tolerance))
+    {
+        return {};
+    }
+
+    if (const auto* lineCurve = dynamic_cast<const LineCurve3d*>(&curve))
+    {
+        const LinePlaneIntersection3d hit = Intersect(lineCurve->Line(), plane, tolerance);
+        if (!hit.intersects)
+        {
+            return {};
+        }
+        const Intervald range = lineCurve->ParameterRange();
+        if (!range.Contains(hit.parameter, tolerance.parameterEpsilon))
+        {
+            return {};
+        }
+        return {true, hit.parameter, hit.point};
+    }
+
+    const Intervald range = curve.ParameterRange();
+    if (!range.IsValid())
+    {
+        return {};
+    }
+
+    constexpr std::size_t sampleCount = 33;
+    for (std::size_t i = 1; i < sampleCount; ++i)
+    {
+        const double t0 = range.min + range.Length() * static_cast<double>(i - 1) / static_cast<double>(sampleCount - 1);
+        const double t1 = i + 1 == sampleCount
+                              ? range.max
+                              : range.min + range.Length() * static_cast<double>(i) / static_cast<double>(sampleCount - 1);
+        const Point3d p0 = curve.PointAt(t0);
+        const Point3d p1 = curve.PointAt(t1);
+        const double d0 = plane.SignedDistanceTo(p0, tolerance.distanceEpsilon);
+        const double d1 = plane.SignedDistanceTo(p1, tolerance.distanceEpsilon);
+        if (std::abs(d0) <= tolerance.distanceEpsilon)
+        {
+            return {true, t0, p0};
+        }
+        if (d0 * d1 > 0.0)
+        {
+            continue;
+        }
+
+        const double weight = d0 / (d0 - d1);
+        const double parameter = t0 + (t1 - t0) * weight;
+        return {true, parameter, curve.PointAt(parameter)};
+    }
+
+    return {};
+}
+
+PlaneCurveOnSurfaceIntersection3d Intersect(
+    const Plane& plane,
+    const CurveOnSurface& curveOnSurface,
+    const GeometryTolerance3d& tolerance)
+{
+    if (!plane.IsValid(tolerance.distanceEpsilon) || !curveOnSurface.IsValid(tolerance) || curveOnSurface.PointCount() < 2)
+    {
+        return {};
+    }
+
+    const std::size_t pointCount = curveOnSurface.PointCount();
+    const std::size_t segmentCount = curveOnSurface.UvCurve().IsClosed() ? pointCount : pointCount - 1;
+    for (std::size_t i = 0; i < segmentCount; ++i)
+    {
+        const std::size_t j = (i + 1) % pointCount;
+        const Point3d p0 = curveOnSurface.PointAt(i);
+        const Point3d p1 = curveOnSurface.PointAt(j);
+        const double d0 = plane.SignedDistanceTo(p0, tolerance.distanceEpsilon);
+        const double d1 = plane.SignedDistanceTo(p1, tolerance.distanceEpsilon);
+        if (std::abs(d0) <= tolerance.distanceEpsilon)
+        {
+            return {true, i, 0.0, curveOnSurface.UvPointAt(i), p0};
+        }
+        if (d0 * d1 > 0.0)
+        {
+            continue;
+        }
+
+        const double weight = d0 / (d0 - d1);
+        const Point2d uv0 = curveOnSurface.UvPointAt(i);
+        const Point2d uv1 = curveOnSurface.UvPointAt(j);
+        const Point2d uv = uv0 + (uv1 - uv0) * weight;
+        return {true, i, weight, uv, p0 + (p1 - p0) * weight};
+    }
+
+    return {};
+}
+
+PlaneBrepEdgeIntersection3d Intersect(
+    const Plane& plane,
+    const BrepEdge& edge,
+    const GeometryTolerance3d& tolerance)
+{
+    if (!plane.IsValid(tolerance.distanceEpsilon) || !edge.IsValid(tolerance) || edge.Curve() == nullptr)
+    {
+        return {};
+    }
+
+    const PlaneCurveIntersection3d hit = Intersect(plane, *edge.Curve(), tolerance);
+    if (!hit.intersects)
+    {
+        return {};
+    }
+    return {true, hit.curveParameter, hit.point};
+}
+
 PlanePlaneIntersection3d Intersect(
     const Plane& first,
     const Plane& second,

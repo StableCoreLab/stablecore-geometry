@@ -452,6 +452,44 @@ struct GEOMETRY_API LineTriangleMeshIntersection3d
     }
 };
 
+struct GEOMETRY_API PlaneCurveIntersection3d
+{
+    bool intersects{false};
+    double curveParameter{0.0};
+    Point3d point{};
+
+    [[nodiscard]] bool IsValid() const
+    {
+        return !intersects || (point.IsValid() && std::isfinite(curveParameter));
+    }
+};
+
+struct GEOMETRY_API PlaneCurveOnSurfaceIntersection3d
+{
+    bool intersects{false};
+    std::size_t segmentIndex{0};
+    double segmentParameter{0.0};
+    Point2d uv{};
+    Point3d point{};
+
+    [[nodiscard]] bool IsValid() const
+    {
+        return !intersects || (point.IsValid() && uv.IsValid() && std::isfinite(segmentParameter));
+    }
+};
+
+struct GEOMETRY_API PlaneBrepEdgeIntersection3d
+{
+    bool intersects{false};
+    double edgeParameter{0.0};
+    Point3d point{};
+
+    [[nodiscard]] bool IsValid() const
+    {
+        return !intersects || (point.IsValid() && std::isfinite(edgeParameter));
+    }
+};
+
 struct GEOMETRY_API PlanePlaneIntersection3d
 {
     bool intersects{false};
