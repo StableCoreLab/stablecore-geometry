@@ -34,4 +34,8 @@ struct GEOMETRY_API TriangleMeshRepair3d
 [[nodiscard]] GEOMETRY_API TriangleMeshRepair3d CloseSinglePlanarBoundaryLoop(
     const TriangleMesh& mesh,
     double eps = 1e-9);
+
+[[nodiscard]] GEOMETRY_API TriangleMeshRepair3d ClosePlanarBoundaryLoops(
+    const TriangleMesh& mesh,
+    double eps = 1e-9);
 } // namespace geometry::sdk

@@ -247,6 +247,7 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
   - `GeometryMeshOps` 已加入 orientation consistency 与 shell 分组查询
   - `GeometryMeshRepair` 已加入流形 triangle mesh 的最小 consistent-orientation repair
   - `GeometryMeshRepair` 已加入 single planar boundary loop 的最小 closing repair
+  - `GeometryMeshRepair` 已加入 multi planar boundary loops 的最小批量 closing repair
 - `polyhedron-core` 已起步：
   - `include/sdk/PolyhedronLoop3d.h`
   - `include/sdk/PolyhedronFace3d.h`
@@ -266,7 +267,7 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
   - `ExtractBoundaryEdges` / `ExtractBoundaryLoops` / `IsClosedTriangleMesh`
   - `ExtractNonManifoldEdges` / `IsManifoldTriangleMesh` / `ComputeTriangleConnectedComponents`
   - `IsConsistentlyOrientedTriangleMesh` / `ComputeMeshShells`
-  - `OrientTriangleMeshConsistently(...)` / `CloseSinglePlanarBoundaryLoop(...)`
+  - `OrientTriangleMeshConsistently(...)` / `CloseSinglePlanarBoundaryLoop(...)` / `ClosePlanarBoundaryLoops(...)`
   - `MeshValidation3d`
   - `Tessellate(PlaneSurface, ...)`
   - `ConvertToTriangleMesh(PolyhedronFace3d / PolyhedronBody, ...)`
@@ -288,6 +289,7 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
 - `TriangleMesh` 已接上 orientation consistency 与 shell 分组的最小查询层
 - `TriangleMesh` 已接上流形场景下的最小 consistent-orientation repair
 - `TriangleMesh` 已接上 single planar boundary loop 的最小 closing repair
+- `TriangleMesh` 已接上 multi planar boundary loops 的最小批量 closing repair
 - `PolyhedronBody` 已接上平面 face / body 到 `TriangleMesh` 的最小 conversion 路径
 - `PolyhedronFace3d` 已接上局部平面 `Polygon2d` 投影入口，开始进入 projected 2D polygon workflow
 - `PolyhedronBody` 已有平面 face / loop / body 的最小骨架，但尚未接 projected 2D polygon workflow
@@ -299,7 +301,7 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
 如果继续沿路线图推进，当前最合理的下一步是：
 
 - 继续扩展 `trianglemesh-core`
-  - 补更广泛 surface 的 conversion 入口，以及多 boundary loop / 非平面边界场景下的 mesh stitching / boundary closing / shell repair
+  - 补更广泛 surface 的 conversion 入口，以及非平面边界 / stitching / boundary merge 场景下的 mesh closing / shell repair
 - 或者进入 `polyhedron-core`
   - 将当前平面 face workflow 继续推广到更一般的 planar section / face rebuild / face merge
   - 再补 projected 2D polygon 驱动的多孔 / 更复杂 planar face 路径

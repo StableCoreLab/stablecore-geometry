@@ -349,42 +349,70 @@ TriangleMeshRepair3d CloseSinglePlanarBoundaryLoop(const TriangleMesh& mesh, dou
         return {false, MeshRepairIssue3d::UnsupportedBoundaryTopology, {}};
     }
 
-    const MeshBoundaryLoop3d& loop = boundaryLoops.front();
-    std::vector<Point3d> loopVertices;
-    loopVertices.reserve(loop.vertexIndices.size());
-    for (std::size_t vertexIndex : loop.vertexIndices)
+    return ClosePlanarBoundaryLoops(mesh, eps);
+}
+
+TriangleMeshRepair3d ClosePlanarBoundaryLoops(const TriangleMesh& mesh, double eps)
+{
+    if (!mesh.IsValid(eps))
     {
-        loopVertices.push_back(mesh.VertexAt(vertexIndex));
+        return {false, MeshRepairIssue3d::InvalidMesh, {}};
     }
 
-    const PlaneBasis basis = BuildPlaneBasis(loopVertices, eps);
-    if (!IsPlanarLoop(loopVertices, basis, eps))
+    if (!IsManifoldTriangleMesh(mesh))
     {
-        return {false, MeshRepairIssue3d::NonPlanarBoundary, {}};
+        return {false, MeshRepairIssue3d::NonManifold, {}};
     }
 
-    std::vector<Point2d> projected;
-    projected.reserve(loopVertices.size());
-    for (const Point3d& vertex : loopVertices)
+    const auto boundaryLoops = ExtractBoundaryLoops(mesh);
+    if (boundaryLoops.empty())
     {
-        projected.push_back(ProjectToPlane(vertex, basis));
-    }
-
-    std::vector<TriangleMesh::TriangleIndices> capTriangles;
-    capTriangles.reserve(projected.size() >= 2 ? projected.size() - 2 : 0);
-    if (!TriangulateSimplePolygon(projected, capTriangles, eps))
-    {
-        return {false, MeshRepairIssue3d::NonPlanarBoundary, {}};
+        return {false, MeshRepairIssue3d::UnsupportedBoundaryTopology, {}};
     }
 
     TriangleMesh repaired = mesh;
     auto& triangles = repaired.Triangles();
-    for (const TriangleMesh::TriangleIndices& tri : capTriangles)
+    for (const MeshBoundaryLoop3d& loop : boundaryLoops)
     {
-        triangles.push_back(TriangleMesh::TriangleIndices{
-            loop.vertexIndices[tri[0]],
-            loop.vertexIndices[tri[1]],
-            loop.vertexIndices[tri[2]]});
+        if (!loop.closed)
+        {
+            return {false, MeshRepairIssue3d::UnsupportedBoundaryTopology, {}};
+        }
+
+        std::vector<Point3d> loopVertices;
+        loopVertices.reserve(loop.vertexIndices.size());
+        for (std::size_t vertexIndex : loop.vertexIndices)
+        {
+            loopVertices.push_back(mesh.VertexAt(vertexIndex));
+        }
+
+        const PlaneBasis basis = BuildPlaneBasis(loopVertices, eps);
+        if (!IsPlanarLoop(loopVertices, basis, eps))
+        {
+            return {false, MeshRepairIssue3d::NonPlanarBoundary, {}};
+        }
+
+        std::vector<Point2d> projected;
+        projected.reserve(loopVertices.size());
+        for (const Point3d& vertex : loopVertices)
+        {
+            projected.push_back(ProjectToPlane(vertex, basis));
+        }
+
+        std::vector<TriangleMesh::TriangleIndices> capTriangles;
+        capTriangles.reserve(projected.size() >= 2 ? projected.size() - 2 : 0);
+        if (!TriangulateSimplePolygon(projected, capTriangles, eps))
+        {
+            return {false, MeshRepairIssue3d::NonPlanarBoundary, {}};
+        }
+
+        for (const TriangleMesh::TriangleIndices& tri : capTriangles)
+        {
+            triangles.push_back(TriangleMesh::TriangleIndices{
+                loop.vertexIndices[tri[0]],
+                loop.vertexIndices[tri[1]],
+                loop.vertexIndices[tri[2]]});
+        }
     }
 
     TriangleMeshRepair3d oriented = OrientTriangleMeshConsistently(repaired, eps);

@@ -64,6 +64,7 @@ using geometry::sdk::ComputeVertexNormals;
 using geometry::sdk::IsClosedTriangleMesh;
 using geometry::sdk::IsConsistentlyOrientedTriangleMesh;
 using geometry::sdk::IsManifoldTriangleMesh;
+using geometry::sdk::ClosePlanarBoundaryLoops;
 using geometry::sdk::OrientTriangleMeshConsistently;
 using geometry::sdk::CloseSinglePlanarBoundaryLoop;
 
@@ -377,9 +378,13 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(disconnectedComponents.size() == 2);
     assert(disconnectedComponents[0].size() == 1);
     assert(disconnectedComponents[1].size() == 1);
-    const TriangleMeshRepair3d closedDisconnectedMesh = CloseSinglePlanarBoundaryLoop(disconnectedMesh);
-    assert(!closedDisconnectedMesh.success);
-    assert(closedDisconnectedMesh.issue == MeshRepairIssue3d::UnsupportedBoundaryTopology);
+    const TriangleMeshRepair3d closedDisconnectedMesh = ClosePlanarBoundaryLoops(disconnectedMesh);
+    assert(closedDisconnectedMesh.success);
+    assert(closedDisconnectedMesh.issue == MeshRepairIssue3d::None);
+    assert(closedDisconnectedMesh.mesh.IsValid());
+    assert(IsClosedTriangleMesh(closedDisconnectedMesh.mesh));
+    assert(IsManifoldTriangleMesh(closedDisconnectedMesh.mesh));
+    assert(IsConsistentlyOrientedTriangleMesh(closedDisconnectedMesh.mesh));
     const std::vector<MeshBoundaryLoop3d> disconnectedBoundaryLoops = ExtractBoundaryLoops(disconnectedMesh);
     assert(disconnectedBoundaryLoops.size() == 2);
     assert(disconnectedBoundaryLoops[0].closed);
