@@ -143,6 +143,23 @@ struct GEOMETRY_API SurfaceProjection3d
     }
 };
 
+struct GEOMETRY_API BrepFaceProjection3d
+{
+    bool success{false};
+    bool onTrimmedFace{false};
+    bool onBoundary{false};
+    Point3d point{};
+    double u{0.0};
+    double v{0.0};
+    double distanceSquared{0.0};
+
+    [[nodiscard]] bool IsValid() const
+    {
+        return !success || (point.IsValid() && std::isfinite(u) && std::isfinite(v) &&
+                            std::isfinite(distanceSquared) && distanceSquared >= 0.0);
+    }
+};
+
 struct GEOMETRY_API LinePlaneIntersection3d
 {
     bool intersects{false};

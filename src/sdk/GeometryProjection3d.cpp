@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 
+#include "sdk/GeometryRelation.h"
 #include "sdk/PlaneSurface.h"
 
 namespace geometry::sdk
@@ -99,6 +100,86 @@ struct PlaneProjectionBasis
 
     return {true, surface.PointAt(bestU, bestV), bestU, bestV, bestDistanceSquared};
 }
+
+[[nodiscard]] bool BuildPolygonFromBrepFaceTrims(
+    const BrepFace& face,
+    Polygon2d& polygon)
+{
+    if (face.OuterTrim().SupportSurface() == nullptr || !face.OuterTrim().IsValid())
+    {
+        return false;
+    }
+
+    std::vector<Polyline2d> holes;
+    holes.reserve(face.HoleTrims().size());
+    for (const CurveOnSurface& trim : face.HoleTrims())
+    {
+        if (!trim.IsValid())
+        {
+            return false;
+        }
+        holes.push_back(trim.UvCurve());
+    }
+
+    polygon = Polygon2d(face.OuterTrim().UvCurve(), std::move(holes));
+    return polygon.IsValid();
+}
+
+[[nodiscard]] LineProjection3d ProjectPointToSegment3d(
+    const Point3d& point,
+    const Point3d& start,
+    const Point3d& end,
+    double eps)
+{
+    const Vector3d direction = end - start;
+    const double lengthSquared = direction.LengthSquared();
+    if (lengthSquared <= eps * eps)
+    {
+        return {start, 0.0, (point - start).LengthSquared(), true};
+    }
+
+    const double parameter = std::clamp(Dot(point - start, direction) / lengthSquared, 0.0, 1.0);
+    const Point3d projectedPoint = start + direction * parameter;
+    return {projectedPoint, parameter, (point - projectedPoint).LengthSquared(), true};
+}
+
+[[nodiscard]] bool UpdateTrimClosestProjection(
+    const Point3d& point,
+    const CurveOnSurface& trim,
+    BrepFaceProjection3d& best,
+    bool onBoundary)
+{
+    if (!trim.IsValid() || trim.PointCount() < 2)
+    {
+        return false;
+    }
+
+    bool improved = false;
+    const std::size_t pointCount = trim.PointCount();
+    const std::size_t segmentCount = trim.UvCurve().IsClosed() ? pointCount : pointCount - 1;
+    for (std::size_t i = 0; i < segmentCount; ++i)
+    {
+        const std::size_t j = (i + 1) % pointCount;
+        const LineProjection3d projected =
+            ProjectPointToSegment3d(point, trim.PointAt(i), trim.PointAt(j), geometry::kDefaultEpsilon);
+        if (!best.success || projected.distanceSquared < best.distanceSquared)
+        {
+            const Point2d uv0 = trim.UvPointAt(i);
+            const Point2d uv1 = trim.UvPointAt(j);
+            const Point2d uv = uv0 + (uv1 - uv0) * projected.parameter;
+            best.success = true;
+            best.onTrimmedFace = false;
+            best.onBoundary = onBoundary;
+            best.point = projected.point;
+            best.u = uv.x;
+            best.v = uv.y;
+            best.distanceSquared = projected.distanceSquared;
+            improved = true;
+        }
+    }
+
+    return improved;
+}
 } // namespace
 
 LineProjection3d ProjectPointToLine(
@@ -193,6 +274,51 @@ SurfaceProjection3d ProjectPointToSurface(
     }
 
     return RefineSurfaceProjection(point, surface, bestU, bestV, tolerance);
+}
+
+BrepFaceProjection3d ProjectPointToBrepFace(
+    const Point3d& point,
+    const BrepFace& face,
+    const GeometryTolerance3d& tolerance)
+{
+    BrepFaceProjection3d best{};
+    if (!face.IsValid(tolerance) || face.SupportSurface() == nullptr)
+    {
+        return best;
+    }
+
+    const SurfaceProjection3d surfaceProjection =
+        ProjectPointToSurface(point, *face.SupportSurface(), tolerance);
+    if (surfaceProjection.success)
+    {
+        Polygon2d polygon{};
+        if (BuildPolygonFromBrepFaceTrims(face, polygon))
+        {
+            const PointContainment2d containment =
+                LocatePoint(Point2d{surfaceProjection.u, surfaceProjection.v}, polygon, tolerance.distanceEpsilon);
+            if (containment == PointContainment2d::Inside || containment == PointContainment2d::OnBoundary)
+            {
+                best.success = true;
+                best.onTrimmedFace = true;
+                best.onBoundary = containment == PointContainment2d::OnBoundary;
+                best.point = surfaceProjection.point;
+                best.u = surfaceProjection.u;
+                best.v = surfaceProjection.v;
+                best.distanceSquared = surfaceProjection.distanceSquared;
+                return best;
+            }
+        }
+    }
+
+    if (face.OuterTrim().IsValid())
+    {
+        UpdateTrimClosestProjection(point, face.OuterTrim(), best, true);
+    }
+    for (const CurveOnSurface& holeTrim : face.HoleTrims())
+    {
+        UpdateTrimClosestProjection(point, holeTrim, best, true);
+    }
+    return best;
 }
 
 FaceProjection3d ProjectFaceToPolygon2d(const PolyhedronFace3d& face, const GeometryTolerance3d& tolerance)

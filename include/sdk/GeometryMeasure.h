@@ -35,6 +35,14 @@ namespace geometry::sdk
     const Point3d& point,
     const Surface& surface,
     const GeometryTolerance3d& tolerance = {});
+[[nodiscard]] GEOMETRY_API double DistanceSquared(
+    const Point3d& point,
+    const BrepFace& face,
+    const GeometryTolerance3d& tolerance = {});
+[[nodiscard]] GEOMETRY_API double Distance(
+    const Point3d& point,
+    const BrepFace& face,
+    const GeometryTolerance3d& tolerance = {});
 
 [[nodiscard]] GEOMETRY_API double Length(const LineSegment3d& segment);
 [[nodiscard]] GEOMETRY_API double Length(const Curve3d& curve, std::size_t sampleCount = 32);
