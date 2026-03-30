@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <set>
 
+#include "sdk/GeometryRelation.h"
 #include "sdk/PlaneSurface.h"
 
 namespace geometry::sdk
@@ -91,6 +93,41 @@ namespace
     }
 
     return {true, false, false, bestT, bestU, bestV, pointOnSurface};
+}
+
+[[nodiscard]] bool IsTrimPointInsideFace(
+    const BrepFace& face,
+    double u,
+    double v,
+    double eps,
+    bool& onBoundary)
+{
+    onBoundary = false;
+    if (!face.OuterTrim().IsValid())
+    {
+        return true;
+    }
+
+    std::vector<Polyline2d> holes;
+    holes.reserve(face.HoleTrims().size());
+    for (const CurveOnSurface& trim : face.HoleTrims())
+    {
+        if (!trim.IsValid())
+        {
+            return false;
+        }
+        holes.push_back(trim.UvCurve());
+    }
+
+    const Polygon2d polygon(face.OuterTrim().UvCurve(), std::move(holes));
+    if (!polygon.IsValid())
+    {
+        return false;
+    }
+
+    const PointContainment2d containment = LocatePoint(Point2d{u, v}, polygon, eps);
+    onBoundary = containment == PointContainment2d::OnBoundary;
+    return containment == PointContainment2d::Inside || onBoundary;
 }
 } // namespace
 
@@ -204,6 +241,94 @@ LineSurfaceIntersection3d Intersect(
     }
 
     return RefineLineSurfaceIntersection(line, surface, bestT, bestU, bestV, tolerance);
+}
+
+LineBrepFaceIntersection3d Intersect(
+    const Line3d& line,
+    const BrepFace& face,
+    const GeometryTolerance3d& tolerance)
+{
+    if (!line.IsValid(tolerance.distanceEpsilon) || !face.IsValid(tolerance) || face.SupportSurface() == nullptr)
+    {
+        return {};
+    }
+
+    const LineSurfaceIntersection3d surfaceIntersection =
+        Intersect(line, *face.SupportSurface(), tolerance);
+    if (!surfaceIntersection.intersects)
+    {
+        return {};
+    }
+
+    bool onBoundary = false;
+    if (!IsTrimPointInsideFace(face, surfaceIntersection.u, surfaceIntersection.v, tolerance.distanceEpsilon, onBoundary))
+    {
+        return {};
+    }
+
+    return {
+        true,
+        onBoundary,
+        surfaceIntersection.lineParameter,
+        surfaceIntersection.u,
+        surfaceIntersection.v,
+        surfaceIntersection.point};
+}
+
+LineBrepBodyIntersection3d Intersect(
+    const Line3d& line,
+    const BrepBody& body,
+    const GeometryTolerance3d& tolerance)
+{
+    LineBrepBodyIntersection3d result{};
+    if (!line.IsValid(tolerance.distanceEpsilon) || !body.IsValid(tolerance))
+    {
+        return result;
+    }
+
+    std::vector<std::pair<std::size_t, LineBrepFaceIntersection3d>> collected;
+    std::set<std::pair<long long, std::size_t>> dedup;
+    std::size_t faceIndex = 0;
+    for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
+    {
+        const BrepShell shell = body.ShellAt(shellIndex);
+        for (std::size_t localFaceIndex = 0; localFaceIndex < shell.FaceCount(); ++localFaceIndex, ++faceIndex)
+        {
+            const LineBrepFaceIntersection3d hit =
+                Intersect(line, shell.FaceAt(localFaceIndex), tolerance);
+            if (!hit.intersects)
+            {
+                continue;
+            }
+
+            const long long bucket = static_cast<long long>(
+                std::llround(hit.lineParameter / std::max(tolerance.parameterEpsilon, geometry::kDefaultEpsilon)));
+            if (!dedup.emplace(bucket, faceIndex).second)
+            {
+                continue;
+            }
+
+            collected.emplace_back(faceIndex, hit);
+        }
+    }
+
+    std::sort(
+        collected.begin(),
+        collected.end(),
+        [](const std::pair<std::size_t, LineBrepFaceIntersection3d>& lhs,
+           const std::pair<std::size_t, LineBrepFaceIntersection3d>& rhs)
+        {
+            return lhs.second.lineParameter < rhs.second.lineParameter;
+        });
+
+    for (const auto& [hitFaceIndex, hit] : collected)
+    {
+        result.faceIndices.push_back(hitFaceIndex);
+        result.hits.push_back(hit);
+    }
+
+    result.intersects = !result.hits.empty();
+    return result;
 }
 
 PlanePlaneIntersection3d Intersect(

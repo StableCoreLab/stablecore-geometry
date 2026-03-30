@@ -3,6 +3,7 @@
 #include <cmath>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "common/Epsilon.h"
 #include "export/GeometryExport.h"
@@ -188,6 +189,51 @@ struct GEOMETRY_API LineSurfaceIntersection3d
     {
         return !intersects || (point.IsValid() && std::isfinite(lineParameter) && std::isfinite(u) &&
                                std::isfinite(v));
+    }
+};
+
+struct GEOMETRY_API LineBrepFaceIntersection3d
+{
+    bool intersects{false};
+    bool onBoundary{false};
+    double lineParameter{0.0};
+    double u{0.0};
+    double v{0.0};
+    Point3d point{};
+
+    [[nodiscard]] bool IsValid() const
+    {
+        return !intersects || (point.IsValid() && std::isfinite(lineParameter) && std::isfinite(u) &&
+                               std::isfinite(v));
+    }
+};
+
+struct GEOMETRY_API LineBrepBodyIntersection3d
+{
+    bool intersects{false};
+    std::vector<std::size_t> faceIndices{};
+    std::vector<LineBrepFaceIntersection3d> hits{};
+
+    [[nodiscard]] bool IsValid() const
+    {
+        if (!intersects)
+        {
+            return true;
+        }
+
+        if (faceIndices.size() != hits.size())
+        {
+            return false;
+        }
+
+        for (const LineBrepFaceIntersection3d& hit : hits)
+        {
+            if (!hit.IsValid())
+            {
+                return false;
+            }
+        }
+        return true;
     }
 };
 

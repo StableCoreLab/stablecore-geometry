@@ -831,6 +831,23 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(brepValidation.issue == BrepValidationIssue3d::None);
     GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Area(brepFace), 4.0, 1e-12);
     GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Bounds(brepBody).MinPoint().z, 5.0, 1e-12);
+    const auto brepFaceLineIntersection = geometry::sdk::Intersect(
+        Line3d::FromOriginAndDirection(Point3d{1.0, 1.0, 8.0}, Vector3d{0.0, 0.0, -1.0}),
+        brepFace);
+    assert(brepFaceLineIntersection.intersects);
+    assert(brepFaceLineIntersection.IsValid());
+    assert(!brepFaceLineIntersection.onBoundary);
+    GEOMETRY_TEST_ASSERT_NEAR(brepFaceLineIntersection.lineParameter, 3.0, 1e-12);
+    assert(brepFaceLineIntersection.point.AlmostEquals(Point3d{1.0, 1.0, 5.0}, 1e-12));
+    const auto brepBodyLineIntersection = geometry::sdk::Intersect(
+        Line3d::FromOriginAndDirection(Point3d{1.0, 1.0, 8.0}, Vector3d{0.0, 0.0, -1.0}),
+        brepBody);
+    assert(brepBodyLineIntersection.intersects);
+    assert(brepBodyLineIntersection.IsValid());
+    assert(brepBodyLineIntersection.faceIndices.size() == 1);
+    assert(brepBodyLineIntersection.hits.size() == 1);
+    assert(brepBodyLineIntersection.faceIndices[0] == 0);
+    assert(brepBodyLineIntersection.hits[0].point.AlmostEquals(Point3d{1.0, 1.0, 5.0}, 1e-12));
     const auto brepFaceProjectionInside = ProjectPointToBrepFace(Point3d{1.0, 1.0, 8.0}, brepFace);
     assert(brepFaceProjectionInside.success);
     assert(brepFaceProjectionInside.IsValid());
@@ -889,6 +906,22 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(!invalidBrepValidation.valid);
     assert(invalidBrepValidation.issue == BrepValidationIssue3d::InvalidShell);
 
+    const BrepBody invalidAdjacencyBody(
+        brepVertices,
+        brepEdges,
+        {
+            BrepShell(
+                {
+                    brepFace,
+                    brepFace,
+                    brepFace,
+                },
+                false),
+        });
+    const auto invalidAdjacencyValidation = Validate(invalidAdjacencyBody);
+    assert(!invalidAdjacencyValidation.valid);
+    assert(invalidAdjacencyValidation.issue == BrepValidationIssue3d::InvalidFaceAdjacency);
+
     const BrepFace brepFaceWithoutTrim(
         std::shared_ptr<Surface>(planeSurface.Clone().release()),
         brepOuterLoop);
@@ -937,6 +970,11 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(nurbsBrepFaceMesh.success);
     assert(nurbsBrepFaceMesh.mesh.IsValid());
     assert(nurbsBrepFaceMesh.mesh.TriangleCount() == 2);
+    const auto nurbsBrepFaceLineIntersection = geometry::sdk::Intersect(
+        Line3d::FromOriginAndDirection(Point3d{1.0, 1.0, 3.0}, Vector3d{0.0, 0.0, -1.0}),
+        nurbsBrepFace);
+    assert(nurbsBrepFaceLineIntersection.intersects);
+    assert(nurbsBrepFaceLineIntersection.IsValid());
     const auto nurbsBrepFaceProjection = ProjectPointToBrepFace(Point3d{1.0, 1.0, 1.0}, nurbsBrepFace);
     assert(nurbsBrepFaceProjection.success);
     assert(nurbsBrepFaceProjection.IsValid());

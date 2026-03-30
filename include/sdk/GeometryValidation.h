@@ -61,7 +61,8 @@ enum class BrepValidationIssue3d
     EmptyBody,
     InvalidVertex,
     InvalidEdge,
-    InvalidShell
+    InvalidShell,
+    InvalidFaceAdjacency
 };
 
 struct GEOMETRY_API BrepValidation3d

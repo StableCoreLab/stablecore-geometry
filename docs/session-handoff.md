@@ -322,6 +322,8 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
 - `GeometryProjection` 已接上 `ProjectPointToBrepFace(...)`，当前优先走支撑曲面投影 + trim containment，落到 trim 外时保守回退到 trim polyline 边界最近点
 - `GeometryMeasure` 已接上 `Distance(point, surface)` / `DistanceSquared(point, surface)`，可直接消费 `PlaneSurface` 与当前最小 `NurbsSurface`
 - `GeometryMeasure` 已接上 `Distance(point, BrepFace)` / `DistanceSquared(point, BrepFace)`，可直接消费 planar / trimmed non-planar `BrepFace`
+- `GeometryIntersection3d` 已接上 `Intersect(Line3d, BrepFace, ...)` 与 `Intersect(Line3d, BrepBody, ...)`，当前复用 `line -> surface` 再走 trim containment / 多 face 聚合
+- `Validate(BrepBody, ...)` 已补最小 edge-use adjacency 校验：当前会拒绝 0 次引用或超过 2 次引用的 edge
 - `GeometryIntersection3d` 已接上 `Intersect(Line3d, Surface, ...)`，当前对 `PlaneSurface` 走解析求交，对一般 `Surface` 走保守采样 + 局部细化
 - `BrepVertex`、`BrepEdge`、`BrepCoedge`、`BrepLoop`、`BrepFace`、`BrepShell`、`BrepBody` 已不再只是名字 skeleton，已具备最小 topology ownership、bounds、validation 与 conservative healing 入口
 - 3D 服务层公开函数名已补齐并落了最小实现：`GeometryMeasure` / `GeometryHealing` / `Validate(BrepBody, ...)`

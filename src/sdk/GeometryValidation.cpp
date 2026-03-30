@@ -1,5 +1,7 @@
 #include "sdk/GeometryValidation.h"
 
+#include <map>
+
 #include "sdk/GeometryIntersection.h"
 #include "sdk/GeometryRelation.h"
 #include "sdk/GeometryShapeOps.h"
@@ -135,6 +137,25 @@ PolyhedronValidation3d Validate(const PolyhedronBody& body, double eps)
     return {true, PolyhedronValidationIssue3d::None, 0};
 }
 
+namespace
+{
+struct UndirectedEdgeKey
+{
+    std::size_t first{0};
+    std::size_t second{0};
+
+    [[nodiscard]] bool operator<(const UndirectedEdgeKey& other) const
+    {
+        return first < other.first || (first == other.first && second < other.second);
+    }
+};
+
+[[nodiscard]] UndirectedEdgeKey MakeUndirectedEdgeKey(std::size_t a, std::size_t b)
+{
+    return a < b ? UndirectedEdgeKey{a, b} : UndirectedEdgeKey{b, a};
+}
+} // namespace
+
 BrepValidation3d Validate(const BrepBody& body, const GeometryTolerance3d& tolerance)
 {
     if (body.IsEmpty())
@@ -169,6 +190,40 @@ BrepValidation3d Validate(const BrepBody& body, const GeometryTolerance3d& toler
     if (!body.IsValid(tolerance))
     {
         return {false, BrepValidationIssue3d::InvalidShell, 0};
+    }
+
+    std::map<UndirectedEdgeKey, std::size_t> edgeUseCounts;
+    for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
+    {
+        const BrepShell shell = body.ShellAt(shellIndex);
+        for (std::size_t faceIndex = 0; faceIndex < shell.FaceCount(); ++faceIndex)
+        {
+            const BrepFace face = shell.FaceAt(faceIndex);
+            auto accumulateLoop = [&](const BrepLoop& loop)
+            {
+                for (const BrepCoedge& coedge : loop.Coedges())
+                {
+                    const BrepEdge edge = body.EdgeAt(coedge.EdgeIndex());
+                    ++edgeUseCounts[MakeUndirectedEdgeKey(edge.StartVertexIndex(), edge.EndVertexIndex())];
+                }
+            };
+
+            accumulateLoop(face.OuterLoop());
+            for (const BrepLoop& hole : face.HoleLoops())
+            {
+                accumulateLoop(hole);
+            }
+        }
+    }
+
+    for (std::size_t edgeIndex = 0; edgeIndex < body.EdgeCount(); ++edgeIndex)
+    {
+        const BrepEdge edge = body.EdgeAt(edgeIndex);
+        const auto it = edgeUseCounts.find(MakeUndirectedEdgeKey(edge.StartVertexIndex(), edge.EndVertexIndex()));
+        if (it == edgeUseCounts.end() || it->second == 0 || it->second > 2)
+        {
+            return {false, BrepValidationIssue3d::InvalidFaceAdjacency, edgeIndex};
+        }
     }
 
     return {true, BrepValidationIssue3d::None, 0};
