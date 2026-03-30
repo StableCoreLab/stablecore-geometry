@@ -162,6 +162,107 @@ LinePlaneIntersection3d Intersect(
     return result;
 }
 
+LineCurveIntersection3d Intersect(
+    const Line3d& line,
+    const Curve3d& curve,
+    const GeometryTolerance3d& tolerance)
+{
+    if (!line.IsValid(tolerance.distanceEpsilon) || !curve.IsValid(tolerance))
+    {
+        return {};
+    }
+
+    if (const auto* lineCurve = dynamic_cast<const LineCurve3d*>(&curve))
+    {
+        const Line3d curveLine = lineCurve->Line();
+        const Vector3d cross = Cross(line.direction, curveLine.direction);
+        if (cross.LengthSquared() <= tolerance.distanceEpsilon * tolerance.distanceEpsilon)
+        {
+            const double separationSquared =
+                Cross(curveLine.origin - line.origin, line.direction).LengthSquared() /
+                std::max(line.direction.LengthSquared(), tolerance.distanceEpsilon);
+            if (separationSquared > tolerance.distanceEpsilon * tolerance.distanceEpsilon)
+            {
+                return {};
+            }
+
+            const Intervald curveRange = lineCurve->ParameterRange();
+            const double curveParameter = curveRange.min;
+            const Point3d point = lineCurve->PointAt(curveParameter);
+            const double lineParameter =
+                Dot(point - line.origin, line.direction) /
+                std::max(line.direction.LengthSquared(), tolerance.parameterEpsilon);
+            return {true, lineParameter, curveParameter, point};
+        }
+
+        const Vector3d delta = curveLine.origin - line.origin;
+        const double a = line.direction.LengthSquared();
+        const double b = Dot(line.direction, curveLine.direction);
+        const double c = curveLine.direction.LengthSquared();
+        const double d = Dot(line.direction, delta);
+        const double e = Dot(curveLine.direction, delta);
+        const double denominator = a * c - b * b;
+        if (std::abs(denominator) <= tolerance.distanceEpsilon)
+        {
+            return {};
+        }
+
+        const double lineParameter = (d * c - b * e) / denominator;
+        const double curveParameter = (a * e - b * d) / denominator;
+        const Intervald curveRange = lineCurve->ParameterRange();
+        if (!curveRange.Contains(curveParameter, tolerance.parameterEpsilon))
+        {
+            return {};
+        }
+
+        const Point3d pointOnLine = line.PointAt(lineParameter);
+        const Point3d pointOnCurve = lineCurve->PointAt(curveParameter);
+        if (!pointOnLine.AlmostEquals(pointOnCurve, tolerance.distanceEpsilon))
+        {
+            return {};
+        }
+
+        return {true, lineParameter, curveParameter, pointOnCurve};
+    }
+
+    const Intervald range = curve.ParameterRange();
+    if (!range.IsValid())
+    {
+        return {};
+    }
+
+    constexpr std::size_t sampleCount = 33;
+    double bestLineParameter = 0.0;
+    double bestCurveParameter = range.min;
+    double bestDistanceSquared = (line.origin - curve.PointAt(bestCurveParameter)).LengthSquared();
+    for (std::size_t i = 0; i < sampleCount; ++i)
+    {
+        const double curveParameter = i + 1 == sampleCount
+                                          ? range.max
+                                          : range.min + range.Length() * static_cast<double>(i) /
+                                                             static_cast<double>(sampleCount - 1);
+        const Point3d pointOnCurve = curve.PointAt(curveParameter);
+        const double lineParameter =
+            Dot(pointOnCurve - line.origin, line.direction) /
+            std::max(line.direction.LengthSquared(), tolerance.parameterEpsilon);
+        const Point3d pointOnLine = line.PointAt(lineParameter);
+        const double distanceSquared = (pointOnLine - pointOnCurve).LengthSquared();
+        if (distanceSquared < bestDistanceSquared)
+        {
+            bestLineParameter = lineParameter;
+            bestCurveParameter = curveParameter;
+            bestDistanceSquared = distanceSquared;
+        }
+    }
+
+    if (bestDistanceSquared > tolerance.distanceEpsilon * tolerance.distanceEpsilon)
+    {
+        return {};
+    }
+
+    return {true, bestLineParameter, bestCurveParameter, curve.PointAt(bestCurveParameter)};
+}
+
 LineSurfaceIntersection3d Intersect(
     const Line3d& line,
     const Surface& surface,

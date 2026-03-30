@@ -29,6 +29,14 @@ namespace geometry::sdk
 [[nodiscard]] GEOMETRY_API double Distance(const Point3d& point, const Plane& plane);
 [[nodiscard]] GEOMETRY_API double DistanceSquared(
     const Point3d& point,
+    const Curve3d& curve,
+    const GeometryTolerance3d& tolerance = {});
+[[nodiscard]] GEOMETRY_API double Distance(
+    const Point3d& point,
+    const Curve3d& curve,
+    const GeometryTolerance3d& tolerance = {});
+[[nodiscard]] GEOMETRY_API double DistanceSquared(
+    const Point3d& point,
     const Surface& surface,
     const GeometryTolerance3d& tolerance = {});
 [[nodiscard]] GEOMETRY_API double Distance(

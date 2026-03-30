@@ -247,6 +247,55 @@ LineProjection3d ProjectPointToLine(
     return LineProjection3d{projectedPoint, parameter, (point - projectedPoint).LengthSquared(), true};
 }
 
+CurveProjection3d ProjectPointToCurve(
+    const Point3d& point,
+    const Curve3d& curve,
+    const GeometryTolerance3d& tolerance)
+{
+    if (!curve.IsValid(tolerance))
+    {
+        return {};
+    }
+
+    if (const auto* lineCurve = dynamic_cast<const LineCurve3d*>(&curve))
+    {
+        const LineProjection3d lineProjection = ProjectPointToLine(point, lineCurve->Line(), tolerance);
+        const Intervald range = lineCurve->ParameterRange();
+        const double parameter = std::clamp(lineProjection.parameter, range.min, range.max);
+        const Point3d projectedPoint = lineCurve->PointAt(parameter);
+        return {true, projectedPoint, parameter, (point - projectedPoint).LengthSquared()};
+    }
+
+    const Intervald range = curve.ParameterRange();
+    if (!range.IsValid())
+    {
+        return {};
+    }
+
+    constexpr std::size_t sampleCount = 17;
+    double bestParameter = range.min;
+    Point3d bestPoint = curve.PointAt(bestParameter);
+    double bestDistanceSquared = (point - bestPoint).LengthSquared();
+    for (std::size_t i = 0; i < sampleCount; ++i)
+    {
+        const double parameter = i + 1 == sampleCount
+                                     ? range.max
+                                     : range.min + range.Length() * static_cast<double>(i) /
+                                                        static_cast<double>(sampleCount - 1);
+        const Point3d candidatePoint = curve.PointAt(parameter);
+        const double candidateDistanceSquared = (point - candidatePoint).LengthSquared();
+        if (candidateDistanceSquared < bestDistanceSquared)
+        {
+            bestParameter = parameter;
+            bestPoint = candidatePoint;
+            bestDistanceSquared = candidateDistanceSquared;
+        }
+    }
+
+    const BrepEdgeProjection3d refined = RefineCurveProjection(point, curve, bestParameter, tolerance);
+    return {refined.success, refined.point, refined.parameter, refined.distanceSquared};
+}
+
 PlaneProjection3d ProjectPointToPlane(
     const Point3d& point,
     const Plane& plane,

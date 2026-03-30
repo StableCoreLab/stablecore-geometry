@@ -301,6 +301,10 @@ TEST(SdkTest, CoversCurrentCapabilities)
     const auto nurbsCurveEval = nurbsCurve.Evaluate(0.25, 2);
     assert(nurbsCurveEval.IsValid());
     assert(nurbsCurveEval.derivativeOrder == 2);
+    const auto nurbsCurveProjection = geometry::sdk::ProjectPointToCurve(Point3d{1.0, 0.0, 1.0}, nurbsCurve);
+    assert(nurbsCurveProjection.success);
+    assert(nurbsCurveProjection.IsValid());
+    GEOMETRY_TEST_ASSERT_NEAR(nurbsCurveProjection.point.z, 0.0, 1e-12);
     GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Length(nurbsCurve, 64), std::sqrt(2.0) * 2.0, 5e-2);
     const geometry::Box3d nurbsCurveBounds = nurbsCurve.Bounds();
     assert(nurbsCurveBounds.IsValid());
@@ -346,6 +350,17 @@ TEST(SdkTest, CoversCurrentCapabilities)
     const LineCurve3d upperRail = LineCurve3d::FromLine(
         Line3d::FromOriginAndDirection(Point3d{0.0, 0.0, 2.0}, Vector3d{2.0, 0.0, 0.0}),
         Intervald{0.0, 1.0});
+    const auto lineCurveProjection = geometry::sdk::ProjectPointToCurve(Point3d{0.5, 1.0, 0.0}, lowerRail);
+    assert(lineCurveProjection.success);
+    assert(lineCurveProjection.IsValid());
+    GEOMETRY_TEST_ASSERT_NEAR(lineCurveProjection.parameter, 0.25, 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Distance(Point3d{0.5, 1.0, 0.0}, lowerRail), 1.0, 1e-12);
+    const auto lineCurveIntersection = geometry::sdk::Intersect(
+        Line3d::FromOriginAndDirection(Point3d{0.5, 1.0, 0.0}, Vector3d{0.0, -1.0, 0.0}),
+        lowerRail);
+    assert(lineCurveIntersection.intersects);
+    assert(lineCurveIntersection.IsValid());
+    GEOMETRY_TEST_ASSERT_NEAR(lineCurveIntersection.curveParameter, 0.25, 1e-12);
     const RuledSurface ruledSurface = RuledSurface::FromCurves(lowerRail, upperRail);
     assert(ruledSurface.IsValid());
     assert(ruledSurface.FirstCurve() != nullptr);

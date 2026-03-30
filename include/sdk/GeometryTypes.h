@@ -144,6 +144,20 @@ struct GEOMETRY_API SurfaceProjection3d
     }
 };
 
+struct GEOMETRY_API CurveProjection3d
+{
+    bool success{false};
+    Point3d point{};
+    double parameter{0.0};
+    double distanceSquared{0.0};
+
+    [[nodiscard]] bool IsValid() const
+    {
+        return !success || (point.IsValid() && std::isfinite(parameter) &&
+                            std::isfinite(distanceSquared) && distanceSquared >= 0.0);
+    }
+};
+
 struct GEOMETRY_API BrepFaceProjection3d
 {
     bool success{false};
@@ -302,6 +316,19 @@ struct GEOMETRY_API LineBrepEdgeIntersection3d
     [[nodiscard]] bool IsValid() const
     {
         return !intersects || (point.IsValid() && std::isfinite(lineParameter) && std::isfinite(edgeParameter));
+    }
+};
+
+struct GEOMETRY_API LineCurveIntersection3d
+{
+    bool intersects{false};
+    double lineParameter{0.0};
+    double curveParameter{0.0};
+    Point3d point{};
+
+    [[nodiscard]] bool IsValid() const
+    {
+        return !intersects || (point.IsValid() && std::isfinite(lineParameter) && std::isfinite(curveParameter));
     }
 };
 

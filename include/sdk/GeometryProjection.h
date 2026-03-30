@@ -45,6 +45,11 @@ namespace geometry::sdk
     const Plane& plane,
     const GeometryTolerance3d& tolerance = {});
 
+[[nodiscard]] GEOMETRY_API CurveProjection3d ProjectPointToCurve(
+    const Point3d& point,
+    const Curve3d& curve,
+    const GeometryTolerance3d& tolerance = {});
+
 [[nodiscard]] GEOMETRY_API SurfaceProjection3d ProjectPointToSurface(
     const Point3d& point,
     const Surface& surface,
