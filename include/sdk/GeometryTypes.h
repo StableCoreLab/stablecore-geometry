@@ -305,6 +305,51 @@ struct GEOMETRY_API LineBrepEdgeIntersection3d
     }
 };
 
+struct GEOMETRY_API LinePolyhedronFaceIntersection3d
+{
+    bool intersects{false};
+    bool onBoundary{false};
+    double lineParameter{0.0};
+    double u{0.0};
+    double v{0.0};
+    Point3d point{};
+
+    [[nodiscard]] bool IsValid() const
+    {
+        return !intersects || (point.IsValid() && std::isfinite(lineParameter) && std::isfinite(u) &&
+                               std::isfinite(v));
+    }
+};
+
+struct GEOMETRY_API LinePolyhedronBodyIntersection3d
+{
+    bool intersects{false};
+    std::vector<std::size_t> faceIndices{};
+    std::vector<LinePolyhedronFaceIntersection3d> hits{};
+
+    [[nodiscard]] bool IsValid() const
+    {
+        if (!intersects)
+        {
+            return true;
+        }
+
+        if (faceIndices.size() != hits.size())
+        {
+            return false;
+        }
+
+        for (const LinePolyhedronFaceIntersection3d& hit : hits)
+        {
+            if (!hit.IsValid())
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+};
+
 struct GEOMETRY_API PlanePlaneIntersection3d
 {
     bool intersects{false};

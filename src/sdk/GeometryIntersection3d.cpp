@@ -433,6 +433,98 @@ LineBrepBodyIntersection3d Intersect(
     return result;
 }
 
+LinePolyhedronFaceIntersection3d Intersect(
+    const Line3d& line,
+    const PolyhedronFace3d& face,
+    const GeometryTolerance3d& tolerance)
+{
+    if (!line.IsValid(tolerance.distanceEpsilon) || !face.IsValid(tolerance.distanceEpsilon))
+    {
+        return {};
+    }
+
+    const LinePlaneIntersection3d planeIntersection =
+        Intersect(line, face.SupportPlane(), tolerance);
+    if (!planeIntersection.intersects)
+    {
+        return {};
+    }
+
+    const FaceProjection3d faceProjection = ProjectFaceToPolygon2d(face, tolerance);
+    if (!faceProjection.success)
+    {
+        return {};
+    }
+
+    const Vector3d delta = planeIntersection.point - faceProjection.origin;
+    const double u = Dot(delta, faceProjection.uAxis);
+    const double v = Dot(delta, faceProjection.vAxis);
+    const PointContainment2d containment =
+        LocatePoint(Point2d{u, v}, faceProjection.polygon, tolerance.distanceEpsilon);
+    if (containment == PointContainment2d::Outside)
+    {
+        return {};
+    }
+
+    return {
+        true,
+        containment == PointContainment2d::OnBoundary,
+        planeIntersection.parameter,
+        u,
+        v,
+        planeIntersection.point};
+}
+
+LinePolyhedronBodyIntersection3d Intersect(
+    const Line3d& line,
+    const PolyhedronBody& body,
+    const GeometryTolerance3d& tolerance)
+{
+    LinePolyhedronBodyIntersection3d result{};
+    if (!line.IsValid(tolerance.distanceEpsilon) || !body.IsValid(tolerance.distanceEpsilon))
+    {
+        return result;
+    }
+
+    std::vector<std::pair<std::size_t, LinePolyhedronFaceIntersection3d>> collected;
+    std::set<std::pair<long long, std::size_t>> dedup;
+    for (std::size_t faceIndex = 0; faceIndex < body.FaceCount(); ++faceIndex)
+    {
+        const LinePolyhedronFaceIntersection3d hit = Intersect(line, body.FaceAt(faceIndex), tolerance);
+        if (!hit.intersects)
+        {
+            continue;
+        }
+
+        const long long bucket = static_cast<long long>(
+            std::llround(hit.lineParameter / std::max(tolerance.parameterEpsilon, geometry::kDefaultEpsilon)));
+        if (!dedup.emplace(bucket, faceIndex).second)
+        {
+            continue;
+        }
+
+        collected.emplace_back(faceIndex, hit);
+    }
+
+    std::sort(
+        collected.begin(),
+        collected.end(),
+        [](const std::pair<std::size_t, LinePolyhedronFaceIntersection3d>& lhs,
+           const std::pair<std::size_t, LinePolyhedronFaceIntersection3d>& rhs)
+        {
+            return lhs.second.lineParameter < rhs.second.lineParameter;
+        });
+
+    for (const auto& [hitFaceIndex, hit] : collected)
+    {
+        result.faceIndices.push_back(hitFaceIndex);
+        result.hits.push_back(hit);
+    }
+
+    result.intersects = !result.hits.empty();
+    return result;
+}
+
 PlanePlaneIntersection3d Intersect(
     const Plane& first,
     const Plane& second,

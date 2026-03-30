@@ -326,6 +326,7 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
 - `GeometryMeasure` 已接上 `Distance(point, surface)` / `DistanceSquared(point, surface)`，可直接消费 `PlaneSurface` 与当前最小 `NurbsSurface`
 - `GeometryMeasure` 已接上 `Distance(point, PolyhedronFace)` / `DistanceSquared(point, PolyhedronFace)`
 - `GeometryMeasure` 已接上 `Distance(point, PolyhedronBody)` / `DistanceSquared(point, PolyhedronBody)`
+- `GeometryIntersection3d` 已接上 `Intersect(Line3d, PolyhedronFace, ...)` / `Intersect(Line3d, PolyhedronBody, ...)`，当前走支撑平面求交 + projected 2D polygon containment
 - `GeometryMeasure` 已接上 `Distance(point, BrepFace)` / `DistanceSquared(point, BrepFace)`，可直接消费 planar / trimmed non-planar `BrepFace`
 - `GeometryMeasure` 已接上 `Distance(point, BrepBody)` / `DistanceSquared(point, BrepBody)`，当前复用 `ProjectPointToBrepBody(...)`
 - `GeometryMeasure` 已接上 `Distance(point, BrepEdge)` / `DistanceSquared(point, BrepEdge)`

@@ -730,6 +730,12 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(polyFaceProjection.onFace);
     assert(polyFaceProjection.point.AlmostEquals(Point3d{1.0, 1.0, 1.0}, 1e-12));
     GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Distance(Point3d{1.0, 1.0, 3.0}, face), 2.0, 1e-12);
+    const auto polyFaceLineIntersection = geometry::sdk::Intersect(
+        Line3d::FromOriginAndDirection(Point3d{1.0, 1.0, 3.0}, Vector3d{0.0, 0.0, -1.0}),
+        face);
+    assert(polyFaceLineIntersection.intersects);
+    assert(polyFaceLineIntersection.IsValid());
+    assert(polyFaceLineIntersection.point.AlmostEquals(Point3d{1.0, 1.0, 1.0}, 1e-12));
 
     const auto bodyMesh = ConvertToTriangleMesh(body);
     assert(bodyMesh.success);
@@ -742,6 +748,15 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(polyBodyProjection.faceIndex == 0);
     assert(polyBodyProjection.projection.point.AlmostEquals(Point3d{2.0, 1.0, 1.0}, 1e-12));
     GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Distance(Point3d{3.0, 1.0, 1.0}, body), 1.0, 1e-12);
+    const auto polyBodyLineIntersection = geometry::sdk::Intersect(
+        Line3d::FromOriginAndDirection(Point3d{1.0, 1.0, 3.0}, Vector3d{0.0, 0.0, -1.0}),
+        body);
+    assert(polyBodyLineIntersection.intersects);
+    assert(polyBodyLineIntersection.IsValid());
+    assert(polyBodyLineIntersection.faceIndices.size() == 1);
+    assert(polyBodyLineIntersection.hits.size() == 1);
+    assert(polyBodyLineIntersection.faceIndices[0] == 0);
+    assert(polyBodyLineIntersection.hits[0].point.AlmostEquals(Point3d{1.0, 1.0, 1.0}, 1e-12));
 
     const PolyhedronFace3d holedFace(
         Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, 0.0, 1.0}),

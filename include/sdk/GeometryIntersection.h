@@ -6,6 +6,7 @@
 #include "sdk/LineSegment2d.h"
 #include "sdk/Segment2d.h"
 #include "sdk/BrepBody.h"
+#include "sdk/PolyhedronBody.h"
 #include "sdk/Surface.h"
 
 namespace geometry::sdk
@@ -46,6 +47,14 @@ namespace geometry::sdk
 [[nodiscard]] GEOMETRY_API LineBrepBodyIntersection3d Intersect(
     const Line3d& line,
     const BrepBody& body,
+    const GeometryTolerance3d& tolerance = {});
+[[nodiscard]] GEOMETRY_API LinePolyhedronFaceIntersection3d Intersect(
+    const Line3d& line,
+    const PolyhedronFace3d& face,
+    const GeometryTolerance3d& tolerance = {});
+[[nodiscard]] GEOMETRY_API LinePolyhedronBodyIntersection3d Intersect(
+    const Line3d& line,
+    const PolyhedronBody& body,
     const GeometryTolerance3d& tolerance = {});
 [[nodiscard]] GEOMETRY_API PlanePlaneIntersection3d Intersect(
     const Plane& first,
