@@ -37,6 +37,7 @@ add_library(stablecore_geometry
     src/sdk/GeometrySampling.cpp
     src/sdk/GeometrySegmentSearch.cpp
     src/sdk/GeometryShapeOps.cpp
+    src/sdk/GeometryTessellation.cpp
     src/sdk/GeometryTopology.cpp
     src/sdk/GeometryValidation.cpp
     src/sdk/GeometryTransform.cpp

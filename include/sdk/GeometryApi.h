@@ -7,6 +7,7 @@
 #include "sdk/GeometryAlgorithms.h"
 #include "sdk/GeometryEditing.h"
 #include "sdk/GeometrySampling.h"
+#include "sdk/GeometryTessellation.h"
 #include "sdk/GeometryTransform.h"
 #include "sdk/GeometryOffset.h"
 #include "sdk/GeometryBoxTree.h"

@@ -31,6 +31,7 @@ using geometry::sdk::Polyline2d;
 using geometry::sdk::PolylineClosure;
 using geometry::sdk::Segment2d;
 using geometry::sdk::Surface;
+using geometry::sdk::Tessellate;
 using geometry::sdk::Curve3d;
 using geometry::sdk::TriangleMesh;
 using geometry::sdk::Triangle3d;
@@ -288,6 +289,18 @@ TEST(SdkTest, CoversCurrentCapabilities)
     const auto invalidBodyValidation = Validate(PolyhedronBody({invalidFace}));
     assert(!invalidBodyValidation.valid);
     assert(invalidBodyValidation.issue == PolyhedronValidationIssue3d::InvalidFace);
+
+    const TriangleMesh surfaceMesh = Tessellate(planeSurface, 2, 3);
+    assert(surfaceMesh.IsValid());
+    assert(surfaceMesh.VertexCount() == 12);
+    assert(surfaceMesh.TriangleCount() == 12);
+    const auto surfaceMeshValidation = Validate(surfaceMesh);
+    assert(surfaceMeshValidation.valid);
+    for (const Point3d& vertex : surfaceMesh.Vertices())
+    {
+        GEOMETRY_TEST_ASSERT_NEAR(supportPlane.SignedDistanceTo(vertex), 0.0, 1e-12);
+    }
+    GEOMETRY_TEST_ASSERT_NEAR(surfaceMesh.SurfaceArea(), 16.0, 1e-12);
 }
 
 
