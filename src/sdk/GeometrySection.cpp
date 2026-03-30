@@ -26,6 +26,15 @@ struct IndexedSegment2d
     std::size_t second{0};
 };
 
+struct FaceSectionData
+{
+    std::vector<Point3d> outer3d{};
+    std::vector<Point2d> outer2d{};
+    std::vector<std::vector<Point3d>> holeContours3d{};
+    std::vector<std::vector<Point2d>> holeContours2d{};
+    Polygon2d polygon{};
+};
+
 [[nodiscard]] PlaneProjectionBasis BuildPlaneProjectionBasis(const Plane& plane, double eps)
 {
     const Vector3d normal = plane.UnitNormal(eps);
@@ -219,6 +228,67 @@ void SimplifyLoop(
     }
 }
 
+[[nodiscard]] bool IsCoplanarWithSectionPlane(
+    const PolyhedronFace3d& face,
+    const Plane& plane,
+    double eps)
+{
+    const Plane supportPlane = face.SupportPlane();
+    if (!supportPlane.IsValid(eps) || !plane.IsValid(eps))
+    {
+        return false;
+    }
+
+    const Vector3d firstNormal = supportPlane.UnitNormal(eps);
+    const Vector3d secondNormal = plane.UnitNormal(eps);
+    if (Cross(firstNormal, secondNormal).Length() > eps)
+    {
+        return false;
+    }
+
+    return std::abs(plane.SignedDistanceTo(supportPlane.origin, eps)) <= eps;
+}
+
+[[nodiscard]] FaceSectionData BuildCoplanarFaceSectionData(
+    const PolyhedronFace3d& face,
+    const Plane& plane,
+    const PlaneProjectionBasis& basis,
+    double eps)
+{
+    FaceSectionData data{};
+
+    auto projectLoop = [&](const PolyhedronLoop3d& loop, std::vector<Point3d>& points3d, std::vector<Point2d>& points2d) {
+        points3d.assign(loop.Vertices().begin(), loop.Vertices().end());
+        points2d.reserve(points3d.size());
+        for (const Point3d& vertex : points3d)
+        {
+            points2d.push_back(ProjectToLocalPlaneCoordinates(vertex, plane, basis));
+        }
+        SimplifyLoop(points3d, points2d, eps);
+    };
+
+    projectLoop(face.OuterLoop(), data.outer3d, data.outer2d);
+
+    std::vector<Polyline2d> holeRings;
+    holeRings.reserve(face.HoleCount());
+    data.holeContours3d.reserve(face.HoleCount());
+    data.holeContours2d.reserve(face.HoleCount());
+    for (std::size_t i = 0; i < face.HoleCount(); ++i)
+    {
+        data.holeContours3d.emplace_back();
+        data.holeContours2d.emplace_back();
+        projectLoop(face.HoleAt(i), data.holeContours3d.back(), data.holeContours2d.back());
+        holeRings.emplace_back(data.holeContours2d.back(), PolylineClosure::Closed);
+    }
+
+    if (data.outer2d.size() >= 3)
+    {
+        data.polygon = Polygon2d(Polyline2d(data.outer2d, PolylineClosure::Closed), std::move(holeRings));
+    }
+
+    return data;
+}
+
 } // namespace
 
 PolyhedronSection3d Section(
@@ -244,6 +314,47 @@ PolyhedronSection3d Section(
     result.uAxis = basis.u;
     result.vAxis = basis.v;
 
+    bool hasCoplanarFace = false;
+    for (const PolyhedronFace3d& face : body.Faces())
+    {
+        if (!IsCoplanarWithSectionPlane(face, plane, tolerance.distanceEpsilon))
+        {
+            continue;
+        }
+
+        hasCoplanarFace = true;
+        const FaceSectionData faceData = BuildCoplanarFaceSectionData(face, plane, basis, tolerance.distanceEpsilon);
+        if (!faceData.polygon.IsValid())
+        {
+            result.issue = SectionIssue3d::InvalidContour;
+            return result;
+        }
+
+        result.contours.push_back(SectionPolyline3d{true, faceData.outer3d});
+        result.polygons.push_back(faceData.polygon);
+        for (std::size_t i = 0; i < faceData.outer3d.size(); ++i)
+        {
+            const std::size_t next = (i + 1) % faceData.outer3d.size();
+            result.segments.push_back(LineSegment3d::FromStartEnd(faceData.outer3d[i], faceData.outer3d[next]));
+        }
+
+        for (const auto& holeContour : faceData.holeContours3d)
+        {
+            result.contours.push_back(SectionPolyline3d{true, holeContour});
+            for (std::size_t i = 0; i < holeContour.size(); ++i)
+            {
+                const std::size_t next = (i + 1) % holeContour.size();
+                result.segments.push_back(LineSegment3d::FromStartEnd(holeContour[i], holeContour[next]));
+            }
+        }
+    }
+
+    if (hasCoplanarFace)
+    {
+        result.success = true;
+        return result;
+    }
+
     const auto meshConversion = ConvertToTriangleMesh(body, tolerance.distanceEpsilon);
     if (!meshConversion.success || !meshConversion.mesh.IsValid(tolerance.distanceEpsilon))
     {
@@ -251,7 +362,6 @@ PolyhedronSection3d Section(
         return result;
     }
 
-    bool hasCoplanarGeometry = false;
     std::vector<LineSegment3d> rawSegments;
     rawSegments.reserve(meshConversion.mesh.TriangleCount());
     for (std::size_t i = 0; i < meshConversion.mesh.TriangleCount(); ++i)
@@ -262,7 +372,7 @@ PolyhedronSection3d Section(
                 plane,
                 tolerance.distanceEpsilon,
                 segment,
-                hasCoplanarGeometry))
+                hasCoplanarFace))
         {
             continue;
         }
@@ -271,12 +381,6 @@ PolyhedronSection3d Section(
         {
             rawSegments.push_back(segment);
         }
-    }
-
-    if (hasCoplanarGeometry)
-    {
-        result.issue = SectionIssue3d::CoplanarGeometryUnsupported;
-        return result;
     }
 
     result.segments = rawSegments;

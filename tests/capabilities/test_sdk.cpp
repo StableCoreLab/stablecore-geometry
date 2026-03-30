@@ -620,8 +620,12 @@ TEST(SdkTest, CoversCurrentCapabilities)
     const PolyhedronSection3d coplanarSection = Section(
         cubeBody,
         Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, 0.0, 1.0}));
-    assert(!coplanarSection.success);
-    assert(coplanarSection.issue == SectionIssue3d::CoplanarGeometryUnsupported);
+    assert(coplanarSection.success);
+    assert(coplanarSection.issue == SectionIssue3d::None);
+    assert(coplanarSection.IsValid());
+    assert(coplanarSection.contours.size() == 1);
+    assert(coplanarSection.polygons.size() == 1);
+    GEOMETRY_TEST_ASSERT_NEAR(Area(coplanarSection.polygons[0]), 1.0, 1e-12);
 }
 
 
