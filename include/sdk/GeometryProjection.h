@@ -7,6 +7,7 @@
 #include "sdk/Polygon2d.h"
 #include "sdk/PolyhedronFace3d.h"
 #include "sdk/Segment2d.h"
+#include "sdk/Surface.h"
 
 namespace geometry::sdk
 {
@@ -39,6 +40,11 @@ namespace geometry::sdk
 [[nodiscard]] GEOMETRY_API PlaneProjection3d ProjectPointToPlane(
     const Point3d& point,
     const Plane& plane,
+    const GeometryTolerance3d& tolerance = {});
+
+[[nodiscard]] GEOMETRY_API SurfaceProjection3d ProjectPointToSurface(
+    const Point3d& point,
+    const Surface& surface,
     const GeometryTolerance3d& tolerance = {});
 
 struct GEOMETRY_API FaceProjection3d

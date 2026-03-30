@@ -40,6 +40,16 @@ double Distance(const Point3d& point, const Plane& plane)
     return std::abs(plane.SignedDistanceTo(point));
 }
 
+double DistanceSquared(const Point3d& point, const Surface& surface, const GeometryTolerance3d& tolerance)
+{
+    return ProjectPointToSurface(point, surface, tolerance).distanceSquared;
+}
+
+double Distance(const Point3d& point, const Surface& surface, const GeometryTolerance3d& tolerance)
+{
+    return std::sqrt(DistanceSquared(point, surface, tolerance));
+}
+
 double Length(const LineSegment3d& segment)
 {
     return (segment.endPoint - segment.startPoint).Length();

@@ -318,6 +318,8 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
 - `GeometryValidation` 已接上 `PolyhedronSection3d` 的最小 validation 结果
 - 3D 参数对象已扩到 `NurbsCurve3d`、`NurbsSurface`、`RuledSurface`、`OffsetSurface`，并具备最小可消费的 `PointAt / Evaluate / Bounds / Clone` 能力
 - `CurveOnSurface` 已具备最小支持曲面映射能力，可返回 UV 点、映射 3D 点与 bounds
+- `GeometryProjection` 已接上通用 `ProjectPointToSurface(...)`，当前对 `PlaneSurface` 走解析投影，对一般 `Surface` 走采样 + 局部细化
+- `GeometryMeasure` 已接上 `Distance(point, surface)` / `DistanceSquared(point, surface)`，可直接消费 `PlaneSurface` 与当前最小 `NurbsSurface`
 - `BrepVertex`、`BrepEdge`、`BrepCoedge`、`BrepLoop`、`BrepFace`、`BrepShell`、`BrepBody` 已不再只是名字 skeleton，已具备最小 topology ownership、bounds、validation 与 conservative healing 入口
 - 3D 服务层公开函数名已补齐并落了最小实现：`GeometryMeasure` / `GeometryHealing` / `Validate(BrepBody, ...)`
 - `BrepBody` 已接上受限 `TriangleMesh` conversion，当前支持 plane-surface + line-edge 主导的平面 BRep face

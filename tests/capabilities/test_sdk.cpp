@@ -51,6 +51,7 @@ using geometry::sdk::PolyhedronSection3d;
 using geometry::sdk::PolyhedronValidationIssue3d;
 using geometry::sdk::Polygon2d;
 using geometry::sdk::ProjectFaceToPolygon2d;
+using geometry::sdk::ProjectPointToSurface;
 using geometry::sdk::ProjectPointToSegment;
 using geometry::sdk::Polyline2d;
 using geometry::sdk::PolylineClosure;
@@ -380,6 +381,20 @@ TEST(SdkTest, CoversCurrentCapabilities)
     GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Bounds(curveOnSurface).MinPoint().z, 5.0, 1e-12);
     GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Length(curveOnSurface), std::sqrt(8.0) * 2.0, 1e-12);
 
+    const auto planeSurfaceProjection = ProjectPointToSurface(Point3d{0.5, -1.0, 8.0}, planeSurface);
+    assert(planeSurfaceProjection.success);
+    assert(planeSurfaceProjection.IsValid());
+    GEOMETRY_TEST_ASSERT_NEAR(planeSurfaceProjection.u, 0.5, 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(planeSurfaceProjection.v, -1.0, 1e-12);
+    assert(planeSurfaceProjection.point.AlmostEquals(Point3d{0.5, -1.0, 5.0}, 1e-12));
+
+    const auto nurbsSurfaceProjection = ProjectPointToSurface(Point3d{0.6, 1.4, 1.0}, nurbsSurface);
+    assert(nurbsSurfaceProjection.success);
+    assert(nurbsSurfaceProjection.IsValid());
+    GEOMETRY_TEST_ASSERT_NEAR(nurbsSurfaceProjection.u, 0.3, 5e-2);
+    GEOMETRY_TEST_ASSERT_NEAR(nurbsSurfaceProjection.v, 0.7, 5e-2);
+    GEOMETRY_TEST_ASSERT_NEAR(nurbsSurfaceProjection.point.z, 0.0, 1e-12);
+
     GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Distance(Point3d{0.0, 0.0, 0.0}, Point3d{1.0, 2.0, 2.0}), 3.0, 1e-12);
     GEOMETRY_TEST_ASSERT_NEAR(
         geometry::sdk::Distance(Point3d{0.0, 2.0, 0.0}, Line3d::FromOriginAndDirection(Point3d{0.0, 0.0, 0.0}, Vector3d{1.0, 0.0, 0.0})),
@@ -389,6 +404,14 @@ TEST(SdkTest, CoversCurrentCapabilities)
         geometry::sdk::Distance(Point3d{0.0, 0.0, 8.0}, supportPlane),
         3.0,
         1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(
+        geometry::sdk::Distance(Point3d{0.5, -1.0, 8.0}, planeSurface),
+        3.0,
+        1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(
+        geometry::sdk::Distance(Point3d{0.6, 1.4, 1.0}, nurbsSurface),
+        1.0,
+        5e-2);
     GEOMETRY_TEST_ASSERT_NEAR(
         geometry::sdk::Length(geometry::LineSegment3d::FromStartEnd(Point3d{0.0, 0.0, 0.0}, Point3d{0.0, 3.0, 4.0})),
         5.0,
