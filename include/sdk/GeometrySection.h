@@ -122,13 +122,24 @@ struct GEOMETRY_API SectionFaceRebuild3d
 {
     bool success{false};
     SectionFaceRebuildIssue3d issue{SectionFaceRebuildIssue3d::None};
+    struct FaceMapping
+    {
+        std::size_t outerPolygonIndex{0};
+        std::vector<std::size_t> holePolygonIndices{};
+    };
     std::vector<PolyhedronFace3d> faces{};
+    std::vector<FaceMapping> mappings{};
 
     [[nodiscard]] bool IsValid(double eps = geometry::kDefaultEpsilon) const
     {
         if (!success)
         {
             return true;
+        }
+
+        if (faces.size() != mappings.size())
+        {
+            return false;
         }
 
         for (const PolyhedronFace3d& face : faces)

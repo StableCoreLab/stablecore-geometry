@@ -718,6 +718,10 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(rebuiltMergedFaces.success);
     assert(rebuiltMergedFaces.IsValid());
     assert(rebuiltMergedFaces.faces.size() == 1);
+    assert(rebuiltMergedFaces.mappings.size() == 1);
+    assert(rebuiltMergedFaces.mappings[0].outerPolygonIndex == 0);
+    assert(rebuiltMergedFaces.mappings[0].holePolygonIndices.size() == 1);
+    assert(rebuiltMergedFaces.mappings[0].holePolygonIndices[0] == 1);
     assert(rebuiltMergedFaces.faces[0].HoleCount() == 1);
     const SectionTopology3d nestedTopology = BuildSectionTopology(nestedSection);
     assert(nestedTopology.IsValid());

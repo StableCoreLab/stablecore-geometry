@@ -810,6 +810,7 @@ SectionFaceRebuild3d RebuildSectionFaces(const PolyhedronSection3d& section, dou
 
     const PolygonTopology2d topology = BuildPolygonTopology(polygons, eps);
     result.faces.reserve(section.polygons.size());
+    result.mappings.reserve(section.polygons.size());
     for (std::size_t polygonIndex = 0; polygonIndex < polygons.Count(); ++polygonIndex)
     {
         if ((PolygonDepth(topology, polygonIndex) % 2) != 0)
@@ -833,6 +834,8 @@ SectionFaceRebuild3d RebuildSectionFaces(const PolyhedronSection3d& section, dou
 
         std::vector<PolyhedronLoop3d> holes;
         holes.reserve(polygon.HoleCount() + topology.ChildrenOf(polygonIndex).size());
+        SectionFaceRebuild3d::FaceMapping mapping{};
+        mapping.outerPolygonIndex = polygonIndex;
         for (std::size_t holeIndex = 0; holeIndex < polygon.HoleCount(); ++holeIndex)
         {
             const Polyline2d holeRing = polygon.HoleAt(holeIndex);
@@ -868,12 +871,14 @@ SectionFaceRebuild3d RebuildSectionFaces(const PolyhedronSection3d& section, dou
                     section.vAxis));
             }
             holes.emplace_back(std::move(holeVertices));
+            mapping.holePolygonIndices.push_back(childIndex);
         }
 
         result.faces.emplace_back(
             supportPlane,
             PolyhedronLoop3d(std::move(outerVertices)),
             std::move(holes));
+        result.mappings.push_back(std::move(mapping));
     }
 
     result.success = true;
