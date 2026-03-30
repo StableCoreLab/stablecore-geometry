@@ -253,6 +253,7 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
   - `include/sdk/PolyhedronFace3d.h`
   - `include/sdk/PolyhedronBody.h`
   - `GeometryValidation` 已加入 `PolyhedronBody` 的最小 validation 结果
+  - `GeometrySection` 已加入 `Plane x PolyhedronBody -> projected 2D polygon` 的最小截面入口
 - `include/sdk/GeometryTypes.h` 新增：
   - `CurveEval3d`
   - `SurfaceEval3d`
@@ -271,6 +272,7 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
   - `MeshValidation3d`
   - `Tessellate(PlaneSurface, ...)`
   - `ConvertToTriangleMesh(PolyhedronFace3d / PolyhedronBody, ...)`
+  - `Section(PolyhedronBody, Plane, ...)`
   - `ProjectFaceToPolygon2d(...)`
   - `PolyhedronLoop3d`
   - `PolyhedronFace3d`
@@ -292,8 +294,9 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
 - `TriangleMesh` 已接上 multi planar boundary loops 的最小批量 closing repair
 - `PolyhedronBody` 已接上平面 face / body 到 `TriangleMesh` 的最小 conversion 路径
 - `PolyhedronFace3d` 已接上局部平面 `Polygon2d` 投影入口，开始进入 projected 2D polygon workflow
-- `PolyhedronBody` 已有平面 face / loop / body 的最小骨架，但尚未接 projected 2D polygon workflow
+- `PolyhedronBody` 已接上 `Plane x PolyhedronBody` 的最小 section 路径，当前通过 `TriangleMesh` slicing 生成 3D section segments 与 projected 2D closed polygons
 - 带孔 `PolyhedronFace3d` 已可经由 projected 2D polygon 工作流转成 `TriangleMesh`
+- 当前 `GeometrySection` 仍是保守入口：横切 plane-dominant polyhedron 已支持，切到共面 face / edge 的 coplanar section 仍显式拒绝
 - `BrepBody` 仍未开始代码落地
 
 ## 推荐的下一个 3D 动作
@@ -303,5 +306,5 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
 - 继续扩展 `trianglemesh-core`
   - 补更广泛 surface 的 conversion 入口，以及非平面边界 / stitching / boundary merge 场景下的 mesh closing / shell repair
 - 或者进入 `polyhedron-core`
-  - 将当前平面 face workflow 继续推广到更一般的 planar section / face rebuild / face merge
+  - 在当前 `GeometrySection` 的基础上继续补 coplanar face / edge section、face rebuild、face merge
   - 再补 projected 2D polygon 驱动的多孔 / 更复杂 planar face 路径

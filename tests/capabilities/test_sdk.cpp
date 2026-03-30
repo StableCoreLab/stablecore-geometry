@@ -32,6 +32,7 @@ using geometry::sdk::Point3d;
 using geometry::sdk::PolyhedronBody;
 using geometry::sdk::PolyhedronFace3d;
 using geometry::sdk::PolyhedronLoop3d;
+using geometry::sdk::PolyhedronSection3d;
 using geometry::sdk::PolyhedronValidationIssue3d;
 using geometry::sdk::Polygon2d;
 using geometry::sdk::ProjectFaceToPolygon2d;
@@ -56,6 +57,8 @@ using geometry::sdk::TriangleMesh;
 using geometry::sdk::TriangleMeshRepair3d;
 using geometry::sdk::Triangle3d;
 using geometry::sdk::Intervald;
+using geometry::sdk::Section;
+using geometry::sdk::SectionIssue3d;
 using geometry::sdk::Validate;
 using geometry::sdk::Vector2d;
 using geometry::sdk::Vector3d;
@@ -532,6 +535,93 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(holedFaceMesh.issue == MeshConversionIssue3d::None);
     assert(holedFaceMesh.mesh.IsValid());
     GEOMETRY_TEST_ASSERT_NEAR(holedFaceMesh.mesh.SurfaceArea(), Area(projectedFace.polygon), 1e-12);
+
+    const PolyhedronBody cubeBody(
+        {
+            PolyhedronFace3d(
+                Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, 0.0, -1.0}),
+                PolyhedronLoop3d(
+                    {
+                        Point3d{0.0, 0.0, 0.0},
+                        Point3d{0.0, 1.0, 0.0},
+                        Point3d{1.0, 1.0, 0.0},
+                        Point3d{1.0, 0.0, 0.0},
+                    })),
+            PolyhedronFace3d(
+                Plane::FromPointAndNormal(Point3d{0.0, 0.0, 1.0}, Vector3d{0.0, 0.0, 1.0}),
+                PolyhedronLoop3d(
+                    {
+                        Point3d{0.0, 0.0, 1.0},
+                        Point3d{1.0, 0.0, 1.0},
+                        Point3d{1.0, 1.0, 1.0},
+                        Point3d{0.0, 1.0, 1.0},
+                    })),
+            PolyhedronFace3d(
+                Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, -1.0, 0.0}),
+                PolyhedronLoop3d(
+                    {
+                        Point3d{0.0, 0.0, 0.0},
+                        Point3d{1.0, 0.0, 0.0},
+                        Point3d{1.0, 0.0, 1.0},
+                        Point3d{0.0, 0.0, 1.0},
+                    })),
+            PolyhedronFace3d(
+                Plane::FromPointAndNormal(Point3d{1.0, 0.0, 0.0}, Vector3d{1.0, 0.0, 0.0}),
+                PolyhedronLoop3d(
+                    {
+                        Point3d{1.0, 0.0, 0.0},
+                        Point3d{1.0, 1.0, 0.0},
+                        Point3d{1.0, 1.0, 1.0},
+                        Point3d{1.0, 0.0, 1.0},
+                    })),
+            PolyhedronFace3d(
+                Plane::FromPointAndNormal(Point3d{0.0, 1.0, 0.0}, Vector3d{0.0, 1.0, 0.0}),
+                PolyhedronLoop3d(
+                    {
+                        Point3d{0.0, 1.0, 0.0},
+                        Point3d{0.0, 1.0, 1.0},
+                        Point3d{1.0, 1.0, 1.0},
+                        Point3d{1.0, 1.0, 0.0},
+                    })),
+            PolyhedronFace3d(
+                Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{-1.0, 0.0, 0.0}),
+                PolyhedronLoop3d(
+                    {
+                        Point3d{0.0, 0.0, 0.0},
+                        Point3d{0.0, 0.0, 1.0},
+                        Point3d{0.0, 1.0, 1.0},
+                        Point3d{0.0, 1.0, 0.0},
+                    })),
+        });
+    assert(cubeBody.IsValid());
+    const PolyhedronSection3d middleSection = Section(
+        cubeBody,
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.5}, Vector3d{0.0, 0.0, 1.0}));
+    assert(middleSection.success);
+    assert(middleSection.issue == SectionIssue3d::None);
+    assert(middleSection.IsValid());
+    assert(middleSection.segments.size() >= 4);
+    assert(middleSection.contours.size() == 1);
+    assert(middleSection.contours[0].closed);
+    assert(middleSection.contours[0].points.size() == 4);
+    assert(middleSection.polygons.size() == 1);
+    GEOMETRY_TEST_ASSERT_NEAR(Area(middleSection.polygons[0]), 1.0, 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(middleSection.origin.z, 0.5, 1e-12);
+
+    const PolyhedronSection3d disjointSection = Section(
+        cubeBody,
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 2.0}, Vector3d{0.0, 0.0, 1.0}));
+    assert(disjointSection.success);
+    assert(disjointSection.issue == SectionIssue3d::None);
+    assert(disjointSection.segments.empty());
+    assert(disjointSection.contours.empty());
+    assert(disjointSection.polygons.empty());
+
+    const PolyhedronSection3d coplanarSection = Section(
+        cubeBody,
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, 0.0, 1.0}));
+    assert(!coplanarSection.success);
+    assert(coplanarSection.issue == SectionIssue3d::CoplanarGeometryUnsupported);
 }
 
 
