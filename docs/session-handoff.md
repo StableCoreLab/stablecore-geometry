@@ -215,6 +215,9 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
   - `include/sdk/Surface.h`
   - `include/sdk/LineCurve3d.h`
   - `include/sdk/PlaneSurface.h`
+- `trianglemesh-core` 已起步：
+  - `include/sdk/TriangleMesh.h`
+  - `GeometryValidation` 已加入 `TriangleMesh` 的最小 validation 结果
 - `include/sdk/GeometryTypes.h` 新增：
   - `CurveEval3d`
   - `SurfaceEval3d`
@@ -224,20 +227,22 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
   - `PlaneSurface`
   - `CurveEval3d`
   - `SurfaceEval3d`
+  - `TriangleMesh`
+  - `MeshValidation3d`
 
 当前重要约束：
 
 - 这批 3D 参数对象层目前是最小可用协议，不包含高阶 NURBS 或复杂投影 API
 - `PlaneSurface` 当前按有限参数域平面曲面实现，便于后续 bounds / tessellation / section 直接消费
-- `TriangleMesh`、`PolyhedronBody`、`BrepBody` 仍未开始代码落地
+- `TriangleMesh` 已有最小值对象与 validation，尚未接入 tessellation / conversion
+- `PolyhedronBody`、`BrepBody` 仍未开始代码落地
 
 ## 推荐的下一个 3D 动作
 
 如果继续沿路线图推进，当前最合理的下一步是：
 
-- 进入 `trianglemesh-core`
-  - 补 `TriangleMesh` 类型
-  - 补 bounds / transform / validate 的最小能力
+- 继续扩展 `trianglemesh-core`
+  - 补 mesh 法向、邻接和后续 tessellation / conversion 入口
 - 或者进入 `polyhedron-core`
   - 先做平面 face / loop / body 的最小骨架
   - 保持 plane-dominant workflow 优先

@@ -81,4 +81,39 @@ PolygonValidation2d Validate(const Polygon2d& polygon, double eps)
 
     return {true, PolygonValidationIssue2d::None};
 }
+
+MeshValidation3d Validate(const TriangleMesh& mesh, double eps)
+{
+    const auto& vertices = mesh.Vertices();
+    const auto& triangles = mesh.Triangles();
+
+    for (std::size_t i = 0; i < vertices.size(); ++i)
+    {
+        if (!vertices[i].IsValid())
+        {
+            return {false, MeshValidationIssue3d::InvalidVertex, i};
+        }
+    }
+
+    for (std::size_t i = 0; i < triangles.size(); ++i)
+    {
+        const TriangleMesh::TriangleIndices& tri = triangles[i];
+        if (tri[0] >= vertices.size() || tri[1] >= vertices.size() || tri[2] >= vertices.size())
+        {
+            return {false, MeshValidationIssue3d::InvalidIndex, i};
+        }
+
+        if (tri[0] == tri[1] || tri[1] == tri[2] || tri[0] == tri[2])
+        {
+            return {false, MeshValidationIssue3d::DuplicateIndex, i};
+        }
+
+        if (Triangle3d{vertices[tri[0]], vertices[tri[1]], vertices[tri[2]]}.IsDegenerate(eps))
+        {
+            return {false, MeshValidationIssue3d::DegenerateTriangle, i};
+        }
+    }
+
+    return {true, MeshValidationIssue3d::None, 0};
+}
 } // namespace geometry::sdk

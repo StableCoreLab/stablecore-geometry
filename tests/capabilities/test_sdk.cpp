@@ -16,6 +16,7 @@ using geometry::sdk::Intersects;
 using geometry::sdk::LineSegment2d;
 using geometry::sdk::Line3d;
 using geometry::sdk::LineCurve3d;
+using geometry::sdk::MeshValidationIssue3d;
 using geometry::sdk::Plane;
 using geometry::sdk::PlaneSurface;
 using geometry::sdk::Point2d;
@@ -27,7 +28,10 @@ using geometry::sdk::PolylineClosure;
 using geometry::sdk::Segment2d;
 using geometry::sdk::Surface;
 using geometry::sdk::Curve3d;
+using geometry::sdk::TriangleMesh;
+using geometry::sdk::Triangle3d;
 using geometry::sdk::Intervald;
+using geometry::sdk::Validate;
 using geometry::sdk::Vector2d;
 using geometry::sdk::Vector3d;
 
@@ -193,6 +197,52 @@ TEST(SdkTest, CoversCurrentCapabilities)
     std::unique_ptr<Surface> surfaceClone = planeSurface.Clone();
     assert(surfaceClone && surfaceClone->IsValid());
     GEOMETRY_TEST_ASSERT_NEAR(supportPlane.SignedDistanceTo(surfaceClone->PointAt(-2.0, -3.0)), 0.0, 1e-12);
+
+    const TriangleMesh mesh(
+        {
+            Point3d{0.0, 0.0, 0.0},
+            Point3d{1.0, 0.0, 0.0},
+            Point3d{0.0, 1.0, 0.0},
+            Point3d{0.0, 0.0, 1.0},
+        },
+        {
+            TriangleMesh::TriangleIndices{0, 1, 2},
+            TriangleMesh::TriangleIndices{0, 1, 3},
+        });
+    assert(!mesh.IsEmpty());
+    assert(mesh.IsValid());
+    assert(mesh.VertexCount() == 4);
+    assert(mesh.TriangleCount() == 2);
+    assert(mesh.VertexAt(3).AlmostEquals(Point3d{0.0, 0.0, 1.0}, 1e-12));
+    const Triangle3d firstTriangle = mesh.TriangleAt(0);
+    assert(firstTriangle.IsValid());
+    GEOMETRY_TEST_ASSERT_NEAR(firstTriangle.Area(), 0.5, 1e-12);
+    const geometry::Box3d meshBounds = mesh.Bounds();
+    assert(meshBounds.IsValid());
+    assert(meshBounds.MinPoint().AlmostEquals(Point3d{0.0, 0.0, 0.0}, 1e-12));
+    assert(meshBounds.MaxPoint().AlmostEquals(Point3d{1.0, 1.0, 1.0}, 1e-12));
+    GEOMETRY_TEST_ASSERT_NEAR(mesh.SurfaceArea(), 1.0, 1e-12);
+    const auto meshValidation = Validate(mesh);
+    assert(meshValidation.valid);
+    assert(meshValidation.issue == MeshValidationIssue3d::None);
+    const TriangleMesh movedMesh = mesh.Transformed(geometry::Transform3d::Translation(Vector3d{2.0, -1.0, 3.0}));
+    assert(movedMesh.IsValid());
+    assert(movedMesh.VertexAt(0).AlmostEquals(Point3d{2.0, -1.0, 3.0}, 1e-12));
+    assert(movedMesh.VertexAt(3).AlmostEquals(Point3d{2.0, -1.0, 4.0}, 1e-12));
+    GEOMETRY_TEST_ASSERT_NEAR(movedMesh.SurfaceArea(), mesh.SurfaceArea(), 1e-12);
+
+    const TriangleMesh invalidMesh(
+        {
+            Point3d{0.0, 0.0, 0.0},
+            Point3d{1.0, 0.0, 0.0},
+            Point3d{1.0, 0.0, 0.0},
+        },
+        {
+            TriangleMesh::TriangleIndices{0, 1, 2},
+        });
+    const auto invalidMeshValidation = Validate(invalidMesh);
+    assert(!invalidMeshValidation.valid);
+    assert(invalidMeshValidation.issue == MeshValidationIssue3d::DegenerateTriangle);
 }
 
 

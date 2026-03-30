@@ -30,3 +30,4 @@
 #include "sdk/LineCurve3d.h"
 #include "sdk/PlaneSurface.h"
 #include "sdk/Surface.h"
+#include "sdk/TriangleMesh.h"

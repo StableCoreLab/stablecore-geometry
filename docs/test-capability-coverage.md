@@ -24,7 +24,7 @@
 - `tests/capabilities/test_polygon.cpp`
   - polygon 的面积、质心、边界盒、孔洞基础行为
 - `tests/capabilities/test_sdk.cpp`
-  - SDK 层常用对象和基础 API 行为，以及 `LineCurve3d` / `PlaneSurface` / `CurveEval3d` / `SurfaceEval3d` 的最小 3D 参数对象能力
+  - SDK 层常用对象和基础 API 行为，以及 `LineCurve3d` / `PlaneSurface` / `CurveEval3d` / `SurfaceEval3d` / `TriangleMesh` / `MeshValidation3d` 的最小 3D 能力
 - `tests/capabilities/test_sdk_algorithms.cpp`
   - 距离、投影、反转、采样、基础算法能力
 - `tests/capabilities/test_sdk_multigeometry.cpp`
