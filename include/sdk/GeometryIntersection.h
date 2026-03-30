@@ -36,6 +36,10 @@ namespace geometry::sdk
     const Line3d& line,
     const Curve3d& curve,
     const GeometryTolerance3d& tolerance = {});
+[[nodiscard]] GEOMETRY_API LineCurveOnSurfaceIntersection3d Intersect(
+    const Line3d& line,
+    const CurveOnSurface& curveOnSurface,
+    const GeometryTolerance3d& tolerance = {});
 [[nodiscard]] GEOMETRY_API LineSurfaceIntersection3d Intersect(
     const Line3d& line,
     const Surface& surface,

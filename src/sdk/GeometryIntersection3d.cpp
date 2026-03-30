@@ -263,6 +263,66 @@ LineCurveIntersection3d Intersect(
     return {true, bestLineParameter, bestCurveParameter, curve.PointAt(bestCurveParameter)};
 }
 
+LineCurveOnSurfaceIntersection3d Intersect(
+    const Line3d& line,
+    const CurveOnSurface& curveOnSurface,
+    const GeometryTolerance3d& tolerance)
+{
+    if (!line.IsValid(tolerance.distanceEpsilon) || !curveOnSurface.IsValid(tolerance) || curveOnSurface.PointCount() < 2)
+    {
+        return {};
+    }
+
+    const std::size_t pointCount = curveOnSurface.PointCount();
+    const std::size_t segmentCount = curveOnSurface.UvCurve().IsClosed() ? pointCount : pointCount - 1;
+    for (std::size_t i = 0; i < segmentCount; ++i)
+    {
+        const std::size_t j = (i + 1) % pointCount;
+        const Point3d start = curveOnSurface.PointAt(i);
+        const Point3d end = curveOnSurface.PointAt(j);
+        const Vector3d segmentDirection = end - start;
+        const double segmentLengthSquared = segmentDirection.LengthSquared();
+        if (segmentLengthSquared <= tolerance.distanceEpsilon * tolerance.distanceEpsilon)
+        {
+            continue;
+        }
+
+        const Line3d segmentLine = Line3d::FromOriginAndDirection(start, segmentDirection);
+        const Vector3d delta = segmentLine.origin - line.origin;
+        const double a = line.direction.LengthSquared();
+        const double b = Dot(line.direction, segmentLine.direction);
+        const double c = segmentLine.direction.LengthSquared();
+        const double d = Dot(line.direction, delta);
+        const double e = Dot(segmentLine.direction, delta);
+        const double denominator = a * c - b * b;
+        if (std::abs(denominator) <= tolerance.distanceEpsilon)
+        {
+            continue;
+        }
+
+        const double lineParameter = (d * c - b * e) / denominator;
+        const double segmentParameter = (a * e - b * d) / denominator;
+        if (segmentParameter < -tolerance.parameterEpsilon || segmentParameter > 1.0 + tolerance.parameterEpsilon)
+        {
+            continue;
+        }
+
+        const Point3d pointOnLine = line.PointAt(lineParameter);
+        const Point3d pointOnSegment = start + segmentDirection * segmentParameter;
+        if (!pointOnLine.AlmostEquals(pointOnSegment, tolerance.distanceEpsilon))
+        {
+            continue;
+        }
+
+        const Point2d uv0 = curveOnSurface.UvPointAt(i);
+        const Point2d uv1 = curveOnSurface.UvPointAt(j);
+        const Point2d uv = uv0 + (uv1 - uv0) * segmentParameter;
+        return {true, i, segmentParameter, lineParameter, uv, pointOnSegment};
+    }
+
+    return {};
+}
+
 LineSurfaceIntersection3d Intersect(
     const Line3d& line,
     const Surface& surface,

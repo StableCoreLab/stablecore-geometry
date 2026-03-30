@@ -50,6 +50,11 @@ namespace geometry::sdk
     const Curve3d& curve,
     const GeometryTolerance3d& tolerance = {});
 
+[[nodiscard]] GEOMETRY_API CurveOnSurfaceProjection3d ProjectPointToCurveOnSurface(
+    const Point3d& point,
+    const CurveOnSurface& curveOnSurface,
+    const GeometryTolerance3d& tolerance = {});
+
 [[nodiscard]] GEOMETRY_API SurfaceProjection3d ProjectPointToSurface(
     const Point3d& point,
     const Surface& surface,

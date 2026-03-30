@@ -399,6 +399,17 @@ TEST(SdkTest, CoversCurrentCapabilities)
     GEOMETRY_TEST_ASSERT_NEAR(curveOnSurfaceBounds.MaxPoint().z, 5.0, 1e-12);
     GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Bounds(curveOnSurface).MinPoint().z, 5.0, 1e-12);
     GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Length(curveOnSurface), std::sqrt(8.0) * 2.0, 1e-12);
+    const auto curveOnSurfaceProjection = geometry::sdk::ProjectPointToCurveOnSurface(Point3d{0.0, -1.0, 6.0}, curveOnSurface);
+    assert(curveOnSurfaceProjection.success);
+    assert(curveOnSurfaceProjection.IsValid());
+    assert(curveOnSurfaceProjection.point.AlmostEquals(Point3d{0.0, -1.0, 5.0}, 1e-12));
+    GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Distance(Point3d{0.0, -1.0, 6.0}, curveOnSurface), 1.0, 1e-12);
+    const auto curveOnSurfaceIntersection = geometry::sdk::Intersect(
+        Line3d::FromOriginAndDirection(Point3d{0.0, -1.0, 6.0}, Vector3d{0.0, 0.0, -1.0}),
+        curveOnSurface);
+    assert(curveOnSurfaceIntersection.intersects);
+    assert(curveOnSurfaceIntersection.IsValid());
+    assert(curveOnSurfaceIntersection.point.AlmostEquals(Point3d{0.0, -1.0, 5.0}, 1e-12));
 
     const auto planeSurfaceProjection = ProjectPointToSurface(Point3d{0.5, -1.0, 8.0}, planeSurface);
     assert(planeSurfaceProjection.success);

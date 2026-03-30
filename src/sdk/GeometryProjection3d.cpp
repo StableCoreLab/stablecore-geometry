@@ -296,6 +296,41 @@ CurveProjection3d ProjectPointToCurve(
     return {refined.success, refined.point, refined.parameter, refined.distanceSquared};
 }
 
+CurveOnSurfaceProjection3d ProjectPointToCurveOnSurface(
+    const Point3d& point,
+    const CurveOnSurface& curveOnSurface,
+    const GeometryTolerance3d& tolerance)
+{
+    CurveOnSurfaceProjection3d best{};
+    if (!curveOnSurface.IsValid(tolerance) || curveOnSurface.PointCount() < 2)
+    {
+        return best;
+    }
+
+    const std::size_t pointCount = curveOnSurface.PointCount();
+    const std::size_t segmentCount = curveOnSurface.UvCurve().IsClosed() ? pointCount : pointCount - 1;
+    for (std::size_t i = 0; i < segmentCount; ++i)
+    {
+        const std::size_t j = (i + 1) % pointCount;
+        const LineProjection3d projected =
+            ProjectPointToSegment3d(point, curveOnSurface.PointAt(i), curveOnSurface.PointAt(j), tolerance.distanceEpsilon);
+        if (!best.success || projected.distanceSquared < best.distanceSquared)
+        {
+            const Point2d uv0 = curveOnSurface.UvPointAt(i);
+            const Point2d uv1 = curveOnSurface.UvPointAt(j);
+            const Point2d uv = uv0 + (uv1 - uv0) * projected.parameter;
+            best.success = true;
+            best.point = projected.point;
+            best.segmentIndex = i;
+            best.segmentParameter = projected.parameter;
+            best.uv = uv;
+            best.distanceSquared = projected.distanceSquared;
+        }
+    }
+
+    return best;
+}
+
 PlaneProjection3d ProjectPointToPlane(
     const Point3d& point,
     const Plane& plane,

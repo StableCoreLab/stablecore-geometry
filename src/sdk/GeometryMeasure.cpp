@@ -50,6 +50,16 @@ double Distance(const Point3d& point, const Curve3d& curve, const GeometryTolera
     return std::sqrt(DistanceSquared(point, curve, tolerance));
 }
 
+double DistanceSquared(const Point3d& point, const CurveOnSurface& curveOnSurface, const GeometryTolerance3d& tolerance)
+{
+    return ProjectPointToCurveOnSurface(point, curveOnSurface, tolerance).distanceSquared;
+}
+
+double Distance(const Point3d& point, const CurveOnSurface& curveOnSurface, const GeometryTolerance3d& tolerance)
+{
+    return std::sqrt(DistanceSquared(point, curveOnSurface, tolerance));
+}
+
 double DistanceSquared(const Point3d& point, const Surface& surface, const GeometryTolerance3d& tolerance)
 {
     return ProjectPointToSurface(point, surface, tolerance).distanceSquared;

@@ -158,6 +158,22 @@ struct GEOMETRY_API CurveProjection3d
     }
 };
 
+struct GEOMETRY_API CurveOnSurfaceProjection3d
+{
+    bool success{false};
+    Point3d point{};
+    std::size_t segmentIndex{0};
+    double segmentParameter{0.0};
+    Point2d uv{};
+    double distanceSquared{0.0};
+
+    [[nodiscard]] bool IsValid() const
+    {
+        return !success || (point.IsValid() && uv.IsValid() && std::isfinite(segmentParameter) &&
+                            std::isfinite(distanceSquared) && distanceSquared >= 0.0);
+    }
+};
+
 struct GEOMETRY_API BrepFaceProjection3d
 {
     bool success{false};
@@ -329,6 +345,22 @@ struct GEOMETRY_API LineCurveIntersection3d
     [[nodiscard]] bool IsValid() const
     {
         return !intersects || (point.IsValid() && std::isfinite(lineParameter) && std::isfinite(curveParameter));
+    }
+};
+
+struct GEOMETRY_API LineCurveOnSurfaceIntersection3d
+{
+    bool intersects{false};
+    std::size_t segmentIndex{0};
+    double segmentParameter{0.0};
+    double lineParameter{0.0};
+    Point2d uv{};
+    Point3d point{};
+
+    [[nodiscard]] bool IsValid() const
+    {
+        return !intersects || (point.IsValid() && uv.IsValid() && std::isfinite(segmentParameter) &&
+                               std::isfinite(lineParameter));
     }
 };
 
