@@ -277,6 +277,7 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
   - `BuildSectionTopology(...)`
   - `RebuildSectionFaces(...)`
   - `RebuildSectionBody(...)`
+  - `ConvertSectionToTriangleMesh(...)`
   - `ProjectFaceToPolygon2d(...)`
   - `PolyhedronLoop3d`
   - `PolyhedronFace3d`
@@ -303,6 +304,7 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
 - `GeometrySection` 已接上最小 face merge 语义，可将嵌套 section polygons 合并成带孔 `PolyhedronFace3d`
 - `GeometrySection` 已接上最小 body rebuild 入口，可将 merged section faces 直接组织为 `PolyhedronBody`
 - `GeometrySection` 已接上最小 topology 入口，可显式给出 section polygons 的 parent / child / depth 关系
+- `GeometrySection` 已接上最小 mesh conversion 入口，可直接将闭合 section 结果转成 `TriangleMesh`
 - `GeometryValidation` 已接上 `PolyhedronSection3d` 的最小 validation 结果
 - 带孔 `PolyhedronFace3d` 已可经由 projected 2D polygon 工作流转成 `TriangleMesh`
 - 当前 `GeometrySection` 仍是保守入口：最小 body rebuild 已补上，但 richer section topology 与更复杂 merge 语义仍未补

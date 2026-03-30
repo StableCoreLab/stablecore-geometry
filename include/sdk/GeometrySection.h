@@ -6,6 +6,7 @@
 
 #include "export/GeometryExport.h"
 #include "sdk/GeometryTypes.h"
+#include "sdk/GeometryMeshConversion.h"
 #include "sdk/Polygon2d.h"
 #include "sdk/PolyhedronBody.h"
 
@@ -212,6 +213,18 @@ private:
     std::vector<std::size_t> roots_{};
 };
 
+struct GEOMETRY_API SectionMeshConversion3d
+{
+    bool success{false};
+    MeshConversionIssue3d issue{MeshConversionIssue3d::None};
+    TriangleMesh mesh{};
+
+    [[nodiscard]] bool IsValid(double eps = geometry::kDefaultEpsilon) const
+    {
+        return !success || mesh.IsValid(eps);
+    }
+};
+
 [[nodiscard]] GEOMETRY_API PolyhedronSection3d Section(
     const PolyhedronBody& body,
     const Plane& plane,
@@ -226,6 +239,10 @@ private:
     double eps = 1e-9);
 
 [[nodiscard]] GEOMETRY_API SectionTopology3d BuildSectionTopology(
+    const PolyhedronSection3d& section,
+    double eps = 1e-9);
+
+[[nodiscard]] GEOMETRY_API SectionMeshConversion3d ConvertSectionToTriangleMesh(
     const PolyhedronSection3d& section,
     double eps = 1e-9);
 } // namespace geometry::sdk

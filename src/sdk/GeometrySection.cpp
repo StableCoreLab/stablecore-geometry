@@ -947,4 +947,41 @@ std::string SectionTopology3d::DebugString() const
            << ", valid=" << (valid_ ? "true" : "false") << "}";
     return stream.str();
 }
+
+SectionMeshConversion3d ConvertSectionToTriangleMesh(const PolyhedronSection3d& section, double eps)
+{
+    SectionMeshConversion3d result{};
+    const SectionFaceRebuild3d rebuiltFaces = RebuildSectionFaces(section, eps);
+    if (!rebuiltFaces.success)
+    {
+        result.issue = MeshConversionIssue3d::InvalidFace;
+        return result;
+    }
+
+    std::vector<Point3d> vertices;
+    std::vector<TriangleMesh::TriangleIndices> triangles;
+    for (const PolyhedronFace3d& face : rebuiltFaces.faces)
+    {
+        const PolyhedronMeshConversion3d faceMesh = ConvertToTriangleMesh(face, eps);
+        if (!faceMesh.success)
+        {
+            result.issue = faceMesh.issue;
+            return result;
+        }
+
+        const std::size_t vertexOffset = vertices.size();
+        vertices.insert(vertices.end(), faceMesh.mesh.Vertices().begin(), faceMesh.mesh.Vertices().end());
+        for (const auto& triangle : faceMesh.mesh.Triangles())
+        {
+            triangles.push_back(TriangleMesh::TriangleIndices{
+                triangle[0] + vertexOffset,
+                triangle[1] + vertexOffset,
+                triangle[2] + vertexOffset});
+        }
+    }
+
+    result.mesh = TriangleMesh(std::move(vertices), std::move(triangles));
+    result.success = true;
+    return result;
+}
 } // namespace geometry::sdk
