@@ -8,6 +8,7 @@
 #include "sdk/GeometryProjection.h"
 #include "sdk/GeometryRelation.h"
 #include "sdk/LineCurve3d.h"
+#include "sdk/NurbsSurface.h"
 #include "sdk/PlaneSurface.h"
 
 namespace geometry::sdk
@@ -22,6 +23,104 @@ namespace
     double v)
 {
     return (line.PointAt(t) - surface.PointAt(u, v)).LengthSquared();
+}
+
+[[nodiscard]] bool TryBuildSupportPlane(
+    const NurbsSurface& surface,
+    const GeometryTolerance3d& tolerance,
+    Plane& plane)
+{
+    if (!surface.IsValid(tolerance))
+    {
+        return false;
+    }
+
+    const Intervald uRange = surface.URange();
+    const Intervald vRange = surface.VRange();
+    const double u = 0.5 * (uRange.min + uRange.max);
+    const double v = 0.5 * (vRange.min + vRange.max);
+    const SurfaceEval3d eval = surface.Evaluate(u, v, 1);
+    if (!eval.IsValid() || eval.normal.Length() <= tolerance.distanceEpsilon)
+    {
+        return false;
+    }
+
+    plane = Plane::FromPointAndNormal(eval.point, eval.normal);
+    if (!plane.IsValid(tolerance.distanceEpsilon))
+    {
+        return false;
+    }
+
+    for (const Point3d& controlPoint : surface.ControlPoints())
+    {
+        if (std::abs(plane.SignedDistanceTo(controlPoint, tolerance.distanceEpsilon)) >
+            tolerance.distanceEpsilon)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+[[nodiscard]] bool TryProjectPointToAffinePlanarNurbs(
+    const Point3d& point,
+    const NurbsSurface& surface,
+    const GeometryTolerance3d& tolerance,
+    double& u,
+    double& v,
+    Point3d& surfacePoint)
+{
+    if (surface.DegreeU() != 1 || surface.DegreeV() != 1 ||
+        surface.ControlPointCountU() != 2 || surface.ControlPointCountV() != 2)
+    {
+        return false;
+    }
+
+    const auto& controlPoints = surface.ControlPoints();
+    if (controlPoints.size() != 4)
+    {
+        return false;
+    }
+
+    const Point3d& p00 = controlPoints[0];
+    const Point3d& p10 = controlPoints[1];
+    const Point3d& p01 = controlPoints[2];
+    const Point3d& p11 = controlPoints[3];
+    const Point3d affineCorner = p10 + (p01 - p00);
+    if (!affineCorner.AlmostEquals(p11, tolerance.distanceEpsilon))
+    {
+        return false;
+    }
+
+    const Vector3d uDirection = p10 - p00;
+    const Vector3d vDirection = p01 - p00;
+    const Vector3d delta = point - p00;
+    const double uu = Dot(uDirection, uDirection);
+    const double uv = Dot(uDirection, vDirection);
+    const double vv = Dot(vDirection, vDirection);
+    const double du = Dot(delta, uDirection);
+    const double dv = Dot(delta, vDirection);
+    const double denominator = uu * vv - uv * uv;
+    if (std::abs(denominator) <= tolerance.parameterEpsilon)
+    {
+        return false;
+    }
+
+    const double normalizedU = (du * vv - dv * uv) / denominator;
+    const double normalizedV = (dv * uu - du * uv) / denominator;
+    if (normalizedU < -tolerance.parameterEpsilon || normalizedU > 1.0 + tolerance.parameterEpsilon ||
+        normalizedV < -tolerance.parameterEpsilon || normalizedV > 1.0 + tolerance.parameterEpsilon)
+    {
+        return false;
+    }
+
+    const Intervald uRange = surface.URange();
+    const Intervald vRange = surface.VRange();
+    u = uRange.min + uRange.Length() * std::clamp(normalizedU, 0.0, 1.0);
+    v = vRange.min + vRange.Length() * std::clamp(normalizedV, 0.0, 1.0);
+    surfacePoint = surface.PointAt(u, v);
+    return surfacePoint.AlmostEquals(point, tolerance.distanceEpsilon);
 }
 
 [[nodiscard]] LineSurfaceIntersection3d RefineLineSurfaceIntersection(
@@ -235,7 +334,7 @@ LineCurveIntersection3d Intersect(
         }
 
         const double lineParameter = (d * c - b * e) / denominator;
-        const double curveParameter = (a * e - b * d) / denominator;
+        const double curveParameter = (b * d - a * e) / denominator;
         const Intervald curveRange = lineCurve->ParameterRange();
         if (!curveRange.Contains(curveParameter, tolerance.parameterEpsilon))
         {
@@ -386,6 +485,57 @@ LineSurfaceIntersection3d Intersect(
         return {true, false, planeIntersection.liesOnPlane, planeIntersection.parameter, u, v, planeIntersection.point};
     }
 
+    if (const auto* nurbsSurface = dynamic_cast<const NurbsSurface*>(&surface))
+    {
+        Plane supportPlane{};
+        if (TryBuildSupportPlane(*nurbsSurface, tolerance, supportPlane))
+        {
+            const LinePlaneIntersection3d planeIntersection = Intersect(line, supportPlane, tolerance);
+            if (!planeIntersection.intersects)
+            {
+                return {false, planeIntersection.isParallel, planeIntersection.liesOnPlane, 0.0, 0.0, 0.0, {}};
+            }
+
+            double u = 0.0;
+            double v = 0.0;
+            Point3d surfacePoint{};
+            if (TryProjectPointToAffinePlanarNurbs(
+                    planeIntersection.point,
+                    *nurbsSurface,
+                    tolerance,
+                    u,
+                    v,
+                    surfacePoint))
+            {
+                return {
+                    true,
+                    false,
+                    planeIntersection.liesOnPlane,
+                    planeIntersection.parameter,
+                    u,
+                    v,
+                    surfacePoint};
+            }
+
+            const SurfaceProjection3d surfaceProjection =
+                ProjectPointToSurface(planeIntersection.point, surface, tolerance);
+            if (!surfaceProjection.success ||
+                surfaceProjection.distanceSquared > tolerance.distanceEpsilon * tolerance.distanceEpsilon)
+            {
+                return {};
+            }
+
+            return {
+                true,
+                false,
+                planeIntersection.liesOnPlane,
+                planeIntersection.parameter,
+                surfaceProjection.u,
+                surfaceProjection.v,
+                surfaceProjection.point};
+        }
+    }
+
     const Intervald uRange = surface.URange();
     const Intervald vRange = surface.VRange();
     if (!uRange.IsValid() || !vRange.IsValid())
@@ -402,6 +552,28 @@ LineSurfaceIntersection3d Intersect(
     double bestU = uRange.min;
     double bestV = vRange.min;
     double bestResidualSquared = SurfaceResidualSquared(line, bestT, surface, bestU, bestV);
+
+    const SurfaceProjection3d originProjection = ProjectPointToSurface(line.origin, surface, tolerance);
+    if (originProjection.success)
+    {
+        const double projectedLineParameter =
+            Dot(originProjection.point - line.origin, line.direction) /
+            std::max(line.direction.LengthSquared(), tolerance.parameterEpsilon);
+        const double projectedResidualSquared = SurfaceResidualSquared(
+            line,
+            projectedLineParameter,
+            surface,
+            originProjection.u,
+            originProjection.v);
+        if (projectedResidualSquared < bestResidualSquared)
+        {
+            bestT = projectedLineParameter;
+            bestU = originProjection.u;
+            bestV = originProjection.v;
+            bestResidualSquared = projectedResidualSquared;
+        }
+    }
+
     for (std::size_t ti = 0; ti < sampleCountT; ++ti)
     {
         const double t = (static_cast<double>(ti) - static_cast<double>(sampleCountT / 2)) * lineStep;
@@ -477,7 +649,7 @@ LineBrepEdgeIntersection3d Intersect(
         }
 
         const double lineParameter = (d * c - b * e) / denominator;
-        const double edgeParameter = (a * e - b * d) / denominator;
+        const double edgeParameter = (b * d - a * e) / denominator;
         const Intervald edgeRange = lineCurve->ParameterRange();
         if (!edgeRange.Contains(edgeParameter, tolerance.parameterEpsilon))
         {

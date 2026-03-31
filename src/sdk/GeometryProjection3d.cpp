@@ -40,6 +40,38 @@ struct PlaneProjectionBasis
     return Point2d{Dot(delta, basis.u), Dot(delta, basis.v)};
 }
 
+[[nodiscard]] double SignedArea2d(const std::vector<Point2d>& points)
+{
+    if (points.size() < 3)
+    {
+        return 0.0;
+    }
+
+    double area = 0.0;
+    for (std::size_t i = 0; i < points.size(); ++i)
+    {
+        const Point2d& current = points[i];
+        const Point2d& next = points[(i + 1) % points.size()];
+        area += current.x * next.y - next.x * current.y;
+    }
+
+    return 0.5 * area;
+}
+
+void EnsureRingOrientation(std::vector<Point2d>& points, bool counterClockwise)
+{
+    if (points.size() < 3)
+    {
+        return;
+    }
+
+    const double signedArea = SignedArea2d(points);
+    if ((counterClockwise && signedArea < 0.0) || (!counterClockwise && signedArea > 0.0))
+    {
+        std::reverse(points.begin(), points.end());
+    }
+}
+
 [[nodiscard]] double DistanceSquaredToSurfacePoint(
     const Point3d& point,
     const Surface& surface,
@@ -751,12 +783,14 @@ FaceProjection3d ProjectFaceToPolygon2d(const PolyhedronFace3d& face, const Geom
 
     const Plane plane = face.SupportPlane();
     const PlaneProjectionBasis basis = BuildPlaneProjectionBasis(plane, tolerance.distanceEpsilon);
+    const PolyhedronLoop3d outerLoop = face.OuterLoop();
     std::vector<Point2d> outerPoints;
-    outerPoints.reserve(face.OuterLoop().VertexCount());
-    for (const Point3d& vertex : face.OuterLoop().Vertices())
+    outerPoints.reserve(outerLoop.VertexCount());
+    for (const Point3d& vertex : outerLoop.Vertices())
     {
         outerPoints.push_back(ProjectToLocalPlaneCoordinates(vertex, plane, basis));
     }
+    EnsureRingOrientation(outerPoints, true);
 
     std::vector<Polyline2d> holeRings;
     holeRings.reserve(face.HoleCount());
@@ -769,6 +803,7 @@ FaceProjection3d ProjectFaceToPolygon2d(const PolyhedronFace3d& face, const Geom
         {
             holePoints.push_back(ProjectToLocalPlaneCoordinates(vertex, plane, basis));
         }
+        EnsureRingOrientation(holePoints, false);
         holeRings.emplace_back(std::move(holePoints), PolylineClosure::Closed);
     }
 

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "sdk/GeometryMeshOps.h"
 #include "sdk/GeometryMeshConversion.h"
 #include "sdk/GeometryProjection.h"
 #include "sdk/GeometryShapeOps.h"
@@ -219,6 +220,11 @@ double Area(const TriangleMesh& mesh)
 
 double Volume(const TriangleMesh& mesh)
 {
+    if (!mesh.IsValid() || !IsClosedTriangleMesh(mesh))
+    {
+        return 0.0;
+    }
+
     double signedVolume = 0.0;
     for (std::size_t i = 0; i < mesh.TriangleCount(); ++i)
     {

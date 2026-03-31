@@ -370,6 +370,7 @@ void EnsureClockwise(
     };
 
     projectLoop(face.OuterLoop(), data.outer3d, data.outer2d);
+    EnsureCounterClockwise(data.outer3d, data.outer2d);
 
     std::vector<Polyline2d> holeRings;
     holeRings.reserve(face.HoleCount());
@@ -380,6 +381,7 @@ void EnsureClockwise(
         data.holeContours3d.emplace_back();
         data.holeContours2d.emplace_back();
         projectLoop(face.HoleAt(i), data.holeContours3d.back(), data.holeContours2d.back());
+        EnsureClockwise(data.holeContours3d.back(), data.holeContours2d.back());
         holeRings.emplace_back(data.holeContours2d.back(), PolylineClosure::Closed);
     }
 
@@ -424,6 +426,73 @@ void EnsureClockwise(
         current = topology.ParentOf(current);
     }
     return depth;
+}
+
+[[nodiscard]] std::vector<Point2d> CollectRingPoints(const Polyline2d& ring)
+{
+    std::vector<Point2d> points;
+    points.reserve(ring.PointCount());
+    for (std::size_t i = 0; i < ring.PointCount(); ++i)
+    {
+        points.push_back(ring.PointAt(i));
+    }
+    return points;
+}
+
+[[nodiscard]] Polyline2d NormalizeRingOrientation(const Polyline2d& ring, bool counterClockwise)
+{
+    std::vector<Point2d> points = CollectRingPoints(ring);
+    if (points.size() >= 3)
+    {
+        const double signedArea = SignedArea2d(points);
+        if ((counterClockwise && signedArea < 0.0) || (!counterClockwise && signedArea > 0.0))
+        {
+            std::reverse(points.begin(), points.end());
+        }
+    }
+
+    return Polyline2d(std::move(points), PolylineClosure::Closed);
+}
+
+[[nodiscard]] Polygon2d NormalizePolygonOrientation(const Polygon2d& polygon)
+{
+    Polyline2d outer = NormalizeRingOrientation(polygon.OuterRing(), true);
+    std::vector<Polyline2d> holes;
+    holes.reserve(polygon.HoleCount());
+    for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
+    {
+        holes.push_back(NormalizeRingOrientation(polygon.HoleAt(i), false));
+    }
+
+    return Polygon2d(std::move(outer), std::move(holes));
+}
+
+[[nodiscard]] bool IsSectionFrameValid(const PolyhedronSection3d& section, double eps)
+{
+    return section.origin.IsValid() && section.uAxis.IsValid() && section.vAxis.IsValid() &&
+           section.uAxis.Length() > eps && section.vAxis.Length() > eps;
+}
+
+[[nodiscard]] bool BuildNormalizedSectionPolygons(
+    const PolyhedronSection3d& section,
+    MultiPolygon2d& polygons)
+{
+    polygons = MultiPolygon2d{};
+    for (const Polygon2d& polygon : section.polygons)
+    {
+        Polygon2d normalized = polygon;
+        if (!normalized.IsValid())
+        {
+            normalized = NormalizePolygonOrientation(polygon);
+        }
+
+        if (!normalized.IsValid())
+        {
+            return false;
+        }
+        polygons.Add(std::move(normalized));
+    }
+    return true;
 }
 
 void AddUniquePlaneEdgeSegments(
@@ -1152,7 +1221,13 @@ PolyhedronSection3d Section(
 SectionFaceRebuild3d RebuildSectionFaces(const PolyhedronSection3d& section, double eps)
 {
     SectionFaceRebuild3d result{};
-    if (!section.success || !section.IsValid(eps))
+    if (!section.success)
+    {
+        result.issue = SectionFaceRebuildIssue3d::InvalidSection;
+        return result;
+    }
+
+    if (!IsSectionFrameValid(section, eps))
     {
         result.issue = SectionFaceRebuildIssue3d::InvalidSection;
         return result;
@@ -1167,14 +1242,10 @@ SectionFaceRebuild3d RebuildSectionFaces(const PolyhedronSection3d& section, dou
     }
 
     MultiPolygon2d polygons;
-    for (const Polygon2d& polygon : section.polygons)
+    if (!BuildNormalizedSectionPolygons(section, polygons))
     {
-        if (!polygon.IsValid())
-        {
-            result.issue = SectionFaceRebuildIssue3d::InvalidPolygon;
-            return result;
-        }
-        polygons.Add(polygon);
+        result.issue = SectionFaceRebuildIssue3d::InvalidPolygon;
+        return result;
     }
 
     const PolygonTopology2d topology = BuildPolygonTopology(polygons, eps);
@@ -1257,7 +1328,7 @@ SectionFaceRebuild3d RebuildSectionFaces(const PolyhedronSection3d& section, dou
 SectionBrepFaceRebuild3d RebuildSectionBrepFaces(const PolyhedronSection3d& section, double eps)
 {
     SectionBrepFaceRebuild3d result{};
-    if (!section.success || !section.IsValid(eps))
+    if (!section.success || !IsSectionFrameValid(section, eps))
     {
         result.issue = SectionFaceRebuildIssue3d::InvalidSection;
         return result;
@@ -1343,7 +1414,7 @@ SectionBrepFaceRebuild3d RebuildSectionBrepFaces(const PolyhedronSection3d& sect
 SectionBodyRebuild3d RebuildSectionBody(const PolyhedronSection3d& section, double eps)
 {
     SectionBodyRebuild3d result{};
-    if (!section.success || !section.IsValid(eps))
+    if (!section.success || !IsSectionFrameValid(section, eps))
     {
         result.issue = SectionBodyRebuildIssue3d::InvalidSection;
         return result;
@@ -1364,7 +1435,7 @@ SectionBodyRebuild3d RebuildSectionBody(const PolyhedronSection3d& section, doub
 SectionBrepBodyRebuild3d RebuildSectionBrepBody(const PolyhedronSection3d& section, double eps)
 {
     SectionBrepBodyRebuild3d result{};
-    if (!section.success || !section.IsValid(eps))
+    if (!section.success || !IsSectionFrameValid(section, eps))
     {
         result.issue = SectionBodyRebuildIssue3d::InvalidSection;
         return result;
@@ -1466,7 +1537,7 @@ SectionBrepBodyRebuild3d RebuildSectionBrepBody(const PolyhedronSection3d& secti
 SectionBrepBodySetRebuild3d RebuildSectionBrepBodies(const PolyhedronSection3d& section, double eps)
 {
     SectionBrepBodySetRebuild3d result{};
-    if (!section.success || !section.IsValid(eps))
+    if (!section.success || !IsSectionFrameValid(section, eps))
     {
         result.issue = SectionBodyRebuildIssue3d::InvalidSection;
         return result;
@@ -1522,7 +1593,7 @@ SectionBrepBodySetRebuild3d RebuildSectionBrepBodies(const PolyhedronSection3d& 
 SectionBodySetRebuild3d RebuildSectionBodies(const PolyhedronSection3d& section, double eps)
 {
     SectionBodySetRebuild3d result{};
-    if (!section.success || !section.IsValid(eps))
+    if (!section.success || !IsSectionFrameValid(section, eps))
     {
         result.issue = SectionBodyRebuildIssue3d::InvalidSection;
         return result;
@@ -1568,19 +1639,15 @@ SectionBodySetRebuild3d RebuildSectionBodies(const PolyhedronSection3d& section,
 SectionTopology3d BuildSectionTopology(const PolyhedronSection3d& section, double eps)
 {
     SectionTopology3d result{};
-    if (!section.success || !section.IsValid(eps))
+    if (!section.success || !IsSectionFrameValid(section, eps))
     {
         return result;
     }
 
     MultiPolygon2d polygons;
-    for (const Polygon2d& polygon : section.polygons)
+    if (!BuildNormalizedSectionPolygons(section, polygons))
     {
-        if (!polygon.IsValid())
-        {
-            return result;
-        }
-        polygons.Add(polygon);
+        return result;
     }
 
     const PolygonTopology2d topology = BuildPolygonTopology(polygons, eps);
@@ -1678,7 +1745,7 @@ SectionMeshSetConversion3d ConvertSectionToTriangleMeshes(const PolyhedronSectio
 
 SectionContentKind3d ClassifySectionContent(const PolyhedronSection3d& section, double eps)
 {
-    if (!section.success || !section.IsValid(eps))
+    if (!section.success || !IsSectionFrameValid(section, eps))
     {
         return SectionContentKind3d::Empty;
     }

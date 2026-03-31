@@ -18,13 +18,16 @@ namespace detail
         return Vector3d{};
     }
 
-    const Vector3d axis = std::abs(normalized.x) <= std::abs(normalized.y) &&
-                                  std::abs(normalized.x) <= std::abs(normalized.z)
-                              ? Vector3d{1.0, 0.0, 0.0}
-                              : (std::abs(normalized.y) <= std::abs(normalized.z)
-                                     ? Vector3d{0.0, 1.0, 0.0}
-                                     : Vector3d{0.0, 0.0, 1.0});
-    return Cross(normalized, axis).Normalized(eps);
+    // Prefer world-aligned in-plane axes when possible so plane UV coordinates
+    // remain stable and intuitive, especially for axis-aligned support planes.
+    Vector3d referenceAxis{1.0, 0.0, 0.0};
+    if (std::abs(Dot(normalized, referenceAxis)) >= 1.0 - eps)
+    {
+        referenceAxis = Vector3d{0.0, 1.0, 0.0};
+    }
+
+    const Vector3d inPlane = referenceAxis - normalized * Dot(referenceAxis, normalized);
+    return inPlane.Normalized(eps);
 }
 } // namespace detail
 
