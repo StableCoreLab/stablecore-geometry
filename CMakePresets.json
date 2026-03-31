@@ -1,0 +1,38 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 16,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "vs2022-x64",
+      "displayName": "VS2022 x64",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/../StablecoreGeometryBuild",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "STABLECORE_GEOMETRY_BUILD_TESTS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "vs2022-x64-build",
+      "displayName": "Build VS2022 x64",
+      "configurePreset": "vs2022-x64"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "vs2022-x64-test",
+      "displayName": "Test VS2022 x64",
+      "configurePreset": "vs2022-x64",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

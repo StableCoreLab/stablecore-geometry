@@ -4,7 +4,7 @@ setlocal
 set "SCRIPT_DIR=%~dp0"
 if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
 
-set "BUILD_DIR=%SCRIPT_DIR%..\..\StablecoreGeometryBuild"
+set "BUILD_DIR=%SCRIPT_DIR%..\StablecoreGeometryBuild"
 set "GENERATOR=Visual Studio 17 2022"
 set "ARCH=x64"
 set "BUILD_TESTS=ON"

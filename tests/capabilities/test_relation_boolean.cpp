@@ -224,7 +224,7 @@ TEST(RelationBooleanTest, CoversCurrentCapabilities)
         1e-8);
     GEOMETRY_TEST_ASSERT_NEAR(
         TotalArea(geometry::sdk::Union(repeatedCollinearChainA, repeatedCollinearChainB)),
-        23.000000001,
+        24.0,
         1e-8);
     GEOMETRY_TEST_ASSERT_NEAR(
         TotalArea(geometry::sdk::Difference(repeatedCollinearChainA, repeatedCollinearChainB)),

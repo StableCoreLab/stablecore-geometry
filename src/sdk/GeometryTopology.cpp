@@ -258,7 +258,9 @@ PolygonContainment2d Relate(const Polygon2d& first, const Polygon2d& second, dou
     }
     if (contact == BoundaryContact2d::Touching)
     {
-        return PolygonContainment2d::Touching;
+        return (secondHasStrictInteriorInFirst || firstHasStrictInteriorInSecond)
+                   ? PolygonContainment2d::Intersecting
+                   : PolygonContainment2d::Touching;
     }
 
     if (secondHasStrictInteriorInFirst || firstHasStrictInteriorInSecond)

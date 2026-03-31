@@ -1,0 +1,6 @@
+{
+  "cmake.useCMakePresets": "always",
+  "cmake.configurePreset": "vs2022-x64",
+  "cmake.buildPreset": "vs2022-x64-build",
+  "cmake.testPreset": "vs2022-x64-test"
+}

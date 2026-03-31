@@ -12,6 +12,7 @@
 #include "sdk/GeometryPathOps.h"
 #include "sdk/GeometryRelation.h"
 #include "sdk/GeometryShapeOps.h"
+#include "sdk/GeometryTopology.h"
 #include "sdk/GeometryValidation.h"
 
 namespace geometry::sdk
@@ -189,17 +190,56 @@ void AppendRecoveredOffsetRing(
     const OffsetOptions2d& options,
     MultiPolyline2d& output)
 {
+    const std::size_t before = output.Count();
     const Polyline2d primary = Offset(ring, signedDistance, options);
     AppendOffsetRing(primary, output);
+    if (output.Count() > before)
+    {
+        return;
+    }
 
     const Polyline2d reversed = Reverse(ring);
     const Polyline2d reverseFallback = Offset(reversed, -signedDistance, options);
     AppendOffsetRing(reverseFallback, output);
+    if (output.Count() > before)
+    {
+        return;
+    }
 
     OffsetOptions2d conservativeOptions = options;
     conservativeOptions.miterLimit = std::max(1.0, std::min(options.miterLimit, 2.0));
     const Polyline2d conservative = Offset(ring, signedDistance, conservativeOptions);
     AppendOffsetRing(conservative, output);
+}
+
+[[nodiscard]] Polyline2d NormalizeOuterRing(Polyline2d ring)
+{
+    if (Orientation(ring) != RingOrientation2d::CounterClockwise)
+    {
+        ring = Reverse(ring);
+    }
+    return ring;
+}
+
+[[nodiscard]] Polyline2d NormalizeHoleRing(Polyline2d ring)
+{
+    if (Orientation(ring) != RingOrientation2d::Clockwise)
+    {
+        ring = Reverse(ring);
+    }
+    return ring;
+}
+
+[[nodiscard]] Polygon2d NormalizePolygonOrientationForOffset(const Polygon2d& polygon)
+{
+    const Polyline2d outer = NormalizeOuterRing(polygon.OuterRing());
+    std::vector<Polyline2d> holes;
+    holes.reserve(polygon.HoleCount());
+    for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
+    {
+        holes.push_back(NormalizeHoleRing(polygon.HoleAt(i)));
+    }
+    return Polygon2d(outer, std::move(holes));
 }
 
 [[nodiscard]] MultiPolygon2d BuildOffsetPolygons(const MultiPolyline2d& rings, double eps)
@@ -386,22 +426,57 @@ Polyline2d Offset(const Polyline2d& polyline, double distance, OffsetOptions2d o
 
 Polygon2d Offset(const Polygon2d& polygon, double distance, OffsetOptions2d options)
 {
-    if (!polygon.IsValid())
+    Polygon2d source = polygon;
+    if (!source.IsValid())
+    {
+        source = NormalizePolygonOrientationForOffset(polygon);
+    }
+
+    if (!source.IsValid())
     {
         return Polygon2d();
     }
 
     MultiPolyline2d offsetRings;
-    const Polyline2d outerRing = polygon.OuterRing();
+    const Polyline2d outerRing = source.OuterRing();
     AppendRecoveredOffsetRing(outerRing, RingDistance(outerRing, distance, false), options, offsetRings);
-    for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
+    for (std::size_t i = 0; i < source.HoleCount(); ++i)
     {
-        const Polyline2d hole = polygon.HoleAt(i);
+        const Polyline2d hole = source.HoleAt(i);
         AppendRecoveredOffsetRing(hole, RingDistance(hole, distance, true), options, offsetRings);
     }
 
     const MultiPolygon2d rebuilt = BuildOffsetPolygons(offsetRings, geometry::kDefaultEpsilon);
-    return SelectBestOffsetPolygon(polygon, rebuilt, distance, geometry::kDefaultEpsilon);
+    if (rebuilt.IsEmpty())
+    {
+        const Polyline2d offsetOuter = Offset(outerRing, RingDistance(outerRing, distance, false), options);
+        if (!offsetOuter.IsValid() || !offsetOuter.IsClosed())
+        {
+            return {};
+        }
+
+        std::vector<Polyline2d> holes;
+        holes.reserve(source.HoleCount());
+        for (std::size_t i = 0; i < source.HoleCount(); ++i)
+        {
+            const Polyline2d hole = source.HoleAt(i);
+            const Polyline2d offsetHole = Offset(hole, RingDistance(hole, distance, true), options);
+            if (!offsetHole.IsValid() || !offsetHole.IsClosed())
+            {
+                continue;
+            }
+            holes.push_back(NormalizeHoleRing(offsetHole));
+        }
+
+        Polygon2d fallback(NormalizeOuterRing(offsetOuter), std::move(holes));
+        if (fallback.IsValid())
+        {
+            return fallback;
+        }
+        return {};
+    }
+
+    return SelectBestOffsetPolygon(source, rebuilt, distance, geometry::kDefaultEpsilon);
 }
 
 MultiPolyline2d Offset(const MultiPolyline2d& polylines, double distance, OffsetOptions2d options)
