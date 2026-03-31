@@ -2,6 +2,7 @@
 
 #include <cmath>
 
+#include "sdk/GeometryIntersection.h"
 #include "sdk/GeometryProjection.h"
 
 namespace geometry::sdk

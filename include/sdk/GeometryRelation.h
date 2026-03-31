@@ -2,6 +2,7 @@
 
 #include "export/GeometryExport.h"
 #include "sdk/ArcSegment2d.h"
+#include "sdk/BrepBody.h"
 #include "sdk/BrepFace.h"
 #include "sdk/Curve3d.h"
 #include "sdk/CurveOnSurface.h"

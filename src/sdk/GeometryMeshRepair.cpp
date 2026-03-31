@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include "algorithm/Predicate2.h"
 #include "sdk/GeometryMeshOps.h"
 
 namespace geometry::sdk

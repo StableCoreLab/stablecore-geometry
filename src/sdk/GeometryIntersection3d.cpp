@@ -5,8 +5,9 @@
 #include <cmath>
 #include <set>
 
-#include "sdk/LineCurve3d.h"
+#include "sdk/GeometryProjection.h"
 #include "sdk/GeometryRelation.h"
+#include "sdk/LineCurve3d.h"
 #include "sdk/PlaneSurface.h"
 
 namespace geometry::sdk
@@ -443,7 +444,7 @@ LineBrepEdgeIntersection3d Intersect(
 
     if (const auto* lineCurve = dynamic_cast<const LineCurve3d*>(edge.Curve()))
     {
-        const Line3d edgeLine = lineCurve->SupportLine();
+        const Line3d edgeLine = lineCurve->Line();
         const Vector3d cross = Cross(line.direction, edgeLine.direction);
         if (cross.LengthSquared() <= tolerance.distanceEpsilon * tolerance.distanceEpsilon)
         {

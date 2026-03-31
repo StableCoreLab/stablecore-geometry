@@ -531,7 +531,7 @@ BrepEdgeProjection3d ProjectPointToBrepEdge(
 
     if (const auto* lineCurve = dynamic_cast<const LineCurve3d*>(edge.Curve()))
     {
-        const LineProjection3d lineProjection = ProjectPointToLine(point, lineCurve->SupportLine(), tolerance);
+        const LineProjection3d lineProjection = ProjectPointToLine(point, lineCurve->Line(), tolerance);
         const Intervald range = lineCurve->ParameterRange();
         const double parameter = std::clamp(lineProjection.parameter, range.min, range.max);
         const Point3d projectedPoint = lineCurve->PointAt(parameter);

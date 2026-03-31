@@ -3,6 +3,7 @@
 #include "export/GeometryExport.h"
 #include "sdk/ArcSegment2d.h"
 #include "sdk/GeometryTypes.h"
+#include "sdk/BrepBody.h"
 #include "sdk/LineSegment2d.h"
 #include "sdk/Polygon2d.h"
 #include "sdk/BrepVertex.h"

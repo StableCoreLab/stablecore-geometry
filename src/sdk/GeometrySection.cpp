@@ -11,6 +11,8 @@
 #include "sdk/GeometryProjection.h"
 #include "sdk/GeometryRelation.h"
 #include "sdk/GeometryTopology.h"
+#include "sdk/LineCurve3d.h"
+#include "sdk/PlaneSurface.h"
 
 namespace geometry::sdk
 {
@@ -269,6 +271,62 @@ void SimplifyOpenPolyline(
             removed = true;
             break;
         }
+    }
+}
+
+[[nodiscard]] double SignedArea2d(const std::vector<Point2d>& contour)
+{
+    if (contour.size() < 3)
+    {
+        return 0.0;
+    }
+
+    double area = 0.0;
+    for (std::size_t i = 0; i < contour.size(); ++i)
+    {
+        const Point2d& current = contour[i];
+        const Point2d& next = contour[(i + 1) % contour.size()];
+        area += current.x * next.y - next.x * current.y;
+    }
+
+    return 0.5 * area;
+}
+
+void ReverseLoop(
+    std::vector<Point3d>& contour3d,
+    std::vector<Point2d>& contour2d)
+{
+    std::reverse(contour3d.begin(), contour3d.end());
+    std::reverse(contour2d.begin(), contour2d.end());
+}
+
+void EnsureCounterClockwise(
+    std::vector<Point3d>& contour3d,
+    std::vector<Point2d>& contour2d)
+{
+    if (contour3d.size() != contour2d.size() || contour2d.size() < 3)
+    {
+        return;
+    }
+
+    if (SignedArea2d(contour2d) < 0.0)
+    {
+        ReverseLoop(contour3d, contour2d);
+    }
+}
+
+void EnsureClockwise(
+    std::vector<Point3d>& contour3d,
+    std::vector<Point2d>& contour2d)
+{
+    if (contour3d.size() != contour2d.size() || contour2d.size() < 3)
+    {
+        return;
+    }
+
+    if (SignedArea2d(contour2d) > 0.0)
+    {
+        ReverseLoop(contour3d, contour2d);
     }
 }
 

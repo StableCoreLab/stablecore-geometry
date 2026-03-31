@@ -131,7 +131,7 @@ Vector3d VertexNormal(const TriangleMesh& mesh, std::size_t vertexIndex, double 
             continue;
         }
 
-        accumulated += mesh.TriangleAt(i).Normal();
+        accumulated = accumulated + mesh.TriangleAt(i).Normal();
     }
 
     const double length = accumulated.Length();
