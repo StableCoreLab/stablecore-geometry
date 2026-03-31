@@ -18,12 +18,17 @@
 - 几何判定与容差规则
 - 距离、投影、采样与度量
 - 段相交与关系逻辑
+
+明确排除：
+
+- `GGLCoordTrans.pas`
 - `GGLDrawFunc2d.pas`
 
 ## 3. 当前总体结论
 - 线网建面：已具备切分、重复边清理、近端点自动闭合、简单 auto-extend 与分支裁剪
+- polygon boolean：已进一步补上 operand 归一化、bounds-guarded containment fast path 与 axis-aligned box fallback，duplicate-edge overlap 家族的稳定性比前一阶段更高
 - 已进一步增强 relation hierarchy：对 boundary overlap 与 strict interior 联合判定，收敛 shared-edge touching 与 overlap-intersecting 的区分
-- polygon offset：已具备 ring 重建、基础 split recovery 与 collapsed-ring 清理
+- polygon offset：已具备 ring 重建、基础 split recovery、collapsed-ring 清理，以及 reverse-edge / conservative-miter / reversed-rings recovery
 - SearchPoly 级别的高歧义恢复、以及更深层 offset / boolean recovery：仍低于 Delphi
 
 从当前源码、capability tests 与 gap tests 的实际状态看，如果只讨论 2D：
@@ -69,8 +74,11 @@
 其中 boolean 当前已具备：
 
 - relation-aware 快路径
+- bounds-guarded containment fast path，降低近退化 containment 误短路
 - arrangement face 提取与分类
+- operand 边界重建预处理
 - duplicate-edge 预处理
+- axis-aligned box intersection / difference fallback
 - tiny-face 抑制
 - 更强的 interior-face sampling
 - ultra-thin repeated-overlap 家族能力覆盖
@@ -137,6 +145,7 @@
 当前 C++ boolean 已不再只是简单扫描 cell。它现在会：
 
 - 对 equal / disjoint / containment / touching 先走 relation-aware 短路路径
+- 对 containment 快路径再加 bounds guard，降低近退化输入误判 contains 的概率
 - 在 arrangement 前移除重复无向边
 - 在 ring 提取阶段清理近共线碎顶点
 - 用更保守的 tiny-face 阈值，减少误删极薄但真实的 overlap 结果
@@ -144,6 +153,7 @@
 - 在 boolean 前对输入 polygon 做 pathops 风格边界重建预处理，统一 duplicate-edge / near-collinear 清理口径
 - 在 split 后补充 tiny segment 过滤，降低近退化交点导致的碎段噪声
 - 在 split 后新增 degree-2 共线链段合并，收敛 repeated-edge family 的细碎共线段噪声
+- 在 arrangement 失败或结果过小时，对 axis-aligned box overlap / difference 增加受限 fallback，提升 duplicate-edge 矩形家族恢复率
 
 这使它已覆盖：
 
@@ -152,6 +162,7 @@
 - equal
 - touching
 - simple overlap
+- duplicate-edge family overlap
 - 更大多步 collinear-overlap
 - 近退化 repeated-overlap
 - ultra-thin repeated-overlap
@@ -176,7 +187,7 @@
 当前 C++ 证据：
 
 - `src/sdk/GeometryPathOps.cpp`
-- `tests/test_shapes_pathops.cpp`
+- `tests/capabilities/test_shapes_pathops.cpp`
 
 相比 Delphi 仍缺：
 
@@ -191,10 +202,12 @@
 本轮进一步补充了 reverse-edge 与多策略恢复：同距离下会并行尝试原始方向、反向补偿和保守 miter 限制候选，再通过 relation-aware 打分选择更符合 outward/inward 语义的结果。
 在 offset ring 建面阶段也新增了多轮失败恢复：原始 rings 失败后自动尝试反向 rings，再尝试放宽 epsilon 的重建兜底。
 
+对应 capability tests 里，当前已明确覆盖：clockwise outer ring、reverse-edge recovery、以及 inward-hole semantics recovery。
+
 当前 C++ 证据：
 
 - `src/sdk/GeometryOffset.cpp`
-- `tests/test_offset.cpp`
+- `tests/capabilities/test_offset.cpp`
 
 相比 Delphi 仍缺：
 
