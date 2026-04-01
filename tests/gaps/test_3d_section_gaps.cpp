@@ -18,7 +18,7 @@ TEST(Section3dGapTest, NonPlanarDominantSectionGraphRemainsOpen)
 
     const auto section = Section(body, cuttingPlane);
     (void)section;
-    GTEST_SKIP() << "Known 3D gap: non-planar-dominant section graph semantics and robust contour stitching are still open.";
+    GTEST_SKIP() << "Known 3D gap: ambiguous non-manifold contour stitching semantics in non-planar-dominant sections are still open.";
 }
 
 TEST(Section3dGapTest, FaceMergeSemanticsAfterSectionRemainsOpen)

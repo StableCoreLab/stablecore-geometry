@@ -11,6 +11,10 @@ if (NOT GTest_FOUND)
 endif()
 
 set(STABLECORE_GEOMETRY_CAPABILITY_TEST_SOURCES
+    capabilities/test_3d_brep.cpp
+    capabilities/test_3d_conversion.cpp
+    capabilities/test_3d_healing.cpp
+    capabilities/test_3d_section.cpp
     capabilities/test_box.cpp
     capabilities/test_offset.cpp
     capabilities/test_point_vector.cpp

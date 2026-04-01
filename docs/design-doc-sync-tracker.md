@@ -83,7 +83,10 @@
   - 已将 narrow-bridge split 从 `tests/gaps` 提升到 `tests/capabilities`，并通过定向 gtest 验证
   - 已完成 3D gap 骨架落地：新增 section / brep / healing / conversion 四组 3D gap tests，并接入 `stablecore_geometry_gap_gtest`
   - 当前 `gap` 目标已从“空套件”切换为“3D P1 骨架套件”（2D gaps 已清空，3D gaps 已建档）
-
+  - 已新增 3D capability：倾斜切平面下 `Section + BuildSectionTopology + BuildSectionComponents` 单区域闭环验证，section gap 收敛为更高阶歧义 stitching / merge 语义  - 已新增 `tests/support/Fixtures3d.h`，提供共享 `BuildUnitCubeBody()` 单位立方体 fixture
+  - 已新增 `test_3d_brep.cpp`：`RebuildSectionBrepBody` 单面 BrepBody rebuild 转正为 capability
+  - 已新增 `test_3d_healing.cpp`：保守 `Heal(PolyhedronBody)` 幂等性转正为 capability
+  - 已新增 `test_3d_conversion.cpp`：`ConvertToTriangleMesh(PolyhedronBody)` 12 triangles / area≈6.0 转正为 capability
 ## 对齐完成定义（DoD）
 
 ### 2D 对齐完成
@@ -109,10 +112,10 @@
 
 - 2D SearchPoly 分支评分与 fake-edge candidate ranking：当前已补齐一组代表性误选场景，仍需继续向 Delphi 级评分策略逼近
 - 2D relation hierarchy 向 Delphi `GGLPolyRelation` 聚合语义补齐：当前已补齐一组 shared-boundary contained 场景，但公开枚举仍未扩展到更细层级
-- 3D gap 测试体系落地（section / brep / healing / conversion）：已完成骨架搭建并接入测试目标
-- 3D 第一阶段向第二阶段推进：先 validation/healing 闭环，再扩 section graph 语义
+- 3D gap 测试体系落地（section / brep / healing / conversion）：骨架已完成；基础 brep rebuild / healing / conversion 已转正为 capability tests
+- 3D 第一阶段向第二阶段推进：基础 section→rebuild→heal→convert 闭环已建立，下一步扩展 non-planar section graph 与 coedge-editing
 
-## 两周执行顺序建议
+## 两周执行顺序建议（更新）
 
-- 第 1 周：聚焦 2D P0（boolean + offset），清空对应 skip
-- 第 2 周：补 SearchPoly + relation，并建立 3D gap 测试骨架
+- 第 1 周：已完成 2D P0（boolean + offset）清空，以及 3D P1 骨架建立
+- 第 2 周：推进 3D 第二阶段——non-planar section / brep coedge-editing / aggressive healing

@@ -117,6 +117,11 @@
 
 但这仍只是第一阶段的最小 plane-section workflow 与对象层 skeleton，距离 Delphi / GGP 风格的更复杂 section graph、face merge 细语义、非平面 / 非平面主导 section，以及真正可用的 BRep / healing 算法还差明显阶段。
 
+本轮补充：
+
+- 已新增倾斜切平面场景下 `Section(...)` 到 `BuildSectionTopology(...)` / `BuildSectionComponents(...)` 的 capability 回归，确认非轴对齐切面下的单区域闭环流程可稳定成立
+- section 方向当前 gap 重点收敛为更高阶歧义 non-manifold contour stitching 与 coplanar fragment merge 语义
+
 因此，当前仓库与 Delphi 的“尚未达到”状态，2D 与 3D 应分开理解：
 
 - 2D：主要差在恢复深度、歧义消解与更接近生产级的搜索 / 重建策略

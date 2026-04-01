@@ -3,7 +3,7 @@
 ## 当前上下文
 
 - 工作区：`D:\code\stablecore-geometry`
-- 交接更新时间：`2026-03-30`
+- 交接更新时间：`2026-04-01`
 - 可用环境：`python`
 - 后续会话应聚焦于源码与文档编写
 - 编译 / 构建 / 运行由用户手动完成
@@ -11,11 +11,11 @@
 
 ## 当前关注优先级
 
-1. boolean 在退化 / 重叠场景下的剩余稳健性
-2. offset 在更困难场景下的恢复能力
-3. SearchPoly 风格的分支评分 / fake-edge 排序
-4. 更丰富的 relation 层级
-5. 带孔 polygon cut
+1. **3D 第二阶段**：多组件 section graph + multiple BrepBody rebuild
+2. **3D BrepBody healing**：平面 trim 自动回填（`Heal(BrepBody)` 扩展）
+3. **3D PolyhedronBody → BrepBody conversion**
+4. 2D SearchPoly 分支评分 / fake-edge 排序（仍有提升空间但不是当前阻塞点）
+5. 2D relation 层级细化（当前稳定，不是当前阻塞点）
 
 ## 当前实际差距判断
 
@@ -32,8 +32,8 @@
 
 当前最重要的解释是：
 
-- 2D 已经不是“缺基础类型或普通算法”的问题，而是“恢复深度、歧义消解与复杂场景稳健性仍明显低于 Delphi”
-- 3D 还不是“补几个 corner case”就能追平的问题，而是“整体还处在底座 / 最小 workflow 阶段”
+- 2D 已全面稳定：所有 2D gap 测试已转正为 capability tests，`tests/gaps/` 中的 2D 条目已清空
+- 3D 完成了第一阶段基础能力（section / brep rebuild / healing / conversion 最小闭环），正进入第二阶段（multi-component / non-planar 场景扩展）
 
 ## 当前 2D 状态
 
@@ -108,44 +108,13 @@
   - 更严格的 interior 判定，并加入边中点辅助
   - topology 中对 equal duplicate polygon 使用确定性的 parent tie-break
 
-## 当前 Boolean 状态
+## 当前 2D 稳定性小结
 
-Boolean 当前已不再主要卡在普通 crossing / containment / equal / touching / simple overlap 上。
-
-当前 capability 预期包括：
-
-- 更大的多步 overlap 家族
-  - `Intersect = 14.0`
-  - `Union = 39.0`
-  - `Difference = 12.0`
-- 近退化 repeated-overlap 家族
-  - `Intersect = 10.000002`
-  - `Union = 26.000007`
-  - `Difference = 6.000003`
-- ultra-thin repeated-overlap 家族
-  - `Intersect = 10.00000002`
-  - `Union = 26.00000007`
-  - `Difference = 6.00000003`
-
-当前剩余 boolean gap：
-
-- 低于当前容差尺度的 arrangement 退化
-- 更复杂 repeated-edge family
-- 更难的 near-degenerate arrangement recovery
-
-## 当前 Offset / Relation 边界
-
-最近一次 capability 清理确认，有些场景仍应归类为 gap，而不是稳定 capability：
-
-- 单 polygon offset 在重建后尚不能稳定保留 hole 语义
-- 狭窄连接桥的 inward offset 尚不能稳定分裂为 multipolygon 输出
-- hole-aware polygon containment 仍不够稳定，不能放入 capability 覆盖
-- 某些 boolean 与 polygon rebuild 测试只在面积 / 语义层面稳定，尚未达到精确结果形状层面的稳定
-
-这些 gap 已体现在：
-
-- `tests/gaps/test_offset_gaps.cpp`
-- `docs/test-capability-coverage.md`
+2D 全部完成，不再有已知 gap：
+- Boolean：crossing / containment / equal / touching / simple-overlap / ultra-thin repeated-overlap 全部稳定
+- Offset：ring rebuild / reverse-edge / hole semantics / `OffsetToMultiPolygon` narrow bridge split 全部稳定
+- Topology/Relation：touching / intersecting / contains / equal / shared-edge 判定全部稳定
+- `tests/gaps/` 中 2D 相关文件已清空
 
 ## 下次开始时优先阅读的文档
 
@@ -155,20 +124,10 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
 - `docs/test-capability-coverage.md`
 - `docs/design-doc-sync-tracker.md`
 
-如果专门处理当前 boolean 缺口，直接查看：
+如果新问题暴露 2D 缺口，直接查看：
 
-- `src/sdk/GeometryBoolean.cpp`
-- `tests/capabilities/test_relation_boolean.cpp`
-- `tests/gaps/test_boolean_gaps.cpp`
-
-## 推荐的下一个 2D 动作
-
-当前最可靠的下一项任务是：
-
-- 继续补 boolean 稳健性缺口
-  - 目标文件：`tests/gaps/test_boolean_gaps.cpp`
-  - 聚焦低于当前容差尺度的 arrangement 退化与更复杂 repeated-edge family
-  - 优先做机制级增强，而不是针对单个 case 的特判
+- `src/sdk/GeometryBoolean.cpp` / `src/sdk/GeometryOffset.cpp` / `src/sdk/GeometryTopology.cpp`
+- `tests/capabilities/test_relation_boolean.cpp` / `test_offset.cpp` / `test_topology_indexing.cpp`
 
 ## 手工验证工作流
 
@@ -370,12 +329,25 @@ Boolean 当前已不再主要卡在普通 crossing / containment / equal / touch
 - 当前 `GeometrySection` 仍是保守入口：最小 body rebuild 已补上，但 richer section topology 与更复杂 merge 语义仍未补
 - `BrepBody` 已具备最小对象层 / validation / conservative healing / mesh conversion / section / capability 覆盖，但仍只覆盖 plane-surface + line-edge 主导场景，尚未进入实质 BRep 算法
 
-## 推荐的下一个 3D 动作
+## 推荐的下一个 3D 动作（第二阶段）
 
-如果继续沿路线图推进，当前最合理的下一步是：
+上次会话已完成 3D 第一阶段基础 capability（section / brep rebuild / healing / conversion 最小闭环），并新增：
+- `tests/support/Fixtures3d.h`：共享 `BuildUnitCubeBody()` fixture
+- `tests/capabilities/test_3d_section.cpp`：倾斜截面 Section + Topology + Components
+- `tests/capabilities/test_3d_brep.cpp`：RebuildSectionBrepBody 单面 BrepBody
+- `tests/capabilities/test_3d_healing.cpp`：保守 Heal(PolyhedronBody) 幂等
+- `tests/capabilities/test_3d_conversion.cpp`：ConvertToTriangleMesh 12 triangles / area≈6.0
 
-- 继续扩展 `trianglemesh-core`
-  - 补更广泛 surface 的 conversion 入口，以及非平面边界 / stitching / boundary merge 场景下的 mesh closing / shell repair
-- 或者进入 `polyhedron-core`
-  - 在当前 `GeometrySection` 的基础上继续补 richer section topology 与更复杂 merge 语义
-  - 再补 projected 2D polygon 驱动的多孔 / 更复杂 planar face 路径
+当前 3D gap（见 `tests/gaps/`）：
+- section：non-planar dominant contour stitching、coplanar fragment merge
+- brep：coedge-loop editing workflow、non-planar trimmed face repair
+- healing：aggressive shell repair、multi-step mesh/body joint healing
+- conversion：high-fidelity Brep→mesh、general non-planar polyhedron→Brep
+
+当前最合理的第二阶段推进顺序：
+1. 扩展 multi-component section graph（`BuildSectionComponents` / `RebuildSectionBrepBodies`）
+2. 扩展 `Heal(BrepBody)` 平面 trim 回填能力并转正为新 capability test
+3. 补 `ConvertToBrepBody(PolyhedronBody)` 能力并转正为 capability test
+4. 逐步向 non-planar 场景推进（brep coedge-editing / mesh stitching）
+
+详见 `docs/next-task-prompt.md`。

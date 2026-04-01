@@ -41,18 +41,31 @@
   - line / arc / polyline / polygon / multipolygon offset、basic rebuilt polygon growth、disjoint multipolygon offset、single-polygon hole semantics recovery、representative reverse-edge/self-intersection recovery、narrow-bridge split via `OffsetToMultiPolygon(...)` 当前已具备能力
 - `tests/capabilities/test_topology_indexing.cpp`
   - touching / intersecting / basic contains / equal、duplicate-equal topology parent tie-break 当前已具备能力
+- `tests/capabilities/test_3d_section.cpp`
+  - 倾斜切平面下 `Section(...) + BuildSectionTopology(...) + BuildSectionComponents(...)` 的单区域闭环能力
+- `tests/capabilities/test_3d_brep.cpp`
+  - 倾斜截面经过 `RebuildSectionBrepBody(...)` 得到只读 topology 完整的单面 `BrepBody`（1 shell / 1 face / 4 coedge loop），覆盖 brep rebuild 可读部分
+- `tests/capabilities/test_3d_healing.cpp`
+  - 保守 `Heal(PolyhedronBody)` 对已合法的单位立方体不改变 face count 且 `HealingIssue3d::None`
+- `tests/capabilities/test_3d_conversion.cpp`
+  - 单位立方体（6 quad faces）经 `ConvertToTriangleMesh(PolyhedronBody)` 得到 12 triangles，`SurfaceArea ≈ 6.0`
+
+## 共享测试支持
+
+- `tests/support/Fixtures3d.h`
+  - `geometry::test::BuildUnitCubeBody()` — 单位立方体 `[0,1]³`，6 个四边形 `PolyhedronFace3d`，法向朝外
 
 ## Gap Characterization Tests
 
 - `tests/gaps/test_3d_section_gaps.cpp`
-  - 记录 non-planar dominant section graph、coplanar fragment merge 语义仍未闭合
+  - 记录 non-planar dominant 下的歧义 non-manifold contour stitching 与 coplanar fragment merge 语义仍未闭合
 - `tests/gaps/test_3d_brep_gaps.cpp`
   - 记录 coedge-loop ownership 编辑链路、non-planar trimmed face topology repair 仍未闭合
 - `tests/gaps/test_3d_healing_gaps.cpp`
   - 记录 conservative healing 之外的激进修复策略、mesh/body 联合多阶段修复仍未闭合
 - `tests/gaps/test_3d_conversion_gaps.cpp`
   - 记录高保真 Brep->mesh 特征保持、通用 non-planar polyhedron conversion + repair 仍未闭合
-- 2D 历史 gap 场景已逐步转正到 `tests/capabilities`；当前 `tests/gaps` 重点转为 3D P1 骨架跟踪
+- 2D 历史 gap 场景已全部转正到 `tests/capabilities`；当前 `tests/gaps` 专注 3D P1 骨架跟踪
 
 ## CMake / gtest 说明
 
