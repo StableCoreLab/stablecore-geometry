@@ -27,6 +27,10 @@ set(STABLECORE_GEOMETRY_CAPABILITY_TEST_SOURCES
     capabilities/test_transform_sampling.cpp)
 
 set(STABLECORE_GEOMETRY_GAP_TEST_SOURCES
+    gaps/test_3d_section_gaps.cpp
+    gaps/test_3d_brep_gaps.cpp
+    gaps/test_3d_healing_gaps.cpp
+    gaps/test_3d_conversion_gaps.cpp
     gaps/test_offset_gaps.cpp
     gaps/test_searchpoly_gaps.cpp
     gaps/test_relation_gaps.cpp)

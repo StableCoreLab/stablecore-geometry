@@ -44,8 +44,15 @@
 
 ## Gap Characterization Tests
 
-- 当前 `tests/gaps` 目标已清空（无有效测试用例）；原 gap 场景已逐步转正到 `tests/capabilities`
-- 后续如新增未闭合能力差距，继续在 `tests/gaps` 下补充 `GTEST_SKIP()` 表征用例
+- `tests/gaps/test_3d_section_gaps.cpp`
+  - 记录 non-planar dominant section graph、coplanar fragment merge 语义仍未闭合
+- `tests/gaps/test_3d_brep_gaps.cpp`
+  - 记录 coedge-loop ownership 编辑链路、non-planar trimmed face topology repair 仍未闭合
+- `tests/gaps/test_3d_healing_gaps.cpp`
+  - 记录 conservative healing 之外的激进修复策略、mesh/body 联合多阶段修复仍未闭合
+- `tests/gaps/test_3d_conversion_gaps.cpp`
+  - 记录高保真 Brep->mesh 特征保持、通用 non-planar polyhedron conversion + repair 仍未闭合
+- 2D 历史 gap 场景已逐步转正到 `tests/capabilities`；当前 `tests/gaps` 重点转为 3D P1 骨架跟踪
 
 ## CMake / gtest 说明
 
