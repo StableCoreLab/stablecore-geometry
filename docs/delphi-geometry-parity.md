@@ -240,6 +240,8 @@
 	- inward 输出若整体漂移到 source 集合外会被过滤，避免复杂自交时产生异地伪面
 	- outward 输出若出现 source 组件丢失，会保守补回对应 source 组件，避免语义反转为“收缩”
 - offset 输入预处理已接入共享 `NormalizePolygonByLines(...)`，与 boolean 的 operand 归一化保持一致，降低模块间容差口径漂移
+- 新增 `OffsetToMultiPolygon(const Polygon2d&, ...)`，补齐单 polygon 在 inward offset 下 narrow-bridge collapse 后的分裂输出表达能力
+- 对应 capability tests 已补齐并转正 narrow-bridge split 回归场景
 
 ## 7. 当前对比基线
 

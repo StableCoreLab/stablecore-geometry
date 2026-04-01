@@ -172,6 +172,19 @@ TEST(ShapesPathopsTest, CoversCurrentCapabilities)
     assert(geometry::sdk::Area(branchHeavyAmbiguous[0]) >= 35.0);
     assert(geometry::sdk::Area(branchHeavyAmbiguous[0]) <= 37.0);
 
+    const MultiPolyline2d branchScoredAmbiguousLines{
+        Polyline2d({Point2d{0.0, 0.0}, Point2d{4.0, 0.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{4.0, 0.0}, Point2d{4.0, 4.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{4.0, 4.0}, Point2d{0.0, 4.0}}, PolylineClosure::Open),
+        Polyline2d({Point2d{0.0, 4.0}, Point2d{0.0, 0.4}}, PolylineClosure::Open),
+        Polyline2d({Point2d{-0.2, 0.4}, Point2d{-0.2, -0.2}}, PolylineClosure::Open),
+        Polyline2d({Point2d{-0.2, -0.2}, Point2d{1.0, -0.2}}, PolylineClosure::Open),
+        Polyline2d({Point2d{2.0, -1.0}, Point2d{2.0, 2.0}}, PolylineClosure::Open)};
+    const auto branchScoredAmbiguous = BuildMultiPolygonByLines(branchScoredAmbiguousLines);
+    assert(branchScoredAmbiguous.Count() == 1);
+    assert(branchScoredAmbiguous[0].HoleCount() == 0);
+    GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Area(branchScoredAmbiguous[0]), 16.0, 1e-6);
+
     const Polygon2d noisyBoundary(
         Polyline2d(
             {Point2d{0.0, 0.0},

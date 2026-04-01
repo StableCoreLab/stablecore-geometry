@@ -102,6 +102,12 @@ TEST(TopologyIndexingTest, CoversCurrentCapabilities)
             PolylineClosure::Closed)});
     assert(geometry::sdk::Relate(sameOuterWithHole, sameOuterWithDifferentHole) == PolygonContainment2d::Intersecting);
 
+    const Polygon2d boundaryOverlappingContained(
+        Polyline2d(
+            {Point2d{2.0, 0.0}, Point2d{6.0, 0.0}, Point2d{6.0, 10.0}, Point2d{2.0, 10.0}},
+            PolylineClosure::Closed));
+    assert(geometry::sdk::Relate(outer, boundaryOverlappingContained) == PolygonContainment2d::FirstContainsSecond);
+
     const Polygon2d noisyOuter(
         Polyline2d(
             {Point2d{0.0, 0.0},

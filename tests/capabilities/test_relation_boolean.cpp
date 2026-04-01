@@ -304,6 +304,35 @@ TEST(RelationBooleanTest, HandlesNearDegenerateIntersectionClusters)
     GEOMETRY_TEST_ASSERT_NEAR(TotalArea(geometry::sdk::Difference(clusterA, clusterB)), 48.0, 1e-8);
 }
 
+TEST(RelationBooleanTest, HandlesBelowToleranceArrangementDegeneracies)
+{
+    constexpr double delta = 1e-12;
+
+    const Polygon2d first(
+        Polyline2d(
+            {Point2d{0.0, 0.0},
+             Point2d{8.0, 0.0},
+             Point2d{8.0, 2.0},
+             Point2d{5.0, 2.0},
+             Point2d{5.0, 2.0 + delta},
+             Point2d{0.0, 2.0 + delta}},
+            PolylineClosure::Closed));
+    const Polygon2d second(
+        Polyline2d(
+            {Point2d{3.0, 0.0},
+             Point2d{10.0, 0.0},
+             Point2d{10.0, 2.0 + delta},
+             Point2d{6.0, 2.0 + delta},
+             Point2d{6.0, 4.0},
+             Point2d{3.0, 4.0}},
+            PolylineClosure::Closed));
+
+    ASSERT_TRUE(geometry::sdk::Intersect(first, second).Count() >= 1);
+    GEOMETRY_TEST_ASSERT_NEAR(TotalArea(geometry::sdk::Intersect(first, second)), 10.0, 1e-8);
+    GEOMETRY_TEST_ASSERT_NEAR(TotalArea(geometry::sdk::Union(first, second)), 26.0, 1e-8);
+    GEOMETRY_TEST_ASSERT_NEAR(TotalArea(geometry::sdk::Difference(first, second)), 6.0, 1e-8);
+}
+
 
 
 

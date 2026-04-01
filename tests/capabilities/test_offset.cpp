@@ -130,4 +130,80 @@ TEST(OffsetTest, CoversCurrentCapabilities)
     }
 }
 
+TEST(OffsetTest, PreservesSinglePolygonHoleSemanticsAfterRebuild)
+{
+    const Polygon2d source(
+        Polyline2d(
+            {Point2d{0.0, 0.0}, Point2d{4.0, 0.0}, Point2d{4.0, 4.0}, Point2d{0.0, 4.0}},
+            PolylineClosure::Closed),
+        {Polyline2d(
+            {Point2d{1.0, 1.0}, Point2d{1.0, 3.0}, Point2d{3.0, 3.0}, Point2d{3.0, 1.0}},
+            PolylineClosure::Closed)});
+
+    const Polygon2d outward = geometry::sdk::Offset(source, 0.5);
+    assert(outward.IsValid());
+    assert(outward.HoleCount() == 1);
+    assert(geometry::sdk::Area(outward) > geometry::sdk::Area(source));
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(outward.OuterRing().PointAt(0), (Point2d{-0.5, -0.5}), 1e-9);
+    GEOMETRY_TEST_ASSERT_POINT_NEAR(outward.OuterRing().PointAt(2), (Point2d{4.5, 4.5}), 1e-9);
+
+    const Polyline2d recoveredHole = outward.HoleAt(0);
+    GEOMETRY_TEST_ASSERT_NEAR(recoveredHole.Bounds().MinPoint().x, 1.5, 1e-9);
+    GEOMETRY_TEST_ASSERT_NEAR(recoveredHole.Bounds().MinPoint().y, 1.5, 1e-9);
+    GEOMETRY_TEST_ASSERT_NEAR(recoveredHole.Bounds().MaxPoint().x, 2.5, 1e-9);
+    GEOMETRY_TEST_ASSERT_NEAR(recoveredHole.Bounds().MaxPoint().y, 2.5, 1e-9);
+
+    const Polygon2d inward = geometry::sdk::Offset(source, -0.4);
+    assert(inward.IsValid());
+    assert(inward.HoleCount() == 1);
+    assert(geometry::sdk::Area(inward) < geometry::sdk::Area(source));
+    for (std::size_t i = 0; i < inward.OuterRing().PointCount(); ++i)
+    {
+        assert(geometry::sdk::LocatePoint(inward.OuterRing().PointAt(i), source) != PointContainment2d::Outside);
+    }
+}
+
+TEST(OffsetTest, RecoversRepresentativeReverseEdgeSelfIntersectionCase)
+{
+    const Polygon2d source(
+        Polyline2d(
+            {Point2d{0.0, 0.0}, Point2d{6.0, 0.0}, Point2d{6.0, 1.0}, Point2d{2.5, 1.0}, Point2d{2.5, 4.0}, Point2d{6.0, 4.0},
+             Point2d{6.0, 5.0}, Point2d{0.0, 5.0}},
+            PolylineClosure::Closed));
+
+    const Polygon2d outward = geometry::sdk::Offset(source, 0.5);
+    assert(outward.IsValid());
+    assert(geometry::sdk::Area(outward) > geometry::sdk::Area(source));
+
+    const Polygon2d inward = geometry::sdk::Offset(source, -0.4);
+    assert(inward.IsValid());
+    assert(geometry::sdk::Area(inward) < geometry::sdk::Area(source));
+    for (std::size_t i = 0; i < inward.OuterRing().PointCount(); ++i)
+    {
+        assert(geometry::sdk::LocatePoint(inward.OuterRing().PointAt(i), source) != PointContainment2d::Outside);
+    }
+}
+
+TEST(OffsetTest, SupportsNarrowBridgeSplitViaMultiPolygonOffsetApi)
+{
+    const Polygon2d source(
+        Polyline2d(
+            {Point2d{0.0, 0.0}, Point2d{2.0, 0.0}, Point2d{2.0, 0.8}, Point2d{4.0, 0.8}, Point2d{4.0, 0.0}, Point2d{6.0, 0.0},
+             Point2d{6.0, 2.0}, Point2d{4.0, 2.0}, Point2d{4.0, 1.2}, Point2d{2.0, 1.2}, Point2d{2.0, 2.0}, Point2d{0.0, 2.0}},
+            PolylineClosure::Closed));
+
+    const MultiPolygon2d split = geometry::sdk::OffsetToMultiPolygon(source, -0.35);
+    assert(!split.IsEmpty());
+    assert(split.Count() >= 2);
+    for (std::size_t polygonIndex = 0; polygonIndex < split.Count(); ++polygonIndex)
+    {
+        const Polygon2d& piece = split[polygonIndex];
+        assert(piece.IsValid());
+        for (std::size_t pointIndex = 0; pointIndex < piece.OuterRing().PointCount(); ++pointIndex)
+        {
+            assert(geometry::sdk::LocatePoint(piece.OuterRing().PointAt(pointIndex), source) != PointContainment2d::Outside);
+        }
+    }
+}
+
 

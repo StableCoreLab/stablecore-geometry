@@ -25,6 +25,10 @@ struct GEOMETRY_API OffsetOptions2d
     const Polygon2d& polygon,
     double distance,
     OffsetOptions2d options = {});
+[[nodiscard]] GEOMETRY_API MultiPolygon2d OffsetToMultiPolygon(
+    const Polygon2d& polygon,
+    double distance,
+    OffsetOptions2d options = {});
 [[nodiscard]] GEOMETRY_API MultiPolyline2d Offset(
     const MultiPolyline2d& polylines,
     double distance,

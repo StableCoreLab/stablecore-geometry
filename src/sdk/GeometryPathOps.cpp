@@ -58,6 +58,8 @@ struct VertexGraph2d
     std::vector<std::size_t> degrees;
 };
 
+[[nodiscard]] std::vector<Point2d> SimplifyRingVertices(std::vector<Point2d> points, double eps);
+
 [[nodiscard]] double SideValue(const Point2d& point, const LineSegment2d& line)
 {
     return Cross(line.endPoint - line.startPoint, point - line.startPoint);
@@ -300,6 +302,57 @@ void AppendPolygonBoundaries(const Polygon2d& polygon, MultiPolyline2d& boundari
         }
     }
     return best;
+}
+
+[[nodiscard]] Polygon2d RebuildLargestPolygonWithCandidates(const MultiPolyline2d& boundaries, const std::vector<double>& epsCandidates)
+{
+    for (double candidateEps : epsCandidates)
+    {
+        const MultiPolygon2d rebuilt = BuildMultiPolygonByLines(boundaries, candidateEps);
+        if (rebuilt.Count() == 1 && rebuilt[0].IsValid())
+        {
+            return rebuilt[0];
+        }
+
+        Polygon2d best = SelectLargestValidPolygon(rebuilt);
+        if (best.IsValid())
+        {
+            return best;
+        }
+    }
+
+    return {};
+}
+
+[[nodiscard]] MultiPolyline2d SimplifyBoundaryPolylines(const MultiPolyline2d& boundaries, double eps)
+{
+    MultiPolyline2d simplifiedBoundaries;
+    for (std::size_t boundaryIndex = 0; boundaryIndex < boundaries.Count(); ++boundaryIndex)
+    {
+        const Polyline2d boundary = boundaries[boundaryIndex];
+        std::vector<Point2d> points;
+        points.reserve(boundary.PointCount());
+        for (std::size_t pointIndex = 0; pointIndex < boundary.PointCount(); ++pointIndex)
+        {
+            points.push_back(boundary.PointAt(pointIndex));
+        }
+
+        std::vector<Point2d> simplifiedPoints = SimplifyRingVertices(std::move(points), eps);
+        const bool isClosed = boundary.IsClosed();
+        const std::size_t minimumPointCount = isClosed ? 3U : 2U;
+        if (simplifiedPoints.size() < minimumPointCount)
+        {
+            continue;
+        }
+
+        Polyline2d simplifiedBoundary(std::move(simplifiedPoints), isClosed ? PolylineClosure::Closed : PolylineClosure::Open);
+        if (simplifiedBoundary.IsValid())
+        {
+            simplifiedBoundaries.Add(std::move(simplifiedBoundary));
+        }
+    }
+
+    return simplifiedBoundaries;
 }
 
 [[nodiscard]] std::vector<RawSegment> CollectRawSegments(const MultiPolyline2d& polylines, double eps)
@@ -1211,23 +1264,28 @@ Polygon2d NormalizePolygonByLines(const Polygon2d& polygon, double eps)
         return {};
     }
 
-    const MultiPolygon2d rebuilt = BuildMultiPolygonByLines(boundaries, eps);
-    if (rebuilt.Count() == 1 && rebuilt[0].IsValid())
+    const std::vector<double> epsCandidates{
+        std::max(eps, 1e-12),
+        std::max(eps, 1e-8),
+        std::max(eps, 1e-7)};
+
+    Polygon2d rebuilt = RebuildLargestPolygonWithCandidates(boundaries, epsCandidates);
+    if (rebuilt.IsValid())
     {
-        return rebuilt[0];
+        return rebuilt;
     }
 
-    Polygon2d best = SelectLargestValidPolygon(rebuilt);
-    if (best.IsValid())
+    const double simplifyEps = std::max(1e-10, 8.0 * std::max(eps, 1e-12));
+    MultiPolyline2d simplifiedBoundaries = SimplifyBoundaryPolylines(boundaries, simplifyEps);
+    if (simplifiedBoundaries.IsEmpty())
     {
-        return best;
+        return {};
     }
 
-    const MultiPolygon2d rebuiltRelaxed = BuildMultiPolygonByLines(boundaries, std::max(eps, 1e-8));
-    best = SelectLargestValidPolygon(rebuiltRelaxed);
-    if (best.IsValid())
+    rebuilt = RebuildLargestPolygonWithCandidates(simplifiedBoundaries, epsCandidates);
+    if (rebuilt.IsValid())
     {
-        return best;
+        return rebuilt;
     }
 
     return {};

@@ -718,6 +718,16 @@ Polygon2d Offset(const Polygon2d& polygon, double distance, OffsetOptions2d opti
     return RecoverOffsetSemanticFlip(source, selected, distance, geometry::kDefaultEpsilon);
 }
 
+MultiPolygon2d OffsetToMultiPolygon(const Polygon2d& polygon, double distance, OffsetOptions2d options)
+{
+    if (!polygon.IsValid())
+    {
+        return {};
+    }
+
+    return Offset(MultiPolygon2d{polygon}, distance, options);
+}
+
 MultiPolyline2d Offset(const MultiPolyline2d& polylines, double distance, OffsetOptions2d options)
 {
     MultiPolyline2d result;

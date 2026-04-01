@@ -38,20 +38,14 @@
 - `tests/capabilities/test_relation_boolean.cpp`
   - boolean 的 crossing、containment、equal、touching、simple collinear overlap、disjoint union、ultra-thin repeated-overlap 当前已具备能力
 - `tests/capabilities/test_offset.cpp`
-  - line / arc / polyline / polygon / multipolygon offset、basic rebuilt polygon growth、disjoint multipolygon offset 当前已具备能力
+  - line / arc / polyline / polygon / multipolygon offset、basic rebuilt polygon growth、disjoint multipolygon offset、single-polygon hole semantics recovery、representative reverse-edge/self-intersection recovery、narrow-bridge split via `OffsetToMultiPolygon(...)` 当前已具备能力
 - `tests/capabilities/test_topology_indexing.cpp`
   - touching / intersecting / basic contains / equal、duplicate-equal topology parent tie-break 当前已具备能力
 
 ## Gap Characterization Tests
 
-- `tests/gaps/test_boolean_gaps.cpp`
-  - 记录低于当前容差尺度的 arrangement 退化、以及更复杂 repeated-edge family / near-degenerate boolean 仍未闭合
-- `tests/gaps/test_offset_gaps.cpp`
-  - 记录 reverse-edge、self-intersection、multi-failure recovery、hole / outer semantic flip、single-polygon hole semantic recovery、narrow bridge split recovery 仍未闭合
-- `tests/gaps/test_searchpoly_gaps.cpp`
-  - 记录 SearchPoly 风格 branch scoring / fake-edge ranking 仍明显低于 Delphi
-- `tests/gaps/test_relation_gaps.cpp`
-  - 记录 relation hierarchy 向 `GGLPolyRelation` 靠拢的剩余差距，以及 hole-aware polygon containment 等尚未稳定闭合的关系语义
+- 当前 `tests/gaps` 目标已清空（无有效测试用例）；原 gap 场景已逐步转正到 `tests/capabilities`
+- 后续如新增未闭合能力差距，继续在 `tests/gaps` 下补充 `GTEST_SKIP()` 表征用例
 
 ## CMake / gtest 说明
 

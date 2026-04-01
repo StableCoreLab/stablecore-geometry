@@ -272,11 +272,6 @@ bool Contains(const Polygon2d& outer, const Polygon2d& inner, double eps)
         return false;
     }
 
-    if (ClassifyBoundaryContact(normalizedOuter, normalizedInner, eps) == BoundaryContact2d::Crossing)
-    {
-        return false;
-    }
-
     for (std::size_t i = 0; i < normalizedInner.OuterRing().PointCount(); ++i)
     {
         if (LocatePoint(normalizedInner.OuterRing().PointAt(i), normalizedOuter, eps) == PointContainment2d::Outside)
