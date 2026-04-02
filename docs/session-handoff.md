@@ -21,6 +21,12 @@
 - 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 中 non-planar repair gap 文案，纳入 tiny-loop normal fallback 子集。
 - 已更新：`src/sdk/GeometryBrepConversion.cpp`、`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-02，continuation-3）
+
+- 已新增 conversion capability：tiny-scale non-planar holed face 输入可稳定 `ConvertToBrepBody(...)`（outer/hole loop 投影修复与 scale-aware 法向回退协同生效，见 `tests/capabilities/test_3d_conversion.cpp`）。
+- 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 的 non-planar repair 文案，纳入 tiny-scale holed projection 子集。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
 ## 当前关注优先级
 
 1. **3D robust non-planar repair**：从 affine-skew 子类走向真实 non-planar 失配修复

@@ -246,6 +246,30 @@ PolyhedronBody BuildTinyScaleNonPlanarRepairBody()
         PolyhedronLoop3d(std::move(outer)));
     return PolyhedronBody({face});
 }
+
+PolyhedronBody BuildTinyScaleNonPlanarHoledRepairBody()
+{
+    const double s = 1e-5;
+    std::vector<Point3d> outer{
+        Point3d{0.0, 0.0, 0.0},
+        Point3d{s, 0.0, 0.0},
+        Point3d{s, s, 0.0},
+        Point3d{0.0, s, 0.0}};
+    std::vector<Point3d> hole{
+        Point3d{0.3 * s, 0.3 * s, 0.0},
+        Point3d{0.7 * s, 0.3 * s, 0.0},
+        Point3d{0.7 * s, 0.7 * s, 0.0},
+        Point3d{0.3 * s, 0.7 * s, 0.0}};
+
+    outer[2].z += 2e-6;
+    hole[1].z += 1.5e-6;
+
+    const PolyhedronFace3d face(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 2e-6}, Vector3d{0.0, 0.0, 1.0}),
+        PolyhedronLoop3d(std::move(outer)),
+        {PolyhedronLoop3d(std::move(hole))});
+    return PolyhedronBody({face});
+}
 } // namespace
 
 // Demonstrates that a closed PolyhedronBody (unit cube, 6 quad faces) converts
@@ -402,6 +426,20 @@ TEST(Conversion3dCapabilityTest, CompositeRepairStressFaceStillConvertsToBrepBod
 TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarFaceStillRepairsToBrepBody)
 {
     const PolyhedronBody body = BuildTinyScaleNonPlanarRepairBody();
+    assert(!body.IsValid());
+
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 1);
+}
+
+// Demonstrates tiny-scale refit/projection repair also stabilizes holed
+// non-planar inputs in the same face.
+TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarHoledFaceStillRepairsToBrepBody)
+{
+    const PolyhedronBody body = BuildTinyScaleNonPlanarHoledRepairBody();
     assert(!body.IsValid());
 
     const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
