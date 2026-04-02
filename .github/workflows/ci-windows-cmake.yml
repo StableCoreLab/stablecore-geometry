@@ -24,6 +24,17 @@ jobs:
             gtest-windows-v1.17.0-
             gtest-windows-
 
+      - name: Cache build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/../StablecoreGeometryBuild/stablecore_geometry.dir
+            ${{ github.workspace }}/../StablecoreGeometryBuild/tests
+            ${{ github.workspace }}/../StablecoreGeometryBuild/RelWithDebInfo
+          key: cmake-build-windows-${{ hashFiles('CMakeLists.txt', 'include/**', 'src/**', 'tests/**') }}
+          restore-keys: |
+            cmake-build-windows-
+
       - name: Show tool versions
         shell: pwsh
         run: |
@@ -36,7 +47,7 @@ jobs:
 
       - name: Build (RelWithDebInfo)
         shell: pwsh
-        run: cmake --build --preset vs2022-x64-build --config RelWithDebInfo
+        run: cmake --build --preset vs2022-x64-build --config RelWithDebInfo --parallel
 
       - name: Test (CTest preset)
         shell: pwsh

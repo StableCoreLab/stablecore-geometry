@@ -57,7 +57,7 @@ jobs:
           cmake --preset vs2022-x64 2>&1 | Tee-Object -FilePath artifacts\autofix-repro.log -Append
 
           "=== Build ===" | Tee-Object -FilePath artifacts\autofix-repro.log -Append
-          cmake --build --preset vs2022-x64-build --config RelWithDebInfo 2>&1 | Tee-Object -FilePath artifacts\autofix-repro.log -Append
+          cmake --build --preset vs2022-x64-build --config RelWithDebInfo --parallel 2>&1 | Tee-Object -FilePath artifacts\autofix-repro.log -Append
 
           "=== Test ===" | Tee-Object -FilePath artifacts\autofix-repro.log -Append
           ctest --preset vs2022-x64-test -C RelWithDebInfo --output-on-failure 2>&1 | Tee-Object -FilePath artifacts\autofix-repro.log -Append
@@ -91,7 +91,7 @@ jobs:
         continue-on-error: true
         run: |
           "=== Verify Build (after autofix, reusing build dir) ===" | Tee-Object -FilePath artifacts\autofix-repro.log -Append
-          cmake --build --preset vs2022-x64-build --config RelWithDebInfo 2>&1 | Tee-Object -FilePath artifacts\autofix-repro.log -Append
+          cmake --build --preset vs2022-x64-build --config RelWithDebInfo --parallel 2>&1 | Tee-Object -FilePath artifacts\autofix-repro.log -Append
 
           "=== Verify Test (after autofix) ===" | Tee-Object -FilePath artifacts\autofix-repro.log -Append
           ctest --preset vs2022-x64-test -C RelWithDebInfo --output-on-failure 2>&1 | Tee-Object -FilePath artifacts\autofix-repro.log -Append

@@ -20,18 +20,20 @@ function Add-LineAfterAnchor {
     }
 
     $raw = Get-Content -Path $FilePath -Raw
-    if ($raw -match "(?m)^\Q$LineToInsert\E\r?$") {
+    $escapedInsert = [regex]::Escape($LineToInsert)
+    if ($raw -match "(?m)^$escapedInsert\r?$") {
         return $false
     }
 
-    if ($raw -notmatch "(?m)^\Q$AnchorLine\E\r?$") {
+    $escapedAnchor = [regex]::Escape($AnchorLine)
+    if ($raw -notmatch "(?m)^$escapedAnchor\r?$") {
         Write-Host "Autofix: anchor not found in $FilePath: $AnchorLine"
         return $false
     }
 
     $updated = [regex]::Replace(
         $raw,
-        "(?m)^\Q$AnchorLine\E\r?$",
+        "(?m)^$escapedAnchor\r?$",
         "$AnchorLine`n$LineToInsert",
         1)
 
