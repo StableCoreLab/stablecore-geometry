@@ -647,6 +647,31 @@ PolyhedronBody BuildTinyScaleSharedChainDualDuplicateFullCompositionBody()
 
     return PolyhedronBody({faceA, faceB, faceC});
 }
+
+PolyhedronBody BuildTinyScaleClosedTetrahedronBody()
+{
+    // A tiny-scale tetrahedron (4 triangular faces, 6 edges, 4 vertices) where
+    // every support plane is identical and mismatched to force per-face refit.
+    // All 6 edges are each shared by exactly two faces, so after repair the
+    // resulting BrepBody should form a deterministically closed shell.
+    const double s = 1e-5;
+    const Point3d v0{0.0,       0.0,        0.0};
+    const Point3d v1{s,         0.0,        1.2e-6};
+    const Point3d v2{0.5 * s,  0.866 * s,  0.8e-6};
+    const Point3d v3{0.5 * s,  0.289 * s,  0.816 * s};
+
+    // Deliberately flat support plane (z=2e-6, normal +z) while actual face
+    // normals vary — the per-face refit must compute the correct orientation.
+    const Plane mismatchedPlane =
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 2e-6}, Vector3d{0.0, 0.0, 1.0});
+
+    const PolyhedronFace3d f0(mismatchedPlane, PolyhedronLoop3d({v0, v1, v2}));
+    const PolyhedronFace3d f1(mismatchedPlane, PolyhedronLoop3d({v0, v3, v1}));
+    const PolyhedronFace3d f2(mismatchedPlane, PolyhedronLoop3d({v1, v3, v2}));
+    const PolyhedronFace3d f3(mismatchedPlane, PolyhedronLoop3d({v0, v2, v3}));
+
+    return PolyhedronBody({f0, f1, f2, f3});
+}
 } // namespace
 
 // Demonstrates that a closed PolyhedronBody (unit cube, 6 quad faces) converts
@@ -1012,6 +1037,29 @@ TEST(Conversion3dCapabilityTest, TinyScaleSharedChainDualDuplicateFullCompositio
     assert(result.issue == BrepConversionIssue3d::None);
     assert(result.body.IsValid());
     assert(result.body.FaceCount() == 3);
+}
+
+// Demonstrates that a tiny-scale closed tetrahedron polyhedron (4 triangular
+// faces, all 6 edges shared by exactly two faces each) with identical
+// mismatched support planes can be fully repaired and converted to a valid
+// closed BrepBody with globally shared topology (VertexCount=4, EdgeCount=6,
+// IsClosed=true). This is the representative closed-shell shared-topology
+// conversion sub-scenario for the non-planar repair capability.
+TEST(Conversion3dCapabilityTest, TinyScaleClosedTetrahedronConvertsToBrepBodyWithClosedShell)
+{
+    const PolyhedronBody body = BuildTinyScaleClosedTetrahedronBody();
+    assert(!body.IsValid());
+    assert(body.FaceCount() == 4);
+
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 4);
+    assert(result.body.VertexCount() == 4);
+    assert(result.body.EdgeCount() == 6);
+    assert(result.body.ShellCount() == 1);
+    assert(result.body.ShellAt(0).IsClosed());
 }
 
 // Demonstrates planar holed BrepBody conversion keeps representative area by

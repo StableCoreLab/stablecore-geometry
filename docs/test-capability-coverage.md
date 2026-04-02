@@ -69,6 +69,7 @@
   - `ConvertToBrepBody(...)` 在 tiny-scale shared-edge 邻接链 mixed-content full-composition 下，支持 outer/hole 双重复顶点归一化与 support-mismatch + collinear-leading 组合修复稳定叠加
   - `ConvertToBrepBody(...)` 在 tiny-scale shared-edge 邻接链修复后可全局复用共享顶点/边，避免按 face 重复建拓扑并保持共享边一致性子集稳定
   - `ConvertToBrepBody(...)` 在 closed-shell 代表性输入（单位立方体）上可收敛到共享拓扑 Brep：1 shell / 8 vertices / 12 edges / closed shell
+  - `ConvertToBrepBody(...)` 在 tiny-scale closed-shell 代表性输入（tetrahedron：4 triangular faces, 6 edges, 4 vertices, 所有 support planes mismatched）上，经 per-face refit 修复后可收敛为合法 closed BrepBody（IsClosed=true / VertexCount=4 / EdgeCount=6），验证 closed-shell 下的共享拓扑代表性路径
   - `ConvertToTriangleMesh(BrepBody)` 在 planar shared-edge 相邻面上可全局复用共享 3D 顶点，避免 face-by-face 拼接导致的重复顶点子集
 
 ## 共享测试支持

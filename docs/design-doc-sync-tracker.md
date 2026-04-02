@@ -120,6 +120,7 @@
   - 已扩展 conversion repair 组合子能力：shared-edge 邻接链 mixed-content full-composition 下，outer/hole 双重复顶点 normalization 可与 support-plane mismatch + collinear-leading 稳定叠加
   - 已扩展 conversion repair 子能力：shared-edge 邻接链修复后可全局复用共享顶点/边，避免 face-local 重复拓扑并收敛到共享边一致性子集
   - 已扩展 conversion 子能力：closed-shell 代表性输入（单位立方体）转换后可收敛到共享拓扑 Brep（8 vertices / 12 edges / closed shell）
+  - 已扩展 conversion repair 子能力：tiny-scale closed-shell tetrahedron（4 triangular faces, mismatched support planes）经 per-face refit 修复后可收敛为合法 closed BrepBody（IsClosed=true / VertexCount=4 / EdgeCount=6）
   - 已扩展 Brep->mesh 子能力：planar multi-face `BrepBody` 的 representative area-preserving conversion capability
   - 已扩展 Brep->mesh 子能力：planar holed+multi-face 混合 `BrepBody` 的 representative area-preserving conversion capability
   - 已扩展 Brep->mesh 子能力：planar shared-edge 相邻面转换时可全局复用共享 3D 顶点，收敛到 shared-edge feature-preserving 子集

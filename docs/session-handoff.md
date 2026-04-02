@@ -218,9 +218,16 @@
 - 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 closed-shell shared-topology subset。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-02，continuation-closed-shell-tetrahedron）
+
+- 已新增 conversion capability：`ConvertToBrepBody(...)` 在 tiny-scale closed-shell tetrahedron（4 triangular faces, all support planes mismatched）输入上，经 per-face refit 修复后可收敛为合法 closed BrepBody（IsClosed=true / VertexCount=4 / EdgeCount=6）。
+- 新增 builder：`BuildTinyScaleClosedTetrahedronBody()` 与 test `TinyScaleClosedTetrahedronConvertsToBrepBodyWithClosedShell` 已加入 `tests/capabilities/test_3d_conversion.cpp`。
+- 已更新：`docs/test-capability-coverage.md`、`docs/next-task-prompt.md`、`docs/design-doc-sync-tracker.md`。
+- **下一步**：聚焦共享边一致性约束真正参与 support-plane/refit 决策（not just topology deduplication）。
+
 ## 当前关注优先级
 
-1. **3D robust non-planar repair**：从 affine-skew 子类走向真实 non-planar 失配修复
+1. **3D robust non-planar repair**：从 closed-shell tetrahedron 子类走向共享边一致性约束驱动的 support-plane/refit 决策
 2. **3D aggressive shell policy**：从 single-face planar closure 扩展到 multi-face open shell 策略
 3. **3D coedge ownership 深化**：从 loop 级编辑走向 shell/face ownership 一致性
 4. 2D SearchPoly 分支评分 / fake-edge 排序（仍有提升空间但不是当前阻塞点）
