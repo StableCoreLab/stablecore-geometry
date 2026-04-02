@@ -586,6 +586,40 @@ PolyhedronBody BuildTinyScaleSharedChainMixedContentSupportPlaneMismatchBody()
     return PolyhedronBody({faceA, faceB, faceC});
 }
 
+PolyhedronBody BuildTinyScaleSharedChainMixedContentSupportMismatchWithDuplicateHoleBody()
+{
+    const double s = 1e-5;
+    const Point3d a{0.0, 0.0, 0.0};
+    const Point3d b{s, 0.0, 0.0};
+    const Point3d c{s, s, 0.0};
+    const Point3d d{0.0, s, 1.5e-6};
+
+    const Point3d e{2.0 * s, 0.0, 1.2e-6};
+    const Point3d f{2.0 * s, s, 0.0};
+    const Point3d g{3.0 * s, 0.0, 1.0e-6};
+    const Point3d h{3.0 * s, s, 0.0};
+
+    std::vector<Point3d> hole{
+        Point3d{1.2 * s, 0.3 * s, 0.0},
+        Point3d{1.8 * s, 0.3 * s, 8e-7},
+        Point3d{1.8 * s, 0.3 * s, 8e-7},
+        Point3d{1.8 * s, 0.7 * s, 0.0},
+        Point3d{1.2 * s, 0.7 * s, 0.0}};
+
+    const PolyhedronFace3d faceA(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 4e-6}, Vector3d{0.0, 0.0, 1.0}),
+        PolyhedronLoop3d({a, b, c, d}));
+    const PolyhedronFace3d faceB(
+        Plane::FromPointAndNormal(Point3d{s, 0.0, 4e-6}, Vector3d{0.0, 0.0, 1.0}),
+        PolyhedronLoop3d({b, e, f, c}),
+        {PolyhedronLoop3d(std::move(hole))});
+    const PolyhedronFace3d faceC(
+        Plane::FromPointAndNormal(Point3d{2.0 * s, 0.0, 4e-6}, Vector3d{0.0, 0.0, 1.0}),
+        PolyhedronLoop3d({e, g, h, f}));
+
+    return PolyhedronBody({faceA, faceB, faceC});
+}
+
 PolyhedronBody BuildTinyScaleSharedChainSupportMismatchAndCollinearBody()
 {
     const double s = 1e-5;
@@ -1096,6 +1130,8 @@ TEST(Conversion3dCapabilityTest, TinyScaleSharedChainMixedContentDuplicateHoleRe
     assert(result.issue == BrepConversionIssue3d::None);
     assert(result.body.IsValid());
     assert(result.body.FaceCount() == 3);
+    assert(result.body.VertexCount() == 12);
+    assert(result.body.EdgeCount() == 14);
 }
 
 // Demonstrates shared-chain mixed-content tiny-scale repair remains stable
@@ -1126,6 +1162,26 @@ TEST(Conversion3dCapabilityTest, TinyScaleSharedChainMixedContentSupportPlaneMis
     assert(result.issue == BrepConversionIssue3d::None);
     assert(result.body.IsValid());
     assert(result.body.FaceCount() == 3);
+    assert(result.body.VertexCount() == 12);
+    assert(result.body.EdgeCount() == 14);
+}
+
+// Demonstrates support-plane mismatch and duplicate-hole normalization can
+// compose on shared-chain mixed-content input while preserving deterministic
+// shared topology counts.
+TEST(Conversion3dCapabilityTest, TinyScaleSharedChainMixedContentSupportMismatchWithDuplicateHoleRepairsToBrepBody)
+{
+    const PolyhedronBody body = BuildTinyScaleSharedChainMixedContentSupportMismatchWithDuplicateHoleBody();
+    assert(!body.IsValid());
+    assert(body.FaceCount() == 3);
+
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 3);
+    assert(result.body.VertexCount() == 12);
+    assert(result.body.EdgeCount() == 14);
 }
 
 // Demonstrates support-plane mismatch and collinear-leading fallback can

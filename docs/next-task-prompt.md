@@ -96,6 +96,7 @@
 - 已在 `ConvertToBrepBody(...)` 落地 source representative-id 贯穿复用（输入拓扑代表点驱动 BrepVertex 复用），并已恢复 tiny-scale quad shared-edge chain 的确定性拓扑断言（VertexCount=8 / EdgeCount=10）
 - 已扩展 support-plane mismatch 的 tiny-scale quad shared-edge chain（3 quads）capability：`ConvertToBrepBody(...)` 可稳定保持共享拓扑（VertexCount=8 / EdgeCount=10）
 - 已扩展 support-plane mismatch + duplicate-loop-normalization 的 tiny-scale quad shared-edge chain capability：`ConvertToBrepBody(...)` 在中间 face 含重复 leading 顶点时仍可稳定保持共享拓扑（VertexCount=8 / EdgeCount=10）
+- 已扩展 shared-chain mixed-content 计数组合 capability：duplicate-hole、support-plane mismatch、以及 support-mismatch + duplicate-hole 组合场景均可稳定保持共享拓扑计数（VertexCount=12 / EdgeCount=14）
 - 下一步聚焦更一般 topology-changing non-planar repair（超出当前 representative-id + shared-refit 子集），继续保留 `GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen` 作为总 gap
 
 ### P4-B：aggressive shell policy 分层落地（已完成最小子集）

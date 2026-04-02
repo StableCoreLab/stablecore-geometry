@@ -128,6 +128,7 @@
     - 已实现 conversion topology 复用增强：source representative-id 贯穿到 Brep vertex 复用，降低修复后微漂移对 shared-edge 去重的影响
     - 已扩展 conversion capability：support-plane mismatch 的 tiny-scale 3-quad shared-edge chain 可稳定保持共享拓扑（VertexCount=8 / EdgeCount=10）
     - 已扩展 conversion capability：support-plane mismatch + duplicate-loop-normalization 的 tiny-scale 3-quad shared-edge chain 也可稳定保持共享拓扑（VertexCount=8 / EdgeCount=10）
+    - 已扩展 conversion capability：shared-chain mixed-content 下 duplicate-hole / support-plane mismatch / 二者组合均可稳定保持共享拓扑计数（VertexCount=12 / EdgeCount=14）
   - 已扩展 Brep->mesh 子能力：planar multi-face `BrepBody` 的 representative area-preserving conversion capability
   - 已扩展 Brep->mesh 子能力：planar holed+multi-face 混合 `BrepBody` 的 representative area-preserving conversion capability
   - 已扩展 Brep->mesh 子能力：planar shared-edge 相邻面转换时可全局复用共享 3D 顶点，收敛到 shared-edge feature-preserving 子集

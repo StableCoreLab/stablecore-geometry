@@ -77,6 +77,7 @@
   - `ConvertToBrepBody(...)` 已引入 source representative-id 贯穿复用：即使修复后共享顶点出现微小跨面漂移，也能按输入拓扑代表点强制复用同一 BrepVertex，从而恢复 tiny-scale quad shared-edge chain 的确定性拓扑断言（VertexCount=8 / EdgeCount=10）
   - `ConvertToBrepBody(...)` 在 support-plane mismatch 的 tiny-scale quad shared-edge chain（3 quads）上可稳定收敛到共享拓扑（VertexCount=8 / EdgeCount=10），验证 representative-id 驱动复用在非三角面链场景下的代表性有效性
   - `ConvertToBrepBody(...)` 在 support-plane mismatch + duplicate-loop-normalization 的 tiny-scale quad shared-edge chain（中间 face 含重复 leading 顶点）上也可稳定收敛到共享拓扑（VertexCount=8 / EdgeCount=10），验证 representative-id 映射可穿透修复归一化后的 loop cardinality 变化
+  - `ConvertToBrepBody(...)` 在 shared-chain mixed-content 子集上已补齐确定性共享拓扑计数断言：duplicate-hole、support-plane mismatch、以及二者组合（support-mismatch + duplicate-hole）场景均稳定满足 VertexCount=12 / EdgeCount=14
 
 ## 共享测试支持
 

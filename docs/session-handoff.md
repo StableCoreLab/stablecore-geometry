@@ -258,6 +258,7 @@
 - 已新增 capability：`TinyScaleSupportMismatchSharedEdgeChainRepairsWithSharedTopology`，覆盖 support-plane mismatch 的 tiny-scale 3-quad shared-edge chain，验证共享拓扑断言（VertexCount=8 / EdgeCount=10）。
 - 已新增 capability：`TinyScaleSupportMismatchSharedEdgeChainWithDuplicateRepairsWithSharedTopology`，覆盖 support-plane mismatch + duplicate-loop-normalization 的 tiny-scale 3-quad shared-edge chain，验证共享拓扑断言（VertexCount=8 / EdgeCount=10）。
 - `tests/gaps/test_3d_conversion_gaps.cpp` 已移除显式 quad-chain gap 子项，当前保留 `GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen` 作为总 gap 入口。
+- 已补齐 shared-chain mixed-content 的确定性拓扑计数组合能力：`TinyScaleSharedChainMixedContentDuplicateHoleRepairsToBrepBody`、`TinyScaleSharedChainMixedContentSupportPlaneMismatchRepairsToBrepBody`、`TinyScaleSharedChainMixedContentSupportMismatchWithDuplicateHoleRepairsToBrepBody` 现均断言 VertexCount=12 / EdgeCount=14。
 ## 当前关注优先级
 
 1. **3D robust non-planar repair**：从 closed-shell tetrahedron 子类走向共享边一致性约束驱动的 support-plane/refit 决策
