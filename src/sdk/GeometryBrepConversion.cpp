@@ -1083,10 +1083,8 @@ PolyhedronBrepBodyConversion3d ConvertToBrepBody(const PolyhedronBody& body, dou
     std::vector<BrepFace> faces;
     std::unordered_map<std::size_t, std::size_t> representativeToVertexIndex;
     std::unordered_map<std::size_t, Point3d> representativeTargetPoints;
-    if (!ComputeRepresentativeTargetPoints(sourceBody, representativeIds, representativeTargetPoints))
-    {
-        return {false, BrepConversionIssue3d::InvalidBody, 0, {}};
-    }
+    const bool hasRepresentativeTargetPoints =
+        ComputeRepresentativeTargetPoints(sourceBody, representativeIds, representativeTargetPoints);
     faces.reserve(sourceBody.FaceCount());
 
     for (std::size_t faceIndex = 0; faceIndex < sourceBody.FaceCount(); ++faceIndex)
@@ -1119,7 +1117,7 @@ PolyhedronBrepBodyConversion3d ConvertToBrepBody(const PolyhedronBody& body, dou
                 outerLoop,
                 outerUv,
                 outerRepresentativeIds,
-                &representativeTargetPoints,
+                hasRepresentativeTargetPoints ? &representativeTargetPoints : nullptr,
                 &representativeToVertexIndex,
                 eps))
         {
@@ -1160,7 +1158,7 @@ PolyhedronBrepBodyConversion3d ConvertToBrepBody(const PolyhedronBody& body, dou
                     holeLoop,
                     holeUv,
                     holeRepresentativeIds,
-                    &representativeTargetPoints,
+                        hasRepresentativeTargetPoints ? &representativeTargetPoints : nullptr,
                     &representativeToVertexIndex,
                     eps))
             {

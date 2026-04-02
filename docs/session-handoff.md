@@ -21,6 +21,12 @@
 - 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 support-mismatch near-equal shared-edge representative-average 子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-02，continuation-31）
+
+- 已更新 `src/sdk/GeometryBrepConversion.cpp`：`ConvertToBrepBody(...)` 在 representative-target 全局聚合失败时自动回退到 representative-id 复用路径，不再直接返回 `InvalidBody`。
+- 本轮目标为 conversion 稳健性硬化（failure-to-fallback），不改变现有 capability 断言集合。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
 ## 本轮新增（2026-04-02，continuation）
 
 - 已新增 capability：`Heal(..., policy=Aggressive)` 在同一个 `BrepBody` 内可同时闭合多个可恢复 open shells（`tests/capabilities/test_3d_healing.cpp`）。
