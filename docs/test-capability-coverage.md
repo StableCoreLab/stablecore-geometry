@@ -79,6 +79,7 @@
   - `ConvertToBrepBody(...)` 在 support-plane mismatch + duplicate-loop-normalization 的 tiny-scale quad shared-edge chain（中间 face 含重复 leading 顶点）上也可稳定收敛到共享拓扑（VertexCount=8 / EdgeCount=10），验证 representative-id 映射可穿透修复归一化后的 loop cardinality 变化
   - `ConvertToBrepBody(...)` 在 shared-chain mixed-content 子集上已补齐确定性共享拓扑计数断言：duplicate-hole、support-plane mismatch、以及二者组合（support-mismatch + duplicate-hole）场景均稳定满足 VertexCount=12 / EdgeCount=14
   - `ConvertToBrepBody(...)` 在 shared-chain 组合子场景（shared-edge duplicate-loop、mixed-content collinear-leading、support-mismatch+collinear、full-composition、dual-duplicate full-composition）上也已补齐确定性共享拓扑计数断言，分别稳定满足 VertexCount=8/13 与 EdgeCount=10/15 的预期拓扑计数
+  - `ConvertToBrepBody(...)` 在 tiny-scale 基础子场景（non-planar multi-face、non-planar mixed-content、non-planar shared-edge faces、non-planar shared-edge-chain mixed-content）上也已补齐确定性共享拓扑计数断言（分别为 8/8、12/12、6/7、12/14）
 
 ## 共享测试支持
 

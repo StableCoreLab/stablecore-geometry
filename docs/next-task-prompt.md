@@ -98,6 +98,7 @@
 - 已扩展 support-plane mismatch + duplicate-loop-normalization 的 tiny-scale quad shared-edge chain capability：`ConvertToBrepBody(...)` 在中间 face 含重复 leading 顶点时仍可稳定保持共享拓扑（VertexCount=8 / EdgeCount=10）
 - 已扩展 shared-chain mixed-content 计数组合 capability：duplicate-hole、support-plane mismatch、以及 support-mismatch + duplicate-hole 组合场景均可稳定保持共享拓扑计数（VertexCount=12 / EdgeCount=14）
 - 已扩展 shared-chain 其余组合子场景的计数断言能力：shared-edge duplicate-loop、mixed-content collinear-leading、support-mismatch+collinear、full-composition、dual-duplicate full-composition 现均补齐 VertexCount/EdgeCount 确定性断言
+- 已扩展 tiny-scale 基础子场景计数断言能力：non-planar multi-face、non-planar mixed-content、non-planar shared-edge faces、non-planar shared-edge-chain mixed-content 现均补齐 VertexCount/EdgeCount 确定性断言
 - 下一步聚焦更一般 topology-changing non-planar repair（超出当前 representative-id + shared-refit 子集），继续保留 `GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen` 作为总 gap
 
 ### P4-B：aggressive shell policy 分层落地（已完成最小子集）

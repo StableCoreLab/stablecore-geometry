@@ -260,6 +260,7 @@
 - `tests/gaps/test_3d_conversion_gaps.cpp` 已移除显式 quad-chain gap 子项，当前保留 `GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen` 作为总 gap 入口。
 - 已补齐 shared-chain mixed-content 的确定性拓扑计数组合能力：`TinyScaleSharedChainMixedContentDuplicateHoleRepairsToBrepBody`、`TinyScaleSharedChainMixedContentSupportPlaneMismatchRepairsToBrepBody`、`TinyScaleSharedChainMixedContentSupportMismatchWithDuplicateHoleRepairsToBrepBody` 现均断言 VertexCount=12 / EdgeCount=14。
 - 已进一步补齐 shared-chain 其余组合子场景的确定性拓扑计数断言：`TinyScaleSharedEdgeChainWithDuplicateLoopRepairsToBrepBody`（8/10）、`TinyScaleSharedChainMixedContentCollinearLeadingRepairsToBrepBody`（13/15）、`TinyScaleSharedChainSupportMismatchAndCollinearRepairsToBrepBody`（13/15）、`TinyScaleSharedChainFullCompositionRepairsToBrepBody`（13/15）、`TinyScaleSharedChainDualDuplicateFullCompositionRepairsToBrepBody`（13/15）。
+- 已补齐 tiny-scale 基础子场景的确定性拓扑计数断言：`TinyScaleNonPlanarMultiFaceStillRepairsToBrepBody`（8/8）、`TinyScaleNonPlanarMixedContentStillRepairsToBrepBody`（12/12）、`TinyScaleNonPlanarSharedEdgeFacesStillRepairToBrepBody`（6/7）、`TinyScaleNonPlanarSharedEdgeChainMixedContentRepairsToBrepBody`（12/14）。
 ## 当前关注优先级
 
 1. **3D robust non-planar repair**：从 closed-shell tetrahedron 子类走向共享边一致性约束驱动的 support-plane/refit 决策

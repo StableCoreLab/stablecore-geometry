@@ -999,6 +999,8 @@ TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarMultiFaceStillRepairsToBrepBo
     assert(result.issue == BrepConversionIssue3d::None);
     assert(result.body.IsValid());
     assert(result.body.FaceCount() == 2);
+    assert(result.body.VertexCount() == 8);
+    assert(result.body.EdgeCount() == 8);
 }
 
 // Demonstrates tiny-scale non-planar repair remains stable for mixed-content
@@ -1014,6 +1016,8 @@ TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarMixedContentStillRepairsToBre
     assert(result.issue == BrepConversionIssue3d::None);
     assert(result.body.IsValid());
     assert(result.body.FaceCount() == 2);
+    assert(result.body.VertexCount() == 12);
+    assert(result.body.EdgeCount() == 12);
 }
 
 // Demonstrates tiny-scale non-planar repair remains stable when adjacent faces
@@ -1029,6 +1033,8 @@ TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarSharedEdgeFacesStillRepairToB
     assert(result.issue == BrepConversionIssue3d::None);
     assert(result.body.IsValid());
     assert(result.body.FaceCount() == 2);
+    assert(result.body.VertexCount() == 6);
+    assert(result.body.EdgeCount() == 7);
 }
 
 // Demonstrates tiny-scale non-planar repair remains stable on a shared-edge
@@ -1100,6 +1106,8 @@ TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarSharedEdgeChainMixedContentRe
     assert(result.issue == BrepConversionIssue3d::None);
     assert(result.body.IsValid());
     assert(result.body.FaceCount() == 3);
+    assert(result.body.VertexCount() == 12);
+    assert(result.body.EdgeCount() == 14);
 }
 
 // Demonstrates shared-edge chain tiny-scale repair remains stable when one
