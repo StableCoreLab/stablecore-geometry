@@ -271,6 +271,7 @@ HealingIssue3d MapMeshRepairIssue(const MeshRepairIssue3d issue)
 
         std::map<std::size_t, std::size_t> edgeUseCount;
         bool eligible = true;
+        bool hasBoundaryEdge = false;
         for (std::size_t faceIndex = 0; faceIndex < shell.FaceCount() && eligible; ++faceIndex)
         {
             const BrepFace face = shell.FaceAt(faceIndex);
@@ -284,6 +285,14 @@ HealingIssue3d MapMeshRepairIssue(const MeshRepairIssue3d issue)
             {
                 ++edgeUseCount[coedge.EdgeIndex()];
             }
+
+            for (const BrepLoop& hole : face.HoleLoops())
+            {
+                for (const BrepCoedge& coedge : hole.Coedges())
+                {
+                    ++edgeUseCount[coedge.EdgeIndex()];
+                }
+            }
         }
 
         if (!eligible || edgeUseCount.empty())
@@ -294,11 +303,21 @@ HealingIssue3d MapMeshRepairIssue(const MeshRepairIssue3d issue)
 
         for (const auto& [_, count] : edgeUseCount)
         {
-            if (count != 1)
+            if (count > 2 || count == 0)
             {
                 eligible = false;
                 break;
             }
+
+            if (count == 1)
+            {
+                hasBoundaryEdge = true;
+            }
+        }
+
+        if (!hasBoundaryEdge)
+        {
+            eligible = false;
         }
 
         if (!eligible)

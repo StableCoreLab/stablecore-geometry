@@ -184,6 +184,13 @@
 - 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 shared-edge chain global vertex/edge consistency 子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-02，stage-2）
+
+- 已更新 `src/sdk/GeometryHealing.cpp`：Aggressive shell closure 现在允许 planar multi-face shell 中存在 shared-edge 邻接，不再要求所有边都只被单面使用。
+- 已新增 healing capability：`tests/capabilities/test_3d_healing.cpp` 现在验证 shared-edge open-sheet 在 Aggressive 策略下可确定性闭壳。
+- 已同步收敛 `tests/gaps/test_3d_healing_gaps.cpp` 文案，纳入 shared-edge open-sheet 子集。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
 ## 当前关注优先级
 
 1. **3D robust non-planar repair**：从 affine-skew 子类走向真实 non-planar 失配修复

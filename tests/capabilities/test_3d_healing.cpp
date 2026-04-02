@@ -255,6 +255,58 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseRecoverableMultiFaceOpenS
     assert(healed.body.FaceCount() == 4);
 }
 
+// Demonstrates aggressive policy also supports a planar multi-face open sheet
+// whose adjacent faces share an interior edge before closure.
+TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseSharedEdgeOpenSheet)
+{
+    std::vector<BrepVertex> vertices{
+        BrepVertex(Point3d{0.0, 0.0, 0.0}),
+        BrepVertex(Point3d{1.0, 0.0, 0.0}),
+        BrepVertex(Point3d{1.0, 1.0, 0.0}),
+        BrepVertex(Point3d{0.0, 1.0, 0.0}),
+        BrepVertex(Point3d{2.0, 0.0, 0.0}),
+        BrepVertex(Point3d{2.0, 1.0, 0.0})};
+
+    std::vector<BrepEdge> edges;
+    auto addEdge = [&](std::size_t start, std::size_t end) {
+        const Point3d first = vertices[start].Point();
+        const Point3d second = vertices[end].Point();
+        edges.emplace_back(
+            std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+                Line3d::FromOriginAndDirection(first, second - first),
+                Intervald{0.0, 1.0})),
+            start,
+            end);
+    };
+
+    addEdge(0, 1);
+    addEdge(1, 2); // shared interior edge
+    addEdge(2, 3);
+    addEdge(3, 0);
+    addEdge(1, 4);
+    addEdge(4, 5);
+    addEdge(5, 2);
+
+    const BrepLoop outerA({BrepCoedge(0, false), BrepCoedge(1, false), BrepCoedge(2, false), BrepCoedge(3, false)});
+    const BrepLoop outerB({BrepCoedge(4, false), BrepCoedge(5, false), BrepCoedge(6, false), BrepCoedge(1, true)});
+    const PlaneSurface planeSurface = PlaneSurface::FromPlane(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, 0.0, 1.0}));
+
+    const BrepFace faceA(std::shared_ptr<Surface>(planeSurface.Clone().release()), outerA);
+    const BrepFace faceB(std::shared_ptr<Surface>(planeSurface.Clone().release()), outerB);
+    const BrepBody openBody(vertices, edges, {BrepShell({faceA, faceB}, false)});
+    assert(openBody.IsValid());
+    assert(!openBody.ShellAt(0).IsClosed());
+
+    const BrepHealing3d healed = Heal(openBody, geometry::sdk::GeometryTolerance3d{}, HealingPolicy3d::Aggressive);
+    assert(healed.success);
+    assert(healed.issue == HealingIssue3d::None);
+    assert(healed.body.IsValid());
+    assert(healed.body.ShellCount() == 1);
+    assert(healed.body.ShellAt(0).IsClosed());
+    assert(healed.body.FaceCount() == 4);
+}
+
 // Demonstrates aggressive closure also supports a recoverable holed planar
 // single-face open shell by mirroring outer and hole loops.
 TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseRecoverableHoledOpenShell)

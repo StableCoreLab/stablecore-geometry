@@ -122,6 +122,7 @@
   - 已新增 healing 子能力收敛：带孔平面 `BrepFace` 缺失 outer/hole trims 时可被 `Heal(BrepBody)` 同步回填
   - 已新增 aggressive healing 子能力收敛：`Heal(..., policy=Aggressive)` 支持 open planar single-face shell 的确定性闭壳修复
   - 已扩展 aggressive healing 子能力：覆盖 open planar multi-face sheet 的确定性闭壳修复
+  - 已扩展 aggressive healing 子能力：覆盖 shared-edge 邻接的 open planar multi-face sheet 的确定性闭壳修复
   - 已扩展 aggressive healing 子能力：覆盖 open planar holed shell 的确定性闭壳修复
   - 已扩展 aggressive healing 组合子能力：在 open holed shell 且 trims 缺失场景下，闭壳与 trim-backfill 可协同稳定生效
   - 已扩展 aggressive healing 子能力：同一 `BrepBody` 中多个可恢复 open shell 可在单次 healing 中确定性闭壳

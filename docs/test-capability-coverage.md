@@ -50,6 +50,7 @@
   - `Heal(..., policy=Aggressive)` 可在同一个 body 中同时闭合多个可恢复 open shell，并保持确定性拓扑结果
   - `Heal(..., policy=Aggressive)` 在混合 closed-shell + open-shell 输入下可保持已闭壳稳定，并仅对可恢复 open shell 执行确定性闭壳
   - `Heal(..., policy=Aggressive)` 在 mixed open-shell 输入下支持部分修复：可恢复 planar shell 可闭壳，不可恢复 shell 保持原状
+  - `Heal(..., policy=Aggressive)` 在存在 shared-edge 邻接的 planar multi-face open-sheet 上也可执行确定性闭壳，不再局限于边完全不共享的分离面片
   - `Heal(..., policy=Aggressive)` 在三壳 mixed 输入下保持 deterministic：closed shell 保持稳定、eligible open shell 闭壳、ineligible open shell 保持 open
   - `Heal(..., policy=Aggressive)` 在三壳 mixed 输入下可与 conservative trim-backfill 协同：eligible open shell 先回填 trims 后闭壳，ineligible open shell 保持 open
   - `Heal(..., policy=Aggressive)` 在三壳 mixed 输入下支持 eligible multi-face open-sheet 闭壳，同时保持 closed shell 稳定与 ineligible shell open 状态
