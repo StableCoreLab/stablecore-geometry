@@ -75,6 +75,7 @@
 
 ### P4-B：aggressive shell policy 分层落地（已完成最小子集）
 - 已覆盖 single-face / multi-face / holed / multi-shell open-shell 的最小 deterministic closure 子策略
+- 已覆盖 mixed closed/open-shell 输入下“保持闭壳稳定 + 闭合开壳”的最小 deterministic 子策略
 - 下一步转向更一般 topology-changing aggressive policy（保留为 gap）
 
 ---

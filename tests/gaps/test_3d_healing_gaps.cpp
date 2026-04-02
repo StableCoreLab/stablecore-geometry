@@ -12,7 +12,7 @@ TEST(Healing3dGapTest, AggressiveShellRepairPolicyRemainsOpen)
     const BrepBody body({});
     const auto healing = Heal(body);
     (void)healing;
-    GTEST_SKIP() << "Known 3D gap: general topology-changing aggressive shell repair policy beyond recoverable planar open-shell subsets (single/multi-face, holed, multi-shell) is not implemented.";
+    GTEST_SKIP() << "Known 3D gap: general topology-changing aggressive shell repair policy beyond recoverable planar open-shell subsets (single/multi-face, holed, multi-shell, mixed closed/open-shell) is not implemented.";
 }
 
 TEST(Healing3dGapTest, MultiStepMeshBodyJointHealingRemainsOpen)
