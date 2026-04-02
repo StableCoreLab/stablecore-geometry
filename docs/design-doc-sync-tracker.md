@@ -101,6 +101,7 @@
   - 已扩展 conversion repair 子能力：leading collinear loop 顶点输入下，`ConvertToBrepBody` 可稳定回退到非共线三点法向拟合
   - 已扩展 conversion repair 子能力：duplicate loop 顶点输入下，`ConvertToBrepBody` 可先做 loop 归一化再执行 refit
   - 已扩展 conversion repair 子能力：duplicate hole loop 顶点输入下，`ConvertToBrepBody` 同样可先归一化再执行 refit
+  - 已新增 conversion 组合子能力：support-plane refit / collinear fallback / outer-hole projection / duplicate normalization 在单 face 病理输入下可叠加稳定生效
   - 已新增 healing 子能力收敛：带孔平面 `BrepFace` 缺失 outer/hole trims 时可被 `Heal(BrepBody)` 同步回填
   - 已新增 aggressive healing 子能力收敛：`Heal(..., policy=Aggressive)` 支持 open planar single-face shell 的确定性闭壳修复
   - 已扩展 aggressive healing 子能力：覆盖 open planar multi-face sheet 的确定性闭壳修复

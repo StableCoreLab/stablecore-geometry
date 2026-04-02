@@ -198,6 +198,37 @@ PolyhedronBody BuildDuplicateVertexHoleLoopBody()
         });
     return PolyhedronBody({face});
 }
+
+PolyhedronBody BuildCompositeRepairStressFaceBody()
+{
+    std::vector<Point3d> outer{
+        Point3d{0.0, 0.0, 0.0},
+        Point3d{1.0, 0.0, 0.0},
+        Point3d{2.0, 0.0, 0.0},
+        Point3d{4.0, 0.0, 0.0},
+        Point3d{4.0, 4.0, 0.0},
+        Point3d{0.0, 4.0, 0.0},
+        Point3d{0.0, 4.0, 0.0},
+    };
+    // Mildly non-planar disturbance on outer loop.
+    outer[4].z += 0.04;
+
+    std::vector<Point3d> hole{
+        Point3d{1.0, 1.0, 0.0},
+        Point3d{3.0, 1.0, 0.0},
+        Point3d{3.0, 1.0, 0.0},
+        Point3d{3.0, 3.0, 0.0},
+        Point3d{1.0, 3.0, 0.0},
+    };
+    // Mildly non-planar disturbance on hole loop.
+    hole[3].z += 0.03;
+
+    const PolyhedronFace3d face(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.25}, Vector3d{0.0, 0.0, 1.0}),
+        PolyhedronLoop3d(std::move(outer)),
+        {PolyhedronLoop3d(std::move(hole))});
+    return PolyhedronBody({face});
+}
 } // namespace
 
 // Demonstrates that a closed PolyhedronBody (unit cube, 6 quad faces) converts
@@ -325,6 +356,21 @@ TEST(Conversion3dCapabilityTest, DuplicateVertexLoopStillRepairsToBrepBody)
 TEST(Conversion3dCapabilityTest, DuplicateVertexHoleLoopStillRepairsToBrepBody)
 {
     const PolyhedronBody body = BuildDuplicateVertexHoleLoopBody();
+    assert(!body.IsValid());
+
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 1);
+}
+
+// Demonstrates repair sub-strategies compose deterministically on one face:
+// support-plane mismatch + collinear leading outer points + duplicate points +
+// mild non-planar disturbances on outer and hole loops.
+TEST(Conversion3dCapabilityTest, CompositeRepairStressFaceStillConvertsToBrepBody)
+{
+    const PolyhedronBody body = BuildCompositeRepairStressFaceBody();
     assert(!body.IsValid());
 
     const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
