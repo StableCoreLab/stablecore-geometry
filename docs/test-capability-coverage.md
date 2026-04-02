@@ -100,6 +100,7 @@
   - `ConvertToBrepBody(...)` 在 support-plane mismatch + near-equal shared-edge-chain（3 faces）且 middle-face duplicate-loop-normalization 输入下同样可经 refit 后稳定保持 representative-average 共享顶点落点（VertexCount=8 / EdgeCount=10）
   - `ConvertToBrepBody(...)` 在 support-plane mismatch + near-equal shared-chain mixed-content（含 middle-face duplicate-hole-normalization）输入下同样可经 refit 后稳定保持 representative-average 共享顶点落点（VertexCount=12 / EdgeCount=14）
   - `ConvertToBrepBody(...)` 在 support-plane mismatch + near-equal shared-chain full-composition（含 collinear-leading + duplicate-hole-normalization）输入下同样可经 refit 后稳定保持 representative-average 共享顶点落点（VertexCount=13 / EdgeCount=15）
+  - `ConvertToBrepBody(...)` 在 support-plane mismatch + near-equal shared-chain dual-duplicate full-composition（含 outer+hole duplicate-normalization）输入下同样可经 refit 后稳定保持 representative-average 共享顶点落点（VertexCount=13 / EdgeCount=15）
   - `ConvertToBrepBody(...)` 已增加 representative-target 聚合失败回退：若全局平均目标点构建失败，将自动回退到原 representative-id 复用路径，避免把可转换输入误判为失败
   - `ConvertToBrepBody(...)` 的 repair 后 representative snapping 已从单轮提升为最多两轮小步迭代（每轮保持 body 有效性约束），以增强跨面共享顶点对齐稳定性
   - `ConvertToBrepBody(...)` 已为代表性 repair 场景补齐壳体语义断言：cube-like 输入稳定满足 `ShellCount()==1 && IsClosed()==true`，shared-chain sheet-like 输入稳定满足 `ShellCount()==1 && IsClosed()==false`
