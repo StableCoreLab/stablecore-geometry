@@ -10,6 +10,8 @@
 using geometry::sdk::BuildSectionComponents;
 using geometry::sdk::BuildSectionTopology;
 using geometry::sdk::ClassifySectionContent;
+using geometry::sdk::ConvertToBrepBody;
+using geometry::sdk::BrepConversionIssue3d;
 using geometry::sdk::Plane;
 using geometry::sdk::Point3d;
 using geometry::sdk::PolyhedronBody;
@@ -95,6 +97,41 @@ TEST(Section3dCapabilityTest, NonAxisAlignedCubeSectionHasSingleHexLikeContour)
     const auto topology = BuildSectionTopology(section);
     assert(topology.IsValid());
     assert(topology.Roots().size() == 1);
+    assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
+}
+
+// Demonstrates Section(BrepBody, Plane) remains stable on an oblique cut:
+// after Polyhedron->Brep conversion, sectioning still yields one closed area
+// contour with deterministic vertex count.
+TEST(Section3dCapabilityTest, BrepBodyObliqueSectionHasSingleHexLikeContour)
+{
+    const PolyhedronBody cubeBody = geometry::test::BuildUnitCubeBody();
+    assert(cubeBody.IsValid());
+
+    const auto converted = ConvertToBrepBody(cubeBody);
+    assert(converted.success);
+    assert(converted.issue == BrepConversionIssue3d::None);
+    assert(converted.body.IsValid());
+
+    const Plane cut = Plane::FromPointAndNormal(
+        Point3d{0.5, 0.5, 0.5},
+        Vector3d{1.0, 1.0, 1.0});
+    const auto section = Section(converted.body, cut);
+    assert(section.success);
+    assert(section.IsValid());
+
+    assert(section.polygons.size() == 1);
+    assert(section.contours.size() == 1);
+    assert(section.contours[0].closed);
+    assert(section.contours[0].points.size() == 6);
+
+    const auto topology = BuildSectionTopology(section);
+    assert(topology.IsValid());
+    assert(topology.Roots().size() == 1);
+
+    const auto components = BuildSectionComponents(section);
+    assert(components.IsValid());
+    assert(components.components.size() == 1);
     assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
 }
 

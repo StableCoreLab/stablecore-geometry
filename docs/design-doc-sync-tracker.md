@@ -94,6 +94,7 @@
   - 已补齐 `ConvertToBrepBody(PolyhedronBody)` 最小 conversion API 与 capability test，单位立方体可转换为有效 `BrepBody` 且 `FaceCount()==6`
   - 已新增 `RebuildSectionBrepBodies(...)` 多组件能力验证：双立方体截面可稳定重建为 2 个独立 `BrepBody`
   - 已新增 non-axis-aligned multi-face section capability：`x+y+z=1.5` 截单位立方体时 contour/polygon 计数稳定
+  - 已新增 section 子能力：`Section(BrepBody, Plane)` 在 oblique cut（`x+y+z=1.5`）下稳定得到单区域闭合结果（1 polygon / 1 contour / 6 points）
   - 已补齐最小 coedge-loop editing API 与 capability：`InsertCoedge(...)` / `FlipCoedgeDirection(...)` / `RemoveCoedge(...)` 非平凡编辑链路可稳定 round-trip
   - 已新增 conversion 子能力收敛：affine-skew 非轴对齐 `PolyhedronBody` 可稳定 `ConvertToBrepBody(...)`
   - 已新增 conversion repair 子能力收敛：support-plane mismatch 的 `PolyhedronBody` 可通过 support-plane refit 稳定转换到 `BrepBody`

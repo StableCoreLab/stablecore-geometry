@@ -58,6 +58,7 @@
 ### P2 已完成（本次）
 
 - P2-A：non-axis-aligned multi-face section contour count capability 已落地
+- P2-A1：`Section(BrepBody, Plane)` oblique-cut capability 已落地（1 polygon / 1 contour / 6 points）
 - P2-B：coedge-loop editing 最小 non-trivial capability 已落地
 - P2-C：coplanar 相邻 face fragment 在 `Section(...)` 中合并为单 polygon 的 face-merge 子样例已落地
 - P2-D：最小 loop->face->shell->body ownership-consistent replacement workflow 已落地

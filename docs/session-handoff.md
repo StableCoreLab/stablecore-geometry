@@ -230,6 +230,12 @@
 - 结果满足 FaceCount=6 / VertexCount=8 / EdgeCount=12 / 1 closed shell 确定性拓扑断言。
 - 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 deformed-cube multi-face non-planar 子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
+## 本轮新增（2026-04-02，section-brep-oblique-capability）
+
+- 已新增 section capability：`tests/capabilities/test_3d_section.cpp` 新增 `BrepBodyObliqueSectionHasSingleHexLikeContour`，验证 `Section(BrepBody, Plane)` 在 oblique cut（`x+y+z=1.5`）下稳定产出单闭合区域。
+- 能力路径：先 `ConvertToBrepBody(unit cube)`，再执行 `Section(converted.body, cut)`，并验证 polygon/contour/topology/components 的确定性（1 polygon / 1 contour / 6 points / 1 root）。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 ## 本轮新增（2026-04-02，continuation-closed-shell-tetrahedron）
 
 - 已新增 conversion capability：`ConvertToBrepBody(...)` 在 tiny-scale closed-shell tetrahedron（4 triangular faces, all support planes mismatched）输入上，经 per-face refit 修复后可收敛为合法 closed BrepBody（IsClosed=true / VertexCount=4 / EdgeCount=6）。
