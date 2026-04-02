@@ -111,6 +111,7 @@
 - 下一步聚焦更一般 topology-changing non-planar repair（超出当前 representative-id + shared-refit 子集），继续保留 `GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen` 作为总 gap
 
 ### P4-B：aggressive shell policy 分层落地（已完成最小子集）
+- 已覆盖 mixed support-mismatch + ineligible multiface 系列场景的 shell-level FaceCount 分布断言
 - 已覆盖 single-face / multi-face / holed / multi-shell open-shell 的最小 deterministic closure 子策略
 - 已覆盖 shared-edge 邻接的 planar multi-face open-sheet 的 deterministic closure 子策略
 - 已覆盖 mixed closed/open-shell 输入下“保持闭壳稳定 + 闭合开壳”的最小 deterministic 子策略

@@ -287,6 +287,12 @@
 - 同时保持几何计数稳定：`TriangleCount=24`、`SurfaceArea=12.0`。
 - 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 disconnected closed-shell component-preserving 子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
+## 本轮新增（2026-04-02，healing-shell-face-distribution-hardening）
+
+- 已补强 healing capability 断言：`tests/capabilities/test_3d_healing.cpp` 在 mixed support-mismatch + ineligible multiface 系列场景中新增每个 shell 的 `FaceCount` 分布断言。
+- 覆盖目标：把原有“总 FaceCount 正确”升级为“各 shell 面数分配正确”，降低 partial/mixed 修复中 shell 归属回归风险。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 ## 本轮新增（2026-04-02，continuation-closed-shell-tetrahedron）
 
 - 已新增 conversion capability：`ConvertToBrepBody(...)` 在 tiny-scale closed-shell tetrahedron（4 triangular faces, all support planes mismatched）输入上，经 per-face refit 修复后可收敛为合法 closed BrepBody（IsClosed=true / VertexCount=4 / EdgeCount=6）。

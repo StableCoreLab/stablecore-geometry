@@ -70,6 +70,7 @@
   - `Heal(..., policy=Aggressive)` 在 support-plane mismatch 的 eligible shell 缺失 trims 且与 ineligible multi-face shell 共存时，仍可先回填后闭壳并保持 ineligible open
   - `Heal(..., policy=Aggressive)` 在 support-plane mismatch 的 eligible holed shell（缺失 outer/hole trims）与 ineligible multi-face shell 共存时，仍可先回填后闭壳并保持 ineligible open
   - `Heal(..., policy=Aggressive)` 在 support-plane mismatch 的 eligible multi-face（holed+plain，缺失 trims）与 ineligible multi-face shell 共存时，仍可先回填后闭壳并保持 ineligible open
+  - `Heal(..., policy=Aggressive)` 在 mixed support-mismatch + ineligible multiface 系列场景中已补齐 shell-level FaceCount 分布断言，避免仅靠总 FaceCount 掩盖 shell 归属回归
 - `tests/capabilities/test_3d_conversion.cpp`
   - 单位立方体（6 quad faces）经 `ConvertToTriangleMesh(PolyhedronBody)` 得到 12 triangles，`SurfaceArea ≈ 6.0`；并可经 `ConvertToBrepBody(PolyhedronBody)` 得到 `FaceCount() == 6` 的有效 `BrepBody`，覆盖 affine-skew 非轴对齐子类输入、support-plane mismatch 可修复子场景（含 shared-chain mixed-content full-composition 下的 support-plane refit）、mild non-planar outer/hole loop 顶点投影修复子场景、leading collinear loop 顶点下的稳健法向回退、duplicate outer/hole loop 顶点归一化修复、tiny-scale non-planar（含 holed/multi-face/mixed-content/shared-edge/shared-chain/shared-chain-mixed-content）输入下的 scale-aware 法向回退与投影修复，以及 duplicate/hole/collinear-leading normalization 与 shared-edge chain 修复的组合稳定性；同时覆盖 planar holed、planar multi-face、以及 planar holed+multi-face `BrepBody` 到 mesh 的面积保持子场景
   - `ConvertToBrepBody(...)` 在 tiny-scale shared-edge 邻接链 mixed-content full-composition 下，支持 outer/hole 双重复顶点归一化与 support-mismatch + collinear-leading 组合修复稳定叠加

@@ -167,6 +167,7 @@
   - 已扩展 aggressive healing 组合子能力：support-plane mismatch + trim-backfill 的 eligible shell 与 ineligible multi-face shell 共存时，仍可保持 deterministic 闭壳/保留 open 行为
   - 已扩展 aggressive healing 组合子能力：support-plane mismatch 的 eligible holed shell（缺失 outer/hole trims）与 ineligible multi-face shell 共存时，仍可保持 deterministic 回填后闭壳/保留 open 行为
   - 已扩展 aggressive healing 组合子能力：support-plane mismatch 的 eligible multi-face（holed+plain，缺失 trims）与 ineligible multi-face shell 共存时，仍可保持 deterministic 回填后闭壳/保留 open 行为
+  - 已补强 aggressive healing capability 断言：mixed support-mismatch + ineligible multiface 系列场景新增 shell-level FaceCount 分布断言
 ## 对齐完成定义（DoD）
 
 ### 2D 对齐完成

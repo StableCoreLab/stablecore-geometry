@@ -1504,6 +1504,12 @@ TEST(Healing3dCapabilityTest, AggressiveHealingMixedSupportMismatchWithTrimBackf
     assert(healed.body.ShellAt(0).IsClosed());
     assert(healed.body.ShellAt(1).IsClosed());
     assert(!healed.body.ShellAt(2).IsClosed());
+    assert(healed.body.ShellAt(0).FaceCount() == 2);
+    assert(healed.body.ShellAt(1).FaceCount() == 2);
+    assert(healed.body.ShellAt(2).FaceCount() == 2);
+    assert(healed.body.ShellAt(0).FaceCount() == 2);
+    assert(healed.body.ShellAt(1).FaceCount() == 2);
+    assert(healed.body.ShellAt(2).FaceCount() == 2);
     assert(healed.body.FaceCount() == 6);
     const auto eligibleHealedFace = healed.body.ShellAt(1).FaceAt(0);
     assert(eligibleHealedFace.OuterTrim().IsValid());
@@ -1609,6 +1615,9 @@ TEST(Healing3dCapabilityTest, AggressiveHealingSupportMismatchHoledEligibleWithI
     assert(healed.body.ShellAt(0).IsClosed());
     assert(healed.body.ShellAt(1).IsClosed());
     assert(!healed.body.ShellAt(2).IsClosed());
+    assert(healed.body.ShellAt(0).FaceCount() == 2);
+    assert(healed.body.ShellAt(1).FaceCount() == 2);
+    assert(healed.body.ShellAt(2).FaceCount() == 2);
     // closed:2, eligible holed:1->2, ineligible multiface:2 unchanged.
     assert(healed.body.FaceCount() == 6);
     const auto eligibleHealedFace = healed.body.ShellAt(1).FaceAt(0);
@@ -1730,6 +1739,9 @@ TEST(Healing3dCapabilityTest, AggressiveHealingSupportMismatchEligibleMultiFaceM
     assert(healed.body.ShellAt(0).IsClosed());
     assert(healed.body.ShellAt(1).IsClosed());
     assert(!healed.body.ShellAt(2).IsClosed());
+    assert(healed.body.ShellAt(0).FaceCount() == 2);
+    assert(healed.body.ShellAt(1).FaceCount() == 4);
+    assert(healed.body.ShellAt(2).FaceCount() == 2);
     // closed:2, eligible multi-face:2->4, ineligible multiface:2 unchanged.
     assert(healed.body.FaceCount() == 8);
     const auto eligibleHoledFace = healed.body.ShellAt(1).FaceAt(0);
