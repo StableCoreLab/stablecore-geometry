@@ -19,5 +19,5 @@ TEST(Conversion3dGapTest, GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen)
     const PolyhedronBody body;
     const auto mesh = ConvertToTriangleMesh(body);
     (void)mesh;
-    GTEST_SKIP() << "Known 3D gap: robust non-planar polyhedron->Brep repair beyond affine-planar subset is still open.";
+    GTEST_SKIP() << "Known 3D gap: robust non-planar polyhedron->Brep repair beyond affine-planar + support-plane-refit subset is still open.";
 }

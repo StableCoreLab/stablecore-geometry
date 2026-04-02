@@ -326,6 +326,7 @@
 - `tests/capabilities/test_3d_section.cpp` 已新增 non-axis-aligned multi-face 截面的稳定 contour count capability
 - `tests/capabilities/test_3d_healing.cpp` 已扩展 holed-face 缺失 outer/hole trims 同步回填 capability
 - `tests/capabilities/test_3d_conversion.cpp` 已扩展 affine-skew 非轴对齐 `PolyhedronBody` 的 `ConvertToBrepBody(...)` capability
+- `tests/capabilities/test_3d_conversion.cpp` 已扩展 support-plane mismatch 输入的 `ConvertToBrepBody(...)` repair capability（support-plane refit）
 - `BrepFace` 已接上基于 trim/UV triangulation 的最小 `TriangleMesh` conversion
 - `GeometryMeasure::Area(BrepFace)` 已改为消费 `BrepFace -> TriangleMesh`，因此不再局限于平面 trim 面积
 - 已新增 `GeometryBrepConversion`，支持 `BrepFace -> PolyhedronFace3d` 与 `BrepBody -> PolyhedronBody` 的平面 trim 回建桥

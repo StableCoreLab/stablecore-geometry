@@ -178,6 +178,68 @@ namespace
     uvPoints.reserve(vertexCount);
     return loop.IsValid();
 }
+
+[[nodiscard]] bool BuildFaceWithRefitSupportPlane(
+    const PolyhedronFace3d& face,
+    PolyhedronFace3d& repairedFace,
+    double eps)
+{
+    const PolyhedronLoop3d outer = face.OuterLoop();
+    if (!outer.IsValid(eps) || outer.VertexCount() < 3)
+    {
+        return false;
+    }
+
+    const Point3d p0 = outer.VertexAt(0);
+    const Point3d p1 = outer.VertexAt(1);
+    const Point3d p2 = outer.VertexAt(2);
+    const Vector3d normal = Cross(p1 - p0, p2 - p0);
+    if (normal.Length() <= eps)
+    {
+        return false;
+    }
+
+    std::vector<PolyhedronLoop3d> holes;
+    holes.reserve(face.HoleCount());
+    for (std::size_t i = 0; i < face.HoleCount(); ++i)
+    {
+        const PolyhedronLoop3d hole = face.HoleAt(i);
+        if (!hole.IsValid(eps))
+        {
+            return false;
+        }
+        holes.push_back(hole);
+    }
+
+    repairedFace = PolyhedronFace3d(Plane::FromPointAndNormal(p0, normal), outer, std::move(holes));
+    return repairedFace.IsValid(eps);
+}
+
+[[nodiscard]] bool TryRepairPolyhedronBodyForBrepConversion(
+    const PolyhedronBody& body,
+    PolyhedronBody& repairedBody,
+    double eps)
+{
+    if (body.IsEmpty())
+    {
+        return false;
+    }
+
+    std::vector<PolyhedronFace3d> repairedFaces;
+    repairedFaces.reserve(body.FaceCount());
+    for (std::size_t i = 0; i < body.FaceCount(); ++i)
+    {
+        PolyhedronFace3d repairedFace{};
+        if (!BuildFaceWithRefitSupportPlane(body.FaceAt(i), repairedFace, eps))
+        {
+            return false;
+        }
+        repairedFaces.push_back(std::move(repairedFace));
+    }
+
+    repairedBody = PolyhedronBody(std::move(repairedFaces));
+    return repairedBody.IsValid(eps);
+}
 } // namespace
 
 BrepFaceConversion3d ConvertToPolyhedronFace(const BrepFace& face, double eps)
@@ -268,7 +330,8 @@ BrepBodyConversion3d ConvertToPolyhedronBody(const BrepBody& body, double eps)
 
 PolyhedronBrepBodyConversion3d ConvertToBrepBody(const PolyhedronBody& body, double eps)
 {
-    if (!body.IsValid(eps))
+    PolyhedronBody sourceBody = body;
+    if (!sourceBody.IsValid(eps) && !TryRepairPolyhedronBodyForBrepConversion(body, sourceBody, eps))
     {
         return {false, BrepConversionIssue3d::InvalidBody, 0, {}};
     }
@@ -276,11 +339,11 @@ PolyhedronBrepBodyConversion3d ConvertToBrepBody(const PolyhedronBody& body, dou
     std::vector<BrepVertex> vertices;
     std::vector<BrepEdge> edges;
     std::vector<BrepFace> faces;
-    faces.reserve(body.FaceCount());
+    faces.reserve(sourceBody.FaceCount());
 
-    for (std::size_t faceIndex = 0; faceIndex < body.FaceCount(); ++faceIndex)
+    for (std::size_t faceIndex = 0; faceIndex < sourceBody.FaceCount(); ++faceIndex)
     {
-        const PolyhedronFace3d face = body.FaceAt(faceIndex);
+        const PolyhedronFace3d face = sourceBody.FaceAt(faceIndex);
         if (!face.IsValid(eps))
         {
             return {false, BrepConversionIssue3d::InvalidFace, faceIndex, {}};

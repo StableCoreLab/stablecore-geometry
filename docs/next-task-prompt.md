@@ -30,7 +30,7 @@
 | tests/capabilities/test_3d_section.cpp | Section3dCapabilityTest | Section+Topology+Components 倾斜截面 + non-axis-aligned contour count |
 | tests/capabilities/test_3d_brep.cpp | Brep3dCapabilityTest | RebuildSectionBrepBody 单面 BrepBody + RebuildSectionBrepBodies 双组件重建 + coedge-loop 最小编辑链路 |
 | tests/capabilities/test_3d_healing.cpp | Healing3dCapabilityTest | Heal(PolyhedronBody) 幂等 6 faces + Heal(BrepBody) trim 回填（含 holed face） |
-| tests/capabilities/test_3d_conversion.cpp | Conversion3dCapabilityTest | ConvertToTriangleMesh 12 triangles area6.0 + ConvertToBrepBody FaceCount=6 + affine-skew 子类 |
+| tests/capabilities/test_3d_conversion.cpp | Conversion3dCapabilityTest | ConvertToTriangleMesh 12 triangles area6.0 + ConvertToBrepBody FaceCount=6 + affine-skew 子类 + support-plane refit 子场景 |
 
 **仍为 gap 的 3D 场景（tests/gaps/ 中已用 GTEST_SKIP 标记）：**
 
@@ -43,7 +43,7 @@
 | Healing3dGapTest::AggressiveShellRepairPolicyRemainsOpen | 激进 shell 修复策略 |
 | Healing3dGapTest::MultiStepMeshBodyJointHealingRemainsOpen | mesh/body 联合多阶段修复 |
 | Conversion3dGapTest::HighFidelityBrepToMeshFeaturePreservationRemainsOpen | 高保真 Brep->mesh 特征保持 |
-| Conversion3dGapTest::GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen | 通用非平面 polyhedron->Brep 转换 |
+| Conversion3dGapTest::GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen | 通用非平面 polyhedron->Brep 转换（超出 affine-skew + support-plane-refit 子集） |
 
 ---
 
@@ -64,6 +64,7 @@
 
 - P3-A：`ConvertToBrepBody` 已转正 affine-skew 非轴对齐子类
 - P3-B：`Heal(BrepBody)` 已转正 holed-face 的 outer/hole trims 同步回填子场景
+- P3-C：`ConvertToBrepBody` 已转正 support-plane mismatch 的可解释 repair 子场景（support-plane refit）
 
 ### P4-A：鲁棒 non-planar repair（优先）
 - 针对 `GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen`，尝试引入最小 non-planar 失配样例与可解释 repair 策略

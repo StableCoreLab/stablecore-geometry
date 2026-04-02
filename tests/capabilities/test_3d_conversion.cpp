@@ -70,6 +70,19 @@ PolyhedronBody BuildSkewedUnitCubeBody()
     }
     return PolyhedronBody(std::move(faces));
 }
+
+PolyhedronBody BuildSupportPlaneMismatchedCubeBody()
+{
+    const PolyhedronBody cube = geometry::test::BuildUnitCubeBody();
+    std::vector<PolyhedronFace3d> faces = cube.Faces();
+
+    const PolyhedronFace3d first = faces.front();
+    faces.front() = PolyhedronFace3d(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.1}, Vector3d{0.0, 0.0, 1.0}),
+        first.OuterLoop());
+
+    return PolyhedronBody(std::move(faces));
+}
 } // namespace
 
 // Demonstrates that a closed PolyhedronBody (unit cube, 6 quad faces) converts
@@ -116,6 +129,20 @@ TEST(Conversion3dCapabilityTest, SkewedCubePolyhedronBodyConvertsToBrepBody)
     assert(skewedBody.FaceCount() == 6);
 
     const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(skewedBody);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 6);
+}
+
+// Demonstrates the conversion can repair face support-plane mismatch and still
+// produce a valid BrepBody for a recoverable polyhedron input.
+TEST(Conversion3dCapabilityTest, SupportPlaneMismatchedCubeCanBeRepairedToBrepBody)
+{
+    const PolyhedronBody mismatchedBody = BuildSupportPlaneMismatchedCubeBody();
+    assert(!mismatchedBody.IsValid());
+
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(mismatchedBody);
     assert(result.success);
     assert(result.issue == BrepConversionIssue3d::None);
     assert(result.body.IsValid());
