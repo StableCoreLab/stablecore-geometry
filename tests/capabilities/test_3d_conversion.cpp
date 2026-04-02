@@ -17,6 +17,7 @@ using geometry::sdk::BrepFace;
 using geometry::sdk::BrepLoop;
 using geometry::sdk::BrepShell;
 using geometry::sdk::BrepVertex;
+using geometry::sdk::ComputeTriangleConnectedComponents;
 using geometry::sdk::CurveOnSurface;
 using geometry::sdk::Intervald;
 using geometry::sdk::Line3d;
@@ -97,6 +98,48 @@ PolyhedronBody BuildSupportPlaneMismatchedCubeBody()
     faces.front() = PolyhedronFace3d(
         Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.1}, Vector3d{0.0, 0.0, 1.0}),
         first.OuterLoop());
+
+    return PolyhedronBody(std::move(faces));
+}
+
+PolyhedronLoop3d TranslateLoop3d(const PolyhedronLoop3d& loop, const Vector3d& delta)
+{
+    std::vector<Point3d> vertices;
+    vertices.reserve(loop.VertexCount());
+    for (std::size_t i = 0; i < loop.VertexCount(); ++i)
+    {
+        vertices.push_back(loop.VertexAt(i) + delta);
+    }
+    return PolyhedronLoop3d(std::move(vertices));
+}
+
+PolyhedronFace3d TranslateFace3d(const PolyhedronFace3d& face, const Vector3d& delta)
+{
+    const Plane translatedPlane = Plane::FromPointAndNormal(
+        face.SupportPlane().origin + delta,
+        face.SupportPlane().normal);
+
+    PolyhedronLoop3d outer = TranslateLoop3d(face.OuterLoop(), delta);
+    std::vector<PolyhedronLoop3d> holes;
+    holes.reserve(face.HoleCount());
+    for (std::size_t i = 0; i < face.HoleCount(); ++i)
+    {
+        holes.push_back(TranslateLoop3d(face.HoleAt(i), delta));
+    }
+
+    return PolyhedronFace3d(translatedPlane, std::move(outer), std::move(holes));
+}
+
+PolyhedronBody BuildTwoSeparatedUnitCubeBody()
+{
+    const PolyhedronBody first = geometry::test::BuildUnitCubeBody();
+    std::vector<PolyhedronFace3d> faces = first.Faces();
+
+    const Vector3d delta{3.0, 0.0, 0.0};
+    for (const PolyhedronFace3d& face : first.Faces())
+    {
+        faces.push_back(TranslateFace3d(face, delta));
+    }
 
     return PolyhedronBody(std::move(faces));
 }
@@ -1801,4 +1844,30 @@ TEST(Conversion3dCapabilityTest, PlanarHoledAndMultiFaceBrepBodyConvertsToMeshWi
     assert(mesh.mesh.IsValid());
     // Expected area: (16 - 4) + 2 = 14.
     assert(std::abs(mesh.mesh.SurfaceArea() - 14.0) < 1e-8);
+}
+
+// Demonstrates disconnected closed-shell Brep->mesh conversion preserves
+// component separation (feature-level connectivity) in addition to geometry.
+TEST(Conversion3dCapabilityTest, TwoSeparatedCubeBrepBodyConvertsToMeshWithTwoComponents)
+{
+    const PolyhedronBody twoCubes = BuildTwoSeparatedUnitCubeBody();
+    assert(twoCubes.IsValid());
+    assert(twoCubes.FaceCount() == 12);
+
+    const PolyhedronBrepBodyConversion3d brep = ConvertToBrepBody(twoCubes);
+    assert(brep.success);
+    assert(brep.issue == BrepConversionIssue3d::None);
+    assert(brep.body.IsValid());
+    assert(brep.body.FaceCount() == 12);
+
+    const PolyhedronMeshConversion3d mesh = ConvertToTriangleMesh(brep.body);
+    assert(mesh.success);
+    assert(mesh.mesh.IsValid());
+    assert(mesh.mesh.TriangleCount() == 24);
+    assert(std::abs(mesh.mesh.SurfaceArea() - 12.0) < 1e-8);
+
+    const auto components = ComputeTriangleConnectedComponents(mesh.mesh);
+    assert(components.size() == 2);
+    assert(components[0].size() == 12);
+    assert(components[1].size() == 12);
 }

@@ -280,6 +280,13 @@
 - 能力路径：`ConvertToBrepBody(unit cube)` -> `ReplaceOuterLoop` -> `ReplaceFace` -> `ReplaceShell`，验证 body/shell 仍保持有效且 `ShellCount=1 / FaceCount=6 / IsClosed=true`。
 - 已同步收敛 `tests/gaps/test_3d_brep_gaps.cpp` 文案，明确该 gap 仅剩“超出 single-face + multi-face no-op replacement 子集”的更高阶 ownership 语义。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
+## 本轮新增（2026-04-02，conversion-brep-mesh-component-preserving-capability）
+
+- 已新增 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 新增 `TwoSeparatedCubeBrepBodyConvertsToMeshWithTwoComponents`，验证断开双闭壳 Brep 输入在 `ConvertToTriangleMesh(BrepBody)` 后保持 2 个连通分量（每分量 12 triangles）。
+- 同时保持几何计数稳定：`TriangleCount=24`、`SurfaceArea=12.0`。
+- 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 disconnected closed-shell component-preserving 子集。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 ## 本轮新增（2026-04-02，continuation-closed-shell-tetrahedron）
 
 - 已新增 conversion capability：`ConvertToBrepBody(...)` 在 tiny-scale closed-shell tetrahedron（4 triangular faces, all support planes mismatched）输入上，经 per-face refit 修复后可收敛为合法 closed BrepBody（IsClosed=true / VertexCount=4 / EdgeCount=6）。
