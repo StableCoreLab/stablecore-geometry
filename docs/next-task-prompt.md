@@ -61,6 +61,7 @@
 - P2-A1：`Section(BrepBody, Plane)` oblique-cut capability 已落地（1 polygon / 1 contour / 6 points）
 - P2-A2：`Section(BrepBody, Plane)` coplanar 邻接片段 merge capability 已落地（1 polygon / area=2.0）
 - P2-B：coedge-loop editing 最小 non-trivial capability 已落地
+- P2-B1：Brep section rebuild 壳体语义断言已补齐（single/multi-component 输出均显式断言 open shell）
 - P2-C：coplanar 相邻 face fragment 在 `Section(...)` 中合并为单 polygon 的 face-merge 子样例已落地
 - P2-D：最小 loop->face->shell->body ownership-consistent replacement workflow 已落地
 

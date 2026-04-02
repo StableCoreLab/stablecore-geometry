@@ -49,6 +49,7 @@
 - `tests/capabilities/test_3d_brep.cpp`
   - 倾斜截面经过 `RebuildSectionBrepBody(...)` 得到只读 topology 完整的单面 `BrepBody`（1 shell / 1 face / 4 coedge loop），双立方体截面经 `RebuildSectionBrepBodies(...)` 稳定拆分为 2 个独立 body；并新增最小 coedge-loop 编辑链路 `InsertCoedge -> FlipCoedgeDirection -> RemoveCoedge`
   - 覆盖 `RebuildSectionBody(...)` / `RebuildSectionBodies(...)` 的 Polyhedron 重建子路径：倾斜截面可重建为单面 `PolyhedronBody`，双组件截面可稳定重建为 2 个独立 `PolyhedronBody`
+  - 覆盖 Brep section rebuild 壳体语义断言：`RebuildSectionBrepBody(...)` 与 `RebuildSectionBrepBodies(...)` 输出显式满足 `ShellCount()==1 && IsClosed()==false`
   - 覆盖最小 ownership-consistent 编辑链路：`ReplaceOuterLoop -> ReplaceFace -> ReplaceShell` 可把 loop 级编辑稳定传播回有效 `BrepBody`
 - `tests/capabilities/test_3d_healing.cpp`
   - 保守 `Heal(PolyhedronBody)` 对已合法的单位立方体不改变 face count 且 `HealingIssue3d::None`；`Heal(BrepBody)` 可对 plane-surface + line-edge 且缺失 trim 的 face 进行 trim 回填，并覆盖带孔 face 的 outer/hole trims 同时回填；`Heal(..., policy=Aggressive)` 覆盖可恢复 open planar single/multi-face sheet（含 holed shell）的确定性闭壳子策略，并覆盖 aggressive 闭壳与 trim-backfill 的组合病理子场景

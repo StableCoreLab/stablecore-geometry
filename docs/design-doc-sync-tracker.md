@@ -87,6 +87,7 @@
   - 已扩展 section 子能力：coplanar 相邻 face fragment 在 `Section(...)` 中可归并为单 polygon，收窄 face-merge gap 到更高阶歧义 fragment 语义
   - 已新增 `test_3d_brep.cpp`：`RebuildSectionBrepBody` 单面 BrepBody rebuild 转正为 capability
   - 已扩展 `test_3d_brep.cpp`：`RebuildSectionBody` 单面 PolyhedronBody rebuild 与 `RebuildSectionBodies` 双组件 Polyhedron 重建转正为 capability
+  - 已扩展 `test_3d_brep.cpp`：`RebuildSectionBrepBody` / `RebuildSectionBrepBodies` 输出补齐 open-shell 语义断言（`ShellCount==1` 且 `IsClosed==false`）
   - 已扩展 brep editing 子能力：最小 loop->face->shell->body ownership-consistent replacement workflow 已转正为 capability
   - 已新增 `test_3d_healing.cpp`：保守 `Heal(PolyhedronBody)` 幂等性转正为 capability
   - 已新增 `test_3d_conversion.cpp`：`ConvertToTriangleMesh(PolyhedronBody)` 12 triangles / area≈6.0 转正为 capability

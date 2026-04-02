@@ -254,6 +254,12 @@
 - 已扩展 brep capability（section rebuild 子集）：`tests/capabilities/test_3d_brep.cpp` 新增 `SlantedCubeRebuildsSingleFacePolyhedronBody`，验证 `RebuildSectionBody(...)` 在倾斜截面输入下可稳定重建单面 `PolyhedronBody`（FaceCount=1，外环 VertexCount=4）。
 - 已扩展 brep capability（multi-component 子集）：新增 `TwoSeparatedCubeSectionsRebuildIntoTwoPolyhedronBodies`，验证 `RebuildSectionBodies(...)` 可将双组件截面稳定重建为 2 个独立 `PolyhedronBody`。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
+## 本轮新增（2026-04-02，brep-section-shell-semantics-hardening）
+
+- 已补强 brep section rebuild capability 语义断言：`tests/capabilities/test_3d_brep.cpp` 现在对 `RebuildSectionBrepBody(...)` 与 `RebuildSectionBrepBodies(...)` 输出统一断言 `ShellCount()==1 && IsClosed()==false`。
+- 本轮目标是把“section 重建后 open-shell 语义”从隐含行为提升为显式回归保护，减少后续壳体标志回归风险。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 ## 本轮新增（2026-04-02，continuation-closed-shell-tetrahedron）
 
 - 已新增 conversion capability：`ConvertToBrepBody(...)` 在 tiny-scale closed-shell tetrahedron（4 triangular faces, all support planes mismatched）输入上，经 per-face refit 修复后可收敛为合法 closed BrepBody（IsClosed=true / VertexCount=4 / EdgeCount=6）。

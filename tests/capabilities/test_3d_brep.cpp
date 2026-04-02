@@ -106,6 +106,7 @@ TEST(Brep3dCapabilityTest, SlantedCubeRebuildsSingleFaceBrepWithValidOuterLoop)
     assert(rebuilt.success);
     assert(rebuilt.body.IsValid());
     assert(rebuilt.body.ShellCount() == 1);
+    assert(!rebuilt.body.ShellAt(0).IsClosed());
     assert(rebuilt.body.FaceCount() == 1);
 
     const BrepShell firstShell = rebuilt.body.ShellAt(0);
@@ -163,6 +164,8 @@ TEST(Brep3dCapabilityTest, TwoSeparatedCubeSectionsRebuildIntoTwoBrepBodies)
     for (const BrepBody& rebuiltBody : rebuilt.bodies)
     {
         assert(rebuiltBody.IsValid());
+        assert(rebuiltBody.ShellCount() == 1);
+        assert(!rebuiltBody.ShellAt(0).IsClosed());
         assert(rebuiltBody.FaceCount() == 1);
     }
 }
