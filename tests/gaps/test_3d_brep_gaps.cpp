@@ -25,5 +25,8 @@ TEST(Brep3dGapTest, NonPlanarTrimmedFaceTopologyRepairRemainsOpen)
 {
     const BrepBody body({});
     (void)body;
-    GTEST_SKIP() << "Known 3D gap: non-planar trimmed face topology repair and robust shell stitching are still open.";
+    GTEST_SKIP() << "Known 3D gap: non-planar trimmed face topology repair and robust shell stitching are still open. "
+                    "Covered subsets: single planar face missing-trim conservative backfill (horizontal z=0 plane), "
+                    "single planar face missing-trim backfill with non-horizontal (y=0 vertical plane) normal. "
+                    "Remaining open: curved-surface trim recompute and non-manifold shell stitching.";
 }

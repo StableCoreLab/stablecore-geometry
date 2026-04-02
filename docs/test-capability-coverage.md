@@ -116,7 +116,29 @@
 - `tests/support/Fixtures3d.h`
   - `geometry::test::BuildUnitCubeBody()` — 单位立方体 `[0,1]³`，6 个四边形 `PolyhedronFace3d`，法向朝外
 
+## 3D 算量必需项已收敛能力列表
+
+### Section 子集（tests/capabilities/test_3d_section.cpp）
+
+- `ThreeCoplanarFacesInLStripMergeIntoSinglePolygon` — 三面共面水平排列 strip 合并为单多边形（area=3），收敛 FaceMergeSemantics gap 子集
+- `UnitCubeMidPlaneSectionYieldsFourSegmentClosedContour` — unit cube y=0.5 截面恰好四段闭合，area=1，收敛 NonPlanarDominant gap 行列式子集
+- `ObliquePrismSectionYieldsDeterministicContourLength` — 等边三棱柱水平截面周长断言（≈3），收敛钢筋线总长稳定性子集
+
+### Healing 子集（tests/capabilities/test_3d_healing.cpp）
+
+- `NonHorizontalPlaneBrepFaceWithoutTrimIsHealedWithBackfilledTrim` — y=0 竖面（法向+y）单面 BrepFace 保守 trim 回填，收敛 NonPlanarTrimmedFace gap 非水平子集
+- `AggressiveFourShellTwoEligibleOneIneligibleDeterministicBehavior` — 四壳 mixed（1 closed + 2 eligible + 1 ineligible），两 eligible 闭合，ineligible 保持 open，收敛四壳 AggressiveShellRepair 子集
+
 ## Gap Characterization Tests
+
+### 三维算量必需完成清单（建模/显示/平切算筋）
+
+- 必需完成：non-planar dominant contour stitching（切面连通图稳定）
+- 必需完成：coplanar fragment merge 语义扩展（避免切面碎片化）
+- 必需完成：general non-planar polyhedron->Brep repair（超出现有 representative/refit 子集）
+- 必需完成：non-planar trimmed face topology repair
+- 必需完成：更一般 aggressive shell repair policy
+- 必需完成：切面钢筋线 deterministic 后处理与断言（线段去重/共线合并/短毛刺抑制/总长与根数稳定）
 
 - `tests/gaps/test_3d_section_gaps.cpp`
   - 记录 non-planar dominant 下的歧义 non-manifold contour stitching 与更高阶 coplanar fragment merge 语义仍未闭合（相邻 coplanar union 子集已在 Polyhedron/Brep 路径覆盖）

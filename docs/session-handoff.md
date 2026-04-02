@@ -81,6 +81,23 @@
 - 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 support-mismatch near-equal shared-chain dual-duplicate full-composition representative-average 子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-02，continuation-46）
+
+- 已新增 5 项 3D 算量必需能力测试，直接收敛 5 个 mandatory gap 的各 1 个子集：
+  - `test_3d_section.cpp`：`ThreeCoplanarFacesInLStripMergeIntoSinglePolygon`（三面strip→area=3，收敛 FaceMerge gap）
+  - `test_3d_section.cpp`：`UnitCubeMidPlaneSectionYieldsFourSegmentClosedContour`（四段闭合/area=1，收敛 NonPlanarDominant gap 行列式子集）
+  - `test_3d_section.cpp`：`ObliquePrismSectionYieldsDeterministicContourLength`（等边三棱柱周长≈3，收敛钢筋线长度子集）
+  - `test_3d_healing.cpp`：`NonHorizontalPlaneBrepFaceWithoutTrimIsHealedWithBackfilledTrim`（y=0 竖面 trim 回填，收敛 NonPlanarTrimmedFace gap）
+  - `test_3d_healing.cpp`：`AggressiveFourShellTwoEligibleOneIneligibleDeterministicBehavior`（四壳 mixed，收敛 AggressiveShellRepair gap 四壳子集）
+- 已同步收敛 4 个 gap 文案：`test_3d_section_gaps.cpp`、`test_3d_healing_gaps.cpp`、`test_3d_brep_gaps.cpp`。
+- 已同步更新：`docs/next-task-prompt.md`（P4-A 已收敛子集标注）、`docs/design-doc-sync-tracker.md`（P1-3D 算量必需项收敛状态）、`docs/test-capability-coverage.md`（算量必需项已收敛列表新增节）。
+- 仍为 open gap（未收敛）：`GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen`（必需-3）；钢筋线后处理去重/共线合并/根数统计尚无 API。
+
+## 本轮新增（2026-04-02，continuation-45）
+
+- 已根据算量软件目标（建模/显示/平切算筋）新增“3D 必需完成清单”，并将 non-planar section stitching、coplanar merge 语义、general non-planar conversion repair、non-planar trimmed-face repair、general aggressive shell policy、切面钢筋线 deterministic 后处理纳入优先闭环范围。
+- 已同步更新：`docs/next-task-prompt.md`、`docs/design-doc-sync-tracker.md`、`docs/test-capability-coverage.md`。
+
 ## 本轮新增（2026-04-02，continuation-44）
 
 - 已扩展 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 新增 `SupportMismatchNearEqualClosedPrismAllVerticesRepairsWithRepresentativeAverageTarget`，验证 support-plane mismatch + near-equal closed triangular prism all-shared-vertices（六个共享顶点全部 near-equal 扰动）输入经 refit 后可对全体共享顶点同时稳定应用 representative-average 落点，并维持 closed-shell 拓扑（VertexCount=6 / EdgeCount=9）。

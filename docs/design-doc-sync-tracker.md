@@ -213,6 +213,20 @@
 - 3D gap 测试体系落地（section / brep / healing / conversion）：骨架已完成；基础 brep rebuild / healing / conversion 已转正为 capability tests
 - 3D 第一阶段向第二阶段推进：P1/P2/P3 与 P4-B 最小子策略已完成；下一步聚焦真正鲁棒 non-planar repair 与更一般 aggressive policy
 
+### P1-3D 算量必需项（新增）
+
+- `Section3dGapTest::NonPlanarDominantSectionGraphRemainsOpen`：需优先转 capability，确保 non-planar dominant 输入下切面 contour stitching 稳定
+  - **已收敛子集**：`UnitCubeMidPlaneSectionYieldsFourSegmentClosedContour`（四段闭合轮廓行列式，unit cube y=0.5）
+- `Section3dGapTest::FaceMergeSemanticsAfterSectionRemainsOpen`：需优先转 capability，避免切面输出碎片化影响钢筋线统计
+  - **已收敛子集**：`ThreeCoplanarFacesInLStripMergeIntoSinglePolygon`（三面水平排列 strip，area=3）
+- `Conversion3dGapTest::GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen`：需优先推进一般 non-planar repair（仍为 open gap）
+- `Brep3dGapTest::NonPlanarTrimmedFaceTopologyRepairRemainsOpen`：需补齐 trimmed face topology repair
+  - **已收敛子集**：`NonHorizontalPlaneBrepFaceWithoutTrimIsHealedWithBackfilledTrim`（y=0 竖面，法向+y）
+- `Healing3dGapTest::AggressiveShellRepairPolicyRemainsOpen`：需补齐更一般 aggressive shell repair policy
+  - **已收敛子集**：`AggressiveFourShellTwoEligibleOneIneligibleDeterministicBehavior`（四壳 mixed：1 closed + 2 eligible + 1 ineligible）
+- 钢筋线切面结果后处理：需新增 deterministic 能力测试（去重/共线合并/短毛刺抑制/分组统计）
+  - **已收敛子集**：`ObliquePrismSectionYieldsDeterministicContourLength`（equilateral 三棱柱水平截面周长断言 ≈3）
+
 ## 两周执行顺序建议（更新）
 
 - 第 1 周：已完成 2D P0（boolean + offset）清空，以及 3D P1 骨架建立

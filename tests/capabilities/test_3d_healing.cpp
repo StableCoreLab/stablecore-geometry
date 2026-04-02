@@ -1751,3 +1751,157 @@ TEST(Healing3dCapabilityTest, AggressiveHealingSupportMismatchEligibleMultiFaceM
     assert(eligibleHoledFace.HoleTrims()[0].IsValid());
     assert(eligiblePlainFace.OuterTrim().IsValid());
 }
+
+// Demonstrates conservative trim backfill for a BrepFace whose support plane
+// has a non-horizontal (vertically-oriented) normal — the y=0 plane with
+// normal (0,1,0). This narrows the NonPlanarTrimmedFaceTopologyRepairRemainsOpen
+// gap to the subset: single axis-non-horizontal planar face with missing trim.
+TEST(Healing3dCapabilityTest, NonHorizontalPlaneBrepFaceWithoutTrimIsHealedWithBackfilledTrim)
+{
+    // Vertices on the y=0 plane (vertical face, normal = +y).
+    std::vector<BrepVertex> vertices{
+        BrepVertex(Point3d{0.0, 0.0, 0.0}),
+        BrepVertex(Point3d{1.0, 0.0, 0.0}),
+        BrepVertex(Point3d{1.0, 0.0, 1.0}),
+        BrepVertex(Point3d{0.0, 0.0, 1.0})};
+
+    std::vector<BrepEdge> edges;
+    edges.emplace_back(
+        std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+            Line3d::FromOriginAndDirection(Point3d{0.0, 0.0, 0.0}, Vector3d{1.0, 0.0, 0.0}),
+            Intervald{0.0, 1.0})),
+        0, 1);
+    edges.emplace_back(
+        std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+            Line3d::FromOriginAndDirection(Point3d{1.0, 0.0, 0.0}, Vector3d{0.0, 0.0, 1.0}),
+            Intervald{0.0, 1.0})),
+        1, 2);
+    edges.emplace_back(
+        std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+            Line3d::FromOriginAndDirection(Point3d{1.0, 0.0, 1.0}, Vector3d{-1.0, 0.0, 0.0}),
+            Intervald{0.0, 1.0})),
+        2, 3);
+    edges.emplace_back(
+        std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+            Line3d::FromOriginAndDirection(Point3d{0.0, 0.0, 1.0}, Vector3d{0.0, 0.0, -1.0}),
+            Intervald{0.0, 1.0})),
+        3, 0);
+
+    const BrepLoop outerLoop({
+        BrepCoedge(0, false), BrepCoedge(1, false),
+        BrepCoedge(2, false), BrepCoedge(3, false)});
+
+    // Support plane: y=0, normal pointing in +y direction.
+    const PlaneSurface verticalSurface = PlaneSurface::FromPlane(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, 1.0, 0.0}));
+    const BrepFace face(std::shared_ptr<Surface>(verticalSurface.Clone().release()), outerLoop);
+    const BrepBody body(vertices, edges, {BrepShell({face}, false)});
+
+    assert(body.IsValid());
+    assert(!face.OuterTrim().IsValid());
+
+    const BrepHealing3d healed = Heal(body);
+    assert(healed.success);
+    assert(healed.issue == HealingIssue3d::None);
+    assert(healed.body.IsValid());
+    assert(healed.body.FaceCount() == 1);
+    const auto healedFace = healed.body.ShellAt(0).FaceAt(0);
+    assert(healedFace.OuterTrim().IsValid());
+    assert(healedFace.OuterTrim().PointCount() == 4);
+}
+
+// Demonstrates aggressive healing handles a four-shell body — one closed plus
+// two independent eligible single-face open shells plus one ineligible — and
+// closes exactly the two eligible shells, leaving the closed and ineligible
+// shells unchanged. Narrows the AggressiveShellRepairPolicyRemainsOpen gap to
+// the four-shell two-eligible-plus-one-ineligible subset.
+TEST(Healing3dCapabilityTest, AggressiveFourShellTwoEligibleOneIneligibleDeterministicBehavior)
+{
+    std::vector<BrepVertex> vertices{
+        // Shell 0: closed (2-face, z=0)
+        BrepVertex(Point3d{0.0, 0.0, 0.0}),
+        BrepVertex(Point3d{1.0, 0.0, 0.0}),
+        BrepVertex(Point3d{1.0, 1.0, 0.0}),
+        BrepVertex(Point3d{0.0, 1.0, 0.0}),
+        // Shell 1: eligible single-face open (z=0)
+        BrepVertex(Point3d{3.0, 0.0, 0.0}),
+        BrepVertex(Point3d{4.0, 0.0, 0.0}),
+        BrepVertex(Point3d{4.0, 1.0, 0.0}),
+        BrepVertex(Point3d{3.0, 1.0, 0.0}),
+        // Shell 2: eligible single-face open (z=0)
+        BrepVertex(Point3d{6.0, 0.0, 0.0}),
+        BrepVertex(Point3d{7.0, 0.0, 0.0}),
+        BrepVertex(Point3d{7.0, 1.0, 0.0}),
+        BrepVertex(Point3d{6.0, 1.0, 0.0}),
+        // Shell 3: ineligible — vertex 14 has z-offset (not on z=0 support plane)
+        BrepVertex(Point3d{9.0, 0.0, 0.0}),
+        BrepVertex(Point3d{10.0, 0.0, 0.0}),
+        BrepVertex(Point3d{10.0, 1.0, 0.15}),
+        BrepVertex(Point3d{9.0, 1.0, 0.0})};
+
+    std::vector<BrepEdge> edges;
+    auto addEdge = [&](std::size_t start, std::size_t end) {
+        const Point3d first = vertices[start].Point();
+        const Point3d second = vertices[end].Point();
+        edges.emplace_back(
+            std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+                Line3d::FromOriginAndDirection(first, second - first),
+                Intervald{0.0, 1.0})),
+            start, end);
+    };
+
+    addEdge(0, 1); addEdge(1, 2); addEdge(2, 3); addEdge(3, 0);   // shell 0 (edges 0-3)
+    addEdge(4, 5); addEdge(5, 6); addEdge(6, 7); addEdge(7, 4);   // shell 1 (edges 4-7)
+    addEdge(8, 9); addEdge(9, 10); addEdge(10, 11); addEdge(11, 8); // shell 2 (edges 8-11)
+    addEdge(12, 13); addEdge(13, 14); addEdge(14, 15); addEdge(15, 12); // shell 3 (edges 12-15)
+
+    const BrepLoop closedOuter({BrepCoedge(0, false), BrepCoedge(1, false),
+                                  BrepCoedge(2, false), BrepCoedge(3, false)});
+    const BrepLoop closedReversed({BrepCoedge(3, true), BrepCoedge(2, true),
+                                    BrepCoedge(1, true), BrepCoedge(0, true)});
+    const BrepLoop eligible1({BrepCoedge(4, false), BrepCoedge(5, false),
+                               BrepCoedge(6, false), BrepCoedge(7, false)});
+    const BrepLoop eligible2({BrepCoedge(8, false), BrepCoedge(9, false),
+                               BrepCoedge(10, false), BrepCoedge(11, false)});
+    const BrepLoop ineligible({BrepCoedge(12, false), BrepCoedge(13, false),
+                                BrepCoedge(14, false), BrepCoedge(15, false)});
+
+    const PlaneSurface flatSurface = PlaneSurface::FromPlane(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, 0.0, 1.0}));
+    const PlaneSurface ineligibleSupport = PlaneSurface::FromPlane(
+        Plane::FromPointAndNormal(Point3d{9.0, 0.0, 0.0}, Vector3d{0.0, 0.0, 1.0}));
+
+    const BrepFace closedFaceA(std::shared_ptr<Surface>(flatSurface.Clone().release()), closedOuter);
+    const BrepFace closedFaceB(std::shared_ptr<Surface>(flatSurface.Clone().release()), closedReversed);
+    const BrepFace eligibleFace1(std::shared_ptr<Surface>(flatSurface.Clone().release()), eligible1);
+    const BrepFace eligibleFace2(std::shared_ptr<Surface>(flatSurface.Clone().release()), eligible2);
+    const BrepFace ineligibleFace(std::shared_ptr<Surface>(ineligibleSupport.Clone().release()), ineligible);
+
+    const BrepBody body(
+        vertices,
+        edges,
+        {
+            BrepShell({closedFaceA, closedFaceB}, true),
+            BrepShell({eligibleFace1}, false),
+            BrepShell({eligibleFace2}, false),
+            BrepShell({ineligibleFace}, false),
+        });
+    assert(body.IsValid());
+    assert(body.ShellCount() == 4);
+    assert(body.ShellAt(0).IsClosed());
+    assert(!body.ShellAt(1).IsClosed());
+    assert(!body.ShellAt(2).IsClosed());
+    assert(!body.ShellAt(3).IsClosed());
+    assert(body.FaceCount() == 5);
+
+    const BrepHealing3d healed = Heal(body, geometry::sdk::GeometryTolerance3d{}, HealingPolicy3d::Aggressive);
+    assert(healed.success);
+    assert(healed.body.IsValid());
+    assert(healed.body.ShellCount() == 4);
+    assert(healed.body.ShellAt(0).IsClosed());
+    assert(healed.body.ShellAt(1).IsClosed());
+    assert(healed.body.ShellAt(2).IsClosed());
+    assert(!healed.body.ShellAt(3).IsClosed());
+    // closed:2, eligible1:1->2, eligible2:1->2, ineligible:1 unchanged.
+    assert(healed.body.FaceCount() == 7);
+}

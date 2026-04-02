@@ -18,7 +18,8 @@ TEST(Section3dGapTest, NonPlanarDominantSectionGraphRemainsOpen)
 
     const auto section = Section(body, cuttingPlane);
     (void)section;
-    GTEST_SKIP() << "Known 3D gap: ambiguous non-manifold contour stitching semantics in non-planar-dominant sections are still open.";
+    GTEST_SKIP() << "Known 3D gap: ambiguous non-manifold contour stitching semantics in non-planar-dominant sections are still open. "
+                    "Covered subsets: convex-body oblique-face-to-face mid-plane stitching (four-segment closed-contour determinism on unit-cube y=0.5 cut).";
 }
 
 TEST(Section3dGapTest, FaceMergeSemanticsAfterSectionRemainsOpen)
@@ -30,5 +31,8 @@ TEST(Section3dGapTest, FaceMergeSemanticsAfterSectionRemainsOpen)
 
     const auto section = Section(body, cuttingPlane);
     (void)section;
-    GTEST_SKIP() << "Known 3D gap: section face-merge policy for ambiguous coplanar fragments beyond adjacent coplanar union subsets already covered on both Polyhedron and Brep paths is not closed yet.";
+    GTEST_SKIP() << "Known 3D gap: section face-merge policy for ambiguous coplanar fragments beyond adjacent coplanar union subsets is not closed yet. "
+                    "Covered subsets: two-face adjacent coplanar Polyhedron merge, two-face adjacent coplanar BrepBody merge, "
+                    "three-face coplanar horizontal strip merge (3×1 rectangle, area=3.0). "
+                    "Remaining open: non-adjacent fragment merge across convex-hull gaps and non-manifold coplanar topology.";
 }
