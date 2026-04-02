@@ -174,6 +174,30 @@ PolyhedronBody BuildDuplicateVertexLoopBody()
             }));
     return PolyhedronBody({face});
 }
+
+PolyhedronBody BuildDuplicateVertexHoleLoopBody()
+{
+    const PolyhedronFace3d face(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.2}, Vector3d{0.0, 0.0, 1.0}),
+        PolyhedronLoop3d(
+            {
+                Point3d{0.0, 0.0, 0.0},
+                Point3d{4.0, 0.0, 0.0},
+                Point3d{4.0, 4.0, 0.0},
+                Point3d{0.0, 4.0, 0.0},
+            }),
+        {
+            PolyhedronLoop3d(
+                {
+                    Point3d{1.0, 1.0, 0.0},
+                    Point3d{3.0, 1.0, 0.0},
+                    Point3d{3.0, 1.0, 0.0},
+                    Point3d{3.0, 3.0, 0.0},
+                    Point3d{1.0, 3.0, 0.0},
+                }),
+        });
+    return PolyhedronBody({face});
+}
 } // namespace
 
 // Demonstrates that a closed PolyhedronBody (unit cube, 6 quad faces) converts
@@ -287,6 +311,20 @@ TEST(Conversion3dCapabilityTest, CollinearLeadingLoopStillRepairsToBrepBody)
 TEST(Conversion3dCapabilityTest, DuplicateVertexLoopStillRepairsToBrepBody)
 {
     const PolyhedronBody body = BuildDuplicateVertexLoopBody();
+    assert(!body.IsValid());
+
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 1);
+}
+
+// Demonstrates duplicate vertices in a hole loop are normalized before
+// refit-plane conversion to BrepBody.
+TEST(Conversion3dCapabilityTest, DuplicateVertexHoleLoopStillRepairsToBrepBody)
+{
+    const PolyhedronBody body = BuildDuplicateVertexHoleLoopBody();
     assert(!body.IsValid());
 
     const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
