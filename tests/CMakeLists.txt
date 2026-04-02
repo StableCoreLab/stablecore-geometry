@@ -1,14 +1,4 @@
-﻿include(FetchContent)
-include(GoogleTest)
-
-find_package(GTest CONFIG QUIET)
-if (NOT GTest_FOUND)
-    FetchContent_Declare(
-        googletest
-        URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip)
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(googletest)
-endif()
+﻿include(GoogleTest)
 
 set(STABLECORE_GEOMETRY_CAPABILITY_TEST_SOURCES
     capabilities/test_3d_brep.cpp
