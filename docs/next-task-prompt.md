@@ -111,7 +111,8 @@
 - 已扩展 representative-id 全局目标点聚合 capability：near-equal shared-edge（<eps 顶点扰动）输入下，共享 `BrepVertex` 落点由跨面代表点全局平均驱动，不再依赖首个面点
 - 已扩展 support-plane mismatch + near-equal shared-edge capability：`ConvertToBrepBody(...)` 经 refit 后仍可保持 representative-average 共享顶点落点与确定性拓扑计数（VertexCount=6 / EdgeCount=7）
 - 已完成 representative-target 聚合失败回退硬化：聚合失败时自动回退到 representative-id 复用路径，不再直接 `InvalidBody`
-- 下一步聚焦更一般 topology-changing non-planar repair（超出当前 representative-id + shared-refit + representative-average vertex placement + fallback-hardening 子集），继续保留 `GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen` 作为总 gap
+- 已增强 repair 后 representative snapping：由单轮提升为最多两轮小步迭代（每轮保持有效性约束）
+- 下一步聚焦更一般 topology-changing non-planar repair（超出当前 representative-id + shared-refit + representative-average vertex placement + fallback-hardening + iterative-snapping 子集），继续保留 `GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen` 作为总 gap
 
 ### P4-B：aggressive shell policy 分层落地（已完成最小子集）
 - 已覆盖 mixed support-mismatch + ineligible multiface 系列场景的 shell-level FaceCount 分布断言

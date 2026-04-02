@@ -955,13 +955,20 @@ void BuildBodyLoopRepresentativeIds(
     if (repairedRepresentativeIds != nullptr)
     {
         std::vector<PolyhedronFace3d> snappedFaces = repairedFaces;
-        if (ApplyRepresentativeVertexSnapping(*repairedRepresentativeIds, snappedFaces, eps))
+        for (int iteration = 0; iteration < 2; ++iteration)
         {
-            PolyhedronBody snappedBody(snappedFaces);
-            if (snappedBody.IsValid(eps))
+            if (!ApplyRepresentativeVertexSnapping(*repairedRepresentativeIds, snappedFaces, eps))
             {
-                repairedFaces = std::move(snappedFaces);
+                break;
             }
+
+            PolyhedronBody snappedBody(snappedFaces);
+            if (!snappedBody.IsValid(eps))
+            {
+                break;
+            }
+
+            repairedFaces = snappedFaces;
         }
     }
 

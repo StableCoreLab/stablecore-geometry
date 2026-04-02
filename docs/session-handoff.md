@@ -27,6 +27,12 @@
 - 本轮目标为 conversion 稳健性硬化（failure-to-fallback），不改变现有 capability 断言集合。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-02，continuation-32）
+
+- 已更新 `src/sdk/GeometryBrepConversion.cpp`：`TryRepairPolyhedronBodyForBrepConversion(...)` 中 repair 后 representative snapping 由单轮提升为最多两轮小步迭代，每轮均要求 `snappedBody.IsValid(eps)` 才落盘。
+- 本轮目标为 conversion 跨面联合修复稳定性增强（iterative snapping hardening）。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
 ## 本轮新增（2026-04-02，continuation）
 
 - 已新增 capability：`Heal(..., policy=Aggressive)` 在同一个 `BrepBody` 内可同时闭合多个可恢复 open shells（`tests/capabilities/test_3d_healing.cpp`）。

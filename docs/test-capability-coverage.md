@@ -94,6 +94,7 @@
   - `ConvertToBrepBody(...)` 已扩展 representative-id 全局目标点聚合：在 near-equal shared-edge 输入中，共享 `BrepVertex` 落点由跨面代表点全局平均驱动，不再依赖首个面点，进一步使共享边一致性约束参与最终顶点位置决策
   - `ConvertToBrepBody(...)` 在 support-plane mismatch + near-equal shared-edge 输入下同样可经 refit 后稳定保持 representative-average 共享顶点落点（2 faces -> VertexCount=6 / EdgeCount=7）
   - `ConvertToBrepBody(...)` 已增加 representative-target 聚合失败回退：若全局平均目标点构建失败，将自动回退到原 representative-id 复用路径，避免把可转换输入误判为失败
+  - `ConvertToBrepBody(...)` 的 repair 后 representative snapping 已从单轮提升为最多两轮小步迭代（每轮保持 body 有效性约束），以增强跨面共享顶点对齐稳定性
   - `ConvertToBrepBody(...)` 已为代表性 repair 场景补齐壳体语义断言：cube-like 输入稳定满足 `ShellCount()==1 && IsClosed()==true`，shared-chain sheet-like 输入稳定满足 `ShellCount()==1 && IsClosed()==false`
   - `ConvertToBrepBody(...)` 在 deformed unit cube（单顶点位移，三面同时非平面）场景下可经 per-face refit 逐面修复并通过 representative-id 复用保证共享拓扑，结果满足 FaceCount=6/VertexCount=8/EdgeCount=12/closed shell 确定性拓扑断言
   - `ConvertToBrepBody(...)` 在 dual-deformed unit cube（双顶点位移，六面均非平面）场景下同样可经 per-face refit 逐面修复并保持共享拓扑，结果满足 FaceCount=6/VertexCount=8/EdgeCount=12/closed shell 确定性拓扑断言
