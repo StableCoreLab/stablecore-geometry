@@ -156,6 +156,7 @@
     - 已扩展 conversion capability：support-plane mismatch + near-equal shared-chain dual-duplicate full-composition（含 outer+hole duplicate-normalization）输入下，`ConvertToBrepBody(...)` 经 refit 后仍可保持 representative-average 共享顶点落点与确定性拓扑计数（VertexCount=13 / EdgeCount=15）
     - 已扩展 conversion capability：support-plane mismatch + near-equal closed-tetra dual-shared-vertices（两个共享顶点同时 near-equal 扰动）输入下，`ConvertToBrepBody(...)` 经 refit 后仍可保持 representative-average 共享顶点落点与 closed-shell 确定性拓扑计数（VertexCount=4 / EdgeCount=6）
     - 已扩展 conversion capability：support-plane mismatch + near-equal closed-tetra all-shared-vertices（四个顶点全部 near-equal 扰动）输入下，`ConvertToBrepBody(...)` 经 refit 后可对全部共享顶点同时应用 representative-average 落点，保持 closed-shell 确定性拓扑计数（VertexCount=4 / EdgeCount=6）
+    - 已扩展 conversion capability：support-plane mismatch + near-equal closed-prism dual-shared-vertices（三棱柱拓扑，两个不相邻共享顶点各有 near-equal 扰动）输入下，`ConvertToBrepBody(...)` 经 refit 后可跨三角面和四边形面同时稳定应用 representative-average 落点，保持 closed-shell 确定性拓扑计数（VertexCount=6 / EdgeCount=9）
     - 已完成 conversion 稳健性硬化：representative-target 全局聚合失败时自动回退至 representative-id 复用路径，不再直接返回 `InvalidBody`
     - 已增强 conversion 跨面联合修复：repair 后 representative snapping 从单轮提升为最多两轮小步迭代（保持有效性约束）
   - 已扩展 Brep->mesh 子能力：planar multi-face `BrepBody` 的 representative area-preserving conversion capability

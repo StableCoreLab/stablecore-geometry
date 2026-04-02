@@ -120,6 +120,7 @@
 - 已扩展 support-plane mismatch + near-equal shared-chain dual-duplicate full-composition（含 outer+hole duplicate-normalization）capability：`ConvertToBrepBody(...)` 经 refit 后仍可保持 representative-average 共享顶点落点与确定性拓扑计数（VertexCount=13 / EdgeCount=15）
 - 已扩展 support-plane mismatch + near-equal closed-tetra dual-shared-vertices（两个共享顶点同时 near-equal 扰动）capability：`ConvertToBrepBody(...)` 经 refit 后仍可保持 representative-average 共享顶点落点与 closed-shell 确定性拓扑计数（VertexCount=4 / EdgeCount=6）
 - 已扩展 support-plane mismatch + near-equal closed-tetra all-shared-vertices（四个顶点全部 near-equal 扰动）capability：`ConvertToBrepBody(...)` 经 refit 后可对全部共享顶点同时应用 representative-average 落点，保持 closed-shell 确定性拓扑计数（VertexCount=4 / EdgeCount=6）
+- 已扩展 support-plane mismatch + near-equal closed-prism dual-shared-vertices（三棱柱拓扑，两不相邻顶点 near-equal 扰动）capability：`ConvertToBrepBody(...)` 经 refit 后可跨三角面与四边形面同时稳定应用 representative-average 落点，保持 closed-shell 确定性拓扑计数（VertexCount=6 / EdgeCount=9）
 - 已完成 representative-target 聚合失败回退硬化：聚合失败时自动回退到 representative-id 复用路径，不再直接 `InvalidBody`
 - 已增强 repair 后 representative snapping：由单轮提升为最多两轮小步迭代（每轮保持有效性约束）
 - 下一步聚焦更一般 topology-changing non-planar repair（超出当前 representative-id + shared-refit + representative-average vertex placement + fallback-hardening + iterative-snapping 子集），继续保留 `GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen` 作为总 gap
