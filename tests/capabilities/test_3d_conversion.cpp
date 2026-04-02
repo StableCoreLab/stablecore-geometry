@@ -1373,6 +1373,75 @@ PolyhedronBody BuildSupportMismatchNearEqualClosedPrismAllVerticesBody()
         PolyhedronFace3d(mismatched, PolyhedronLoop3d({v1c, v2b, v5b, v4c})),
         PolyhedronFace3d(mismatched, PolyhedronLoop3d({v2c, v0c, v3c, v5c}))});
 }
+
+PolyhedronBody BuildSupportMismatchNearEqualClosedCuboidAllVerticesBody()
+{
+    // Tiny-scale 2×1×1 rectangular box (pure-quad closed shell) where all 8
+    // logical shared vertices have near-equal variants across their 3 incident
+    // faces. All faces use a single mismatched support plane. Tests that
+    // representative-average vertex placement works for a pure-quad closed-shell
+    // topology with non-equal side lengths.
+    // Expected after repair: FaceCount=6 / VertexCount=8 / EdgeCount=12 / IsClosed=true.
+    const double s = 1e-5;
+    const double w = 2.0 * s; // width in x-direction (twice the other dimensions)
+
+    // v0 ≈ (0,0,0): bottom + front + left
+    const Point3d v0a{1.0e-7, 0.0, 0.0};
+    const Point3d v0b{-1.0e-7, 0.0, 0.0};
+    const Point3d v0c{0.0, 0.0, 0.0};
+
+    // v1 ≈ (w,0,0): bottom + front + right
+    const Point3d v1a{w + 2.0e-7, 0.0, 0.0};
+    const Point3d v1b{w - 1.0e-7, 0.0, 0.0};
+    const Point3d v1c{w + 1.0e-7, 0.0, 0.0};
+
+    // v2 ≈ (w,s,0): bottom + back + right
+    const Point3d v2a{w + 1.0e-7, s, 0.0};
+    const Point3d v2b{w, s + 1.0e-7, 0.0};
+    const Point3d v2c{w, s, 0.0};
+
+    // v3 ≈ (0,s,0): bottom + back + left
+    const Point3d v3a{0.0, s + 2.0e-7, 0.0};
+    const Point3d v3b{0.0, s, 0.0};
+    const Point3d v3c{-1.0e-7, s, 0.0};
+
+    // v4 ≈ (0,0,s): top + front + left
+    const Point3d v4a{0.0, 0.0, s};
+    const Point3d v4b{1.0e-7, 0.0, s};
+    const Point3d v4c{0.0, 0.0, s + 1.0e-7};
+
+    // v5 ≈ (w,0,s): top + front + right
+    const Point3d v5a{w + 1.0e-7, 0.0, s};
+    const Point3d v5b{w, 0.0, s - 1.0e-7};
+    const Point3d v5c{w, 0.0, s};
+
+    // v6 ≈ (w,s,s): top + back + right
+    const Point3d v6a{w, s, s + 1.0e-7};
+    const Point3d v6b{w + 1.0e-7, s, s};
+    const Point3d v6c{w, s + 1.0e-7, s};
+
+    // v7 ≈ (0,s,s): top + back + left
+    const Point3d v7a{0.0, s, s};
+    const Point3d v7b{-1.0e-7, s, s};
+    const Point3d v7c{0.0, s, s + 1.0e-7};
+
+    const Plane mismatched =
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 3e-6}, Vector3d{0.0, 0.0, 1.0});
+
+    return PolyhedronBody({
+        // Bottom (z≈0, normal -z): v0, v3, v2, v1
+        PolyhedronFace3d(mismatched, PolyhedronLoop3d({v0a, v3a, v2a, v1a})),
+        // Top (z≈s, normal +z): v4, v5, v6, v7
+        PolyhedronFace3d(mismatched, PolyhedronLoop3d({v4a, v5a, v6a, v7a})),
+        // Front (y≈0, normal -y): v0, v1, v5, v4
+        PolyhedronFace3d(mismatched, PolyhedronLoop3d({v0b, v1b, v5b, v4b})),
+        // Back (y≈s, normal +y): v3, v7, v6, v2
+        PolyhedronFace3d(mismatched, PolyhedronLoop3d({v3b, v7b, v6b, v2b})),
+        // Left (x≈0, normal -x): v0, v4, v7, v3
+        PolyhedronFace3d(mismatched, PolyhedronLoop3d({v0c, v4c, v7c, v3c})),
+        // Right (x≈w, normal +x): v1, v2, v6, v5
+        PolyhedronFace3d(mismatched, PolyhedronLoop3d({v1c, v2c, v6c, v5c}))});
+}
 } // namespace
 
 // Demonstrates that a closed PolyhedronBody (unit cube, 6 quad faces) converts
@@ -2906,4 +2975,27 @@ TEST(Conversion3dCapabilityTest, TwoSeparatedCubeBrepBodyConvertsToMeshWithTwoCo
     assert(components.size() == 2);
     assert(components[0].size() == 12);
     assert(components[1].size() == 12);
+}
+
+// Demonstrates that a tiny-scale closed rectangular box (6 quad faces, 8
+// vertices, 12 edges) with all-vertices near-equal perturbation and uniformly
+// mismatched support planes can be repaired by ConvertToBrepBody into a valid
+// closed BrepBody. This is the pure-quad closed-shell analogue of the triangular
+// prism all-vertices test, extending representative-average coverage to a
+// non-equilateral (2×1×1) cuboid topology.
+TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidAllVerticesRepairsToValidBrepBody)
+{
+    const PolyhedronBody body = BuildSupportMismatchNearEqualClosedCuboidAllVerticesBody();
+    assert(!body.IsValid());
+    assert(body.FaceCount() == 6);
+
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 6);
+    assert(result.body.ShellCount() == 1);
+    assert(result.body.ShellAt(0).IsClosed());
+    assert(result.body.VertexCount() == 8);
+    assert(result.body.EdgeCount() == 12);
 }

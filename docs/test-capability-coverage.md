@@ -47,6 +47,8 @@
   - 覆盖 `Section(BrepBody, Plane)` 的 coplanar 邻接片段合并子能力：2-face 邻接平面片先转 Brep 后截切，稳定得到单 polygon（area=2.0）
   - 覆盖 `Section(BrepBody, Plane)` 的 multi-component 子能力：双立方体先转 Brep 后截切，稳定得到 2 polygons / 2 roots / 2 components
   - 覆盖 coplanar 相邻 face fragment 在 `Section(...)` 中合并为单 polygon 的代表性 face-merge 子集
+  - 覆盖 unit cube x=0.5 截面（法向 +x）的确定性四段闭合矩形轮廓（perimeter=4.0 / area=1.0），扩展钢筋线周长稳定性到 x 轴方向
+  - 覆盖 2×2×1 矩形棱柱 z=0.5 截面的确定性四段闭合方形轮廓（perimeter=8.0 / area=4.0），验证非单位截面的钢筋线周长稳定性
 - `tests/capabilities/test_3d_brep.cpp`
   - 倾斜截面经过 `RebuildSectionBrepBody(...)` 得到只读 topology 完整的单面 `BrepBody`（1 shell / 1 face / 4 coedge loop），双立方体截面经 `RebuildSectionBrepBodies(...)` 稳定拆分为 2 个独立 body；并新增最小 coedge-loop 编辑链路 `InsertCoedge -> FlipCoedgeDirection -> RemoveCoedge`
   - 覆盖端到端 Brep 路径：`ConvertToBrepBody -> Section(BrepBody, Plane) -> RebuildSectionBrepBodies` 在双组件输入下稳定输出 2 个独立重建 body
@@ -72,6 +74,7 @@
   - `Heal(..., policy=Aggressive)` 在 support-plane mismatch 的 eligible holed shell（缺失 outer/hole trims）与 ineligible multi-face shell 共存时，仍可先回填后闭壳并保持 ineligible open
   - `Heal(..., policy=Aggressive)` 在 support-plane mismatch 的 eligible multi-face（holed+plain，缺失 trims）与 ineligible multi-face shell 共存时，仍可先回填后闭壳并保持 ineligible open
   - `Heal(..., policy=Aggressive)` 在 mixed support-mismatch + ineligible multiface 系列场景中已补齐 shell-level FaceCount 分布断言，避免仅靠总 FaceCount 掩盖 shell 归属回归
+  - `Heal(BrepBody)` 保守 trim 回填现已覆盖 z=0（水平面，法向+z）、y=0（竖面，法向+y）、x=0（竖面，法向+x）三个轴向平面，验证 trim 回填对任意轴对齐法向的稳定性
 - `tests/capabilities/test_3d_conversion.cpp`
   - 单位立方体（6 quad faces）经 `ConvertToTriangleMesh(PolyhedronBody)` 得到 12 triangles，`SurfaceArea ≈ 6.0`；并可经 `ConvertToBrepBody(PolyhedronBody)` 得到 `FaceCount() == 6` 的有效 `BrepBody`，覆盖 affine-skew 非轴对齐子类输入、support-plane mismatch 可修复子场景（含 shared-chain mixed-content full-composition 下的 support-plane refit）、mild non-planar outer/hole loop 顶点投影修复子场景、leading collinear loop 顶点下的稳健法向回退、duplicate outer/hole loop 顶点归一化修复、tiny-scale non-planar（含 holed/multi-face/mixed-content/shared-edge/shared-chain/shared-chain-mixed-content）输入下的 scale-aware 法向回退与投影修复，以及 duplicate/hole/collinear-leading normalization 与 shared-edge chain 修复的组合稳定性；同时覆盖 planar holed、planar multi-face、以及 planar holed+multi-face `BrepBody` 到 mesh 的面积保持子场景
   - `ConvertToBrepBody(...)` 在 tiny-scale shared-edge 邻接链 mixed-content full-composition 下，支持 outer/hole 双重复顶点归一化与 support-mismatch + collinear-leading 组合修复稳定叠加
@@ -110,6 +113,7 @@
   - `ConvertToBrepBody(...)` 已为代表性 repair 场景补齐壳体语义断言：cube-like 输入稳定满足 `ShellCount()==1 && IsClosed()==true`，shared-chain sheet-like 输入稳定满足 `ShellCount()==1 && IsClosed()==false`
   - `ConvertToBrepBody(...)` 在 deformed unit cube（单顶点位移，三面同时非平面）场景下可经 per-face refit 逐面修复并通过 representative-id 复用保证共享拓扑，结果满足 FaceCount=6/VertexCount=8/EdgeCount=12/closed shell 确定性拓扑断言
   - `ConvertToBrepBody(...)` 在 dual-deformed unit cube（双顶点位移，六面均非平面）场景下同样可经 per-face refit 逐面修复并保持共享拓扑，结果满足 FaceCount=6/VertexCount=8/EdgeCount=12/closed shell 确定性拓扑断言
+  - `ConvertToBrepBody(...)` 在 support-plane mismatch + near-equal closed-cuboid all-vertices（2×1×1 矩形盒子，8 顶点全部 near-equal 扰动）输入下可经 refit 后对全体共享顶点稳定应用 representative-average 落点，并保持 closed-shell 拓扑（FaceCount=6 / VertexCount=8 / EdgeCount=12）
 
 ## 共享测试支持
 
@@ -123,11 +127,18 @@
 - `ThreeCoplanarFacesInLStripMergeIntoSinglePolygon` — 三面共面水平排列 strip 合并为单多边形（area=3），收敛 FaceMergeSemantics gap 子集
 - `UnitCubeMidPlaneSectionYieldsFourSegmentClosedContour` — unit cube y=0.5 截面恰好四段闭合，area=1，收敛 NonPlanarDominant gap 行列式子集
 - `ObliquePrismSectionYieldsDeterministicContourLength` — 等边三棱柱水平截面周长断言（≈3），收敛钢筋线总长稳定性子集
+- `UnitCubeXAxisSectionYieldsDeterministicRebarPerimeter` — unit cube x=0.5 截面四段闭合 1×1 矩形，perimeter=4，area=1，扩展钢筋线周长覆盖到 x 轴方向
+- `RectangularPrismMidSectionYieldsDeterministicRebarPerimeter` — 2×2×1 矩形棱柱 z=0.5 截面四段闭合 2×2 方形，perimeter=8，area=4，扩展钢筋线周长覆盖到非单位截面
 
 ### Healing 子集（tests/capabilities/test_3d_healing.cpp）
 
 - `NonHorizontalPlaneBrepFaceWithoutTrimIsHealedWithBackfilledTrim` — y=0 竖面（法向+y）单面 BrepFace 保守 trim 回填，收敛 NonPlanarTrimmedFace gap 非水平子集
+- `XNormalPlaneBrepFaceWithoutTrimIsHealedWithBackfilledTrim` — x=0 竖面（法向+x）单面 BrepFace 保守 trim 回填，扩展 NonPlanarTrimmedFace gap 到第三轴方向
 - `AggressiveFourShellTwoEligibleOneIneligibleDeterministicBehavior` — 四壳 mixed（1 closed + 2 eligible + 1 ineligible），两 eligible 闭合，ineligible 保持 open，收敛四壳 AggressiveShellRepair 子集
+
+### Conversion 子集（tests/capabilities/test_3d_conversion.cpp）
+
+- `SupportMismatchNearEqualClosedCuboidAllVerticesRepairsToValidBrepBody` — tiny-scale 2×1×1 矩形盒子（纯四边形面闭壳，6 faces / 8 vertices / 12 edges）全顶点 near-equal 扰动 + 统一 support-plane mismatch，修复后保持 closed shell 拓扑，扩展 representative-average 覆盖到非等边长 cuboid 拓扑
 
 ## Gap Characterization Tests
 

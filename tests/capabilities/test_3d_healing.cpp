@@ -1810,6 +1810,64 @@ TEST(Healing3dCapabilityTest, NonHorizontalPlaneBrepFaceWithoutTrimIsHealedWithB
     assert(healedFace.OuterTrim().PointCount() == 4);
 }
 
+// Demonstrates conservative trim backfill also holds for a face whose support
+// plane has an x-axis normal (x=0 plane, normal +x). Extends the non-planar
+// trim-backfill coverage to a third distinct orientation (z=0/+z horizontal
+// already covered; y=0/+y vertical already covered; now x=0/+x vertical).
+TEST(Healing3dCapabilityTest, XNormalPlaneBrepFaceWithoutTrimIsHealedWithBackfilledTrim)
+{
+    // Vertices on the x=0 plane (vertical face, normal = +x).
+    std::vector<BrepVertex> vertices{
+        BrepVertex(Point3d{0.0, 0.0, 0.0}),
+        BrepVertex(Point3d{0.0, 1.0, 0.0}),
+        BrepVertex(Point3d{0.0, 1.0, 1.0}),
+        BrepVertex(Point3d{0.0, 0.0, 1.0})};
+
+    std::vector<BrepEdge> edges;
+    edges.emplace_back(
+        std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+            Line3d::FromOriginAndDirection(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, 1.0, 0.0}),
+            Intervald{0.0, 1.0})),
+        0, 1);
+    edges.emplace_back(
+        std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+            Line3d::FromOriginAndDirection(Point3d{0.0, 1.0, 0.0}, Vector3d{0.0, 0.0, 1.0}),
+            Intervald{0.0, 1.0})),
+        1, 2);
+    edges.emplace_back(
+        std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+            Line3d::FromOriginAndDirection(Point3d{0.0, 1.0, 1.0}, Vector3d{0.0, -1.0, 0.0}),
+            Intervald{0.0, 1.0})),
+        2, 3);
+    edges.emplace_back(
+        std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+            Line3d::FromOriginAndDirection(Point3d{0.0, 0.0, 1.0}, Vector3d{0.0, 0.0, -1.0}),
+            Intervald{0.0, 1.0})),
+        3, 0);
+
+    const BrepLoop outerLoop({
+        BrepCoedge(0, false), BrepCoedge(1, false),
+        BrepCoedge(2, false), BrepCoedge(3, false)});
+
+    // Support plane: x=0, normal pointing in +x direction.
+    const PlaneSurface xNormalSurface = PlaneSurface::FromPlane(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{1.0, 0.0, 0.0}));
+    const BrepFace face(std::shared_ptr<Surface>(xNormalSurface.Clone().release()), outerLoop);
+    const BrepBody body(vertices, edges, {BrepShell({face}, false)});
+
+    assert(body.IsValid());
+    assert(!face.OuterTrim().IsValid());
+
+    const BrepHealing3d healed = Heal(body);
+    assert(healed.success);
+    assert(healed.issue == HealingIssue3d::None);
+    assert(healed.body.IsValid());
+    assert(healed.body.FaceCount() == 1);
+    const auto healedFaceX = healed.body.ShellAt(0).FaceAt(0);
+    assert(healedFaceX.OuterTrim().IsValid());
+    assert(healedFaceX.OuterTrim().PointCount() == 4);
+}
+
 // Demonstrates aggressive healing handles a four-shell body — one closed plus
 // two independent eligible single-face open shells plus one ineligible — and
 // closes exactly the two eligible shells, leaving the closed and ineligible

@@ -95,6 +95,15 @@
 - 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 support-mismatch near-equal shared-chain dual-duplicate full-composition representative-average 子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-02，continuation-49）
+
+- 已新增 section capability：`UnitCubeXAxisSectionYieldsDeterministicRebarPerimeter` — unit cube x=0.5 截面四段闭合 1×1 矩形，perimeter=4.0，area=1.0，扩展必需-6 钢筋线周长覆盖到 x 轴方向。
+- 已新增 section capability：`RectangularPrismMidSectionYieldsDeterministicRebarPerimeter` — 2×2×1 矩形棱柱 z=0.5 截面四段闭合 2×2 方形，perimeter=8.0，area=4.0，扩展必需-6 钢筋线周长覆盖到非单位截面场景。
+- 已新增 healing capability：`XNormalPlaneBrepFaceWithoutTrimIsHealedWithBackfilledTrim` — x=0 竖面（法向+x）单面 BrepFace 保守 trim 回填，扩展必需-4 非水平 trim 回填到第三轴方向。
+- 已新增 conversion capability：`SupportMismatchNearEqualClosedCuboidAllVerticesRepairsToValidBrepBody` — tiny-scale 2×1×1 矩形盒子（纯四边形闭壳，8 顶点全部 near-equal 扰动 + 统一 support-plane mismatch），修复后保持 closed shell 拓扑（FaceCount=6 / VertexCount=8 / EdgeCount=12），扩展必需-3 representative-average 覆盖到非等边长 cuboid。
+- 已同步更新所有 gap 文案：`test_3d_conversion_gaps.cpp`（新增 closed-cuboid subset）、`test_3d_section_gaps.cpp`（新增 x 轴和矩形棱柱 perimeter subsets）、`test_3d_brep_gaps.cpp`（新增 x=0 plane subset）、`test_3d_healing_gaps.cpp`（备注三轴覆盖）。
+- 已同步更新：`docs/next-task-prompt.md`（P4-A 已收敛子集标注）、`docs/design-doc-sync-tracker.md`（新增能力条目）、`docs/test-capability-coverage.md`（新增能力描述与算量必需项列表）。
+
 ## 本轮新增（2026-04-02，continuation-46）
 
 - 已新增 5 项 3D 算量必需能力测试，直接收敛 5 个 mandatory gap 的各 1 个子集：

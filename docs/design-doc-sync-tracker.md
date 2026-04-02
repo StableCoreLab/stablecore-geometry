@@ -160,11 +160,15 @@
     - 已扩展 conversion capability：support-plane mismatch + near-equal closed-prism all-shared-vertices（三棱柱拓扑，六个共享顶点全部 near-equal 扰动）输入下，`ConvertToBrepBody(...)` 经 refit 后可对全体共享顶点同时稳定应用 representative-average 落点，保持 closed-shell 确定性拓扑计数（VertexCount=6 / EdgeCount=9）
     - 已完成 conversion 稳健性硬化：representative-target 全局聚合失败时自动回退至 representative-id 复用路径，不再直接返回 `InvalidBody`
     - 已增强 conversion 跨面联合修复：repair 后 representative snapping 从单轮提升为最多两轮小步迭代（保持有效性约束）
+    - 已扩展 conversion capability：support-plane mismatch + near-equal closed-cuboid all-vertices（2×1×1 矩形盒子，8 顶点全部 near-equal 扰动）输入下，`ConvertToBrepBody(...)` 经 refit 后可对全体共享顶点稳定应用 representative-average 落点，保持 closed-shell 确定性拓扑计数（FaceCount=6 / VertexCount=8 / EdgeCount=12）
   - 已扩展 Brep->mesh 子能力：planar multi-face `BrepBody` 的 representative area-preserving conversion capability
   - 已扩展 Brep->mesh 子能力：planar holed+multi-face 混合 `BrepBody` 的 representative area-preserving conversion capability
   - 已扩展 Brep->mesh 子能力：planar shared-edge 相邻面转换时可全局复用共享 3D 顶点，收敛到 shared-edge feature-preserving 子集
   - 已扩展 Brep->mesh 子能力：disconnected closed-shell Brep 输入可保持组件保真（双立方体 -> 2 个 mesh 连通分量）
   - 已新增 healing 子能力收敛：带孔平面 `BrepFace` 缺失 outer/hole trims 时可被 `Heal(BrepBody)` 同步回填
+  - 已新增 section 子能力：unit cube x=0.5 截面（法向 +x）产生四段闭合 1×1 矩形轮廓（perimeter=4.0 / area=1.0），扩展钢筋线周长覆盖到 x 轴方向
+  - 已新增 section 子能力：2×2×1 矩形棱柱 z=0.5 截面产生四段闭合 2×2 方形轮廓（perimeter=8.0 / area=4.0），验证非单位截面的确定性钢筋线周长
+  - 已新增 healing 子能力：`Heal(BrepBody)` 保守 trim 回填现覆盖 x=0（法向+x）平面，验证第三轴向的 trim 回填稳定性
   - 已新增 aggressive healing 子能力收敛：`Heal(..., policy=Aggressive)` 支持 open planar single-face shell 的确定性闭壳修复
   - 已扩展 aggressive healing 子能力：覆盖 open planar multi-face sheet 的确定性闭壳修复
   - 已扩展 aggressive healing 子能力：覆盖 shared-edge 邻接的 open planar multi-face sheet 的确定性闭壳修复

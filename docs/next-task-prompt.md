@@ -130,16 +130,22 @@
 
 - 必需-1：`Section` 在 non-planar dominant 输入下的歧义 contour stitching 稳定收敛（对应 `Section3dGapTest::NonPlanarDominantSectionGraphRemainsOpen`）
   - **[已收敛子集]** 凸体 oblique face-to-face mid-plane 四段闭合轮廓行列式（unit cube y=0.5 四段/Area/area=1）
+  - **[已收敛子集]** unit cube x=0.5 截面四段闭合 1×1 矩形（perimeter=4.0 / area=1.0）
+  - **[已收敛子集]** 2×2×1 矩形棱柱 z=0.5 截面四段闭合 2×2 方形（perimeter=8.0 / area=4.0）
 - 必需-2：`Section` 在超出现有子集时的 coplanar fragment merge 语义闭合，确保切面输出不会碎片化（对应 `Section3dGapTest::FaceMergeSemanticsAfterSectionRemainsOpen`）
   - **[已收敛子集]** 三面共面水平排列 strip 合并为单多边形（3×1 矩形，area=3）
 - 必需-3：`ConvertToBrepBody(...)` 向更一般 topology-changing non-planar repair 推进并转正 capability（对应 `Conversion3dGapTest::GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen`）
-  - 仍为 open gap
+  - **[已收敛子集]** support-mismatch near-equal closed-cuboid all-vertices（2×1×1 矩形盒子，8 顶点全部 near-equal 扰动，FaceCount=6/VertexCount=8/EdgeCount=12/closed shell）
+  - 仍为 open gap（更一般 topology-changing repair）
 - 必需-4：`Heal(BrepBody)` 覆盖 non-planar trimmed face topology repair（对应 `Brep3dGapTest::NonPlanarTrimmedFaceTopologyRepairRemainsOpen`）
   - **[已收敛子集]** 非水平平面（y=0 竖面，法向+y）单面 BrepFace 缺失 trim 回填
+  - **[已收敛子集]** x=0 竖面（法向+x）单面 BrepFace 缺失 trim 回填
 - 必需-5：`Heal(..., policy=Aggressive)` 覆盖超出 planar open-sheet/holed-shell 的更一般 shell repair policy（对应 `Healing3dGapTest::AggressiveShellRepairPolicyRemainsOpen`）
   - **[已收敛子集]** 四壳 mixed（1 closed + 2 eligible single-face + 1 ineligible），两个 eligible 闭合，ineligible 保持 open
 - 必需-6：切面钢筋线结果链路补齐 deterministic 后处理（线段去重/共线合并/短毛刺抑制/分组统计稳定），并以 capability tests 固化根数与总长断言
   - **[已收敛子集]** 三棱柱水平截面轮廓总长确定性断言（equilateral triangle 周长≈3）
+  - **[已收敛子集]** unit cube x=0.5 截面轮廓周长断言（1×1 square perimeter=4.0）
+  - **[已收敛子集]** 2×2×1 矩形棱柱 z=0.5 截面轮廓周长断言（2×2 square perimeter=8.0）
 
 ### P4-B：aggressive shell policy 分层落地（已完成最小子集）
 - 已覆盖 mixed support-mismatch + ineligible multiface 系列场景的 shell-level FaceCount 分布断言
