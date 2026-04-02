@@ -78,6 +78,7 @@
 - 已扩展 tiny-scale non-planar shared-edge 邻接链 capability 子样例；下一步聚焦共享边一致性约束驱动的跨面联合修复策略
 - 已扩展 tiny-scale non-planar shared-edge 邻接链 mixed-content capability 子样例；下一步聚焦共享边一致性约束驱动的跨面联合修复策略
 - 已扩展 shared-edge 邻接链下 duplicate-loop-normalization + refit/projection 组合子样例；下一步聚焦共享边一致性约束真正参与修复决策
+- 已扩展 shared-edge 邻接链 mixed-content 下 duplicate hole-loop-normalization + refit/projection 组合子样例；下一步聚焦共享边一致性约束真正参与修复决策
 
 ### P4-B：aggressive shell policy 分层落地（已完成最小子集）
 - 已覆盖 single-face / multi-face / holed / multi-shell open-shell 的最小 deterministic closure 子策略
