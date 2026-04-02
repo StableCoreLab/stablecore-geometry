@@ -57,6 +57,12 @@
 - 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 的 non-planar repair 文案，纳入 shared-edge 子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-02，continuation-9）
+
+- 已新增 healing capability：三壳 mixed 输入下 `Heal(..., policy=Aggressive)` 可稳定执行 deterministic 行为（closed 保持稳定、eligible open 闭壳、ineligible open 保持 open），见 `tests/capabilities/test_3d_healing.cpp`。
+- 已同步收敛 `tests/gaps/test_3d_healing_gaps.cpp` 的 aggressive policy 文案，纳入 three-shell deterministic mixed 子集。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
 ## 当前关注优先级
 
 1. **3D robust non-planar repair**：从 affine-skew 子类走向真实 non-planar 失配修复

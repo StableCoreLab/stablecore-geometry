@@ -80,6 +80,7 @@
 - 已覆盖 single-face / multi-face / holed / multi-shell open-shell 的最小 deterministic closure 子策略
 - 已覆盖 mixed closed/open-shell 输入下“保持闭壳稳定 + 闭合开壳”的最小 deterministic 子策略
 - 已覆盖 mixed open-shell 输入下“可恢复壳闭合 + 不可恢复壳保持原状”的最小 deterministic 部分修复子策略
+- 已覆盖三壳 mixed 输入下“closed 保持 + eligible 闭壳 + ineligible 保持”的 deterministic 子策略
 - 下一步转向更一般 topology-changing aggressive policy（保留为 gap）
 
 ---
