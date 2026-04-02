@@ -74,6 +74,7 @@
   - `ConvertToBrepBody(...)` 在 tiny-scale triangular-face chain（3 个三角面，mismatched support planes）上可确定性地保持共享边顶点一致性（每个共享顶点是所有相关三角面的定义顶点，distance=0 → 无投影偏差），结果满足 VertexCount=5 / EdgeCount=7 的精确拓扑共享断言
   - `ConvertToBrepBody(...)` 在 tiny-scale triangular-fan（4 个三角面共享 apex，mismatched support planes）上可确定性地保持共享 apex 顶点一致性（apex 是所有 4 个三角面的定义顶点，distance=0 → 精确保留），结果满足 VertexCount=5 / EdgeCount=8（4 条径向共享边 + 4 条外边）
   - `ConvertToBrepBody(...)` 的 per-face refit 已引入 shared-vertex-aware support-plane 估计启发式：当 outer loop 顶点在 body 内出现多次（跨面共享）时，优先使用包含更多 shared vertices 的三点组估计 refit plane，以减少 shared-edge 顶点跨面投影偏差
+  - `ConvertToBrepBody(...)` 已引入 source representative-id 贯穿复用：即使修复后共享顶点出现微小跨面漂移，也能按输入拓扑代表点强制复用同一 BrepVertex，从而恢复 tiny-scale quad shared-edge chain 的确定性拓扑断言（VertexCount=8 / EdgeCount=10）
 
 ## 共享测试支持
 
@@ -90,7 +91,7 @@
   - 记录超出 planar open-sheet closure（含 holed shell）子策略的激进修复策略、mesh/body 联合多阶段修复仍未闭合
 - `tests/gaps/test_3d_conversion_gaps.cpp`
   - 记录高保真 Brep->mesh 特征保持（超出 planar holed+multi-face area-preserving 子集）、鲁棒 non-planar polyhedron->Brep repair（超出 affine-planar + support-plane-refit + mild outer/hole loop-projection + collinear-leading-loop + duplicate outer/hole loop-normalization 子集）仍未闭合
-  - 新增显式 gap 样例：`QuadSharedEdgeChainVertexConsistencyRemainsOpen`，固定化 quad-face shared-edge chain 在 support-plane mismatch 下的跨面 shared-vertex consistency 开放问题
+  - 新增显式 gap 样例：`QuadSharedEdgeChainWithNormalizationVertexConsistencyRemainsOpen`，固定化 quad-face shared-edge chain 在 support-plane mismatch + duplicate-loop normalization 组合下的跨面 shared-vertex consistency 开放问题
 - 2D 历史 gap 场景已全部转正到 `tests/capabilities`；当前 `tests/gaps` 专注 3D P1 骨架跟踪
 
 ## CMake / gtest 说明

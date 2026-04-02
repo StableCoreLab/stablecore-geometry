@@ -14,13 +14,14 @@ using geometry::sdk::Vector3d;
 
 namespace
 {
-PolyhedronBody BuildQuadSharedEdgeChainWithSupportMismatchBody()
+PolyhedronBody BuildQuadSharedEdgeChainWithSupportMismatchAndDuplicateBody()
 {
     // Three quads in a strip: A-B-C.
     // A and B share edge (b,c); B and C share edge (e,f).
     // The support planes are intentionally mismatched and each face has tiny
-    // non-planar drift, so per-face refit/projection can move shared vertices
-    // differently across adjacent faces.
+    // non-planar drift. The middle face also contains a duplicate leading
+    // shared vertex, so repair normalization can change loop cardinality and
+    // break one-to-one source representative mapping used by current reuse.
     const double s = 1e-5;
     const Point3d a{0.0, 0.0, 0.0};
     const Point3d b{s, 0.0, 0.0};
@@ -36,7 +37,7 @@ PolyhedronBody BuildQuadSharedEdgeChainWithSupportMismatchBody()
 
     return PolyhedronBody({
         PolyhedronFace3d(mismatchedPlane, PolyhedronLoop3d({a, b, c, d})),
-        PolyhedronFace3d(mismatchedPlane, PolyhedronLoop3d({b, e, f, c})),
+        PolyhedronFace3d(mismatchedPlane, PolyhedronLoop3d({b, b, e, f, c})),
         PolyhedronFace3d(mismatchedPlane, PolyhedronLoop3d({e, g, h, f}))});
 }
 } // namespace
@@ -57,11 +58,11 @@ TEST(Conversion3dGapTest, GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen)
     GTEST_SKIP() << "Known 3D gap: robust non-planar polyhedron->Brep repair beyond affine-planar + support-plane-refit (including closed-shell shared-topology subset via triangular faces [closed tetrahedron], shared-chain mixed-content full-composition subset, dual outer/hole duplicate-normalization composition subset) + scale-aware tiny-loop normal fallback + mild/tiny-scale outer/hole/multi-face/mixed-content/shared-edge loop-projection + duplicate/collinear-leading normalization composition subset is still open. Specifically: shared-edge vertex consistency constraint (quad faces whose shared vertices are NOT defining vertices of both adjacent face refit-planes get independently projected, yielding O(z_drift)-level divergence that exceeds the default merge tolerance) is the next open frontier.";
 }
 
-TEST(Conversion3dGapTest, QuadSharedEdgeChainVertexConsistencyRemainsOpen)
+TEST(Conversion3dGapTest, QuadSharedEdgeChainWithNormalizationVertexConsistencyRemainsOpen)
 {
-    const PolyhedronBody body = BuildQuadSharedEdgeChainWithSupportMismatchBody();
+    const PolyhedronBody body = BuildQuadSharedEdgeChainWithSupportMismatchAndDuplicateBody();
     const auto result = ConvertToBrepBody(body);
     (void)result;
 
-    GTEST_SKIP() << "Known 3D gap: quad-face shared-edge chain under support-plane mismatch still lacks explicit cross-face vertex snapping/constraint solving. Current per-face refit can leave residual shared-vertex mismatch in edge-topology reconstruction beyond triangular-face subsets.";
+    GTEST_SKIP() << "Known 3D gap: quad-face shared-edge chain with support-plane mismatch plus duplicate-loop normalization still lacks robust cross-face vertex consistency closure. Representative-id reuse helps when loop cardinality is preserved, but normalization-induced cardinality changes can still require explicit snapping/constraint reprojection.";
 }

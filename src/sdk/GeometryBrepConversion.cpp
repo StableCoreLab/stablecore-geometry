@@ -2,6 +2,7 @@
 
 #include <limits>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include "sdk/LineCurve3d.h"
@@ -11,6 +12,63 @@ namespace geometry::sdk
 {
 namespace
 {
+struct FaceLoopRepresentativeIds
+{
+    std::vector<std::size_t> outer;
+    std::vector<std::vector<std::size_t>> holes;
+};
+
+[[nodiscard]] std::size_t FindOrAddRepresentativePoint(
+    const Point3d& point,
+    std::vector<Point3d>& representativePoints,
+    double eps)
+{
+    for (std::size_t i = 0; i < representativePoints.size(); ++i)
+    {
+        if (representativePoints[i].AlmostEquals(point, eps))
+        {
+            return i;
+        }
+    }
+
+    representativePoints.push_back(point);
+    return representativePoints.size() - 1;
+}
+
+void BuildBodyLoopRepresentativeIds(
+    const PolyhedronBody& body,
+    std::vector<FaceLoopRepresentativeIds>& ids,
+    double eps)
+{
+    ids.clear();
+    ids.resize(body.FaceCount());
+
+    std::vector<Point3d> representativePoints;
+    for (std::size_t faceIndex = 0; faceIndex < body.FaceCount(); ++faceIndex)
+    {
+        const PolyhedronFace3d face = body.FaceAt(faceIndex);
+        auto& faceIds = ids[faceIndex];
+
+        faceIds.outer.reserve(face.OuterLoop().VertexCount());
+        for (std::size_t i = 0; i < face.OuterLoop().VertexCount(); ++i)
+        {
+            faceIds.outer.push_back(FindOrAddRepresentativePoint(face.OuterLoop().VertexAt(i), representativePoints, eps));
+        }
+
+        faceIds.holes.resize(face.HoleCount());
+        for (std::size_t holeIndex = 0; holeIndex < face.HoleCount(); ++holeIndex)
+        {
+            const PolyhedronLoop3d hole = face.HoleAt(holeIndex);
+            auto& holeIds = faceIds.holes[holeIndex];
+            holeIds.reserve(hole.VertexCount());
+            for (std::size_t i = 0; i < hole.VertexCount(); ++i)
+            {
+                holeIds.push_back(FindOrAddRepresentativePoint(hole.VertexAt(i), representativePoints, eps));
+            }
+        }
+    }
+}
+
 [[nodiscard]] bool AppendLoopVerticesFromBody(
     const BrepBody& body,
     const BrepLoop& loop,
@@ -231,6 +289,8 @@ namespace
     std::vector<BrepEdge>& edges,
     BrepLoop& loop,
     std::vector<Point2d>& uvPoints,
+    const std::vector<std::size_t>* representativeIds,
+    std::unordered_map<std::size_t, std::size_t>* representativeToVertexIndex,
     double eps)
 {
     if (!polyLoop.IsValid(eps))
@@ -241,9 +301,32 @@ namespace
     const std::size_t vertexCount = polyLoop.VertexCount();
     std::vector<std::size_t> loopVertexIndices;
     loopVertexIndices.reserve(vertexCount);
+
+    const bool hasRepresentativeIds =
+        representativeIds != nullptr && representativeToVertexIndex != nullptr && representativeIds->size() == vertexCount;
+
     for (std::size_t i = 0; i < vertexCount; ++i)
     {
-        loopVertexIndices.push_back(FindOrAddBrepVertex(polyLoop.VertexAt(i), vertices, eps));
+        const Point3d point = polyLoop.VertexAt(i);
+        if (hasRepresentativeIds)
+        {
+            const std::size_t representativeId = (*representativeIds)[i];
+            const auto found = representativeToVertexIndex->find(representativeId);
+            if (found != representativeToVertexIndex->end())
+            {
+                loopVertexIndices.push_back(found->second);
+            }
+            else
+            {
+                const std::size_t vertexIndex = FindOrAddBrepVertex(point, vertices, eps);
+                (*representativeToVertexIndex)[representativeId] = vertexIndex;
+                loopVertexIndices.push_back(vertexIndex);
+            }
+        }
+        else
+        {
+            loopVertexIndices.push_back(FindOrAddBrepVertex(point, vertices, eps));
+        }
     }
 
     std::vector<BrepCoedge> coedges;
@@ -689,6 +772,9 @@ BrepBodyConversion3d ConvertToPolyhedronBody(const BrepBody& body, double eps)
 
 PolyhedronBrepBodyConversion3d ConvertToBrepBody(const PolyhedronBody& body, double eps)
 {
+    std::vector<FaceLoopRepresentativeIds> sourceRepresentativeIds;
+    BuildBodyLoopRepresentativeIds(body, sourceRepresentativeIds, eps);
+
     PolyhedronBody sourceBody = body;
     if (!sourceBody.IsValid(eps) && !TryRepairPolyhedronBodyForBrepConversion(body, sourceBody, eps))
     {
@@ -698,6 +784,7 @@ PolyhedronBrepBodyConversion3d ConvertToBrepBody(const PolyhedronBody& body, dou
     std::vector<BrepVertex> vertices;
     std::vector<BrepEdge> edges;
     std::vector<BrepFace> faces;
+    std::unordered_map<std::size_t, std::size_t> representativeToVertexIndex;
     faces.reserve(sourceBody.FaceCount());
 
     for (std::size_t faceIndex = 0; faceIndex < sourceBody.FaceCount(); ++faceIndex)
@@ -711,9 +798,27 @@ PolyhedronBrepBodyConversion3d ConvertToBrepBody(const PolyhedronBody& body, dou
         const PlaneSurface planeSurface = PlaneSurface::FromPlane(face.SupportPlane());
         auto surface = std::make_shared<PlaneSurface>(planeSurface);
 
+        const std::vector<std::size_t>* outerRepresentativeIds = nullptr;
+        if (faceIndex < sourceRepresentativeIds.size())
+        {
+            const auto& candidateOuterIds = sourceRepresentativeIds[faceIndex].outer;
+            if (candidateOuterIds.size() == face.OuterLoop().VertexCount())
+            {
+                outerRepresentativeIds = &candidateOuterIds;
+            }
+        }
+
         BrepLoop outerLoop;
         std::vector<Point2d> outerUv;
-        if (!AppendSharedBrepLoopFromPolyLoop(face.OuterLoop(), vertices, edges, outerLoop, outerUv, eps))
+        if (!AppendSharedBrepLoopFromPolyLoop(
+                face.OuterLoop(),
+                vertices,
+                edges,
+                outerLoop,
+                outerUv,
+                outerRepresentativeIds,
+                &representativeToVertexIndex,
+                eps))
         {
             return {false, BrepConversionIssue3d::InvalidFace, faceIndex, {}};
         }
@@ -731,9 +836,29 @@ PolyhedronBrepBodyConversion3d ConvertToBrepBody(const PolyhedronBody& body, dou
         for (std::size_t holeIndex = 0; holeIndex < face.HoleCount(); ++holeIndex)
         {
             const PolyhedronLoop3d hole = face.HoleAt(holeIndex);
+
+            const std::vector<std::size_t>* holeRepresentativeIds = nullptr;
+            if (faceIndex < sourceRepresentativeIds.size() &&
+                holeIndex < sourceRepresentativeIds[faceIndex].holes.size())
+            {
+                const auto& candidateHoleIds = sourceRepresentativeIds[faceIndex].holes[holeIndex];
+                if (candidateHoleIds.size() == hole.VertexCount())
+                {
+                    holeRepresentativeIds = &candidateHoleIds;
+                }
+            }
+
             BrepLoop holeLoop;
             std::vector<Point2d> holeUv;
-            if (!AppendSharedBrepLoopFromPolyLoop(hole, vertices, edges, holeLoop, holeUv, eps))
+            if (!AppendSharedBrepLoopFromPolyLoop(
+                    hole,
+                    vertices,
+                    edges,
+                    holeLoop,
+                    holeUv,
+                    holeRepresentativeIds,
+                    &representativeToVertexIndex,
+                    eps))
             {
                 return {false, BrepConversionIssue3d::InvalidFace, faceIndex, {}};
             }

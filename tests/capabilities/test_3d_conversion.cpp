@@ -957,12 +957,9 @@ TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarSharedEdgeFacesStillRepairToB
 
 // Demonstrates tiny-scale non-planar repair remains stable on a shared-edge
 // adjacency chain where local refit is applied across multiple neighboring faces.
-// Note: independent per-face refit projects shared quad vertices onto each
-// face's own plane independently; the projected positions may differ by
-// O(z_drift) which exceeds the default vertex-merge tolerance, so no
-// VertexCount / EdgeCount guarantee is enforced here. The closed-shell
-// tetrahedron test (all triangular faces, shared vertices always lie exactly
-// on each face's refit plane) is the representative test for topological sharing.
+// The conversion now preserves source representative vertex identities across
+// repaired faces, so shared-edge chain topology remains deterministic even when
+// per-face projection introduces small geometric drift.
 TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarSharedEdgeChainStillRepairsToBrepBody)
 {
     const PolyhedronBody body = BuildTinyScaleNonPlanarSharedEdgeChainBody();
@@ -974,6 +971,8 @@ TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarSharedEdgeChainStillRepairsTo
     assert(result.issue == BrepConversionIssue3d::None);
     assert(result.body.IsValid());
     assert(result.body.FaceCount() == 3);
+    assert(result.body.VertexCount() == 8);
+    assert(result.body.EdgeCount() == 10);
 }
 
 // Demonstrates tiny-scale shared-edge adjacency chain repair also supports
