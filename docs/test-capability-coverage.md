@@ -96,6 +96,7 @@
   - `ConvertToBrepBody(...)` 在 support-plane mismatch + near-equal shared-apex triangular-fan 输入下同样可经 refit 后稳定保持 representative-average 共享顶点落点（4 faces -> VertexCount=5 / EdgeCount=8）
   - `ConvertToBrepBody(...)` 在 support-plane mismatch + near-equal shared-edge-chain（3 faces）输入下同样可经 refit 后稳定保持 representative-average 共享顶点落点（VertexCount=8 / EdgeCount=10）
   - `ConvertToBrepBody(...)` 在 support-plane mismatch + near-equal shared-corner fan（3 faces，仅共享顶点）输入下同样可经 refit 后稳定保持 representative-average 共享顶点落点（VertexCount=8 / EdgeCount=10）
+  - `ConvertToBrepBody(...)` 在 support-plane mismatch + near-equal closed-tetra（4 triangular faces）输入下同样可经 refit 后稳定保持 representative-average 共享顶点落点，并保持 closed-shell 拓扑（VertexCount=4 / EdgeCount=6）
   - `ConvertToBrepBody(...)` 已增加 representative-target 聚合失败回退：若全局平均目标点构建失败，将自动回退到原 representative-id 复用路径，避免把可转换输入误判为失败
   - `ConvertToBrepBody(...)` 的 repair 后 representative snapping 已从单轮提升为最多两轮小步迭代（每轮保持 body 有效性约束），以增强跨面共享顶点对齐稳定性
   - `ConvertToBrepBody(...)` 已为代表性 repair 场景补齐壳体语义断言：cube-like 输入稳定满足 `ShellCount()==1 && IsClosed()==true`，shared-chain sheet-like 输入稳定满足 `ShellCount()==1 && IsClosed()==false`

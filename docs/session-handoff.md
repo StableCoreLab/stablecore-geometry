@@ -51,6 +51,12 @@
 - 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 support-mismatch near-equal shared-corner fan representative-average 子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-02，continuation-36）
+
+- 已扩展 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 新增 `SupportMismatchNearEqualClosedTetrahedronRepairsWithRepresentativeAverageTarget`，验证 support-plane mismatch + near-equal closed-tetra（4 triangular faces）输入经 refit 后保持 representative-average 共享顶点落点，并维持 closed-shell 拓扑（VertexCount=4 / EdgeCount=6）。
+- 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 support-mismatch near-equal closed-tetra representative-average 子集。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
 ## 本轮新增（2026-04-02，continuation）
 
 - 已新增 capability：`Heal(..., policy=Aggressive)` 在同一个 `BrepBody` 内可同时闭合多个可恢复 open shells（`tests/capabilities/test_3d_healing.cpp`）。

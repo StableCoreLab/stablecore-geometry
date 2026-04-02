@@ -113,6 +113,7 @@
 - 已扩展 support-plane mismatch + near-equal shared-apex triangular-fan capability：`ConvertToBrepBody(...)` 经 refit 后仍可保持 representative-average 共享 apex 顶点落点与确定性拓扑计数（VertexCount=5 / EdgeCount=8）
 - 已扩展 support-plane mismatch + near-equal shared-edge-chain（3 faces）capability：`ConvertToBrepBody(...)` 经 refit 后仍可保持 representative-average 共享顶点落点与确定性拓扑计数（VertexCount=8 / EdgeCount=10）
 - 已扩展 support-plane mismatch + near-equal shared-corner fan（3 faces，仅共享顶点）capability：`ConvertToBrepBody(...)` 经 refit 后仍可保持 representative-average 共享顶点落点与确定性拓扑计数（VertexCount=8 / EdgeCount=10）
+- 已扩展 support-plane mismatch + near-equal closed-tetra（4 triangular faces）capability：`ConvertToBrepBody(...)` 经 refit 后仍可保持 representative-average 共享顶点落点与 closed-shell 确定性拓扑计数（VertexCount=4 / EdgeCount=6）
 - 已完成 representative-target 聚合失败回退硬化：聚合失败时自动回退到 representative-id 复用路径，不再直接 `InvalidBody`
 - 已增强 repair 后 representative snapping：由单轮提升为最多两轮小步迭代（每轮保持有效性约束）
 - 下一步聚焦更一般 topology-changing non-planar repair（超出当前 representative-id + shared-refit + representative-average vertex placement + fallback-hardening + iterative-snapping 子集），继续保留 `GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen` 作为总 gap
