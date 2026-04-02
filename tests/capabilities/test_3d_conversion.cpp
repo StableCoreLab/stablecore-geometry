@@ -101,6 +101,41 @@ PolyhedronBody BuildSupportPlaneMismatchedCubeBody()
     return PolyhedronBody(std::move(faces));
 }
 
+// Displaces one corner vertex of the unit cube so that three adjacent quad
+// faces become non-planar. Each displaced face retains its original (now
+// wrong) support plane so that ConvertToBrepBody must refit all of them.
+PolyhedronBody BuildDeformedUnitCubeBody()
+{
+    // V0 is the origin corner shared by bottom / front / left faces.
+    // Displacing it makes those three faces non-planar.
+    const Point3d v0{0.1, 0.1, -0.1}; // displaced from (0,0,0)
+    const Point3d v1{1.0, 0.0,  0.0};
+    const Point3d v2{1.0, 1.0,  0.0};
+    const Point3d v3{0.0, 1.0,  0.0};
+    const Point3d v4{0.0, 0.0,  1.0};
+    const Point3d v5{1.0, 0.0,  1.0};
+    const Point3d v6{1.0, 1.0,  1.0};
+    const Point3d v7{0.0, 1.0,  1.0};
+
+    // Support planes are the original axis-aligned planes of the unit cube —
+    // intentionally wrong for the three faces that contain v0.
+    const Plane bottom{Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, 0.0, -1.0}};
+    const Plane top   {Point3d{0.0, 0.0, 1.0}, Vector3d{0.0, 0.0,  1.0}};
+    const Plane front {Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, -1.0, 0.0}};
+    const Plane back  {Point3d{0.0, 1.0, 0.0}, Vector3d{0.0,  1.0, 0.0}};
+    const Plane left  {Point3d{0.0, 0.0, 0.0}, Vector3d{-1.0, 0.0, 0.0}};
+    const Plane right {Point3d{1.0, 0.0, 0.0}, Vector3d{ 1.0, 0.0, 0.0}};
+
+    return PolyhedronBody({
+        PolyhedronFace3d(bottom, PolyhedronLoop3d({v0, v3, v2, v1}), {}),
+        PolyhedronFace3d(top,    PolyhedronLoop3d({v4, v5, v6, v7}), {}),
+        PolyhedronFace3d(front,  PolyhedronLoop3d({v0, v1, v5, v4}), {}),
+        PolyhedronFace3d(back,   PolyhedronLoop3d({v3, v7, v6, v2}), {}),
+        PolyhedronFace3d(left,   PolyhedronLoop3d({v0, v4, v7, v3}), {}),
+        PolyhedronFace3d(right,  PolyhedronLoop3d({v1, v2, v6, v5}), {}),
+    });
+}
+
 PolyhedronBody BuildMildlyNonPlanarCubeFaceBody()
 {
     const PolyhedronBody cube = geometry::test::BuildUnitCubeBody();
@@ -889,6 +924,28 @@ TEST(Conversion3dCapabilityTest, MildlyNonPlanarCubeFaceCanBeRepairedToBrepBody)
     assert(!nonPlanarBody.IsValid());
 
     const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(nonPlanarBody);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 6);
+    assert(result.body.VertexCount() == 8);
+    assert(result.body.EdgeCount() == 12);
+    assert(result.body.ShellCount() == 1);
+    assert(result.body.ShellAt(0).IsClosed());
+}
+
+// Demonstrates that when a single shared vertex is displaced (making three
+// adjacent faces non-planar simultaneously), ConvertToBrepBody can still
+// recover via per-face refit and produce a topologically valid closed
+// BrepBody. The area-based triplet selection naturally ignores the displaced
+// vertex when the other three vertices define a larger-area (more stable)
+// support plane.
+TEST(Conversion3dCapabilityTest, MultipleNonPlanarFacesFromDisplacedVertexRepairsToBrepBody)
+{
+    const PolyhedronBody deformedBody = BuildDeformedUnitCubeBody();
+    assert(!deformedBody.IsValid());
+
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(deformedBody);
     assert(result.success);
     assert(result.issue == BrepConversionIssue3d::None);
     assert(result.body.IsValid());

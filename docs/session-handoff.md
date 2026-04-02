@@ -223,7 +223,13 @@
 - 已扩展 conversion capability 语义断言：`tests/capabilities/test_3d_conversion.cpp` 为 cube-like repair 子场景补齐 `ShellCount()==1` 与 `IsClosed()==true`，并为 shared-chain sheet-like 子场景补齐 `ShellCount()==1` 与 `IsClosed()==false`。
 - 本轮以壳体语义（closed/open）补强现有拓扑计数覆盖，进一步降低“计数正确但壳体语义漂移”的回归风险。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+## 本轮新增（2026-04-02，deformed-cube multi-face non-planar）
 
+- 已新增 conversion capability：`ConvertToBrepBody(...)` 可处理"单个顶点位移导致多个面同时非平面"的输入（deformed unit cube：V0 从 (0,0,0) 移至 (0.1,0.1,-0.1)，使 bottom/front/left 三面变为非平面）。
+- 修复机制：每个非平面面的 per-face refit 选取包含 max-area 三点组，representative-id 驱动跨面 BrepVertex 复用保证拓扑一致性。
+- 结果满足 FaceCount=6 / VertexCount=8 / EdgeCount=12 / 1 closed shell 确定性拓扑断言。
+- 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 deformed-cube multi-face non-planar 子集。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 ## 本轮新增（2026-04-02，continuation-closed-shell-tetrahedron）
 
 - 已新增 conversion capability：`ConvertToBrepBody(...)` 在 tiny-scale closed-shell tetrahedron（4 triangular faces, all support planes mismatched）输入上，经 per-face refit 修复后可收敛为合法 closed BrepBody（IsClosed=true / VertexCount=4 / EdgeCount=6）。
