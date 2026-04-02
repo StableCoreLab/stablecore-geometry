@@ -33,6 +33,12 @@
 - 已同步收敛 `tests/gaps/test_3d_healing_gaps.cpp` 的 aggressive policy 文案，纳入 mixed closed/open-shell 子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-02，continuation-5）
+
+- 已新增 conversion capability：tiny-scale non-planar multi-face 输入可稳定 `ConvertToBrepBody(...)`，逐面 refit 后保持 `FaceCount` 一致（`tests/capabilities/test_3d_conversion.cpp`）。
+- 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 的 non-planar repair 文案，纳入 tiny-scale multi-face 子集。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
 ## 当前关注优先级
 
 1. **3D robust non-planar repair**：从 affine-skew 子类走向真实 non-planar 失配修复

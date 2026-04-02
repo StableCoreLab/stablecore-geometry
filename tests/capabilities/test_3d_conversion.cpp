@@ -270,6 +270,32 @@ PolyhedronBody BuildTinyScaleNonPlanarHoledRepairBody()
         {PolyhedronLoop3d(std::move(hole))});
     return PolyhedronBody({face});
 }
+
+PolyhedronBody BuildTinyScaleNonPlanarMultiFaceRepairBody()
+{
+    const double s = 1e-5;
+    std::vector<Point3d> faceA{
+        Point3d{0.0, 0.0, 0.0},
+        Point3d{s, 0.0, 0.0},
+        Point3d{s, s, 0.0},
+        Point3d{0.0, s, 0.0}};
+    std::vector<Point3d> faceB{
+        Point3d{2.0 * s, 0.0, 0.0},
+        Point3d{3.0 * s, 0.0, 0.0},
+        Point3d{3.0 * s, s, 0.0},
+        Point3d{2.0 * s, s, 0.0}};
+
+    faceA[2].z += 2e-6;
+    faceB[1].z += 1.4e-6;
+
+    return PolyhedronBody({
+        PolyhedronFace3d(
+            Plane::FromPointAndNormal(Point3d{0.0, 0.0, 2e-6}, Vector3d{0.0, 0.0, 1.0}),
+            PolyhedronLoop3d(std::move(faceA))),
+        PolyhedronFace3d(
+            Plane::FromPointAndNormal(Point3d{2.0 * s, 0.0, 2e-6}, Vector3d{0.0, 0.0, 1.0}),
+            PolyhedronLoop3d(std::move(faceB)))});
+}
 } // namespace
 
 // Demonstrates that a closed PolyhedronBody (unit cube, 6 quad faces) converts
@@ -447,6 +473,21 @@ TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarHoledFaceStillRepairsToBrepBo
     assert(result.issue == BrepConversionIssue3d::None);
     assert(result.body.IsValid());
     assert(result.body.FaceCount() == 1);
+}
+
+// Demonstrates tiny-scale non-planar repair remains stable for multi-face
+// body inputs where each face needs local support-plane refit.
+TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarMultiFaceStillRepairsToBrepBody)
+{
+    const PolyhedronBody body = BuildTinyScaleNonPlanarMultiFaceRepairBody();
+    assert(!body.IsValid());
+    assert(body.FaceCount() == 2);
+
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 2);
 }
 
 // Demonstrates planar holed BrepBody conversion keeps representative area by
