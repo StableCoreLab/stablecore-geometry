@@ -349,6 +349,31 @@ PolyhedronBody BuildTinyScaleNonPlanarSharedEdgeBody()
         PolyhedronLoop3d({b, e, f, c}));
     return PolyhedronBody({faceA, faceB});
 }
+
+PolyhedronBody BuildTinyScaleNonPlanarSharedEdgeChainBody()
+{
+    const double s = 1e-5;
+    const Point3d a{0.0, 0.0, 0.0};
+    const Point3d b{s, 0.0, 0.0};
+    const Point3d c{s, s, 0.0};
+    const Point3d d{0.0, s, 1.5e-6};
+    const Point3d e{2.0 * s, 0.0, 1.1e-6};
+    const Point3d f{2.0 * s, s, 0.0};
+    const Point3d g{3.0 * s, 0.0, 1.4e-6};
+    const Point3d h{3.0 * s, s, 0.0};
+
+    // Face A shares (b,c) with face B; face B shares (e,f) with face C.
+    const PolyhedronFace3d faceA(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 2e-6}, Vector3d{0.0, 0.0, 1.0}),
+        PolyhedronLoop3d({a, b, c, d}));
+    const PolyhedronFace3d faceB(
+        Plane::FromPointAndNormal(Point3d{s, 0.0, 2e-6}, Vector3d{0.0, 0.0, 1.0}),
+        PolyhedronLoop3d({b, e, f, c}));
+    const PolyhedronFace3d faceC(
+        Plane::FromPointAndNormal(Point3d{2.0 * s, 0.0, 2e-6}, Vector3d{0.0, 0.0, 1.0}),
+        PolyhedronLoop3d({e, g, h, f}));
+    return PolyhedronBody({faceA, faceB, faceC});
+}
 } // namespace
 
 // Demonstrates that a closed PolyhedronBody (unit cube, 6 quad faces) converts
@@ -571,6 +596,21 @@ TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarSharedEdgeFacesStillRepairToB
     assert(result.issue == BrepConversionIssue3d::None);
     assert(result.body.IsValid());
     assert(result.body.FaceCount() == 2);
+}
+
+// Demonstrates tiny-scale non-planar repair remains stable on a shared-edge
+// adjacency chain where local refit is applied across multiple neighboring faces.
+TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarSharedEdgeChainStillRepairsToBrepBody)
+{
+    const PolyhedronBody body = BuildTinyScaleNonPlanarSharedEdgeChainBody();
+    assert(!body.IsValid());
+    assert(body.FaceCount() == 3);
+
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 3);
 }
 
 // Demonstrates planar holed BrepBody conversion keeps representative area by
