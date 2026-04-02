@@ -111,6 +111,7 @@
   - 已扩展 conversion repair 子能力：tiny-scale non-planar shared-edge 邻接链 mixed-content 输入下，`ConvertToBrepBody` 可稳定逐面修复并保持拓扑计数稳定
   - 已扩展 conversion repair 组合子能力：shared-edge 邻接链下，duplicate-loop-normalization 与逐面 refit/projection 可稳定叠加生效
   - 已扩展 conversion repair 组合子能力：shared-edge 邻接链 mixed-content 下，duplicate hole-loop normalization 与逐面 refit/projection 可稳定叠加生效
+  - 已扩展 conversion repair 组合子能力：shared-edge 邻接链 mixed-content 下，collinear-leading normal fallback 与 duplicate/hole normalization 可稳定叠加
   - 已扩展 Brep->mesh 子能力：planar multi-face `BrepBody` 的 representative area-preserving conversion capability
   - 已扩展 Brep->mesh 子能力：planar holed+multi-face 混合 `BrepBody` 的 representative area-preserving conversion capability
   - 已新增 healing 子能力收敛：带孔平面 `BrepFace` 缺失 outer/hole trims 时可被 `Heal(BrepBody)` 同步回填

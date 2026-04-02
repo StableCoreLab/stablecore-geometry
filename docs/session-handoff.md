@@ -111,6 +111,12 @@
 - 已同步收敛 `tests/gaps/test_3d_healing_gaps.cpp` 文案，纳入 three-shell eligible multi-face holed+missing-trims 子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-02，continuation-18）
+
+- 已新增 conversion 组合 capability：shared-edge 邻接链 mixed-content 下，collinear-leading normal fallback 与 duplicate/hole normalization 可稳定叠加（`tests/capabilities/test_3d_conversion.cpp`）。
+- 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 collinear-leading shared-chain composition 子集。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
 ## 当前关注优先级
 
 1. **3D robust non-planar repair**：从 affine-skew 子类走向真实 non-planar 失配修复
