@@ -8,6 +8,16 @@
 
 - GitHub Actions 工作流：Windows + CMake preset 自动执行 configure/build/test
 - 触发条件：push 到 main、pull request、手动触发
+- GitHub Actions 自动修复工作流：当 `ci-windows-cmake` 失败时触发 `ci-autofix-on-failure`
+
+## 自动修复能力边界
+
+- 会自动重跑 configure/build/test 并保存复现场景日志
+- 会执行确定性修复钩子：`scripts/ci-autofix.ps1`
+- 若产生代码改动：自动创建修复 PR（不自动合并）
+- 若未产生改动：自动创建 issue，提示人工修复并附日志定位入口
+
+注意：当前自动修复是“可控规则型”而非通用 AI 改码器，默认只做安全、可预测的修复步骤。
 
 ## 使用方式
 
@@ -31,3 +41,4 @@
 
 1. 必需-3：`GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen` 继续收敛 capability 子集。
 2. 钢筋线后处理：补齐去重、共线合并、根数统计稳定断言。
+3. 视 CI 失败特征扩展 `scripts/ci-autofix.ps1`（每次只加可验证、低风险规则）。

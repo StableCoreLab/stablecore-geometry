@@ -1,0 +1,138 @@
+name: ci-autofix-on-failure
+
+on:
+  workflow_run:
+    workflows:
+      - ci-windows-cmake
+    types:
+      - completed
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+
+jobs:
+  attempt-autofix:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.head_repository.full_name == github.repository }}
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout failed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Collect failure context
+        id: context
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            core.setOutput('run_id', String(run.id));
+            core.setOutput('run_url', run.html_url);
+            core.setOutput('head_branch', run.head_branch || 'unknown');
+            core.setOutput('head_sha', run.head_sha || 'unknown');
+            core.info(`autofix target run: ${run.id}`);
+
+      - name: Reproduce configure/build/test (capture logs)
+        id: reproduce
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+
+          "=== Configure ===" | Out-File artifacts\autofix-repro.log -Encoding utf8
+          cmake --preset vs2022-x64 2>&1 | Tee-Object -FilePath artifacts\autofix-repro.log -Append
+
+          "=== Build ===" | Tee-Object -FilePath artifacts\autofix-repro.log -Append
+          cmake --build --preset vs2022-x64-build --config RelWithDebInfo 2>&1 | Tee-Object -FilePath artifacts\autofix-repro.log -Append
+
+          "=== Test ===" | Tee-Object -FilePath artifacts\autofix-repro.log -Append
+          ctest --preset vs2022-x64-test -C RelWithDebInfo --output-on-failure 2>&1 | Tee-Object -FilePath artifacts\autofix-repro.log -Append
+
+      - name: Run deterministic autofix hook
+        id: hook
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          if (Test-Path scripts\ci-autofix.ps1) {
+            .\scripts\ci-autofix.ps1 -LogPath artifacts\autofix-repro.log
+          } else {
+            Write-Host "No scripts/ci-autofix.ps1 found. Skipping deterministic fixes."
+          }
+
+      - name: Upload autofix artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: autofix-run-${{ steps.context.outputs.run_id }}
+          path: artifacts/
+
+      - name: Detect workspace changes
+        id: diff
+        shell: pwsh
+        run: |
+          $changed = git status --porcelain
+          if ([string]::IsNullOrWhiteSpace($changed)) {
+            "changed=false" >> $env:GITHUB_OUTPUT
+          } else {
+            "changed=true" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Create autofix pull request
+        if: ${{ steps.diff.outputs.changed == 'true' }}
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "ci(autofix): deterministic fixes for failed run #${{ steps.context.outputs.run_id }}"
+          branch: autofix/ci-run-${{ steps.context.outputs.run_id }}
+          delete-branch: true
+          title: "ci(autofix): attempt fix for failed run #${{ steps.context.outputs.run_id }}"
+          body: |
+            This PR was generated automatically after a failed CI run.
+
+            Source run: ${{ steps.context.outputs.run_url }}
+            Head branch: `${{ steps.context.outputs.head_branch }}`
+            Head sha: `${{ steps.context.outputs.head_sha }}`
+
+            Scope:
+            - Applied deterministic fixes from `scripts/ci-autofix.ps1`
+            - Attached reproduction logs in workflow artifacts
+
+            Safety:
+            - No auto-merge is enabled
+            - Human review is required
+          labels: |
+            ci
+            autofix
+
+      - name: Create issue when no fix was produced
+        if: ${{ steps.diff.outputs.changed != 'true' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `${{ steps.context.outputs.run_url }}`;
+            const runId = `${{ steps.context.outputs.run_id }}`;
+            const headBranch = `${{ steps.context.outputs.head_branch }}`;
+            const headSha = `${{ steps.context.outputs.head_sha }}`;
+            const title = `CI autofix could not produce patch (run #${runId})`;
+            const body = [
+              'Autofix workflow executed but no deterministic patch was produced.',
+              '',
+              `- Source run: ${runUrl}`,
+              `- Head branch: ${headBranch}`,
+              `- Head sha: ${headSha}`,
+              '',
+              'Next actions:',
+              '1. Open the workflow artifact `autofix-run-<run_id>` and inspect `autofix-repro.log`.',
+              '2. Apply a manual fix or extend `scripts/ci-autofix.ps1` with additional deterministic rules.',
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['ci', 'autofix', 'needs-manual-fix'],
+            });

@@ -9,6 +9,14 @@
 - 编译 / 构建 / 运行由用户手动完成
 - 不必担心 `gtest` 环境接入，用户会按需要调整 CMake / 构建侧
 
+## 本轮新增（2026-04-02，continuation-48）
+
+- 已新增失败后自动修复工作流：`.github/workflows/ci-autofix-on-failure.yml`（监听 `ci-windows-cmake` 失败）。
+- 自动修复流程：重跑 configure/build/test 复现 -> 执行 `scripts/ci-autofix.ps1` 确定性修复 ->
+  有改动则自动提 PR，无改动则自动建 issue。
+- 已新增修复钩子脚本：`scripts/ci-autofix.ps1`（当前内置安全规则：workflow/doc 行尾归一化，预留后续规则扩展点）。
+- 已更新：`docs/cloud-ci-handoff.md`（自动修复能力边界与使用说明）。
+
 ## 本轮新增（2026-04-02，continuation-47）
 
 - 已新增云端执行工作流：`.github/workflows/ci-windows-cmake.yml`，触发 push(main)/PR/manual，执行 configure/build/test。
