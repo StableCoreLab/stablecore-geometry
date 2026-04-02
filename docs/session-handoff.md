@@ -117,6 +117,12 @@
 - 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 collinear-leading shared-chain composition 子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-02，continuation-19）
+
+- 已新增 healing 组合 capability：三壳 mixed 输入下，eligible multi-face（holed+plain）两面 trims 缺失可先回填后 deterministic 闭壳，ineligible shell 保持 open（`tests/capabilities/test_3d_healing.cpp`）。
+- 已同步收敛 `tests/gaps/test_3d_healing_gaps.cpp` 文案，纳入 three-shell eligible multi-face both-trims-missing 子集。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
 ## 当前关注优先级
 
 1. **3D robust non-planar repair**：从 affine-skew 子类走向真实 non-planar 失配修复
