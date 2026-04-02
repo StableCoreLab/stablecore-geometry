@@ -937,6 +937,29 @@ PolyhedronBody BuildNearEqualSharedEdgeQuadPairBody()
         PolyhedronFace3d(plane, PolyhedronLoop3d({a, b, c, d})),
         PolyhedronFace3d(plane, PolyhedronLoop3d({b2, e, f, c2}))});
 }
+
+PolyhedronBody BuildSupportMismatchNearEqualSharedEdgeQuadPairBody()
+{
+    // Same near-equal shared-edge setup as BuildNearEqualSharedEdgeQuadPairBody,
+    // but with intentionally mismatched support planes to force repair path.
+    const double s = 1e-5;
+    const double dx = 2e-7;
+
+    const Point3d a{0.0, 0.0, 0.0};
+    const Point3d b{s, 0.0, 0.0};
+    const Point3d c{s, s, 0.0};
+    const Point3d d{0.0, s, 0.0};
+
+    const Point3d b2{s + dx, 0.0, 0.0};
+    const Point3d c2{s + dx, s, 0.0};
+    const Point3d e{2.0 * s, 0.0, 0.0};
+    const Point3d f{2.0 * s, s, 0.0};
+
+    const Plane mismatched = Plane::FromPointAndNormal(Point3d{0.0, 0.0, 3e-6}, Vector3d{0.0, 0.0, 1.0});
+    return PolyhedronBody({
+        PolyhedronFace3d(mismatched, PolyhedronLoop3d({a, b, c, d})),
+        PolyhedronFace3d(mismatched, PolyhedronLoop3d({b2, e, f, c2}))});
+}
 } // namespace
 
 // Demonstrates that a closed PolyhedronBody (unit cube, 6 quad faces) converts
@@ -985,6 +1008,43 @@ TEST(Conversion3dCapabilityTest, NearEqualSharedEdgeVerticesUseRepresentativeAve
 {
     const PolyhedronBody body = BuildNearEqualSharedEdgeQuadPairBody();
     assert(body.IsValid());
+    assert(body.FaceCount() == 2);
+
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 2);
+    assert(result.body.ShellCount() == 1);
+    assert(!result.body.ShellAt(0).IsClosed());
+    assert(result.body.VertexCount() == 6);
+    assert(result.body.EdgeCount() == 7);
+
+    const double s = 1e-5;
+    const double dx = 2e-7;
+    const double expectedSharedX = s + 0.5 * dx;
+
+    std::size_t sharedBLikeCount = 0;
+    for (std::size_t i = 0; i < result.body.VertexCount(); ++i)
+    {
+        const Point3d point = result.body.VertexAt(i).Point();
+        if (std::abs(point.y) < 1e-12 && std::abs(point.z) < 1e-12 && point.x > 0.5 * s && point.x < 1.5 * s)
+        {
+            ++sharedBLikeCount;
+            assert(std::abs(point.x - expectedSharedX) < 1e-12);
+            assert(std::abs(point.x - s) > 5e-8);
+        }
+    }
+
+    assert(sharedBLikeCount == 1);
+}
+
+// Demonstrates representative-average shared-vertex placement also holds when
+// conversion first performs support-plane refit repair.
+TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualSharedEdgeRepairsWithRepresentativeAverageTarget)
+{
+    const PolyhedronBody body = BuildSupportMismatchNearEqualSharedEdgeQuadPairBody();
+    assert(!body.IsValid());
     assert(body.FaceCount() == 2);
 
     const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);

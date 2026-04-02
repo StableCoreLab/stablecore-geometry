@@ -15,6 +15,12 @@
 - 已新增 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 新增 `NearEqualSharedEdgeVerticesUseRepresentativeAverageTarget`，验证 near-equal shared-edge（<eps 扰动）场景下共享拓扑保持稳定（2 faces -> VertexCount=6 / EdgeCount=7），且共享顶点位置符合 representative 平均目标。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-02，continuation-30）
+
+- 已扩展 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 新增 `SupportMismatchNearEqualSharedEdgeRepairsWithRepresentativeAverageTarget`，验证 support-plane mismatch + near-equal shared-edge 输入经 refit 后仍保持 representative-average 共享顶点落点。
+- 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 support-mismatch near-equal shared-edge representative-average 子集。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
 ## 本轮新增（2026-04-02，continuation）
 
 - 已新增 capability：`Heal(..., policy=Aggressive)` 在同一个 `BrepBody` 内可同时闭合多个可恢复 open shells（`tests/capabilities/test_3d_healing.cpp`）。

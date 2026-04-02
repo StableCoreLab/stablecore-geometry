@@ -145,6 +145,7 @@
     - 已新增 conversion capability：dual-deformed unit cube（双顶点位移，六面均非平面）可经 per-face refit + representative-id 复用收敛为有效 closed BrepBody（FaceCount=6/VertexCount=8/EdgeCount=12/IsClosed=true）
     - 已开始 conversion 跨面联合修复预备：representative-id global snapping pass（repair 后聚合 representative 点并回投影到各自 face support plane）已接入
     - 已扩展 conversion capability：near-equal shared-edge（<eps 顶点扰动）输入下，representative-id 全局目标点平均已参与共享 `BrepVertex` 最终落点，避免首面优先导致的共享顶点位置偏置
+    - 已扩展 conversion capability：support-plane mismatch + near-equal shared-edge 输入下，`ConvertToBrepBody(...)` 经 refit 后仍可保持 representative-average 共享顶点落点与确定性拓扑计数（VertexCount=6 / EdgeCount=7）
   - 已扩展 Brep->mesh 子能力：planar multi-face `BrepBody` 的 representative area-preserving conversion capability
   - 已扩展 Brep->mesh 子能力：planar holed+multi-face 混合 `BrepBody` 的 representative area-preserving conversion capability
   - 已扩展 Brep->mesh 子能力：planar shared-edge 相邻面转换时可全局复用共享 3D 顶点，收敛到 shared-edge feature-preserving 子集

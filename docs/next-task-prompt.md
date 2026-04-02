@@ -109,6 +109,7 @@
 - 已新增 conversion capability：deformed unit cube（单顶点位移导致三面同时非平面）可经 per-face refit + representative-id 复用收敛为有效 closed BrepBody（FaceCount=6/VertexCount=8/EdgeCount=12/IsClosed=true）；gap 文案已纳入 deformed-cube multi-face 子集
 - 已新增 conversion capability：dual-deformed unit cube（双顶点位移导致六面均非平面）可经 per-face refit + representative-id 复用收敛为有效 closed BrepBody（FaceCount=6/VertexCount=8/EdgeCount=12/IsClosed=true）；gap 文案已纳入 dual-displaced-vertices 子集
 - 已扩展 representative-id 全局目标点聚合 capability：near-equal shared-edge（<eps 顶点扰动）输入下，共享 `BrepVertex` 落点由跨面代表点全局平均驱动，不再依赖首个面点
+- 已扩展 support-plane mismatch + near-equal shared-edge capability：`ConvertToBrepBody(...)` 经 refit 后仍可保持 representative-average 共享顶点落点与确定性拓扑计数（VertexCount=6 / EdgeCount=7）
 - 下一步聚焦更一般 topology-changing non-planar repair（超出当前 representative-id + shared-refit + representative-average vertex placement 子集），继续保留 `GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen` 作为总 gap
 
 ### P4-B：aggressive shell policy 分层落地（已完成最小子集）
