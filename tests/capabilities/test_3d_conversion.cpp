@@ -546,3 +546,106 @@ TEST(Conversion3dCapabilityTest, PlanarMultiFaceBrepBodyConvertsToMeshWithExpect
     // Expected area: 4 + 2 = 6.
     assert(std::abs(mesh.mesh.SurfaceArea() - 6.0) < 1e-8);
 }
+
+// Demonstrates planar mixed content conversion: one holed face plus one
+// disjoint face preserve aggregate representative area.
+TEST(Conversion3dCapabilityTest, PlanarHoledAndMultiFaceBrepBodyConvertsToMeshWithExpectedArea)
+{
+    std::vector<BrepVertex> vertices{
+        // Face A outer square (area 16)
+        BrepVertex(Point3d{0.0, 0.0, 0.0}),
+        BrepVertex(Point3d{4.0, 0.0, 0.0}),
+        BrepVertex(Point3d{4.0, 4.0, 0.0}),
+        BrepVertex(Point3d{0.0, 4.0, 0.0}),
+        // Face A hole square (area 4)
+        BrepVertex(Point3d{1.0, 1.0, 0.0}),
+        BrepVertex(Point3d{3.0, 1.0, 0.0}),
+        BrepVertex(Point3d{3.0, 3.0, 0.0}),
+        BrepVertex(Point3d{1.0, 3.0, 0.0}),
+        // Face B rectangle (area 2)
+        BrepVertex(Point3d{5.0, 0.0, 0.0}),
+        BrepVertex(Point3d{6.0, 0.0, 0.0}),
+        BrepVertex(Point3d{6.0, 2.0, 0.0}),
+        BrepVertex(Point3d{5.0, 2.0, 0.0})};
+
+    std::vector<BrepEdge> edges;
+    auto addEdge = [&](std::size_t start, std::size_t end) {
+        const Point3d first = vertices[start].Point();
+        const Point3d second = vertices[end].Point();
+        edges.emplace_back(
+            std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+                Line3d::FromOriginAndDirection(first, second - first),
+                Intervald{0.0, 1.0})),
+            start,
+            end);
+    };
+
+    // Face A outer
+    addEdge(0, 1);
+    addEdge(1, 2);
+    addEdge(2, 3);
+    addEdge(3, 0);
+    // Face A hole
+    addEdge(4, 5);
+    addEdge(5, 6);
+    addEdge(6, 7);
+    addEdge(7, 4);
+    // Face B
+    addEdge(8, 9);
+    addEdge(9, 10);
+    addEdge(10, 11);
+    addEdge(11, 8);
+
+    const BrepLoop outerA({BrepCoedge(0, false), BrepCoedge(1, false), BrepCoedge(2, false), BrepCoedge(3, false)});
+    const BrepLoop holeA({BrepCoedge(4, false), BrepCoedge(5, false), BrepCoedge(6, false), BrepCoedge(7, false)});
+    const BrepLoop outerB({BrepCoedge(8, false), BrepCoedge(9, false), BrepCoedge(10, false), BrepCoedge(11, false)});
+
+    const PlaneSurface planeSurface = PlaneSurface::FromPlane(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, 0.0, 1.0}));
+
+    auto makeTrim = [&](const std::vector<Point2d>& points) {
+        return CurveOnSurface(
+            std::shared_ptr<Surface>(planeSurface.Clone().release()),
+            Polyline2d(points, PolylineClosure::Closed));
+    };
+
+    const CurveOnSurface outerTrimA = makeTrim({
+        Point2d{0.0, 0.0},
+        Point2d{4.0, 0.0},
+        Point2d{4.0, 4.0},
+        Point2d{0.0, 4.0},
+    });
+    const CurveOnSurface holeTrimA = makeTrim({
+        Point2d{1.0, 1.0},
+        Point2d{3.0, 1.0},
+        Point2d{3.0, 3.0},
+        Point2d{1.0, 3.0},
+    });
+    const CurveOnSurface outerTrimB = makeTrim({
+        Point2d{5.0, 0.0},
+        Point2d{6.0, 0.0},
+        Point2d{6.0, 2.0},
+        Point2d{5.0, 2.0},
+    });
+
+    const BrepFace faceA(
+        std::shared_ptr<Surface>(planeSurface.Clone().release()),
+        outerA,
+        {holeA},
+        outerTrimA,
+        {holeTrimA});
+    const BrepFace faceB(
+        std::shared_ptr<Surface>(planeSurface.Clone().release()),
+        outerB,
+        {},
+        outerTrimB,
+        {});
+    const BrepBody body(vertices, edges, {BrepShell({faceA, faceB}, false)});
+    assert(body.IsValid());
+
+    const PolyhedronMeshConversion3d mesh = ConvertToTriangleMesh(body);
+    assert(mesh.success);
+    assert(mesh.mesh.IsValid());
+    // Expected area: (16 - 4) + 2 = 14.
+    assert(std::abs(mesh.mesh.SurfaceArea() - 14.0) < 1e-8);
+}
