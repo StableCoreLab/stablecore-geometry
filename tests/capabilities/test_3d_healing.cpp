@@ -199,3 +199,58 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseRecoverableSingleFaceShel
     assert(healed.body.ShellAt(0).IsClosed());
     assert(healed.body.FaceCount() == 2);
 }
+
+// Demonstrates aggressive policy also closes a recoverable planar multi-face
+// open-sheet shell where each edge is single-use before repair.
+TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseRecoverableMultiFaceOpenSheet)
+{
+    std::vector<BrepVertex> vertices{
+        BrepVertex(Point3d{0.0, 0.0, 0.0}),
+        BrepVertex(Point3d{1.0, 0.0, 0.0}),
+        BrepVertex(Point3d{1.0, 1.0, 0.0}),
+        BrepVertex(Point3d{0.0, 1.0, 0.0}),
+        BrepVertex(Point3d{2.0, 0.0, 0.0}),
+        BrepVertex(Point3d{2.0, 1.0, 0.0})};
+
+    std::vector<BrepEdge> edges;
+    auto addEdge = [&](std::size_t start, std::size_t end) {
+        const Point3d first = vertices[start].Point();
+        const Point3d second = vertices[end].Point();
+        edges.emplace_back(
+            std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+                Line3d::FromOriginAndDirection(first, second - first),
+                Intervald{0.0, 1.0})),
+            start,
+            end);
+    };
+
+    // Face A edges: 0-1-2-3-0
+    addEdge(0, 1);
+    addEdge(1, 2);
+    addEdge(2, 3);
+    addEdge(3, 0);
+    // Face B edges: 1-4-5-2-1 (does not share edges with face A)
+    addEdge(1, 4);
+    addEdge(4, 5);
+    addEdge(5, 2);
+    addEdge(2, 1);
+
+    const BrepLoop outerA({BrepCoedge(0, false), BrepCoedge(1, false), BrepCoedge(2, false), BrepCoedge(3, false)});
+    const BrepLoop outerB({BrepCoedge(4, false), BrepCoedge(5, false), BrepCoedge(6, false), BrepCoedge(7, false)});
+    const PlaneSurface planeSurface = PlaneSurface::FromPlane(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, 0.0, 1.0}));
+
+    const BrepFace faceA(std::shared_ptr<Surface>(planeSurface.Clone().release()), outerA);
+    const BrepFace faceB(std::shared_ptr<Surface>(planeSurface.Clone().release()), outerB);
+    const BrepBody openBody(vertices, edges, {BrepShell({faceA, faceB}, false)});
+    assert(openBody.IsValid());
+    assert(!openBody.ShellAt(0).IsClosed());
+    assert(openBody.FaceCount() == 2);
+
+    const BrepHealing3d healed = Heal(openBody, geometry::sdk::GeometryTolerance3d{}, HealingPolicy3d::Aggressive);
+    assert(healed.success);
+    assert(healed.body.IsValid());
+    assert(healed.body.ShellCount() == 1);
+    assert(healed.body.ShellAt(0).IsClosed());
+    assert(healed.body.FaceCount() == 4);
+}

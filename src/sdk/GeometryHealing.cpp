@@ -258,39 +258,74 @@ HealingIssue3d MapMeshRepairIssue(const MeshRepairIssue3d issue)
             continue;
         }
 
-        if (shell.FaceCount() != 1)
+        std::map<std::size_t, std::size_t> edgeUseCount;
+        bool eligible = true;
+        for (std::size_t faceIndex = 0; faceIndex < shell.FaceCount() && eligible; ++faceIndex)
+        {
+            const BrepFace face = shell.FaceAt(faceIndex);
+            if (face.HoleCount() != 0 || dynamic_cast<const PlaneSurface*>(face.SupportSurface()) == nullptr)
+            {
+                eligible = false;
+                break;
+            }
+
+            for (const BrepCoedge& coedge : face.OuterLoop().Coedges())
+            {
+                ++edgeUseCount[coedge.EdgeIndex()];
+            }
+        }
+
+        if (!eligible || edgeUseCount.empty())
         {
             repairedShells.push_back(shell);
             continue;
         }
 
-        const BrepFace frontFace = shell.FaceAt(0);
-        if (frontFace.HoleCount() != 0)
+        for (const auto& [_, count] : edgeUseCount)
+        {
+            if (count != 1)
+            {
+                eligible = false;
+                break;
+            }
+        }
+
+        if (!eligible)
         {
             repairedShells.push_back(shell);
             continue;
         }
 
-        if (dynamic_cast<const PlaneSurface*>(frontFace.SupportSurface()) == nullptr)
+        std::vector<BrepFace> closedFaces;
+        closedFaces.reserve(shell.FaceCount() * 2);
+        for (std::size_t faceIndex = 0; faceIndex < shell.FaceCount(); ++faceIndex)
+        {
+            const BrepFace frontFace = shell.FaceAt(faceIndex);
+            closedFaces.push_back(frontFace);
+
+            const BrepLoop reversedOuter = ReversedLoop(frontFace.OuterLoop());
+            BrepFace backFace(
+                std::shared_ptr<Surface>(frontFace.SupportSurface()->Clone().release()),
+                reversedOuter,
+                {},
+                frontFace.OuterTrim(),
+                {});
+            if (!backFace.IsValid(tolerance))
+            {
+                eligible = false;
+                break;
+            }
+
+            closedFaces.push_back(std::move(backFace));
+        }
+
+        if (!eligible)
         {
             repairedShells.push_back(shell);
             continue;
         }
 
-        const BrepLoop reversedOuter = ReversedLoop(frontFace.OuterLoop());
-        BrepFace backFace(
-            std::shared_ptr<Surface>(frontFace.SupportSurface()->Clone().release()),
-            reversedOuter,
-            {},
-            frontFace.OuterTrim(),
-            {});
-        if (!backFace.IsValid(tolerance))
-        {
-            repairedShells.push_back(shell);
-            continue;
-        }
-
-        repairedShells.emplace_back(std::vector<BrepFace>{frontFace, std::move(backFace)}, true);
+        repairedShells.emplace_back(std::move(closedFaces), true);
         changed = true;
     }
 
