@@ -48,7 +48,7 @@
 - `tests/capabilities/test_3d_healing.cpp`
   - 保守 `Heal(PolyhedronBody)` 对已合法的单位立方体不改变 face count 且 `HealingIssue3d::None`；`Heal(BrepBody)` 可对 plane-surface + line-edge 且缺失 trim 的 face 进行 trim 回填，并覆盖带孔 face 的 outer/hole trims 同时回填；`Heal(..., policy=Aggressive)` 覆盖可恢复 open planar single/multi-face sheet（含 holed shell）的确定性闭壳子策略
 - `tests/capabilities/test_3d_conversion.cpp`
-  - 单位立方体（6 quad faces）经 `ConvertToTriangleMesh(PolyhedronBody)` 得到 12 triangles，`SurfaceArea ≈ 6.0`；并可经 `ConvertToBrepBody(PolyhedronBody)` 得到 `FaceCount() == 6` 的有效 `BrepBody`，覆盖 affine-skew 非轴对齐子类输入、support-plane mismatch 可修复子场景（support-plane refit），以及 mild non-planar outer/hole loop 顶点投影修复子场景；同时覆盖 planar holed `BrepBody` 到 mesh 的面积保持子场景
+  - 单位立方体（6 quad faces）经 `ConvertToTriangleMesh(PolyhedronBody)` 得到 12 triangles，`SurfaceArea ≈ 6.0`；并可经 `ConvertToBrepBody(PolyhedronBody)` 得到 `FaceCount() == 6` 的有效 `BrepBody`，覆盖 affine-skew 非轴对齐子类输入、support-plane mismatch 可修复子场景（support-plane refit）、mild non-planar outer/hole loop 顶点投影修复子场景，以及 leading collinear loop 顶点下的稳健法向回退；同时覆盖 planar holed `BrepBody` 到 mesh 的面积保持子场景
 
 ## 共享测试支持
 
@@ -64,7 +64,7 @@
 - `tests/gaps/test_3d_healing_gaps.cpp`
   - 记录超出 planar open-sheet closure（含 holed shell）子策略的激进修复策略、mesh/body 联合多阶段修复仍未闭合
 - `tests/gaps/test_3d_conversion_gaps.cpp`
-  - 记录高保真 Brep->mesh 特征保持（超出 planar-holed area-preserving 子集）、鲁棒 non-planar polyhedron->Brep repair（超出 affine-planar + support-plane-refit + mild outer/hole loop-projection 子集）仍未闭合
+  - 记录高保真 Brep->mesh 特征保持（超出 planar-holed area-preserving 子集）、鲁棒 non-planar polyhedron->Brep repair（超出 affine-planar + support-plane-refit + mild outer/hole loop-projection + collinear-leading-loop 子集）仍未闭合
 - 2D 历史 gap 场景已全部转正到 `tests/capabilities`；当前 `tests/gaps` 专注 3D P1 骨架跟踪
 
 ## CMake / gtest 说明

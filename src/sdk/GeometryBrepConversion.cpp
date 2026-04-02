@@ -190,11 +190,31 @@ namespace
         return false;
     }
 
-    const Point3d p0 = outer.VertexAt(0);
-    const Point3d p1 = outer.VertexAt(1);
-    const Point3d p2 = outer.VertexAt(2);
-    const Vector3d normal = Cross(p1 - p0, p2 - p0);
-    if (normal.Length() <= eps)
+    bool foundSupport = false;
+    Point3d p0{};
+    Vector3d normal{};
+    for (std::size_t i = 0; i + 2 < outer.VertexCount() && !foundSupport; ++i)
+    {
+        const Point3d a = outer.VertexAt(i);
+        for (std::size_t j = i + 1; j + 1 < outer.VertexCount() && !foundSupport; ++j)
+        {
+            const Point3d b = outer.VertexAt(j);
+            for (std::size_t k = j + 1; k < outer.VertexCount(); ++k)
+            {
+                const Point3d c = outer.VertexAt(k);
+                const Vector3d candidateNormal = Cross(b - a, c - a);
+                if (candidateNormal.Length() > eps)
+                {
+                    p0 = a;
+                    normal = candidateNormal;
+                    foundSupport = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (!foundSupport)
     {
         return false;
     }

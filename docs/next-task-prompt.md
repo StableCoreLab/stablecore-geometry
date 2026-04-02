@@ -30,7 +30,7 @@
 | tests/capabilities/test_3d_section.cpp | Section3dCapabilityTest | Section+Topology+Components 倾斜截面 + non-axis-aligned contour count |
 | tests/capabilities/test_3d_brep.cpp | Brep3dCapabilityTest | RebuildSectionBrepBody 单面 BrepBody + RebuildSectionBrepBodies 双组件重建 + coedge-loop 最小编辑链路 |
 | tests/capabilities/test_3d_healing.cpp | Healing3dCapabilityTest | Heal(PolyhedronBody) 幂等 6 faces + Heal(BrepBody) trim 回填（含 holed face） + Aggressive 平面 open-sheet/holed-shell 闭壳子策略 |
-| tests/capabilities/test_3d_conversion.cpp | Conversion3dCapabilityTest | ConvertToTriangleMesh 12 triangles area6.0 + ConvertToBrepBody FaceCount=6 + affine-skew 子类 + support-plane refit + mild outer/hole loop-projection 子场景 + planar holed Brep->mesh 面积保持 |
+| tests/capabilities/test_3d_conversion.cpp | Conversion3dCapabilityTest | ConvertToTriangleMesh 12 triangles area6.0 + ConvertToBrepBody FaceCount=6 + affine-skew 子类 + support-plane refit + mild outer/hole loop-projection + collinear-leading-loop 子场景 + planar holed Brep->mesh 面积保持 |
 
 **仍为 gap 的 3D 场景（tests/gaps/ 中已用 GTEST_SKIP 标记）：**
 
@@ -43,7 +43,7 @@
 | Healing3dGapTest::AggressiveShellRepairPolicyRemainsOpen | 激进 shell 修复策略（超出 planar open-sheet/holed-shell closure 子策略） |
 | Healing3dGapTest::MultiStepMeshBodyJointHealingRemainsOpen | mesh/body 联合多阶段修复 |
 | Conversion3dGapTest::HighFidelityBrepToMeshFeaturePreservationRemainsOpen | 高保真 Brep->mesh 特征保持（超出 planar-holed area-preserving 子集） |
-| Conversion3dGapTest::GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen | 通用非平面 polyhedron->Brep 转换（超出 affine-skew + support-plane-refit + mild outer/hole loop-projection 子集） |
+| Conversion3dGapTest::GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen | 通用非平面 polyhedron->Brep 转换（超出 affine-skew + support-plane-refit + mild outer/hole loop-projection + collinear-leading-loop 子集） |
 
 ---
 

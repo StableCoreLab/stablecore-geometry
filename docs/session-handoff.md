@@ -331,6 +331,7 @@
 - `tests/capabilities/test_3d_conversion.cpp` 已扩展 mild non-planar loop 输入的 `ConvertToBrepBody(...)` repair capability（refit-plane 投影）
 - `tests/capabilities/test_3d_conversion.cpp` 已扩展 mild non-planar hole loop 输入的 `ConvertToBrepBody(...)` repair capability（refit-plane 投影）
 - `tests/capabilities/test_3d_conversion.cpp` 已新增 planar holed `BrepBody -> TriangleMesh` 的面积保持子场景
+- `tests/capabilities/test_3d_conversion.cpp` 已扩展 leading collinear loop 顶点输入的 `ConvertToBrepBody(...)` 稳健法向回退子场景
 - `BrepFace` 已接上基于 trim/UV triangulation 的最小 `TriangleMesh` conversion
 - `GeometryMeasure::Area(BrepFace)` 已改为消费 `BrepFace -> TriangleMesh`，因此不再局限于平面 trim 面积
 - 已新增 `GeometryBrepConversion`，支持 `BrepFace -> PolyhedronFace3d` 与 `BrepBody -> PolyhedronBody` 的平面 trim 回建桥

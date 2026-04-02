@@ -144,6 +144,21 @@ PolyhedronBody BuildMildlyNonPlanarHoledFaceBody()
         {PolyhedronLoop3d(std::move(holeVertices))});
     return PolyhedronBody({face});
 }
+
+PolyhedronBody BuildSupportPlaneMismatchedCollinearLeadingLoopBody()
+{
+    const PolyhedronFace3d face(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.2}, Vector3d{0.0, 0.0, 1.0}),
+        PolyhedronLoop3d(
+            {
+                Point3d{0.0, 0.0, 0.0},
+                Point3d{1.0, 0.0, 0.0},
+                Point3d{2.0, 0.0, 0.0},
+                Point3d{2.0, 1.0, 0.0},
+                Point3d{0.0, 1.0, 0.0},
+            }));
+    return PolyhedronBody({face});
+}
 } // namespace
 
 // Demonstrates that a closed PolyhedronBody (unit cube, 6 quad faces) converts
@@ -232,6 +247,20 @@ TEST(Conversion3dCapabilityTest, MildlyNonPlanarHoleLoopCanBeRepairedToBrepBody)
     assert(!nonPlanarHoledBody.IsValid());
 
     const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(nonPlanarHoledBody);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 1);
+}
+
+// Demonstrates refit-plane repair remains robust when leading loop vertices
+// are collinear and cannot directly define a support normal.
+TEST(Conversion3dCapabilityTest, CollinearLeadingLoopStillRepairsToBrepBody)
+{
+    const PolyhedronBody body = BuildSupportPlaneMismatchedCollinearLeadingLoopBody();
+    assert(!body.IsValid());
+
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
     assert(result.success);
     assert(result.issue == BrepConversionIssue3d::None);
     assert(result.body.IsValid());
