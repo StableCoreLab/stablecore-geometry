@@ -89,6 +89,7 @@
   - 已扩展 `test_3d_brep.cpp`：`RebuildSectionBody` 单面 PolyhedronBody rebuild 与 `RebuildSectionBodies` 双组件 Polyhedron 重建转正为 capability
   - 已扩展 `test_3d_brep.cpp`：`RebuildSectionBrepBody` / `RebuildSectionBrepBodies` 输出补齐 open-shell 语义断言（`ShellCount==1` 且 `IsClosed==false`）
   - 已扩展 brep editing 子能力：最小 loop->face->shell->body ownership-consistent replacement workflow 已转正为 capability
+  - 已扩展 brep editing 子能力：multi-face closed-shell（unit-cube Brep）上的 no-op `ReplaceOuterLoop -> ReplaceFace -> ReplaceShell` 也可稳定保持 body/shell 有效性与 closed 语义
   - 已新增 `test_3d_healing.cpp`：保守 `Heal(PolyhedronBody)` 幂等性转正为 capability
   - 已新增 `test_3d_conversion.cpp`：`ConvertToTriangleMesh(PolyhedronBody)` 12 triangles / area≈6.0 转正为 capability
 - 2026-04-02：

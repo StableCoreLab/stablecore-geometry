@@ -38,7 +38,7 @@
 | --- | --- |
 | Section3dGapTest::NonPlanarDominantSectionGraphRemainsOpen | 非平面主导下的歧义 contour stitching |
 | Section3dGapTest::FaceMergeSemanticsAfterSectionRemainsOpen | 超出已覆盖（Polyhedron/Brep）相邻 coplanar fragment union 子集的 coplanar fragment merge 语义 |
-| Brep3dGapTest::CoedgeLoopOwnershipEditingWorkflowRemainsOpen | 超出最小 loop->face->shell->body replacement 子集的 coedge-loop ownership/关联拓扑级编辑语义 |
+| Brep3dGapTest::CoedgeLoopOwnershipEditingWorkflowRemainsOpen | 超出已覆盖（single-face + multi-face closed-shell no-op replacement）子集的 coedge-loop ownership/关联拓扑级编辑语义 |
 | Brep3dGapTest::NonPlanarTrimmedFaceTopologyRepairRemainsOpen | non-planar trimmed face shell repair |
 | Healing3dGapTest::AggressiveShellRepairPolicyRemainsOpen | 激进 shell 修复策略（超出 planar open-sheet/holed-shell closure 子策略） |
 | Healing3dGapTest::MultiStepMeshBodyJointHealingRemainsOpen | mesh/body 联合多阶段修复 |

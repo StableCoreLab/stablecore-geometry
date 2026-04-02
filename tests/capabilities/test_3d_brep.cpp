@@ -9,10 +9,12 @@ using geometry::sdk::BrepFace;
 using geometry::sdk::BrepFaceEdit3d;
 using geometry::sdk::BrepShell;
 using geometry::sdk::BrepBody;
+using geometry::sdk::BrepConversionIssue3d;
 using geometry::sdk::BrepBodyEdit3d;
 using geometry::sdk::BrepLoopEdit3d;
 using geometry::sdk::BrepLoopEditIssue3d;
 using geometry::sdk::BrepShellEdit3d;
+using geometry::sdk::ConvertToBrepBody;
 using geometry::sdk::FlipCoedgeDirection;
 using geometry::sdk::InsertCoedge;
 using geometry::sdk::Plane;
@@ -296,4 +298,46 @@ TEST(Brep3dCapabilityTest, OwnershipConsistentEditingWorkflowRoundTripsIntoBody)
         assert(roundTrippedLoop.CoedgeAt(i).EdgeIndex() == originalLoop.CoedgeAt(i).EdgeIndex());
         assert(roundTrippedLoop.CoedgeAt(i).Reversed() == originalLoop.CoedgeAt(i).Reversed());
     }
+}
+
+// Demonstrates the ownership-consistent replacement workflow is also stable on
+// a non-trivial multi-face closed shell (unit-cube Brep), not only on a
+// single-face rebuilt section body.
+TEST(Brep3dCapabilityTest, OwnershipReplacementWorkflowOnMultiFaceClosedShell)
+{
+    const PolyhedronBody cubeBody = geometry::test::BuildUnitCubeBody();
+    assert(cubeBody.IsValid());
+
+    const auto converted = ConvertToBrepBody(cubeBody);
+    assert(converted.success);
+    assert(converted.issue == BrepConversionIssue3d::None);
+    assert(converted.body.IsValid());
+    assert(converted.body.ShellCount() == 1);
+    assert(converted.body.ShellAt(0).IsClosed());
+    assert(converted.body.FaceCount() == 6);
+
+    const BrepBody originalBody = converted.body;
+    const BrepShell originalShell = originalBody.ShellAt(0);
+    const BrepFace firstFace = originalShell.FaceAt(0);
+    const BrepLoop firstOuter = firstFace.OuterLoop();
+    assert(firstOuter.IsValid());
+
+    // No-op outer-loop replacement still exercises loop->face->shell->body
+    // ownership propagation in a multi-face shell.
+    const BrepFaceEdit3d sameFace = ReplaceOuterLoop(firstFace, firstOuter);
+    assert(sameFace.success);
+    assert(sameFace.face.IsValid());
+
+    const BrepShellEdit3d shellEdited = ReplaceFace(originalShell, 0, sameFace.face);
+    assert(shellEdited.success);
+    assert(shellEdited.shell.IsValid());
+    assert(shellEdited.shell.FaceCount() == originalShell.FaceCount());
+    assert(shellEdited.shell.IsClosed() == originalShell.IsClosed());
+
+    const BrepBodyEdit3d bodyEdited = ReplaceShell(originalBody, 0, shellEdited.shell);
+    assert(bodyEdited.success);
+    assert(bodyEdited.body.IsValid());
+    assert(bodyEdited.body.ShellCount() == 1);
+    assert(bodyEdited.body.ShellAt(0).IsClosed());
+    assert(bodyEdited.body.FaceCount() == 6);
 }

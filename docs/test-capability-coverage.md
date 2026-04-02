@@ -52,6 +52,7 @@
   - 覆盖 `RebuildSectionBody(...)` / `RebuildSectionBodies(...)` 的 Polyhedron 重建子路径：倾斜截面可重建为单面 `PolyhedronBody`，双组件截面可稳定重建为 2 个独立 `PolyhedronBody`
   - 覆盖 Brep section rebuild 壳体语义断言：`RebuildSectionBrepBody(...)` 与 `RebuildSectionBrepBodies(...)` 输出显式满足 `ShellCount()==1 && IsClosed()==false`
   - 覆盖最小 ownership-consistent 编辑链路：`ReplaceOuterLoop -> ReplaceFace -> ReplaceShell` 可把 loop 级编辑稳定传播回有效 `BrepBody`
+  - 覆盖 ownership replacement 在 multi-face closed-shell 的子路径：unit-cube Brep 上 no-op `ReplaceOuterLoop -> ReplaceFace -> ReplaceShell` 后仍保持 `ShellCount=1 / FaceCount=6 / IsClosed=true`
 - `tests/capabilities/test_3d_healing.cpp`
   - 保守 `Heal(PolyhedronBody)` 对已合法的单位立方体不改变 face count 且 `HealingIssue3d::None`；`Heal(BrepBody)` 可对 plane-surface + line-edge 且缺失 trim 的 face 进行 trim 回填，并覆盖带孔 face 的 outer/hole trims 同时回填；`Heal(..., policy=Aggressive)` 覆盖可恢复 open planar single/multi-face sheet（含 holed shell）的确定性闭壳子策略，并覆盖 aggressive 闭壳与 trim-backfill 的组合病理子场景
   - `Heal(..., policy=Aggressive)` 可在同一个 body 中同时闭合多个可恢复 open shell，并保持确定性拓扑结果
@@ -101,7 +102,7 @@
 - `tests/gaps/test_3d_section_gaps.cpp`
   - 记录 non-planar dominant 下的歧义 non-manifold contour stitching 与更高阶 coplanar fragment merge 语义仍未闭合（相邻 coplanar union 子集已在 Polyhedron/Brep 路径覆盖）
 - `tests/gaps/test_3d_brep_gaps.cpp`
-  - 记录 coedge-loop ownership 编辑链路、non-planar trimmed face topology repair 仍未闭合
+  - 记录 coedge-loop ownership 编辑链路、non-planar trimmed face topology repair 仍未闭合（ownership gap 已覆盖 single-face + multi-face closed-shell no-op replacement 子集）
 - `tests/gaps/test_3d_healing_gaps.cpp`
   - 记录超出 planar open-sheet closure（含 holed shell）子策略的激进修复策略、mesh/body 联合多阶段修复仍未闭合
 - `tests/gaps/test_3d_conversion_gaps.cpp`

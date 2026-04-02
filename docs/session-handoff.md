@@ -273,6 +273,13 @@
 - 输入为 dual-deformed unit cube（`v0` 与 `v6` 同时位移，保留原 axis-aligned support planes）；输出稳定满足 `FaceCount=6 / VertexCount=8 / EdgeCount=12 / ShellCount=1 / IsClosed=true`。
 - 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 dual-displaced-vertices 子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
+## 本轮新增（2026-04-02，brep-ownership-multiface-closed-shell-capability）
+
+- 已扩展 brep editing capability：`tests/capabilities/test_3d_brep.cpp` 新增 `OwnershipReplacementWorkflowOnMultiFaceClosedShell`，把 ownership-consistent replacement workflow 从单面 section body 扩展到多面 closed shell（unit-cube Brep）场景。
+- 能力路径：`ConvertToBrepBody(unit cube)` -> `ReplaceOuterLoop` -> `ReplaceFace` -> `ReplaceShell`，验证 body/shell 仍保持有效且 `ShellCount=1 / FaceCount=6 / IsClosed=true`。
+- 已同步收敛 `tests/gaps/test_3d_brep_gaps.cpp` 文案，明确该 gap 仅剩“超出 single-face + multi-face no-op replacement 子集”的更高阶 ownership 语义。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 ## 本轮新增（2026-04-02，continuation-closed-shell-tetrahedron）
 
 - 已新增 conversion capability：`ConvertToBrepBody(...)` 在 tiny-scale closed-shell tetrahedron（4 triangular faces, all support planes mismatched）输入上，经 per-face refit 修复后可收敛为合法 closed BrepBody（IsClosed=true / VertexCount=4 / EdgeCount=6）。
