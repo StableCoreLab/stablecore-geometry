@@ -43,6 +43,7 @@
   - touching / intersecting / basic contains / equal、duplicate-equal topology parent tie-break 当前已具备能力
 - `tests/capabilities/test_3d_section.cpp`
   - 倾斜切平面下 `Section(...) + BuildSectionTopology(...) + BuildSectionComponents(...)` 的单区域闭环能力；并覆盖 non-axis-aligned multi-face 截面的稳定 contour/polygon 计数
+  - 覆盖 coplanar 相邻 face fragment 在 `Section(...)` 中合并为单 polygon 的代表性 face-merge 子集
 - `tests/capabilities/test_3d_brep.cpp`
   - 倾斜截面经过 `RebuildSectionBrepBody(...)` 得到只读 topology 完整的单面 `BrepBody`（1 shell / 1 face / 4 coedge loop），双立方体截面经 `RebuildSectionBrepBodies(...)` 稳定拆分为 2 个独立 body；并新增最小 coedge-loop 编辑链路 `InsertCoedge -> FlipCoedgeDirection -> RemoveCoedge`
 - `tests/capabilities/test_3d_healing.cpp`

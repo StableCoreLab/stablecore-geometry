@@ -37,7 +37,7 @@
 | Gap 测试名 | 剩余能力点 |
 | --- | --- |
 | Section3dGapTest::NonPlanarDominantSectionGraphRemainsOpen | 非平面主导下的歧义 contour stitching |
-| Section3dGapTest::FaceMergeSemanticsAfterSectionRemainsOpen | coplanar fragment merge 语义 |
+| Section3dGapTest::FaceMergeSemanticsAfterSectionRemainsOpen | 超出相邻 coplanar fragment union 子集的 coplanar fragment merge 语义 |
 | Brep3dGapTest::CoedgeLoopOwnershipEditingWorkflowRemainsOpen | coedge-loop ownership/关联拓扑级编辑语义 |
 | Brep3dGapTest::NonPlanarTrimmedFaceTopologyRepairRemainsOpen | non-planar trimmed face shell repair |
 | Healing3dGapTest::AggressiveShellRepairPolicyRemainsOpen | 激进 shell 修复策略（超出 planar open-sheet/holed-shell closure 子策略） |
@@ -59,6 +59,7 @@
 
 - P2-A：non-axis-aligned multi-face section contour count capability 已落地
 - P2-B：coedge-loop editing 最小 non-trivial capability 已落地
+- P2-C：coplanar 相邻 face fragment 在 `Section(...)` 中合并为单 polygon 的 face-merge 子样例已落地
 
 ### P3 已完成（本次）
 

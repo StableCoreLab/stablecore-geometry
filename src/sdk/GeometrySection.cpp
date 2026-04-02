@@ -10,6 +10,7 @@
 #include "sdk/GeometryMeshConversion.h"
 #include "sdk/GeometryProjection.h"
 #include "sdk/GeometryRelation.h"
+#include "sdk/GeometryBoolean.h"
 #include "sdk/GeometryTopology.h"
 #include "sdk/LineCurve3d.h"
 #include "sdk/PlaneSurface.h"
@@ -495,6 +496,94 @@ void EnsureClockwise(
     return true;
 }
 
+void RebuildCoplanarSectionGeometryFromPolygons(
+    PolyhedronSection3d& section,
+    double eps)
+{
+    section.contours.clear();
+    section.segments.clear();
+
+    for (const Polygon2d& polygon : section.polygons)
+    {
+        const Polyline2d outer = polygon.OuterRing();
+        std::vector<Point3d> outer3d;
+        outer3d.reserve(outer.PointCount());
+        for (std::size_t i = 0; i < outer.PointCount(); ++i)
+        {
+            outer3d.push_back(LiftFromSectionPlane(outer.PointAt(i), section.origin, section.uAxis, section.vAxis));
+        }
+        section.contours.push_back(SectionPolyline3d{true, outer3d});
+        for (std::size_t i = 0; i < outer3d.size(); ++i)
+        {
+            const std::size_t next = (i + 1) % outer3d.size();
+            if (!ContainsUndirectedSegment(section.segments, outer3d[i], outer3d[next], eps))
+            {
+                section.segments.push_back(LineSegment3d::FromStartEnd(outer3d[i], outer3d[next]));
+            }
+        }
+
+        for (std::size_t holeIndex = 0; holeIndex < polygon.HoleCount(); ++holeIndex)
+        {
+            const Polyline2d hole = polygon.HoleAt(holeIndex);
+            std::vector<Point3d> hole3d;
+            hole3d.reserve(hole.PointCount());
+            for (std::size_t i = 0; i < hole.PointCount(); ++i)
+            {
+                hole3d.push_back(LiftFromSectionPlane(hole.PointAt(i), section.origin, section.uAxis, section.vAxis));
+            }
+            section.contours.push_back(SectionPolyline3d{true, hole3d});
+            for (std::size_t i = 0; i < hole3d.size(); ++i)
+            {
+                const std::size_t next = (i + 1) % hole3d.size();
+                if (!ContainsUndirectedSegment(section.segments, hole3d[i], hole3d[next], eps))
+                {
+                    section.segments.push_back(LineSegment3d::FromStartEnd(hole3d[i], hole3d[next]));
+                }
+            }
+        }
+    }
+}
+
+void MergeCoplanarSectionPolygons(
+    PolyhedronSection3d& section,
+    double eps)
+{
+    if (section.polygons.size() < 2)
+    {
+        return;
+    }
+
+    MultiPolygon2d merged;
+    for (const Polygon2d& polygon : section.polygons)
+    {
+        if (merged.IsEmpty())
+        {
+            merged.Add(NormalizePolygonOrientation(polygon));
+            continue;
+        }
+
+        MultiPolygon2d next;
+        for (std::size_t i = 0; i < merged.Count(); ++i)
+        {
+            const MultiPolygon2d unioned = Union(merged.PolygonAt(i), polygon, eps);
+            for (std::size_t j = 0; j < unioned.Count(); ++j)
+            {
+                next.Add(unioned.PolygonAt(j));
+            }
+        }
+        merged = std::move(next);
+    }
+
+    std::vector<Polygon2d> polygons;
+    polygons.reserve(merged.Count());
+    for (std::size_t i = 0; i < merged.Count(); ++i)
+    {
+        polygons.push_back(NormalizePolygonOrientation(merged.PolygonAt(i)));
+    }
+    section.polygons = std::move(polygons);
+    RebuildCoplanarSectionGeometryFromPolygons(section, eps);
+}
+
 void AddUniquePlaneEdgeSegments(
     const PolyhedronLoop3d& loop,
     const Plane& plane,
@@ -721,6 +810,7 @@ PolyhedronSection3d Section(
 
     if (hasCoplanarFace)
     {
+        MergeCoplanarSectionPolygons(result, tolerance.distanceEpsilon);
         result.success = true;
         return result;
     }
