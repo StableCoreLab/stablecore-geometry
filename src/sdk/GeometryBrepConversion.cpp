@@ -415,6 +415,7 @@ void BuildBodyLoopRepresentativeIds(
     BrepLoop& loop,
     std::vector<Point2d>& uvPoints,
     const std::vector<std::size_t>* representativeIds,
+    const std::unordered_map<std::size_t, Point3d>* representativeTargetPoints,
     std::unordered_map<std::size_t, std::size_t>* representativeToVertexIndex,
     double eps)
 {
@@ -443,7 +444,17 @@ void BuildBodyLoopRepresentativeIds(
             }
             else
             {
-                const std::size_t vertexIndex = FindOrAddBrepVertex(point, vertices, eps);
+                Point3d representativePoint = point;
+                if (representativeTargetPoints != nullptr)
+                {
+                    const auto representativePointIt = representativeTargetPoints->find(representativeId);
+                    if (representativePointIt != representativeTargetPoints->end())
+                    {
+                        representativePoint = representativePointIt->second;
+                    }
+                }
+
+                const std::size_t vertexIndex = FindOrAddBrepVertex(representativePoint, vertices, eps);
                 (*representativeToVertexIndex)[representativeId] = vertexIndex;
                 loopVertexIndices.push_back(vertexIndex);
             }
@@ -484,6 +495,70 @@ void BuildBodyLoopRepresentativeIds(
     uvPoints.clear();
     uvPoints.reserve(vertexCount);
     return loop.IsValid();
+}
+
+[[nodiscard]] bool ComputeRepresentativeTargetPoints(
+    const PolyhedronBody& body,
+    const std::vector<FaceLoopRepresentativeIds>& representativeIds,
+    std::unordered_map<std::size_t, Point3d>& representativeTargetPoints)
+{
+    representativeTargetPoints.clear();
+    if (representativeIds.size() != body.FaceCount())
+    {
+        return false;
+    }
+
+    std::unordered_map<std::size_t, RepresentativePointAccumulator> accumulators;
+
+    auto accumulateLoop = [&](const PolyhedronLoop3d& loop, const std::vector<std::size_t>& loopIds) {
+        if (loop.VertexCount() != loopIds.size())
+        {
+            return false;
+        }
+
+        for (std::size_t i = 0; i < loop.VertexCount(); ++i)
+        {
+            const Point3d point = loop.VertexAt(i);
+            auto& accumulator = accumulators[loopIds[i]];
+            accumulator.sum = accumulator.sum + (point - Point3d{});
+            ++accumulator.count;
+        }
+
+        return true;
+    };
+
+    for (std::size_t faceIndex = 0; faceIndex < body.FaceCount(); ++faceIndex)
+    {
+        const PolyhedronFace3d face = body.FaceAt(faceIndex);
+        const FaceLoopRepresentativeIds& ids = representativeIds[faceIndex];
+
+        if (!accumulateLoop(face.OuterLoop(), ids.outer) || ids.holes.size() != face.HoleCount())
+        {
+            return false;
+        }
+
+        for (std::size_t holeIndex = 0; holeIndex < face.HoleCount(); ++holeIndex)
+        {
+            if (!accumulateLoop(face.HoleAt(holeIndex), ids.holes[holeIndex]))
+            {
+                return false;
+            }
+        }
+    }
+
+    representativeTargetPoints.reserve(accumulators.size());
+    for (const auto& [id, accumulator] : accumulators)
+    {
+        if (accumulator.count == 0)
+        {
+            return false;
+        }
+
+        const Vector3d average = accumulator.sum / static_cast<double>(accumulator.count);
+        representativeTargetPoints.emplace(id, Point3d{average.x, average.y, average.z});
+    }
+
+    return true;
 }
 
 [[nodiscard]] bool ComputeSharedShellClosed(
@@ -1007,6 +1082,11 @@ PolyhedronBrepBodyConversion3d ConvertToBrepBody(const PolyhedronBody& body, dou
     std::vector<BrepEdge> edges;
     std::vector<BrepFace> faces;
     std::unordered_map<std::size_t, std::size_t> representativeToVertexIndex;
+    std::unordered_map<std::size_t, Point3d> representativeTargetPoints;
+    if (!ComputeRepresentativeTargetPoints(sourceBody, representativeIds, representativeTargetPoints))
+    {
+        return {false, BrepConversionIssue3d::InvalidBody, 0, {}};
+    }
     faces.reserve(sourceBody.FaceCount());
 
     for (std::size_t faceIndex = 0; faceIndex < sourceBody.FaceCount(); ++faceIndex)
@@ -1039,6 +1119,7 @@ PolyhedronBrepBodyConversion3d ConvertToBrepBody(const PolyhedronBody& body, dou
                 outerLoop,
                 outerUv,
                 outerRepresentativeIds,
+                &representativeTargetPoints,
                 &representativeToVertexIndex,
                 eps))
         {
@@ -1079,6 +1160,7 @@ PolyhedronBrepBodyConversion3d ConvertToBrepBody(const PolyhedronBody& body, dou
                     holeLoop,
                     holeUv,
                     holeRepresentativeIds,
+                    &representativeTargetPoints,
                     &representativeToVertexIndex,
                     eps))
             {

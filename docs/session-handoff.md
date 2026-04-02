@@ -9,6 +9,12 @@
 - 编译 / 构建 / 运行由用户手动完成
 - 不必担心 `gtest` 环境接入，用户会按需要调整 CMake / 构建侧
 
+## 本轮新增（2026-04-02，continuation-29）
+
+- 已更新 `src/sdk/GeometryBrepConversion.cpp`：`ConvertToBrepBody(...)` 在 representative-id 驱动复用时新增全局目标点聚合（跨 face 平均）并用于共享 `BrepVertex` 首次落点，不再默认采用首个面点。
+- 已新增 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 新增 `NearEqualSharedEdgeVerticesUseRepresentativeAverageTarget`，验证 near-equal shared-edge（<eps 扰动）场景下共享拓扑保持稳定（2 faces -> VertexCount=6 / EdgeCount=7），且共享顶点位置符合 representative 平均目标。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
 ## 本轮新增（2026-04-02，continuation）
 
 - 已新增 capability：`Heal(..., policy=Aggressive)` 在同一个 `BrepBody` 内可同时闭合多个可恢复 open shells（`tests/capabilities/test_3d_healing.cpp`）。
