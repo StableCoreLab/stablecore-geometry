@@ -229,6 +229,23 @@ PolyhedronBody BuildCompositeRepairStressFaceBody()
         {PolyhedronLoop3d(std::move(hole))});
     return PolyhedronBody({face});
 }
+
+PolyhedronBody BuildTinyScaleNonPlanarRepairBody()
+{
+    const double s = 1e-5;
+    std::vector<Point3d> outer{
+        Point3d{0.0, 0.0, 0.0},
+        Point3d{s, 0.0, 0.0},
+        Point3d{s, s, 0.0},
+        Point3d{0.0, s, 0.0}};
+    // Small-scale non-planar disturbance that still describes a recoverable loop.
+    outer[2].z += 2e-6;
+
+    const PolyhedronFace3d face(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 3e-6}, Vector3d{0.0, 0.0, 1.0}),
+        PolyhedronLoop3d(std::move(outer)));
+    return PolyhedronBody({face});
+}
 } // namespace
 
 // Demonstrates that a closed PolyhedronBody (unit cube, 6 quad faces) converts
@@ -371,6 +388,20 @@ TEST(Conversion3dCapabilityTest, DuplicateVertexHoleLoopStillRepairsToBrepBody)
 TEST(Conversion3dCapabilityTest, CompositeRepairStressFaceStillConvertsToBrepBody)
 {
     const PolyhedronBody body = BuildCompositeRepairStressFaceBody();
+    assert(!body.IsValid());
+
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 1);
+}
+
+// Demonstrates robust refit can recover a tiny-scale non-planar loop even
+// when absolute-normal thresholds would otherwise reject support estimation.
+TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarFaceStillRepairsToBrepBody)
+{
+    const PolyhedronBody body = BuildTinyScaleNonPlanarRepairBody();
     assert(!body.IsValid());
 
     const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);

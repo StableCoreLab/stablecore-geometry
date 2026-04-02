@@ -1,5 +1,6 @@
 #include "sdk/GeometryBrepConversion.h"
 
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -211,9 +212,29 @@ namespace
         return false;
     }
 
+    auto maxLoopScaleSquared = [&](const PolyhedronLoop3d& loop) {
+        double maxDistanceSquared = 0.0;
+        for (std::size_t i = 0; i < loop.VertexCount(); ++i)
+        {
+            for (std::size_t j = i + 1; j < loop.VertexCount(); ++j)
+            {
+                const double distanceSquared = (loop.VertexAt(i) - loop.VertexAt(j)).LengthSquared();
+                if (distanceSquared > maxDistanceSquared)
+                {
+                    maxDistanceSquared = distanceSquared;
+                }
+            }
+        }
+
+        return std::max(maxDistanceSquared, eps * eps);
+    };
+
     bool foundSupport = false;
     Point3d p0{};
     Vector3d normal{};
+    double bestNormalLength = -1.0;
+    Point3d bestP0{};
+    Vector3d bestNormal{};
     for (std::size_t i = 0; i + 2 < outer.VertexCount() && !foundSupport; ++i)
     {
         const Point3d a = outer.VertexAt(i);
@@ -224,6 +245,14 @@ namespace
             {
                 const Point3d c = outer.VertexAt(k);
                 const Vector3d candidateNormal = Cross(b - a, c - a);
+                const double candidateLength = candidateNormal.Length();
+                if (candidateLength > bestNormalLength)
+                {
+                    bestNormalLength = candidateLength;
+                    bestP0 = a;
+                    bestNormal = candidateNormal;
+                }
+
                 if (candidateNormal.Length() > eps)
                 {
                     p0 = a;
@@ -237,7 +266,15 @@ namespace
 
     if (!foundSupport)
     {
-        return false;
+        const double scaleAwareThreshold = maxLoopScaleSquared(outer) * eps;
+        if (bestNormalLength <= scaleAwareThreshold)
+        {
+            return false;
+        }
+
+        p0 = bestP0;
+        normal = bestNormal;
+        foundSupport = true;
     }
 
     const Plane refitPlane = Plane::FromPointAndNormal(p0, normal);
