@@ -11,7 +11,7 @@ TEST(Conversion3dGapTest, HighFidelityBrepToMeshFeaturePreservationRemainsOpen)
     const BrepBody body({});
     const auto converted = ConvertToTriangleMesh(body);
     (void)converted;
-    GTEST_SKIP() << "Known 3D gap: high-fidelity feature-preserving Brep->mesh conversion beyond planar holed+multi-face area-preserving subset is still open.";
+    GTEST_SKIP() << "Known 3D gap: high-fidelity feature-preserving Brep->mesh conversion beyond planar holed+multi-face area-preserving subset and shared-edge global vertex-reuse subset is still open.";
 }
 
 TEST(Conversion3dGapTest, GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen)

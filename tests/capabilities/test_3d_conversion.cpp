@@ -1177,6 +1177,84 @@ TEST(Conversion3dCapabilityTest, PlanarMultiFaceBrepBodyConvertsToMeshWithExpect
     assert(std::abs(mesh.mesh.SurfaceArea() - 6.0) < 1e-8);
 }
 
+// Demonstrates representative shared-edge Brep->mesh conversion can preserve
+// shared geometric vertices globally instead of duplicating each face mesh.
+TEST(Conversion3dCapabilityTest, PlanarSharedEdgeBrepBodyConvertsToMeshWithSharedVertices)
+{
+    std::vector<BrepVertex> vertices{
+        BrepVertex(Point3d{0.0, 0.0, 0.0}),
+        BrepVertex(Point3d{1.0, 0.0, 0.0}),
+        BrepVertex(Point3d{1.0, 1.0, 0.0}),
+        BrepVertex(Point3d{0.0, 1.0, 0.0}),
+        BrepVertex(Point3d{2.0, 0.0, 0.0}),
+        BrepVertex(Point3d{2.0, 1.0, 0.0})};
+
+    std::vector<BrepEdge> edges;
+    auto addEdge = [&](std::size_t start, std::size_t end) {
+        const Point3d first = vertices[start].Point();
+        const Point3d second = vertices[end].Point();
+        edges.emplace_back(
+            std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+                Line3d::FromOriginAndDirection(first, second - first),
+                Intervald{0.0, 1.0})),
+            start,
+            end);
+    };
+
+    addEdge(0, 1);
+    addEdge(1, 2);
+    addEdge(2, 3);
+    addEdge(3, 0);
+    addEdge(1, 4);
+    addEdge(4, 5);
+    addEdge(5, 2);
+
+    const BrepLoop outerA({BrepCoedge(0, false), BrepCoedge(1, false), BrepCoedge(2, false), BrepCoedge(3, false)});
+    const BrepLoop outerB({BrepCoedge(4, false), BrepCoedge(5, false), BrepCoedge(6, false), BrepCoedge(1, true)});
+
+    const PlaneSurface planeSurface = PlaneSurface::FromPlane(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, 0.0, 1.0}));
+
+    auto makeTrim = [&](const std::vector<Point2d>& points) {
+        return CurveOnSurface(
+            std::shared_ptr<Surface>(planeSurface.Clone().release()),
+            Polyline2d(points, PolylineClosure::Closed));
+    };
+
+    const BrepFace faceA(
+        std::shared_ptr<Surface>(planeSurface.Clone().release()),
+        outerA,
+        {},
+        makeTrim({
+            Point2d{0.0, 0.0},
+            Point2d{1.0, 0.0},
+            Point2d{1.0, 1.0},
+            Point2d{0.0, 1.0},
+        }),
+        {});
+    const BrepFace faceB(
+        std::shared_ptr<Surface>(planeSurface.Clone().release()),
+        outerB,
+        {},
+        makeTrim({
+            Point2d{1.0, 0.0},
+            Point2d{2.0, 0.0},
+            Point2d{2.0, 1.0},
+            Point2d{1.0, 1.0},
+        }),
+        {});
+
+    const BrepBody body(vertices, edges, {BrepShell({faceA, faceB}, false)});
+    assert(body.IsValid());
+
+    const PolyhedronMeshConversion3d mesh = ConvertToTriangleMesh(body);
+    assert(mesh.success);
+    assert(mesh.mesh.IsValid());
+    assert(mesh.mesh.TriangleCount() == 4);
+    assert(mesh.mesh.VertexCount() == 6);
+    assert(std::abs(mesh.mesh.SurfaceArea() - 2.0) < 1e-8);
+}
+
 // Demonstrates planar mixed content conversion: one holed face plus one
 // disjoint face preserve aggregate representative area.
 TEST(Conversion3dCapabilityTest, PlanarHoledAndMultiFaceBrepBodyConvertsToMeshWithExpectedArea)

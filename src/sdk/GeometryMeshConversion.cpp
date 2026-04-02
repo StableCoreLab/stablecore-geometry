@@ -132,6 +132,23 @@ namespace
     return surface.PointAt(uv.x, uv.y);
 }
 
+[[nodiscard]] std::size_t FindOrAddMeshVertex(
+    const Point3d& point,
+    std::vector<Point3d>& vertices,
+    double eps)
+{
+    for (std::size_t i = 0; i < vertices.size(); ++i)
+    {
+        if (vertices[i].AlmostEquals(point, eps))
+        {
+            return i;
+        }
+    }
+
+    vertices.push_back(point);
+    return vertices.size() - 1;
+}
+
 [[nodiscard]] double SignedArea2d(const std::vector<Point2d>& points)
 {
     double area = 0.0;
@@ -675,16 +692,20 @@ PolyhedronMeshConversion3d ConvertToTriangleMesh(const BrepBody& body, double ep
                 }
             }
 
-            const std::size_t offset = vertices.size();
             const auto& faceVertices = converted.mesh.Vertices();
             const auto& faceTriangles = converted.mesh.Triangles();
-            vertices.insert(vertices.end(), faceVertices.begin(), faceVertices.end());
+            std::vector<std::size_t> vertexMap;
+            vertexMap.reserve(faceVertices.size());
+            for (const Point3d& point : faceVertices)
+            {
+                vertexMap.push_back(FindOrAddMeshVertex(point, vertices, eps));
+            }
             for (const TriangleMesh::TriangleIndices& tri : faceTriangles)
             {
                 triangles.push_back(TriangleMesh::TriangleIndices{
-                    tri[0] + offset,
-                    tri[1] + offset,
-                    tri[2] + offset});
+                    vertexMap[tri[0]],
+                    vertexMap[tri[1]],
+                    vertexMap[tri[2]]});
             }
         }
     }

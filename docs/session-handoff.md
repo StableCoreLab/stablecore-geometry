@@ -205,6 +205,13 @@
 - 已同步收敛 `tests/gaps/test_3d_brep_gaps.cpp` 文案，将 ownership gap 缩小到更高阶关联拓扑级编辑语义。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-02，continuation-after-stage-4）
+
+- 已更新 `src/sdk/GeometryMeshConversion.cpp`：`ConvertToTriangleMesh(const BrepBody&)` 现在在 face 聚合时可全局复用相同 3D 顶点，不再简单按 face 追加全部顶点。
+- 已新增 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 现在验证 planar shared-edge 相邻面转换到 mesh 后可保持 `VertexCount()==6` 的共享顶点子集。
+- 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 shared-edge vertex-reuse 子集。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
 ## 当前关注优先级
 
 1. **3D robust non-planar repair**：从 affine-skew 子类走向真实 non-planar 失配修复
