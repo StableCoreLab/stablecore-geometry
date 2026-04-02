@@ -6,10 +6,13 @@
 #include "support/Fixtures3d.h"
 
 using geometry::sdk::BrepFace;
+using geometry::sdk::BrepFaceEdit3d;
 using geometry::sdk::BrepShell;
 using geometry::sdk::BrepBody;
+using geometry::sdk::BrepBodyEdit3d;
 using geometry::sdk::BrepLoopEdit3d;
 using geometry::sdk::BrepLoopEditIssue3d;
+using geometry::sdk::BrepShellEdit3d;
 using geometry::sdk::FlipCoedgeDirection;
 using geometry::sdk::InsertCoedge;
 using geometry::sdk::Plane;
@@ -17,6 +20,9 @@ using geometry::sdk::Point3d;
 using geometry::sdk::PolyhedronFace3d;
 using geometry::sdk::PolyhedronLoop3d;
 using geometry::sdk::PolyhedronBody;
+using geometry::sdk::ReplaceFace;
+using geometry::sdk::ReplaceOuterLoop;
+using geometry::sdk::ReplaceShell;
 using geometry::sdk::RemoveCoedge;
 using geometry::sdk::RebuildSectionBrepBodies;
 using geometry::sdk::RebuildSectionBrepBody;
@@ -176,5 +182,59 @@ TEST(Brep3dCapabilityTest, CoedgeLoopEditingInsertFlipRemoveRoundTrips)
     {
         assert(removed.loop.CoedgeAt(i).EdgeIndex() == originalLoop.CoedgeAt(i).EdgeIndex());
         assert(removed.loop.CoedgeAt(i).Reversed() == originalLoop.CoedgeAt(i).Reversed());
+    }
+}
+
+// Demonstrates a minimal ownership-consistent editing workflow:
+// loop edit -> face replacement -> shell replacement -> body replacement.
+TEST(Brep3dCapabilityTest, OwnershipConsistentEditingWorkflowRoundTripsIntoBody)
+{
+    const PolyhedronBody cubeBody = geometry::test::BuildUnitCubeBody();
+    const Plane slantedCut = Plane::FromPointAndNormal(
+        Point3d{0.0, 0.0, 0.5},
+        Vector3d{1.0, 0.0, 1.0});
+    const auto section = Section(cubeBody, slantedCut);
+    assert(section.success);
+
+    const SectionBrepBodyRebuild3d rebuilt = RebuildSectionBrepBody(section);
+    assert(rebuilt.success);
+    assert(rebuilt.body.IsValid());
+
+    const BrepBody originalBody = rebuilt.body;
+    const BrepShell originalShell = originalBody.ShellAt(0);
+    const BrepFace originalFace = originalShell.FaceAt(0);
+    const BrepLoop originalLoop = originalFace.OuterLoop();
+
+    const BrepLoopEdit3d inserted = InsertCoedge(
+        originalLoop,
+        1,
+        geometry::sdk::BrepCoedge(originalLoop.CoedgeAt(1).EdgeIndex(), true));
+    assert(inserted.success);
+
+    const BrepLoopEdit3d removed = RemoveCoedge(inserted.loop, 1);
+    assert(removed.success);
+    assert(removed.loop.CoedgeCount() == originalLoop.CoedgeCount());
+
+    const BrepFaceEdit3d editedFace = ReplaceOuterLoop(originalFace, removed.loop);
+    assert(editedFace.success);
+    assert(editedFace.face.IsValid());
+
+    const BrepShellEdit3d editedShell = ReplaceFace(originalShell, 0, editedFace.face);
+    assert(editedShell.success);
+    assert(editedShell.shell.IsValid());
+    assert(editedShell.shell.FaceCount() == 1);
+
+    const BrepBodyEdit3d editedBody = ReplaceShell(originalBody, 0, editedShell.shell);
+    assert(editedBody.success);
+    assert(editedBody.body.IsValid());
+    assert(editedBody.body.ShellCount() == 1);
+    assert(editedBody.body.FaceCount() == 1);
+
+    const BrepLoop roundTrippedLoop = editedBody.body.ShellAt(0).FaceAt(0).OuterLoop();
+    assert(roundTrippedLoop.CoedgeCount() == originalLoop.CoedgeCount());
+    for (std::size_t i = 0; i < originalLoop.CoedgeCount(); ++i)
+    {
+        assert(roundTrippedLoop.CoedgeAt(i).EdgeIndex() == originalLoop.CoedgeAt(i).EdgeIndex());
+        assert(roundTrippedLoop.CoedgeAt(i).Reversed() == originalLoop.CoedgeAt(i).Reversed());
     }
 }

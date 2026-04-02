@@ -86,6 +86,7 @@
   - 已新增 3D capability：倾斜切平面下 `Section + BuildSectionTopology + BuildSectionComponents` 单区域闭环验证，section gap 收敛为更高阶歧义 stitching / merge 语义  - 已新增 `tests/support/Fixtures3d.h`，提供共享 `BuildUnitCubeBody()` 单位立方体 fixture
   - 已扩展 section 子能力：coplanar 相邻 face fragment 在 `Section(...)` 中可归并为单 polygon，收窄 face-merge gap 到更高阶歧义 fragment 语义
   - 已新增 `test_3d_brep.cpp`：`RebuildSectionBrepBody` 单面 BrepBody rebuild 转正为 capability
+  - 已扩展 brep editing 子能力：最小 loop->face->shell->body ownership-consistent replacement workflow 已转正为 capability
   - 已新增 `test_3d_healing.cpp`：保守 `Heal(PolyhedronBody)` 幂等性转正为 capability
   - 已新增 `test_3d_conversion.cpp`：`ConvertToTriangleMesh(PolyhedronBody)` 12 triangles / area≈6.0 转正为 capability
 - 2026-04-02：

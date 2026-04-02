@@ -198,6 +198,13 @@
 - 已同步收敛 `tests/gaps/test_3d_section_gaps.cpp` 文案，将 face-merge gap 缩小到更高阶歧义 coplanar fragments。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-02，stage-4）
+
+- 已更新 `include/sdk/GeometryBrepEditing.h` 与 `src/sdk/GeometryBrepEditing.cpp`：新增 `ReplaceOuterLoop(...)` / `ReplaceFace(...)` / `ReplaceShell(...)`，补齐最小 loop->face->shell->body ownership-consistent editing workflow。
+- 已新增 brep capability：`tests/capabilities/test_3d_brep.cpp` 现在验证 loop 编辑可通过 replacement workflow 稳定传播回有效 `BrepBody`。
+- 已同步收敛 `tests/gaps/test_3d_brep_gaps.cpp` 文案，将 ownership gap 缩小到更高阶关联拓扑级编辑语义。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
 ## 当前关注优先级
 
 1. **3D robust non-planar repair**：从 affine-skew 子类走向真实 non-planar 失配修复
