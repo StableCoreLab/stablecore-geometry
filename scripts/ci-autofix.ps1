@@ -88,9 +88,15 @@ if (Test-Path $LogPath) {
         $logText -match "missing ';' before identifier 'SkewPoint'" -or
         $logText -match "'Point3d': redefinition" -or
         $logText -match "'Vector3d': undeclared identifier" -or
-        $logText -match "'Cross': identifier not found")
+        $logText -match "'Cross': identifier not found" -or
+        $logText -match "'Point2d': undeclared identifier")
 
     if ($sawConversionAliasFailure) {
+        [void](Add-LineAfterAnchor `
+            -FilePath "tests/capabilities/test_3d_conversion.cpp" `
+            -AnchorLine "using geometry::sdk::PlaneSurface;" `
+            -LineToInsert "using geometry::sdk::Point2d;")
+
         [void](Add-LineAfterAnchor `
             -FilePath "tests/capabilities/test_3d_conversion.cpp" `
             -AnchorLine "using geometry::sdk::PlaneSurface;" `

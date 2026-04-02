@@ -31,6 +31,7 @@ using geometry::sdk::PolyhedronFace3d;
 using geometry::sdk::PolyhedronLoop3d;
 using geometry::sdk::PolyhedronMeshConversion3d;
 using geometry::sdk::PolyhedronBrepBodyConversion3d;
+using geometry::sdk::Point2d;
 using geometry::sdk::Polyline2d;
 using geometry::sdk::PolylineClosure;
 using geometry::sdk::Surface;
