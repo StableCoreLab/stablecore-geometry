@@ -227,6 +227,81 @@ HealingIssue3d MapMeshRepairIssue(const MeshRepairIssue3d issue)
 
     return false;
 }
+
+[[nodiscard]] BrepLoop ReversedLoop(const BrepLoop& loop)
+{
+    std::vector<BrepCoedge> reversed;
+    reversed.reserve(loop.CoedgeCount());
+    for (std::size_t i = 0; i < loop.CoedgeCount(); ++i)
+    {
+        const BrepCoedge coedge = loop.CoedgeAt(loop.CoedgeCount() - 1 - i);
+        reversed.emplace_back(coedge.EdgeIndex(), !coedge.Reversed());
+    }
+    return BrepLoop(std::move(reversed));
+}
+
+[[nodiscard]] bool TryAggressivelyCloseShells(
+    const BrepBody& body,
+    const GeometryTolerance3d& tolerance,
+    BrepBody& repairedBody)
+{
+    std::vector<BrepShell> repairedShells;
+    repairedShells.reserve(body.ShellCount());
+    bool changed = false;
+
+    for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
+    {
+        const BrepShell shell = body.ShellAt(shellIndex);
+        if (shell.IsClosed())
+        {
+            repairedShells.push_back(shell);
+            continue;
+        }
+
+        if (shell.FaceCount() != 1)
+        {
+            repairedShells.push_back(shell);
+            continue;
+        }
+
+        const BrepFace frontFace = shell.FaceAt(0);
+        if (frontFace.HoleCount() != 0)
+        {
+            repairedShells.push_back(shell);
+            continue;
+        }
+
+        if (dynamic_cast<const PlaneSurface*>(frontFace.SupportSurface()) == nullptr)
+        {
+            repairedShells.push_back(shell);
+            continue;
+        }
+
+        const BrepLoop reversedOuter = ReversedLoop(frontFace.OuterLoop());
+        BrepFace backFace(
+            std::shared_ptr<Surface>(frontFace.SupportSurface()->Clone().release()),
+            reversedOuter,
+            {},
+            frontFace.OuterTrim(),
+            {});
+        if (!backFace.IsValid(tolerance))
+        {
+            repairedShells.push_back(shell);
+            continue;
+        }
+
+        repairedShells.emplace_back(std::vector<BrepFace>{frontFace, std::move(backFace)}, true);
+        changed = true;
+    }
+
+    if (!changed)
+    {
+        return false;
+    }
+
+    repairedBody = BrepBody(body.Vertices(), body.Edges(), std::move(repairedShells));
+    return repairedBody.IsValid(tolerance);
+}
 } // namespace
 
 MeshHealing3d Heal(const TriangleMesh& mesh, double eps)
@@ -264,6 +339,14 @@ PolyhedronHealing3d Heal(const PolyhedronBody& body, double eps)
 }
 
 BrepHealing3d Heal(const BrepBody& body, const GeometryTolerance3d& tolerance)
+{
+    return Heal(body, tolerance, HealingPolicy3d::Conservative);
+}
+
+BrepHealing3d Heal(
+    const BrepBody& body,
+    const GeometryTolerance3d& tolerance,
+    HealingPolicy3d policy)
 {
     const BrepValidation3d validation = Validate(body, tolerance);
     if (validation.valid && !NeedsBrepHealing(body, tolerance))
@@ -306,6 +389,16 @@ BrepHealing3d Heal(const BrepBody& body, const GeometryTolerance3d& tolerance)
     {
         return {false, HealingIssue3d::RepairFailed, {}};
     }
+
+    if (policy == HealingPolicy3d::Aggressive)
+    {
+        BrepBody aggressivelyHealedBody{};
+        if (TryAggressivelyCloseShells(healedBody, tolerance, aggressivelyHealedBody))
+        {
+            return {true, HealingIssue3d::None, std::move(aggressivelyHealedBody)};
+        }
+    }
+
     return {true, HealingIssue3d::None, std::move(healedBody)};
 }
 } // namespace geometry::sdk

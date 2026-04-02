@@ -7,6 +7,7 @@
 
 using geometry::sdk::Heal;
 using geometry::sdk::HealingIssue3d;
+using geometry::sdk::HealingPolicy3d;
 using geometry::sdk::Line3d;
 using geometry::sdk::LineCurve3d;
 using geometry::sdk::Plane;
@@ -154,4 +155,47 @@ TEST(Healing3dCapabilityTest, PlanarHoledBrepFaceWithoutAnyTrimIsHealed)
     assert(healedFace.HoleTrims().size() == 1);
     assert(healedFace.HoleTrims()[0].IsValid());
     assert(healedFace.HoleTrims()[0].PointCount() == 4);
+}
+
+// Demonstrates a deterministic minimal aggressive policy: a recoverable open
+// planar single-face shell can be closed by adding an opposite-oriented face.
+TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseRecoverableSingleFaceShell)
+{
+    std::vector<BrepVertex> vertices{
+        BrepVertex(Point3d{0.0, 0.0, 0.0}),
+        BrepVertex(Point3d{1.0, 0.0, 0.0}),
+        BrepVertex(Point3d{1.0, 1.0, 0.0}),
+        BrepVertex(Point3d{0.0, 1.0, 0.0})};
+
+    std::vector<BrepEdge> edges;
+    auto addEdge = [&](std::size_t start, std::size_t end) {
+        const Point3d first = vertices[start].Point();
+        const Point3d second = vertices[end].Point();
+        edges.emplace_back(
+            std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+                Line3d::FromOriginAndDirection(first, second - first),
+                Intervald{0.0, 1.0})),
+            start,
+            end);
+    };
+    addEdge(0, 1);
+    addEdge(1, 2);
+    addEdge(2, 3);
+    addEdge(3, 0);
+
+    const BrepLoop outerLoop({BrepCoedge(0, false), BrepCoedge(1, false), BrepCoedge(2, false), BrepCoedge(3, false)});
+    const PlaneSurface planeSurface = PlaneSurface::FromPlane(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, 0.0, 1.0}));
+    const BrepFace face(std::shared_ptr<Surface>(planeSurface.Clone().release()), outerLoop);
+    const BrepBody openBody(vertices, edges, {BrepShell({face}, false)});
+    assert(openBody.IsValid());
+    assert(!openBody.ShellAt(0).IsClosed());
+
+    const BrepHealing3d healed = Heal(openBody, geometry::sdk::GeometryTolerance3d{}, HealingPolicy3d::Aggressive);
+    assert(healed.success);
+    assert(healed.issue == HealingIssue3d::None);
+    assert(healed.body.IsValid());
+    assert(healed.body.ShellCount() == 1);
+    assert(healed.body.ShellAt(0).IsClosed());
+    assert(healed.body.FaceCount() == 2);
 }

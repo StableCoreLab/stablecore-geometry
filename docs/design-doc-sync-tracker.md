@@ -96,6 +96,7 @@
   - 已新增 conversion 子能力收敛：affine-skew 非轴对齐 `PolyhedronBody` 可稳定 `ConvertToBrepBody(...)`
   - 已新增 conversion repair 子能力收敛：support-plane mismatch 的 `PolyhedronBody` 可通过 support-plane refit 稳定转换到 `BrepBody`
   - 已新增 healing 子能力收敛：带孔平面 `BrepFace` 缺失 outer/hole trims 时可被 `Heal(BrepBody)` 同步回填
+  - 已新增 aggressive healing 子能力收敛：`Heal(..., policy=Aggressive)` 支持 open planar single-face shell 的确定性闭壳修复
 ## 对齐完成定义（DoD）
 
 ### 2D 对齐完成
@@ -122,7 +123,7 @@
 - 2D SearchPoly 分支评分与 fake-edge candidate ranking：当前已补齐一组代表性误选场景，仍需继续向 Delphi 级评分策略逼近
 - 2D relation hierarchy 向 Delphi `GGLPolyRelation` 聚合语义补齐：当前已补齐一组 shared-boundary contained 场景，但公开枚举仍未扩展到更细层级
 - 3D gap 测试体系落地（section / brep / healing / conversion）：骨架已完成；基础 brep rebuild / healing / conversion 已转正为 capability tests
-- 3D 第一阶段向第二阶段推进：P1/P2 已完成，P3 已收敛 affine-skew conversion 与 holed-trim healing 子能力；下一步聚焦真正鲁棒 non-planar repair
+- 3D 第一阶段向第二阶段推进：P1/P2/P3 与 P4-B 最小子策略已完成；下一步聚焦真正鲁棒 non-planar repair 与更一般 aggressive policy
 
 ## 两周执行顺序建议（更新）
 

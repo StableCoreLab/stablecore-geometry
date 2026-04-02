@@ -12,7 +12,7 @@
 ## 当前关注优先级
 
 1. **3D robust non-planar repair**：从 affine-skew 子类走向真实 non-planar 失配修复
-2. **3D aggressive shell policy**：从 trim-backfill 扩展到 topology-changing 最小策略
+2. **3D aggressive shell policy**：从 single-face planar closure 扩展到 multi-face open shell 策略
 3. **3D coedge ownership 深化**：从 loop 级编辑走向 shell/face ownership 一致性
 4. 2D SearchPoly 分支评分 / fake-edge 排序（仍有提升空间但不是当前阻塞点）
 5. 2D relation 层级细化（当前稳定，不是当前阻塞点）
@@ -33,7 +33,7 @@
 当前最重要的解释是：
 
 - 2D 已全面稳定：所有 2D gap 测试已转正为 capability tests，`tests/gaps/` 中的 2D 条目已清空
-- 3D 完成了第一阶段基础能力（section / brep rebuild / healing / conversion 最小闭环），且 P2 与 P3 子能力已转正；当前进入 robust non-planar repair 深水区
+- 3D 完成了第一阶段基础能力（section / brep rebuild / healing / conversion 最小闭环），且 P2/P3 与 P4-B 最小子策略已转正；当前进入 robust non-planar repair 深水区
 
 ## 当前 2D 状态
 
@@ -327,6 +327,7 @@
 - `tests/capabilities/test_3d_healing.cpp` 已扩展 holed-face 缺失 outer/hole trims 同步回填 capability
 - `tests/capabilities/test_3d_conversion.cpp` 已扩展 affine-skew 非轴对齐 `PolyhedronBody` 的 `ConvertToBrepBody(...)` capability
 - `tests/capabilities/test_3d_conversion.cpp` 已扩展 support-plane mismatch 输入的 `ConvertToBrepBody(...)` repair capability（support-plane refit）
+- `tests/capabilities/test_3d_healing.cpp` 已扩展 `Heal(..., policy=Aggressive)`：open planar single-face shell 的确定性闭壳子策略
 - `BrepFace` 已接上基于 trim/UV triangulation 的最小 `TriangleMesh` conversion
 - `GeometryMeasure::Area(BrepFace)` 已改为消费 `BrepFace -> TriangleMesh`，因此不再局限于平面 trim 面积
 - 已新增 `GeometryBrepConversion`，支持 `BrepFace -> PolyhedronFace3d` 与 `BrepBody -> PolyhedronBody` 的平面 trim 回建桥

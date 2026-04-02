@@ -12,7 +12,7 @@ TEST(Healing3dGapTest, AggressiveShellRepairPolicyRemainsOpen)
     const BrepBody body({});
     const auto healing = Heal(body);
     (void)healing;
-    GTEST_SKIP() << "Known 3D gap: topology-changing aggressive shell repair policy beyond trim-backfill conservative healing is not implemented.";
+    GTEST_SKIP() << "Known 3D gap: general topology-changing aggressive shell repair policy beyond single-face planar closure subset is not implemented.";
 }
 
 TEST(Healing3dGapTest, MultiStepMeshBodyJointHealingRemainsOpen)
