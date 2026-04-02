@@ -84,12 +84,21 @@ if (STABLECORE_GEOMETRY_BUILD_TESTS)
         # 强制使用共享 CRT
         set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
-        # 使用本地 ThirdParty 路径的 GTest
-        FetchContent_Declare(
-            googletest
-            SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../ThirdParty/googletest-1.17.0"
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        )
+        set(_gtest_local_path "${CMAKE_CURRENT_SOURCE_DIR}/../ThirdParty/googletest-1.17.0")
+        if (EXISTS "${_gtest_local_path}")
+            # 优先使用本地 ThirdParty 路径的 GTest（与其他依赖库共享的本地副本）
+            FetchContent_Declare(
+                googletest
+                SOURCE_DIR "${_gtest_local_path}"
+            )
+        else()
+            # 本地路径不存在时，回退到从 GitHub 下载
+            FetchContent_Declare(
+                googletest
+                URL https://github.com/google/googletest/archive/refs/tags/v1.17.0.zip
+                DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            )
+        endif()
 
         FetchContent_MakeAvailable(googletest)
     endif()
