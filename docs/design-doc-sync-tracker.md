@@ -263,3 +263,6 @@
 
 - 第 1 周：已完成 2D P0（boolean + offset）清空，以及 3D P1 骨架建立
 - 第 2 周：推进 3D 第二阶段——non-planar section / brep coedge-editing / aggressive healing
+- 2026-04-03（continuation-71）：
+  - 已扩展 conversion capability 子集：closed-prism dual/all-shared-vertices + dual-duplicate-loop-normalization，以及 closed-tetra dual-shared-vertices + dual-duplicate-loop-normalization。
+  - 已为 closed-tetra all-shared-vertices + dual-duplicate-loop-normalization 预留输入构造器；对应 capability 断言仍保留为下一轮优先项。

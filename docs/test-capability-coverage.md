@@ -206,3 +206,6 @@
 - 当前拆成两个目标：
   - `stablecore_geometry_capabilities_gtest`
   - `stablecore_geometry_gap_gtest`
+- `tests/capabilities/test_3d_conversion.cpp` 已新增 closed-prism dual-shared-vertices + dual-duplicate-loop-normalization capability：双侧面同时含 duplicate leading 顶点时，`ConvertToBrepBody(...)` 仍可稳定保持 representative-average 共享顶点落点与 closed-shell 拓扑（FaceCount=5 / VertexCount=6 / EdgeCount=9）
+- `tests/capabilities/test_3d_conversion.cpp` 已新增 closed-prism all-shared-vertices + dual-duplicate-loop-normalization capability：六个共享顶点 near-equal 扰动叠加双侧面 duplicate-loop-normalization 时，`ConvertToBrepBody(...)` 仍可稳定保持 representative-average 落点与 closed-shell 拓扑（FaceCount=5 / VertexCount=6 / EdgeCount=9）
+- `tests/capabilities/test_3d_conversion.cpp` 已新增 closed-tetra dual-shared-vertices + dual-duplicate-loop-normalization capability：双三角面同时含 duplicate leading 顶点时，`ConvertToBrepBody(...)` 仍可稳定保持 representative-average 落点与 closed-shell 拓扑（FaceCount=4 / VertexCount=4 / EdgeCount=6）

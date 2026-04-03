@@ -974,3 +974,11 @@
 4. 逐步向 non-planar 场景推进（brep coedge-editing / mesh stitching）
 
 详见 `docs/next-task-prompt.md`。
+
+## 本轮新增（2026-04-03，continuation-71）
+
+- 已扩展 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 新增 closed-prism dual-shared-vertices + dual-duplicate-loop-normalization 子样例与 capability 断言，覆盖双侧面同时存在 duplicate leading 顶点时的 representative-average 闭壳收敛（目标拓扑计数：FaceCount=5 / VertexCount=6 / EdgeCount=9）。
+- 已扩展 conversion capability：新增 closed-prism all-shared-vertices + dual-duplicate-loop-normalization 子样例与 capability 断言，覆盖六个共享顶点 near-equal 扰动叠加双侧面 duplicate-loop-normalization 的闭壳收敛子集（目标拓扑计数：FaceCount=5 / VertexCount=6 / EdgeCount=9）。
+- 已扩展 conversion capability：新增 closed-tetra dual-shared-vertices + dual-duplicate-loop-normalization 子样例与 capability 断言，覆盖两个共享顶点 near-equal 扰动叠加双三角面 duplicate-loop-normalization 的闭壳收敛子集（目标拓扑计数：FaceCount=4 / VertexCount=4 / EdgeCount=6）。
+- 已预留 closed-tetra all-shared-vertices + dual-duplicate-loop-normalization 的输入构造器，下一轮优先补齐对应 capability 断言与文档同步。
+- 已同步更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。

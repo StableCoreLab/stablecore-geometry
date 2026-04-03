@@ -240,3 +240,10 @@
 1. 这次实现了哪些能力
 2. 还剩哪些没有补
 3. 建议提交信息 Msg
+
+## 本轮新增（2026-04-03，continuation-71）
+
+- 已扩展 conversion capability：closed-prism dual-shared-vertices + dual-duplicate-loop-normalization，目标闭壳拓扑计数为 `FaceCount=5 / VertexCount=6 / EdgeCount=9`。
+- 已扩展 conversion capability：closed-prism all-shared-vertices + dual-duplicate-loop-normalization，目标闭壳拓扑计数为 `FaceCount=5 / VertexCount=6 / EdgeCount=9`。
+- 已扩展 conversion capability：closed-tetra dual-shared-vertices + dual-duplicate-loop-normalization，目标闭壳拓扑计数为 `FaceCount=4 / VertexCount=4 / EdgeCount=6`。
+- 已预留 closed-tetra all-shared-vertices + dual-duplicate-loop-normalization 输入构造器；下一轮优先补齐对应 capability 断言，然后继续向更一般 topology-changing non-planar repair 推进。

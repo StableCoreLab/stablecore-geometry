@@ -1,4 +1,4 @@
-#include <cassert>
+﻿#include <cassert>
 #include <cmath>
 #include <memory>
 
@@ -1327,7 +1327,26 @@ PolyhedronBody BuildSupportMismatchNearEqualClosedTetrahedronDualVerticesWithDup
     faces[2] = PolyhedronFace3d(face.SupportPlane(), PolyhedronLoop3d(std::move(loop)));
     return PolyhedronBody(std::move(faces));
 }
-
+PolyhedronBody BuildSupportMismatchNearEqualClosedTetrahedronDualVerticesWithDualDuplicateLoopBody()
+{
+    // Start from the single-duplicate dual-vertices near-equal closed-tetra
+    // variant and inject another duplicate leading vertex on a second face.
+    const PolyhedronBody base = BuildSupportMismatchNearEqualClosedTetrahedronDualVerticesWithDuplicateLoopBody();
+    std::vector<PolyhedronFace3d> faces = base.Faces();
+    if (faces.size() != 4)
+    {
+        return PolyhedronBody();
+    }
+    const PolyhedronFace3d face = faces[1];
+    std::vector<Point3d> loop = face.OuterLoop().Vertices();
+    if (loop.empty())
+    {
+        return PolyhedronBody();
+    }
+    loop.insert(loop.begin(), loop.front());
+    faces[1] = PolyhedronFace3d(face.SupportPlane(), PolyhedronLoop3d(std::move(loop)));
+    return PolyhedronBody(std::move(faces));
+}
 PolyhedronBody BuildSupportMismatchNearEqualClosedTetrahedronAllVerticesBody()
 {
     // Closed tetrahedron where all four logical shared vertices each have
@@ -1392,7 +1411,26 @@ PolyhedronBody BuildSupportMismatchNearEqualClosedTetrahedronAllVerticesWithDupl
     faces[2] = PolyhedronFace3d(face.SupportPlane(), PolyhedronLoop3d(std::move(loop)));
     return PolyhedronBody(std::move(faces));
 }
-
+PolyhedronBody BuildSupportMismatchNearEqualClosedTetrahedronAllVerticesWithDualDuplicateLoopBody()
+{
+    // Start from the single-duplicate all-vertices near-equal closed-tetra
+    // variant and inject another duplicate leading vertex on a second face.
+    const PolyhedronBody base = BuildSupportMismatchNearEqualClosedTetrahedronAllVerticesWithDuplicateLoopBody();
+    std::vector<PolyhedronFace3d> faces = base.Faces();
+    if (faces.size() != 4)
+    {
+        return PolyhedronBody();
+    }
+    const PolyhedronFace3d face = faces[1];
+    std::vector<Point3d> loop = face.OuterLoop().Vertices();
+    if (loop.empty())
+    {
+        return PolyhedronBody();
+    }
+    loop.insert(loop.begin(), loop.front());
+    faces[1] = PolyhedronFace3d(face.SupportPlane(), PolyhedronLoop3d(std::move(loop)));
+    return PolyhedronBody(std::move(faces));
+}
 PolyhedronBody BuildSupportMismatchNearEqualClosedPrismDualVerticesBody()
 {
     // Closed triangular prism where two non-adjacent shared vertices (v0 at
@@ -1453,7 +1491,26 @@ PolyhedronBody BuildSupportMismatchNearEqualClosedPrismDualVerticesWithDuplicate
     faces[2] = PolyhedronFace3d(sideFace.SupportPlane(), PolyhedronLoop3d(std::move(loop)));
     return PolyhedronBody(std::move(faces));
 }
-
+PolyhedronBody BuildSupportMismatchNearEqualClosedPrismDualVerticesWithDualDuplicateLoopBody()
+{
+    // Start from the single-duplicate dual-vertices near-equal closed-prism
+    // variant and inject another duplicate leading vertex on a second side face.
+    const PolyhedronBody base = BuildSupportMismatchNearEqualClosedPrismDualVerticesWithDuplicateLoopBody();
+    std::vector<PolyhedronFace3d> faces = base.Faces();
+    if (faces.size() != 5)
+    {
+        return PolyhedronBody();
+    }
+    const PolyhedronFace3d sideFace = faces[3];
+    std::vector<Point3d> loop = sideFace.OuterLoop().Vertices();
+    if (loop.empty())
+    {
+        return PolyhedronBody();
+    }
+    loop.insert(loop.begin(), loop.front());
+    faces[3] = PolyhedronFace3d(sideFace.SupportPlane(), PolyhedronLoop3d(std::move(loop)));
+    return PolyhedronBody(std::move(faces));
+}
 PolyhedronBody BuildSupportMismatchNearEqualClosedPrismAllVerticesBody()
 {
     // Closed triangular prism where all six logical shared vertices each have
@@ -1517,7 +1574,26 @@ PolyhedronBody BuildSupportMismatchNearEqualClosedPrismAllVerticesWithDuplicateL
     faces[2] = PolyhedronFace3d(sideFace.SupportPlane(), PolyhedronLoop3d(std::move(vertices)));
     return PolyhedronBody(std::move(faces));
 }
-
+PolyhedronBody BuildSupportMismatchNearEqualClosedPrismAllVerticesWithDualDuplicateLoopBody()
+{
+    // Start from the single-duplicate all-vertices near-equal closed-prism
+    // variant and inject another duplicate leading vertex on a second side face.
+    const PolyhedronBody base = BuildSupportMismatchNearEqualClosedPrismAllVerticesWithDuplicateLoopBody();
+    std::vector<PolyhedronFace3d> faces = base.Faces();
+    if (faces.size() != 5)
+    {
+        return PolyhedronBody();
+    }
+    const PolyhedronFace3d sideFace = faces[3];
+    std::vector<Point3d> loop = sideFace.OuterLoop().Vertices();
+    if (loop.empty())
+    {
+        return PolyhedronBody();
+    }
+    loop.insert(loop.begin(), loop.front());
+    faces[3] = PolyhedronFace3d(sideFace.SupportPlane(), PolyhedronLoop3d(std::move(loop)));
+    return PolyhedronBody(std::move(faces));
+}
 PolyhedronBody BuildSupportMismatchNearEqualClosedCuboidAllVerticesBody()
 {
     // Tiny-scale 2×1×1 rectangular box (pure-quad closed shell) where all 8
@@ -1993,7 +2069,6 @@ TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualApexFanRepairsWithRepre
 
     assert(apexLikeCount == 1);
 }
-
 // Demonstrates representative-average shared-vertex placement scales to a
 // support-mismatch shared-edge chain (three faces) with near-equal middle-face
 // perturbations on both shared edges.
@@ -2367,7 +2442,43 @@ TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedTetrahedronDualVe
     assert(sharedV0Count == 1);
     assert(sharedV1Count == 1);
 }
-
+// Demonstrates representative-average placement on near-equal
+// closed-tetra dual-shared-vertices remains stable when duplicate-loop
+// normalization is required on two faces simultaneously.
+TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedTetrahedronDualVerticesWithDualDuplicateLoopRepairsWithRepresentativeAverageTarget)
+{
+    const PolyhedronBody body = BuildSupportMismatchNearEqualClosedTetrahedronDualVerticesWithDualDuplicateLoopBody();
+    assert(!body.IsValid());
+    assert(body.FaceCount() == 4);
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 4);
+    assert(result.body.ShellCount() == 1);
+    assert(result.body.ShellAt(0).IsClosed());
+    assert(result.body.VertexCount() == 4);
+    assert(result.body.EdgeCount() == 6);
+    const double s = 1e-5;
+    const double expectedV1X = s + (2e-7 - 1e-7 + 0.0) / 3.0;
+    std::size_t sharedV0Count = 0;
+    std::size_t sharedV1Count = 0;
+    for (std::size_t i = 0; i < result.body.VertexCount(); ++i)
+    {
+        const Point3d point = result.body.VertexAt(i).Point();
+        if (std::abs(point.x) < 1e-12 && std::abs(point.y) < 1e-12 && std::abs(point.z) < 1e-12)
+        {
+            ++sharedV0Count;
+        }
+        if (std::abs(point.y) < 1e-12 && std::abs(point.z - 1.2e-6) < 1e-12 && point.x > 0.5 * s && point.x < 1.5 * s)
+        {
+            ++sharedV1Count;
+            assert(std::abs(point.x - expectedV1X) < 1e-10);
+        }
+    }
+    assert(sharedV0Count == 1);
+    assert(sharedV1Count == 1);
+}
 // Demonstrates representative-average placement scales to all four shared
 // vertices simultaneously on a support-mismatch closed tetrahedron.
 TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedTetrahedronAllVerticesRepairsWithRepresentativeAverageTarget)
@@ -2454,7 +2565,6 @@ TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedTetrahedronAllVer
     assert(sharedV1Count == 1);
     assert(sharedV3Count == 1);
 }
-
 // Demonstrates representative-average shared-vertex placement scales to a
 // closed triangular prism topology: two non-adjacent near-equal shared vertices
 // across quad and triangle faces simultaneously converge to stable average targets.
@@ -2540,7 +2650,44 @@ TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedPrismDualVertices
     assert(sharedV0Count == 1);
     assert(sharedV4Count == 1);
 }
-
+// Demonstrates representative-average placement on the near-equal
+// closed-prism dual-vertices subset remains stable when duplicate-loop
+// normalization is required on two side faces simultaneously.
+TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedPrismDualVerticesWithDualDuplicateLoopRepairsWithRepresentativeAverageTarget)
+{
+    const PolyhedronBody body = BuildSupportMismatchNearEqualClosedPrismDualVerticesWithDualDuplicateLoopBody();
+    assert(!body.IsValid());
+    assert(body.FaceCount() == 5);
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 5);
+    assert(result.body.ShellCount() == 1);
+    assert(result.body.ShellAt(0).IsClosed());
+    assert(result.body.VertexCount() == 6);
+    assert(result.body.EdgeCount() == 9);
+    const double s = 1e-5;
+    const double expectedV4X = s + 1.0e-7 / 3.0;
+    std::size_t sharedV0Count = 0;
+    std::size_t sharedV4Count = 0;
+    for (std::size_t i = 0; i < result.body.VertexCount(); ++i)
+    {
+        const Point3d point = result.body.VertexAt(i).Point();
+        if (std::abs(point.x) < 1e-12 && std::abs(point.y) < 1e-12 && std::abs(point.z) < 1e-12)
+        {
+            ++sharedV0Count;
+        }
+        if (std::abs(point.y) < 1e-12 && point.x > 0.5 * s && point.x < 1.5 * s
+            && point.z > 0.5 * s && point.z < 1.5 * s)
+        {
+            ++sharedV4Count;
+            assert(std::abs(point.x - expectedV4X) < 1e-10);
+        }
+    }
+    assert(sharedV0Count == 1);
+    assert(sharedV4Count == 1);
+}
 // Demonstrates representative-average placement also stabilizes all shared
 // vertices on a closed triangular prism when every logical shared vertex is
 // near-equal perturbed across incident faces.
@@ -2630,7 +2777,46 @@ TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedPrismAllVerticesW
     assert(sharedV1Count == 1);
     assert(sharedV4Count == 1);
 }
-
+// Demonstrates representative-average placement on the near-equal
+// closed-prism all-vertices subset remains stable when duplicate-loop
+// normalization is required on two side faces simultaneously.
+TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedPrismAllVerticesWithDualDuplicateLoopRepairsWithRepresentativeAverageTarget)
+{
+    const PolyhedronBody body = BuildSupportMismatchNearEqualClosedPrismAllVerticesWithDualDuplicateLoopBody();
+    assert(!body.IsValid());
+    assert(body.FaceCount() == 5);
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 5);
+    assert(result.body.ShellCount() == 1);
+    assert(result.body.ShellAt(0).IsClosed());
+    assert(result.body.VertexCount() == 6);
+    assert(result.body.EdgeCount() == 9);
+    const double s = 1e-5;
+    const double expectedV1X = s + 1.0e-7 / 3.0;
+    const double expectedV4X = s + 2.0e-7 / 3.0;
+    std::size_t sharedV1Count = 0;
+    std::size_t sharedV4Count = 0;
+    for (std::size_t i = 0; i < result.body.VertexCount(); ++i)
+    {
+        const Point3d point = result.body.VertexAt(i).Point();
+        if (std::abs(point.y) < 1e-12 && std::abs(point.z) < 1e-12 && point.x > 0.5 * s && point.x < 1.5 * s)
+        {
+            ++sharedV1Count;
+            assert(std::abs(point.x - expectedV1X) < 1e-10);
+        }
+        if (std::abs(point.y) < 1e-12 && point.x > 0.5 * s && point.x < 1.5 * s
+            && point.z > 0.5 * s && point.z < 1.5 * s)
+        {
+            ++sharedV4Count;
+            assert(std::abs(point.x - expectedV4X) < 1e-10);
+        }
+    }
+    assert(sharedV1Count == 1);
+    assert(sharedV4Count == 1);
+}
 // Demonstrates a non-axis-aligned (affine-skewed) polyhedron subset can be
 // converted to BrepBody without requiring robust non-planar repair.
 TEST(Conversion3dCapabilityTest, SkewedCubePolyhedronBodyConvertsToBrepBody)
@@ -3901,3 +4087,7 @@ TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidTripleVerti
     assert(sharedV1Count == 1);
     assert(sharedV6Count == 1);
 }
+
+
+
+
