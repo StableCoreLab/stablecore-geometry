@@ -138,6 +138,7 @@
   - **[已收敛子集]** 三面共面水平排列 strip 在 Brep 路径合并为单多边形（3×1 矩形，area=3）
 - 必需-3：`ConvertToBrepBody(...)` 向更一般 topology-changing non-planar repair 推进并转正 capability（对应 `Conversion3dGapTest::GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen`）
   - **[已收敛子集]** support-mismatch near-equal closed-cuboid all-vertices（2×1×1 矩形盒子，8 顶点全部 near-equal 扰动，FaceCount=6/VertexCount=8/EdgeCount=12/closed shell）
+  - **[已收敛子集]** support-mismatch near-equal closed-cuboid all-vertices + duplicate-loop-normalization（单面重复 leading 顶点，FaceCount=6/VertexCount=8/EdgeCount=12/closed shell）
   - 仍为 open gap（更一般 topology-changing repair）
 - 必需-4：`Heal(BrepBody)` 覆盖 non-planar trimmed face topology repair（对应 `Brep3dGapTest::NonPlanarTrimmedFaceTopologyRepairRemainsOpen`）
   - **[已收敛子集]** 非水平平面（y=0 竖面，法向+y）单面 BrepFace 缺失 trim 回填

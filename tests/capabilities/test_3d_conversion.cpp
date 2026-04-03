@@ -1494,6 +1494,29 @@ PolyhedronBody BuildSupportMismatchNearEqualClosedCuboidAllVerticesBody()
         // Right (x≈w, normal +x): v1, v2, v6, v5
         PolyhedronFace3d(mismatched, PolyhedronLoop3d({v1c, v2c, v6c, v5c}))});
 }
+
+PolyhedronBody BuildSupportMismatchNearEqualClosedCuboidAllVerticesWithDuplicateLoopBody()
+{
+    // Reuse the all-vertices near-equal closed-cuboid and inject a
+    // consecutive duplicate leading vertex into one face loop.
+    const PolyhedronBody base = BuildSupportMismatchNearEqualClosedCuboidAllVerticesBody();
+    std::vector<PolyhedronFace3d> faces = base.Faces();
+    if (faces.size() != 6)
+    {
+        return PolyhedronBody();
+    }
+
+    const PolyhedronFace3d front = faces[2];
+    std::vector<Point3d> loop = front.OuterLoop().Vertices();
+    if (loop.empty())
+    {
+        return PolyhedronBody();
+    }
+
+    loop.insert(loop.begin(), loop.front());
+    faces[2] = PolyhedronFace3d(front.SupportPlane(), PolyhedronLoop3d(std::move(loop)));
+    return PolyhedronBody(std::move(faces));
+}
 } // namespace
 
 // Demonstrates that a closed PolyhedronBody (unit cube, 6 quad faces) converts
@@ -3046,6 +3069,26 @@ TEST(Conversion3dCapabilityTest, TwoSeparatedCubeBrepBodyConvertsToMeshWithTwoCo
 TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidAllVerticesRepairsToValidBrepBody)
 {
     const PolyhedronBody body = BuildSupportMismatchNearEqualClosedCuboidAllVerticesBody();
+    assert(!body.IsValid());
+    assert(body.FaceCount() == 6);
+
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 6);
+    assert(result.body.ShellCount() == 1);
+    assert(result.body.ShellAt(0).IsClosed());
+    assert(result.body.VertexCount() == 8);
+    assert(result.body.EdgeCount() == 12);
+}
+
+// Demonstrates representative-average shared-vertex placement and closed-shell
+// topology recovery remain stable when the near-equal closed-cuboid input also
+// requires duplicate-loop normalization on one face.
+TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidAllVerticesWithDuplicateLoopRepairsToValidBrepBody)
+{
+    const PolyhedronBody body = BuildSupportMismatchNearEqualClosedCuboidAllVerticesWithDuplicateLoopBody();
     assert(!body.IsValid());
     assert(body.FaceCount() == 6);
 
