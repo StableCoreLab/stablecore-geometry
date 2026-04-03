@@ -1015,3 +1015,9 @@
 - 已扩展 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 新增 `SharedEdgeHoleDominatedMixedContentRepairsToPlanarSharedTopologyBrepBody`，验证 all-loop support-plane scoring 不仅适用于单面 holed face，也可在 shared-edge mixed-content 输入中与相邻 plain face 共同收敛，保持 open-shell 共享拓扑计数（FaceCount=2 / VertexCount=10 / EdgeCount=11）。
 - 新子场景中 holed face 的 outer loop 故意比 hole loop 更偏离目标平面，但 conversion 后两面所有顶点仍稳定回投到 `z≈0`，说明 all-loop scoring 已从单面子集推进到最小 shared-topology 组合子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
+## 本轮新增（2026-04-03，continuation-77）
+
+- 已扩展 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 新增 `SharedChainHoleDominatedMixedContentRepairsToPlanarSharedTopologyBrepBody`，将 all-loop support-plane scoring 从 shared-edge mixed-content 再推进到最小三面 shared-chain 组合子集，保持 open-shell 共享拓扑计数（FaceCount=3 / VertexCount=12 / EdgeCount=14）。
+- 新子场景验证中间 holed face 的 outer loop 虽然比 hole loop 更偏离目标平面，但 conversion 仍可与左右两侧 plain faces 共同收敛，且三面全部顶点稳定回投到 `z≈0`。
+- 已同步更新 `docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md` 与 `tests/gaps/test_3d_conversion_gaps.cpp`。

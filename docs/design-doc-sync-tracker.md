@@ -277,3 +277,6 @@
 - 2026-04-03（continuation-76）：
   - 已将 all-loop support-plane scoring 从单面 holed-face 子集推进到 shared-edge mixed-content 子集：`SharedEdgeHoleDominatedMixedContentRepairsToPlanarSharedTopologyBrepBody` 验证 holed face 与相邻 plain face 可共同保持共享拓扑收敛。
   - 新子场景确认当 holed face 的 outer loop 比 hole loop 更偏离目标平面时，conversion 仍可把两面全部顶点稳定回投到 `z≈0`。
+- 2026-04-03（continuation-77）：
+  - 已将 all-loop support-plane scoring 再推进到最小三面 shared-chain mixed-content 子集：`SharedChainHoleDominatedMixedContentRepairsToPlanarSharedTopologyBrepBody` 验证中间 holed face 可与左右 plain faces 共同保持共享拓扑收敛。
+  - 新子场景确认三面链路下仍可把全部顶点稳定回投到 `z≈0`，为后续 shared-chain + representative-average 组合推进提供更贴近真实 repair 的基线。

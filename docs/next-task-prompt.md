@@ -272,3 +272,7 @@
 - 已扩展 conversion capability：`SharedEdgeHoleDominatedMixedContentRepairsToPlanarSharedTopologyBrepBody`，验证 all-loop support-plane scoring 已从单面 holed face 推进到 shared-edge mixed-content 子集；holed face 与相邻 plain face 可共同保持 `FaceCount=2 / VertexCount=10 / EdgeCount=11` 的共享 open-shell 拓扑收敛。
 - 新子场景中 holed face 的 outer loop 比 hole loop 更偏离目标平面，但 conversion 后两面顶点仍全部回投到 `z≈0`。
 - 下一轮继续把这条 all-loop scoring 往更一般的 shared-chain / representative-average / topology-changing non-planar repair 组合推进。
+## 本轮新增（2026-04-03，continuation-77）
+- 已扩展 conversion capability：`SharedChainHoleDominatedMixedContentRepairsToPlanarSharedTopologyBrepBody`，验证 all-loop support-plane scoring 已再推进到最小三面 shared-chain mixed-content 子集；中间 holed face 与左右 plain faces 可共同保持 `FaceCount=3 / VertexCount=12 / EdgeCount=14` 的共享 open-shell 拓扑收敛。
+- 新子场景中三面顶点都稳定回投到 `z≈0`，说明当前 repair 已从单面与单 shared-edge 子集推进到最小链式 shared-topology 组合。
+- 下一轮优先继续把这条线与 representative-average / near-equal shared-chain 病理组合起来，逼近更一般的 topology-changing non-planar repair。

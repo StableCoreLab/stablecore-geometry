@@ -183,6 +183,7 @@
 - `SupportMismatchNearEqualClosedCuboidAllVerticesWithDualDuplicateLoopRepairsToValidBrepBody` — 在 closed-cuboid all-vertices 基础上叠加两面 duplicate-loop-normalization，修复后仍保持 closed shell 确定性拓扑计数（FaceCount=6 / VertexCount=8 / EdgeCount=12），补齐 all-vertices 的双重复病理组合子集
 - `HoleDominatedNonPlanarHoledFaceRepairsToPlanarBrepBody` — 当 outer loop 比 hole loop 更偏离目标平面时，`ConvertToBrepBody(...)` 现在会基于 outer+hole 全 loop 顶点误差选择更低误差的 refit support plane，稳定回收到 planar holed face（FaceCount=1 / VertexCount=8 / EdgeCount=8，全部顶点 z≈0）
 - `SharedEdgeHoleDominatedMixedContentRepairsToPlanarSharedTopologyBrepBody` — all-loop support-plane scoring 已推进到 shared-edge mixed-content 子集：当 holed face 的 outer loop 比 hole loop 更偏离目标平面时，conversion 仍可与相邻 plain face 共同收敛到共享 open-shell 拓扑（FaceCount=2 / VertexCount=10 / EdgeCount=11，全部顶点 z≈0）
+- `SharedChainHoleDominatedMixedContentRepairsToPlanarSharedTopologyBrepBody` — all-loop support-plane scoring 已进一步推进到最小三面 shared-chain mixed-content 子集：中间 holed face 的 outer loop 比 hole loop 更偏离目标平面时，conversion 仍可与左右 plain faces 共同收敛到共享 open-shell 拓扑（FaceCount=3 / VertexCount=12 / EdgeCount=14，全部顶点 z≈0）
 
 ## Gap Characterization Tests
 
