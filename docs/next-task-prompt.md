@@ -13,7 +13,7 @@
 
 ---
 
-## 二、当前状态快照（2026-04-02）
+## 二、当前状态快照（2026-04-03）
 
 ### 2D：已全部稳定，无需继续
 
@@ -124,6 +124,7 @@
 - 已扩展 support-plane mismatch + near-equal closed-prism all-shared-vertices（三棱柱拓扑，六个共享顶点全部 near-equal 扰动）capability：`ConvertToBrepBody(...)` 经 refit 后可对全体共享顶点同时稳定应用 representative-average 落点，保持 closed-shell 确定性拓扑计数（VertexCount=6 / EdgeCount=9）
 - 已完成 representative-target 聚合失败回退硬化：聚合失败时自动回退到 representative-id 复用路径，不再直接 `InvalidBody`
 - 已增强 repair 后 representative snapping：由单轮提升为最多两轮小步迭代（每轮保持有效性约束）
+- 已在 `Section(...)` 输出链路落地 contour 驱动的 deterministic segment 后处理（无向去重 + 短毛刺过滤），并将三棱柱截面段数稳定断言固化为 `segments=3`
 - 下一步聚焦更一般 topology-changing non-planar repair（超出当前 representative-id + shared-refit + representative-average vertex placement + fallback-hardening + iterative-snapping 子集），继续保留 `GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen` 作为总 gap
 
 ### P4-A 必需完成清单（面向建模/显示/平切算筋）
@@ -144,6 +145,7 @@
   - **[已收敛子集]** 四壳 mixed（1 closed + 2 eligible single-face + 1 ineligible），两个 eligible 闭合，ineligible 保持 open
 - 必需-6：切面钢筋线结果链路补齐 deterministic 后处理（线段去重/共线合并/短毛刺抑制/分组统计稳定），并以 capability tests 固化根数与总长断言
   - **[已收敛子集]** 三棱柱水平截面轮廓总长确定性断言（equilateral triangle 周长≈3）
+  - **[已收敛子集]** 三棱柱水平截面线段根数确定性断言（segments=3）
   - **[已收敛子集]** unit cube x=0.5 截面轮廓周长断言（1×1 square perimeter=4.0）
   - **[已收敛子集]** 2×2×1 矩形棱柱 z=0.5 截面轮廓周长断言（2×2 square perimeter=8.0）
 

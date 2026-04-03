@@ -189,6 +189,9 @@
   - 已扩展 aggressive healing 组合子能力：support-plane mismatch 的 eligible holed shell（缺失 outer/hole trims）与 ineligible multi-face shell 共存时，仍可保持 deterministic 回填后闭壳/保留 open 行为
   - 已扩展 aggressive healing 组合子能力：support-plane mismatch 的 eligible multi-face（holed+plain，缺失 trims）与 ineligible multi-face shell 共存时，仍可保持 deterministic 回填后闭壳/保留 open 行为
   - 已补强 aggressive healing capability 断言：mixed support-mismatch + ineligible multiface 系列场景新增 shell-level FaceCount 分布断言
+- 2026-04-03：
+  - 已在 `src/sdk/GeometrySection.cpp` 落地 contour 驱动的 deterministic segment 后处理：输出段由 contour 重建并执行无向去重、短毛刺过滤（长度<=eps），减少 mesh-slice 原始段顺序/重复对统计的影响
+  - 已扩展 `tests/capabilities/test_3d_section.cpp`：`ObliquePrismSectionYieldsDeterministicContourLength` 新增 `section.segments.size()==3` 断言，固化钢筋线根数稳定子集
 ## 对齐完成定义（DoD）
 
 ### 2D 对齐完成
@@ -230,6 +233,7 @@
   - **已收敛子集**：`AggressiveFourShellTwoEligibleOneIneligibleDeterministicBehavior`（四壳 mixed：1 closed + 2 eligible + 1 ineligible）
 - 钢筋线切面结果后处理：需新增 deterministic 能力测试（去重/共线合并/短毛刺抑制/分组统计）
   - **已收敛子集**：`ObliquePrismSectionYieldsDeterministicContourLength`（equilateral 三棱柱水平截面周长断言 ≈3）
+  - **已收敛子集**：`ObliquePrismSectionYieldsDeterministicContourLength` 段数断言（segments=3）
 
 ## 两周执行顺序建议（更新）
 

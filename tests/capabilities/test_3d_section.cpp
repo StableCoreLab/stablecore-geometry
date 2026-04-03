@@ -421,6 +421,7 @@ TEST(Section3dCapabilityTest, ObliquePrismSectionYieldsDeterministicContourLengt
     // Horizontal mid-section of a triangular prism = triangle → closed contour
     assert(!section.contours.empty());
     assert(section.contours[0].closed);
+    assert(section.segments.size() == 3);
 
     // Perimeter of the cross-section triangle should equal side-length sum.
     // Equilateral triangle of side 1: perimeter = 3.0 (approximately, since

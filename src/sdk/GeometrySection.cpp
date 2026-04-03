@@ -104,6 +104,64 @@ struct PolylineBuildResult
     return false;
 }
 
+[[nodiscard]] bool AddNormalizedSectionSegment(
+    const Point3d& first,
+    const Point3d& second,
+    std::vector<LineSegment3d>& segments,
+    double eps)
+{
+    if (first.AlmostEquals(second, eps))
+    {
+        return false;
+    }
+
+    if ((second - first).Length() <= eps)
+    {
+        return false;
+    }
+
+    if (ContainsUndirectedSegment(segments, first, second, eps))
+    {
+        return false;
+    }
+
+    segments.push_back(LineSegment3d::FromStartEnd(first, second));
+    return true;
+}
+
+void RebuildUniqueSegmentsFromContours(
+    PolyhedronSection3d& section,
+    double eps)
+{
+    section.segments.clear();
+    for (const SectionPolyline3d& contour : section.contours)
+    {
+        const std::size_t minimumPoints = contour.closed ? 3u : 2u;
+        if (contour.points.size() < minimumPoints)
+        {
+            continue;
+        }
+
+        for (std::size_t i = 0; i + 1 < contour.points.size(); ++i)
+        {
+            AddNormalizedSectionSegment(
+                contour.points[i],
+                contour.points[i + 1],
+                section.segments,
+                eps);
+        }
+
+        if (contour.closed)
+        {
+            AddNormalizedSectionSegment(
+                contour.points.back(),
+                contour.points.front(),
+                section.segments,
+                eps);
+        }
+    }
+}
+
 void AddUniqueIntersectionPoint(
     const Point3d& point,
     std::vector<Point3d>& points,
@@ -811,6 +869,7 @@ PolyhedronSection3d Section(
     if (hasCoplanarFace)
     {
         MergeCoplanarSectionPolygons(result, tolerance.distanceEpsilon);
+        RebuildUniqueSegmentsFromContours(result, tolerance.distanceEpsilon);
         result.success = true;
         return result;
     }
@@ -1005,6 +1064,7 @@ PolyhedronSection3d Section(
         result.polygons.push_back(std::move(polygon));
     }
 
+    RebuildUniqueSegmentsFromContours(result, tolerance.distanceEpsilon);
     result.success = true;
     return result;
 }
@@ -1128,6 +1188,7 @@ PolyhedronSection3d Section(
 
     if (hasCoplanarFace)
     {
+        RebuildUniqueSegmentsFromContours(result, tolerance.distanceEpsilon);
         result.success = true;
         return result;
     }
@@ -1304,6 +1365,7 @@ PolyhedronSection3d Section(
         result.polygons.emplace_back(Polyline2d(std::move(contour2d), PolylineClosure::Closed));
     }
 
+    RebuildUniqueSegmentsFromContours(result, tolerance.distanceEpsilon);
     result.success = true;
     return result;
 }

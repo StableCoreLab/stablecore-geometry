@@ -3,11 +3,17 @@
 ## 当前上下文
 
 - 工作区：`D:\code\stablecore-geometry`
-- 交接更新时间：`2026-04-02`
+- 交接更新时间：`2026-04-03`
 - 可用环境：`python`
 - 后续会话应聚焦于源码与文档编写
 - 编译 / 构建 / 运行由用户手动完成
 - 不必担心 `gtest` 环境接入，用户会按需要调整 CMake / 构建侧
+
+## 本轮新增（2026-04-03，continuation-50）
+
+- 已更新 `src/sdk/GeometrySection.cpp`：为 `Section(PolyhedronBody, Plane)` 与 `Section(BrepBody, Plane)` 增加 contour 驱动的 deterministic segment 后处理，统一从 contour 重建输出段并执行无向去重与短毛刺过滤（长度<=eps）。
+- 已扩展 section capability：`tests/capabilities/test_3d_section.cpp` 中 `ObliquePrismSectionYieldsDeterministicContourLength` 新增 `section.segments.size()==3` 断言，固定三棱柱截面的根数稳定性。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
 ## 本轮新增（2026-04-02，continuation-48）
 
