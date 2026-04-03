@@ -144,6 +144,7 @@
 - 必需-4：`Heal(BrepBody)` 覆盖 non-planar trimmed face topology repair（对应 `Brep3dGapTest::NonPlanarTrimmedFaceTopologyRepairRemainsOpen`）
   - **[已收敛子集]** 非水平平面（y=0 竖面，法向+y）单面 BrepFace 缺失 trim 回填
   - **[已收敛子集]** x=0 竖面（法向+x）单面 BrepFace 缺失 trim 回填
+  - **[已收敛子集]** oblique 平面（x+y+z=0，法向(1,1,1)）单面 BrepFace 缺失 trim 回填
 - 必需-5：`Heal(..., policy=Aggressive)` 覆盖超出 planar open-sheet/holed-shell 的更一般 shell repair policy（对应 `Healing3dGapTest::AggressiveShellRepairPolicyRemainsOpen`）
   - **[已收敛子集]** 四壳 mixed（1 closed + 2 eligible single-face + 1 ineligible），两个 eligible 闭合，ineligible 保持 open
 - 必需-6：切面钢筋线结果链路补齐 deterministic 后处理（线段去重/共线合并/短毛刺抑制/分组统计稳定），并以 capability tests 固化根数与总长断言

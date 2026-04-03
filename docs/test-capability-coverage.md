@@ -76,7 +76,7 @@
   - `Heal(..., policy=Aggressive)` 在 support-plane mismatch 的 eligible holed shell（缺失 outer/hole trims）与 ineligible multi-face shell 共存时，仍可先回填后闭壳并保持 ineligible open
   - `Heal(..., policy=Aggressive)` 在 support-plane mismatch 的 eligible multi-face（holed+plain，缺失 trims）与 ineligible multi-face shell 共存时，仍可先回填后闭壳并保持 ineligible open
   - `Heal(..., policy=Aggressive)` 在 mixed support-mismatch + ineligible multiface 系列场景中已补齐 shell-level FaceCount 分布断言，避免仅靠总 FaceCount 掩盖 shell 归属回归
-  - `Heal(BrepBody)` 保守 trim 回填现已覆盖 z=0（水平面，法向+z）、y=0（竖面，法向+y）、x=0（竖面，法向+x）三个轴向平面，验证 trim 回填对任意轴对齐法向的稳定性
+  - `Heal(BrepBody)` 保守 trim 回填现已覆盖 z=0（水平面，法向+z）、y=0（竖面，法向+y）、x=0（竖面，法向+x）三个轴向平面，以及 oblique 平面 x+y+z=0（法向(1,1,1)）子样例，验证 trim 回填对非轴对齐平面的稳定性
 - `tests/capabilities/test_3d_conversion.cpp`
   - 单位立方体（6 quad faces）经 `ConvertToTriangleMesh(PolyhedronBody)` 得到 12 triangles，`SurfaceArea ≈ 6.0`；并可经 `ConvertToBrepBody(PolyhedronBody)` 得到 `FaceCount() == 6` 的有效 `BrepBody`，覆盖 affine-skew 非轴对齐子类输入、support-plane mismatch 可修复子场景（含 shared-chain mixed-content full-composition 下的 support-plane refit）、mild non-planar outer/hole loop 顶点投影修复子场景、leading collinear loop 顶点下的稳健法向回退、duplicate outer/hole loop 顶点归一化修复、tiny-scale non-planar（含 holed/multi-face/mixed-content/shared-edge/shared-chain/shared-chain-mixed-content）输入下的 scale-aware 法向回退与投影修复，以及 duplicate/hole/collinear-leading normalization 与 shared-edge chain 修复的组合稳定性；同时覆盖 planar holed、planar multi-face、以及 planar holed+multi-face `BrepBody` 到 mesh 的面积保持子场景
   - `ConvertToBrepBody(...)` 在 tiny-scale shared-edge 邻接链 mixed-content full-composition 下，支持 outer/hole 双重复顶点归一化与 support-mismatch + collinear-leading 组合修复稳定叠加
@@ -140,6 +140,7 @@
 
 - `NonHorizontalPlaneBrepFaceWithoutTrimIsHealedWithBackfilledTrim` — y=0 竖面（法向+y）单面 BrepFace 保守 trim 回填，收敛 NonPlanarTrimmedFace gap 非水平子集
 - `XNormalPlaneBrepFaceWithoutTrimIsHealedWithBackfilledTrim` — x=0 竖面（法向+x）单面 BrepFace 保守 trim 回填，扩展 NonPlanarTrimmedFace gap 到第三轴方向
+- `ObliquePlaneBrepFaceWithoutTrimIsHealedWithBackfilledTrim` — oblique 平面 x+y+z=0（法向(1,1,1)）单面 BrepFace 保守 trim 回填，扩展 NonPlanarTrimmedFace gap 到非轴对齐平面方向
 - `AggressiveFourShellTwoEligibleOneIneligibleDeterministicBehavior` — 四壳 mixed（1 closed + 2 eligible + 1 ineligible），两 eligible 闭合，ineligible 保持 open，收敛四壳 AggressiveShellRepair 子集
 
 ### Conversion 子集（tests/capabilities/test_3d_conversion.cpp）

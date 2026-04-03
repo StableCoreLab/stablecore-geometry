@@ -1868,6 +1868,61 @@ TEST(Healing3dCapabilityTest, XNormalPlaneBrepFaceWithoutTrimIsHealedWithBackfil
     assert(healedFaceX.OuterTrim().PointCount() == 4);
 }
 
+// Demonstrates conservative trim backfill also works on an oblique planar
+// face (x+y+z=0, normal (1,1,1)) with line-edge topology and missing trim.
+TEST(Healing3dCapabilityTest, ObliquePlaneBrepFaceWithoutTrimIsHealedWithBackfilledTrim)
+{
+    // All vertices lie on x+y+z=0.
+    std::vector<BrepVertex> vertices{
+        BrepVertex(Point3d{0.0, 0.0, 0.0}),
+        BrepVertex(Point3d{1.0, 0.0, -1.0}),
+        BrepVertex(Point3d{1.0, 1.0, -2.0}),
+        BrepVertex(Point3d{0.0, 1.0, -1.0})};
+
+    std::vector<BrepEdge> edges;
+    edges.emplace_back(
+        std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+            Line3d::FromOriginAndDirection(Point3d{0.0, 0.0, 0.0}, Vector3d{1.0, 0.0, -1.0}),
+            Intervald{0.0, 1.0})),
+        0, 1);
+    edges.emplace_back(
+        std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+            Line3d::FromOriginAndDirection(Point3d{1.0, 0.0, -1.0}, Vector3d{0.0, 1.0, -1.0}),
+            Intervald{0.0, 1.0})),
+        1, 2);
+    edges.emplace_back(
+        std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+            Line3d::FromOriginAndDirection(Point3d{1.0, 1.0, -2.0}, Vector3d{-1.0, 0.0, 1.0}),
+            Intervald{0.0, 1.0})),
+        2, 3);
+    edges.emplace_back(
+        std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+            Line3d::FromOriginAndDirection(Point3d{0.0, 1.0, -1.0}, Vector3d{0.0, -1.0, 1.0}),
+            Intervald{0.0, 1.0})),
+        3, 0);
+
+    const BrepLoop outerLoop({
+        BrepCoedge(0, false), BrepCoedge(1, false),
+        BrepCoedge(2, false), BrepCoedge(3, false)});
+
+    const PlaneSurface obliqueSurface = PlaneSurface::FromPlane(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{1.0, 1.0, 1.0}));
+    const BrepFace face(std::shared_ptr<Surface>(obliqueSurface.Clone().release()), outerLoop);
+    const BrepBody body(vertices, edges, {BrepShell({face}, false)});
+
+    assert(body.IsValid());
+    assert(!face.OuterTrim().IsValid());
+
+    const BrepHealing3d healed = Heal(body);
+    assert(healed.success);
+    assert(healed.issue == HealingIssue3d::None);
+    assert(healed.body.IsValid());
+    assert(healed.body.FaceCount() == 1);
+    const auto healedFace = healed.body.ShellAt(0).FaceAt(0);
+    assert(healedFace.OuterTrim().IsValid());
+    assert(healedFace.OuterTrim().PointCount() == 4);
+}
+
 // Demonstrates aggressive healing handles a four-shell body — one closed plus
 // two independent eligible single-face open shells plus one ineligible — and
 // closes exactly the two eligible shells, leaving the closed and ineligible

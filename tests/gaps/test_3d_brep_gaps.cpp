@@ -28,6 +28,7 @@ TEST(Brep3dGapTest, NonPlanarTrimmedFaceTopologyRepairRemainsOpen)
     GTEST_SKIP() << "Known 3D gap: non-planar trimmed face topology repair and robust shell stitching are still open. "
                     "Covered subsets: single planar face missing-trim conservative backfill (horizontal z=0 plane), "
                     "single planar face missing-trim backfill with non-horizontal (y=0 vertical plane, +y normal), "
-                    "single planar face missing-trim backfill with x-normal (x=0 vertical plane, +x normal). "
+                    "single planar face missing-trim backfill with x-normal (x=0 vertical plane, +x normal), "
+                    "single planar face missing-trim backfill on oblique plane (x+y+z=0, normal (1,1,1)). "
                     "Remaining open: curved-surface trim recompute and non-manifold shell stitching.";
 }

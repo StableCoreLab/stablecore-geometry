@@ -195,6 +195,7 @@
   - 已补齐 `Section(BrepBody, Plane)` 的 coplanar merge 路径：三面共面 horizontal strip 经 Polyhedron->Brep 后截切可稳定合并为单 polygon（area=3.0）
   - 已扩展 conversion capability：support-mismatch near-equal closed-cuboid all-vertices 场景叠加一面 duplicate-loop-normalization 后，`ConvertToBrepBody(...)` 仍可稳定收敛 closed-shell 拓扑计数（FaceCount=6 / VertexCount=8 / EdgeCount=12）
   - 已扩展 conversion capability：support-mismatch near-equal closed-prism all-shared-vertices 场景叠加一面 duplicate-loop-normalization 后，`ConvertToBrepBody(...)` 仍可稳定收敛 closed-shell 拓扑计数（FaceCount=5 / VertexCount=6 / EdgeCount=9）
+  - 已扩展 healing capability：`Heal(BrepBody)` 保守 trim 回填新增 oblique 平面 x+y+z=0（法向(1,1,1)）单面子样例，验证非轴对齐平面上的 trim backfill 稳定性
 ## 对齐完成定义（DoD）
 
 ### 2D 对齐完成
