@@ -477,6 +477,64 @@ TEST(Section3dCapabilityTest, ObliquePrismSectionYieldsDeterministicContourLengt
     assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
 }
 
+// Demonstrates the same triangular-prism deterministic contour-length subset
+// also holds on the Brep path after Polyhedron->Brep conversion.
+TEST(Section3dCapabilityTest, BrepObliquePrismSectionYieldsDeterministicContourLength)
+{
+    const Point3d a0{0.0, 0.0, 0.0};
+    const Point3d b0{1.0, 0.0, 0.0};
+    const Point3d c0{0.5, 0.866, 0.0};
+    const Point3d a1{0.0, 0.0, 1.0};
+    const Point3d b1{1.0, 0.0, 1.0};
+    const Point3d c1{0.5, 0.866, 1.0};
+
+    const PolyhedronBody prism({
+        PolyhedronFace3d(
+            Plane::FromPointAndNormal(Point3d{0.5, 0.289, 0.0}, Vector3d{0.0, 0.0, -1.0}),
+            PolyhedronLoop3d({a0, c0, b0})),
+        PolyhedronFace3d(
+            Plane::FromPointAndNormal(Point3d{0.5, 0.289, 1.0}, Vector3d{0.0, 0.0, 1.0}),
+            PolyhedronLoop3d({a1, b1, c1})),
+        PolyhedronFace3d(
+            Plane::FromPointAndNormal(Point3d{0.5, 0.0, 0.5}, Vector3d{0.0, -1.0, 0.0}),
+            PolyhedronLoop3d({a0, b0, b1, a1})),
+        PolyhedronFace3d(
+            Plane::FromPointAndNormal(Point3d{0.75, 0.433, 0.5}, Vector3d{0.866, 0.5, 0.0}),
+            PolyhedronLoop3d({b0, c0, c1, b1})),
+        PolyhedronFace3d(
+            Plane::FromPointAndNormal(Point3d{0.25, 0.433, 0.5}, Vector3d{-0.866, 0.5, 0.0}),
+            PolyhedronLoop3d({c0, a0, a1, c1}))});
+    assert(prism.IsValid());
+
+    const auto converted = ConvertToBrepBody(prism);
+    assert(converted.success);
+    assert(converted.issue == BrepConversionIssue3d::None);
+    assert(converted.body.IsValid());
+
+    const Plane cut = Plane::FromPointAndNormal(
+        Point3d{0.5, 0.289, 0.5},
+        Vector3d{0.0, 0.0, 1.0});
+    const auto section = Section(converted.body, cut);
+    assert(section.success);
+    assert(section.IsValid());
+
+    assert(!section.contours.empty());
+    assert(section.contours[0].closed);
+    assert(section.segments.size() == 3);
+
+    double totalLength = 0.0;
+    const auto& pts = section.contours[0].points;
+    for (std::size_t i = 0; i < pts.size(); ++i)
+    {
+        const Point3d& p0 = pts[i];
+        const Point3d& p1 = pts[(i + 1) % pts.size()];
+        const double dx = p1.x - p0.x, dy = p1.y - p0.y, dz = p1.z - p0.z;
+        totalLength += std::sqrt(dx * dx + dy * dy + dz * dz);
+    }
+    assert(totalLength > 2.5 && totalLength < 3.5);
+    assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
+}
+
 // Demonstrates that cutting the unit cube with a plane perpendicular to the
 // x-axis (x=0.5) produces a deterministic 1×1 square cross-section with
 // known perimeter (4.0) and area (1.0). Extends rebar-length coverage to

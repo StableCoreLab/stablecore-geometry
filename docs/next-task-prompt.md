@@ -131,6 +131,8 @@
 
 - 必需-1：`Section` 在 non-planar dominant 输入下的歧义 contour stitching 稳定收敛（对应 `Section3dGapTest::NonPlanarDominantSectionGraphRemainsOpen`）
   - **[已收敛子集]** 凸体 oblique face-to-face mid-plane 四段闭合轮廓行列式（unit cube y=0.5 四段/Area/area=1）
+  - **[已收敛子集]** 三棱柱 mid-section 三段闭合轮廓（perimeter≈3）
+  - **[已收敛子集]** 三棱柱 mid-section 在 Brep 路径三段闭合轮廓（perimeter≈3）
   - **[已收敛子集]** unit cube x=0.5 截面四段闭合 1×1 矩形（perimeter=4.0 / area=1.0）
   - **[已收敛子集]** unit cube x=0.5 截面在 Brep 路径四段闭合 1×1 矩形（perimeter=4.0 / area=1.0）
   - **[已收敛子集]** 2×2×1 矩形棱柱 z=0.5 截面四段闭合 2×2 方形（perimeter=8.0 / area=4.0）
@@ -156,6 +158,8 @@
 - 必需-6：切面钢筋线结果链路补齐 deterministic 后处理（线段去重/共线合并/短毛刺抑制/分组统计稳定），并以 capability tests 固化根数与总长断言
   - **[已收敛子集]** 三棱柱水平截面轮廓总长确定性断言（equilateral triangle 周长≈3）
   - **[已收敛子集]** 三棱柱水平截面线段根数确定性断言（segments=3）
+  - **[已收敛子集]** 三棱柱水平截面在 Brep 路径轮廓周长断言（equilateral triangle 周长≈3）
+  - **[已收敛子集]** 三棱柱水平截面在 Brep 路径线段根数断言（segments=3）
   - **[已收敛子集]** unit cube x=0.5 截面轮廓周长断言（1×1 square perimeter=4.0）
   - **[已收敛子集]** unit cube x=0.5 截面在 Brep 路径轮廓周长断言（1×1 square perimeter=4.0）
   - **[已收敛子集]** 2×2×1 矩形棱柱 z=0.5 截面轮廓周长断言（2×2 square perimeter=8.0）

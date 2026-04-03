@@ -75,6 +75,12 @@
 - 已同步收敛 `tests/gaps/test_3d_section_gaps.cpp` 文案，纳入 rectangular-prism z-axis on BrepBody path 子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-03，continuation-61）
+
+- 已扩展 section capability：`tests/capabilities/test_3d_section.cpp` 新增 `BrepObliquePrismSectionYieldsDeterministicContourLength`，验证三棱柱 mid-section 在 Brep 路径同样保持三段闭合轮廓（segments=3 / perimeter≈3）。
+- 已同步收敛 `tests/gaps/test_3d_section_gaps.cpp` 文案，纳入 triangular-prism mid-section on BrepBody path 子集。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
 ## 本轮新增（2026-04-02，continuation-48）
 
 - 已新增失败后自动修复工作流：`.github/workflows/ci-autofix-on-failure.yml`（监听 `ci-windows-cmake` 失败）。

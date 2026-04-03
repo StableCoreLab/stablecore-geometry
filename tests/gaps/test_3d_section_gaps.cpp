@@ -20,6 +20,8 @@ TEST(Section3dGapTest, NonPlanarDominantSectionGraphRemainsOpen)
     (void)section;
     GTEST_SKIP() << "Known 3D gap: non-planar dominant section graph and ambiguous non-manifold contour stitching semantics in non-planar-dominant sections are still open. "
                     "Covered subsets: convex-body oblique-face-to-face mid-plane stitching (four-segment closed-contour determinism on unit-cube y=0.5 cut), "
+                    "triangular-prism mid-section (three-segment closed-contour determinism, perimeter≈3), "
+                    "triangular-prism mid-section on BrepBody path (three-segment closed-contour determinism, perimeter≈3), "
                     "unit-cube x-axis section (four-segment 1×1 square contour, perimeter=4), "
                     "unit-cube x-axis section on BrepBody path (four-segment 1×1 square contour, perimeter=4), "
                     "rectangular-prism z-axis section (four-segment 2×2 square contour, perimeter=8), "
