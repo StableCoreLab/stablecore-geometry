@@ -81,6 +81,12 @@
 - 已同步收敛 `tests/gaps/test_3d_section_gaps.cpp` 文案，纳入 triangular-prism mid-section on BrepBody path 子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-03，continuation-62）
+
+- 已扩展 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 新增 `SupportMismatchNearEqualClosedCuboidDualVerticesRepairsToValidBrepBody`，验证 support-mismatch near-equal closed-cuboid dual-shared-vertices（无 duplicate-loop-normalization）输入下，`ConvertToBrepBody(...)` 仍可稳定收敛到 closed-shell（FaceCount=6 / VertexCount=8 / EdgeCount=12）。
+- 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 closed-cuboid dual-shared-vertices representative-average 子集。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
 ## 本轮新增（2026-04-02，continuation-48）
 
 - 已新增失败后自动修复工作流：`.github/workflows/ci-autofix-on-failure.yml`（监听 `ci-windows-cmake` 失败）。
