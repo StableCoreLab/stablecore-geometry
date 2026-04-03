@@ -49,6 +49,7 @@
   - 覆盖 `Section(BrepBody, Plane)` 的 multi-component 子能力：双立方体先转 Brep 后截切，稳定得到 2 polygons / 2 roots / 2 components
   - 覆盖 coplanar 相邻 face fragment 在 `Section(...)` 中合并为单 polygon 的代表性 face-merge 子集
   - 覆盖 unit cube x=0.5 截面（法向 +x）的确定性四段闭合矩形轮廓（perimeter=4.0 / area=1.0），扩展钢筋线周长稳定性到 x 轴方向
+  - 覆盖 `Section(BrepBody, Plane)` 的 unit cube x=0.5 截面（法向 +x）确定性四段闭合矩形轮廓（perimeter=4.0 / area=1.0）
   - 覆盖 2×2×1 矩形棱柱 z=0.5 截面的确定性四段闭合方形轮廓（perimeter=8.0 / area=4.0），验证非单位截面的钢筋线周长稳定性
   - `Section(...)` 在输出阶段新增 contour 驱动的 deterministic segment 后处理：基于 contour 重建线段并做无向去重、共线简化后短毛刺抑制（长度<=eps 段过滤），稳定钢筋线根数统计
 - `tests/capabilities/test_3d_brep.cpp`
@@ -135,6 +136,7 @@
 - `ObliquePrismSectionYieldsDeterministicContourLength` — 等边三棱柱水平截面周长断言（≈3），收敛钢筋线总长稳定性子集
 - `ObliquePrismSectionYieldsDeterministicContourLength` 现补齐段数稳定断言（3 段），收敛钢筋线根数稳定子集
 - `UnitCubeXAxisSectionYieldsDeterministicRebarPerimeter` — unit cube x=0.5 截面四段闭合 1×1 矩形，perimeter=4，area=1，扩展钢筋线周长覆盖到 x 轴方向
+- `BrepUnitCubeXAxisSectionYieldsDeterministicRebarPerimeter` — unit cube x=0.5 在 Brep 路径也保持四段闭合 1×1 矩形（perimeter=4，area=1）
 - `RectangularPrismMidSectionYieldsDeterministicRebarPerimeter` — 2×2×1 矩形棱柱 z=0.5 截面四段闭合 2×2 方形，perimeter=8，area=4，扩展钢筋线周长覆盖到非单位截面
 
 ### Healing 子集（tests/capabilities/test_3d_healing.cpp）

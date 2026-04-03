@@ -132,6 +132,7 @@
 - 必需-1：`Section` 在 non-planar dominant 输入下的歧义 contour stitching 稳定收敛（对应 `Section3dGapTest::NonPlanarDominantSectionGraphRemainsOpen`）
   - **[已收敛子集]** 凸体 oblique face-to-face mid-plane 四段闭合轮廓行列式（unit cube y=0.5 四段/Area/area=1）
   - **[已收敛子集]** unit cube x=0.5 截面四段闭合 1×1 矩形（perimeter=4.0 / area=1.0）
+  - **[已收敛子集]** unit cube x=0.5 截面在 Brep 路径四段闭合 1×1 矩形（perimeter=4.0 / area=1.0）
   - **[已收敛子集]** 2×2×1 矩形棱柱 z=0.5 截面四段闭合 2×2 方形（perimeter=8.0 / area=4.0）
 - 必需-2：`Section` 在超出现有子集时的 coplanar fragment merge 语义闭合，确保切面输出不会碎片化（对应 `Section3dGapTest::FaceMergeSemanticsAfterSectionRemainsOpen`）
   - **[已收敛子集]** 三面共面水平排列 strip 合并为单多边形（3×1 矩形，area=3）
@@ -152,6 +153,7 @@
   - **[已收敛子集]** 三棱柱水平截面轮廓总长确定性断言（equilateral triangle 周长≈3）
   - **[已收敛子集]** 三棱柱水平截面线段根数确定性断言（segments=3）
   - **[已收敛子集]** unit cube x=0.5 截面轮廓周长断言（1×1 square perimeter=4.0）
+  - **[已收敛子集]** unit cube x=0.5 截面在 Brep 路径轮廓周长断言（1×1 square perimeter=4.0）
   - **[已收敛子集]** 2×2×1 矩形棱柱 z=0.5 截面轮廓周长断言（2×2 square perimeter=8.0）
 
 ### P4-B：aggressive shell policy 分层落地（已完成最小子集）
