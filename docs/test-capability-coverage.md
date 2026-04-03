@@ -173,6 +173,7 @@
 - `SupportMismatchNearEqualClosedCuboidDualVerticesWithDuplicateLoopRepairsToValidBrepBody` — 在 closed-cuboid dual-shared-vertices 基础上叠加一面 duplicate-loop-normalization，修复后仍保持 closed shell 确定性拓扑计数（FaceCount=6 / VertexCount=8 / EdgeCount=12）
 - `SupportMismatchNearEqualClosedCuboidTripleVerticesRepairsToValidBrepBody` — 在 closed-cuboid triple-shared-vertices（三个共享顶点 near-equal 扰动）输入下，修复后稳定保持 representative-average 共享顶点落点与 closed shell 确定性拓扑计数（FaceCount=6 / VertexCount=8 / EdgeCount=12），补齐 dual→triple 中间子集
 - `SupportMismatchNearEqualClosedCuboidTripleVerticesWithDuplicateLoopRepairsToValidBrepBody` — 在 triple-shared-vertices 基础上叠加一面 duplicate-loop-normalization，修复后仍保持 closed shell 确定性拓扑计数（FaceCount=6 / VertexCount=8 / EdgeCount=12），补齐 triple-vertices 的病理组合子集
+- `SupportMismatchNearEqualClosedCuboidAllVerticesWithDualDuplicateLoopRepairsToValidBrepBody` — 在 closed-cuboid all-vertices 基础上叠加两面 duplicate-loop-normalization，修复后仍保持 closed shell 确定性拓扑计数（FaceCount=6 / VertexCount=8 / EdgeCount=12），补齐 all-vertices 的双重复病理组合子集
 
 ## Gap Characterization Tests
 

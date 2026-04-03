@@ -1610,6 +1610,30 @@ PolyhedronBody BuildSupportMismatchNearEqualClosedCuboidAllVerticesWithDuplicate
     return PolyhedronBody(std::move(faces));
 }
 
+PolyhedronBody BuildSupportMismatchNearEqualClosedCuboidAllVerticesWithDualDuplicateLoopBody()
+{
+    // Start from the single-duplicate variant and add another duplicate leading
+    // vertex on a second face, to stress duplicate-loop normalization
+    // composition in a closed all-vertices near-equal cuboid input.
+    const PolyhedronBody base = BuildSupportMismatchNearEqualClosedCuboidAllVerticesWithDuplicateLoopBody();
+    std::vector<PolyhedronFace3d> faces = base.Faces();
+    if (faces.size() != 6)
+    {
+        return PolyhedronBody();
+    }
+
+    const PolyhedronFace3d back = faces[3];
+    std::vector<Point3d> loop = back.OuterLoop().Vertices();
+    if (loop.empty())
+    {
+        return PolyhedronBody();
+    }
+
+    loop.insert(loop.begin(), loop.front());
+    faces[3] = PolyhedronFace3d(back.SupportPlane(), PolyhedronLoop3d(std::move(loop)));
+    return PolyhedronBody(std::move(faces));
+}
+
 PolyhedronBody BuildSupportMismatchNearEqualClosedCuboidDualVerticesWithDuplicateLoopBody()
 {
     // Tiny-scale 2x1x1 closed cuboid where two non-adjacent shared vertices
@@ -3517,6 +3541,26 @@ TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidAllVertices
 TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidAllVerticesWithDuplicateLoopRepairsToValidBrepBody)
 {
     const PolyhedronBody body = BuildSupportMismatchNearEqualClosedCuboidAllVerticesWithDuplicateLoopBody();
+    assert(!body.IsValid());
+    assert(body.FaceCount() == 6);
+
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 6);
+    assert(result.body.ShellCount() == 1);
+    assert(result.body.ShellAt(0).IsClosed());
+    assert(result.body.VertexCount() == 8);
+    assert(result.body.EdgeCount() == 12);
+}
+
+// Demonstrates closed-shell representative-average recovery remains stable when
+// the near-equal closed-cuboid all-vertices input requires duplicate-loop
+// normalization on two faces simultaneously.
+TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidAllVerticesWithDualDuplicateLoopRepairsToValidBrepBody)
+{
+    const PolyhedronBody body = BuildSupportMismatchNearEqualClosedCuboidAllVerticesWithDualDuplicateLoopBody();
     assert(!body.IsValid());
     assert(body.FaceCount() == 6);
 

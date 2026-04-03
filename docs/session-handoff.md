@@ -87,6 +87,12 @@
 - 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 closed-cuboid dual-shared-vertices representative-average 子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-03，continuation-67）
+
+- 已扩展 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 新增 `SupportMismatchNearEqualClosedCuboidAllVerticesWithDualDuplicateLoopRepairsToValidBrepBody`，验证 support-mismatch near-equal closed-cuboid all-vertices 输入下两面同时包含 duplicate leading 顶点时，`ConvertToBrepBody(...)` 仍可稳定收敛 closed-shell（FaceCount=6 / VertexCount=8 / EdgeCount=12）。
+- 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 closed-cuboid all-vertices + dual-duplicate-loop-normalization 子集。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
 ## 本轮新增（2026-04-03，continuation-63）
 
 - 已扩展 section capability：`tests/capabilities/test_3d_section.cpp` 新增 `BrepRectangularPrismXAxisSectionYieldsDeterministicRebarPerimeter`，验证 2×2×1 矩形棱柱 x=1.0 截面在 Brep 路径同样保持四段闭合 2×1 矩形（segments=4 / perimeter=6 / area=2）。

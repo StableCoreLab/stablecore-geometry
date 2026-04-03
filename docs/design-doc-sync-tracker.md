@@ -213,6 +213,7 @@
   - 已扩展 section capability：unit cube z=0.5 截面在 Polyhedron 路径可稳定保持四段闭合 1×1 方形（perimeter=4.0 / area=1.0），完成 unit-cube z 轴截面 Poly 子集
   - 已扩展 section capability：unit cube z=0.5 截面在 Brep 路径可稳定保持四段闭合 1×1 方形（perimeter=4.0 / area=1.0），完成 unit-cube 三轴全覆盖
   - 已扩展 conversion capability：support-mismatch near-equal closed-cuboid triple-shared-vertices 叠加一面 duplicate-loop-normalization，修复后仍保持 closed shell 确定性拓扑计数（FaceCount=6 / VertexCount=8 / EdgeCount=12），补齐 triple-vertices 病理组合子集
+  - 已扩展 conversion capability：support-mismatch near-equal closed-cuboid all-vertices 叠加两面 duplicate-loop-normalization，`ConvertToBrepBody(...)` 仍可稳定收敛 closed-shell 拓扑计数（FaceCount=6 / VertexCount=8 / EdgeCount=12），补齐 all-vertices 双重复病理组合子集
 ## 对齐完成定义（DoD）
 
 ### 2D 对齐完成
