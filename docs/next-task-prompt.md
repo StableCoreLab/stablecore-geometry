@@ -140,6 +140,7 @@
 - 必需-3：`ConvertToBrepBody(...)` 向更一般 topology-changing non-planar repair 推进并转正 capability（对应 `Conversion3dGapTest::GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen`）
   - **[已收敛子集]** support-mismatch near-equal closed-cuboid all-vertices（2×1×1 矩形盒子，8 顶点全部 near-equal 扰动，FaceCount=6/VertexCount=8/EdgeCount=12/closed shell）
   - **[已收敛子集]** support-mismatch near-equal closed-cuboid all-vertices + duplicate-loop-normalization（单面重复 leading 顶点，FaceCount=6/VertexCount=8/EdgeCount=12/closed shell）
+  - **[已收敛子集]** support-mismatch near-equal closed-prism dual-shared-vertices + duplicate-loop-normalization（单面重复 leading 顶点，FaceCount=5/VertexCount=6/EdgeCount=9/closed shell）
   - **[已收敛子集]** support-mismatch near-equal closed-prism all-shared-vertices + duplicate-loop-normalization（单面重复 leading 顶点，FaceCount=5/VertexCount=6/EdgeCount=9/closed shell）
   - **[已收敛子集]** support-mismatch near-equal closed-tetra all-shared-vertices + duplicate-loop-normalization（单面重复 leading 顶点，FaceCount=4/VertexCount=4/EdgeCount=6/closed shell）
   - 仍为 open gap（更一般 topology-changing repair）
