@@ -140,6 +140,7 @@
   - **[已收敛子集]** support-mismatch near-equal closed-cuboid all-vertices（2×1×1 矩形盒子，8 顶点全部 near-equal 扰动，FaceCount=6/VertexCount=8/EdgeCount=12/closed shell）
   - **[已收敛子集]** support-mismatch near-equal closed-cuboid all-vertices + duplicate-loop-normalization（单面重复 leading 顶点，FaceCount=6/VertexCount=8/EdgeCount=12/closed shell）
   - **[已收敛子集]** support-mismatch near-equal closed-prism all-shared-vertices + duplicate-loop-normalization（单面重复 leading 顶点，FaceCount=5/VertexCount=6/EdgeCount=9/closed shell）
+  - **[已收敛子集]** support-mismatch near-equal closed-tetra all-shared-vertices + duplicate-loop-normalization（单面重复 leading 顶点，FaceCount=4/VertexCount=4/EdgeCount=6/closed shell）
   - 仍为 open gap（更一般 topology-changing repair）
 - 必需-4：`Heal(BrepBody)` 覆盖 non-planar trimmed face topology repair（对应 `Brep3dGapTest::NonPlanarTrimmedFaceTopologyRepairRemainsOpen`）
   - **[已收敛子集]** 非水平平面（y=0 竖面，法向+y）单面 BrepFace 缺失 trim 回填
