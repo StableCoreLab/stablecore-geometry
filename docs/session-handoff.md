@@ -105,6 +105,11 @@
 - 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 closed-cuboid dual-shared-vertices + dual-duplicate-loop-normalization 子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-03，continuation-70）
+
+- 已同步 `docs/next-task-prompt.md`：在 `必需-3` 下新增“下一轮优先子集”，明确下一批 conversion 目标为 closed-prism dual/all-shared-vertices + dual-duplicate-loop-normalization，以及 closed-tetra dual/all-shared-vertices + dual-duplicate-loop-normalization。
+- 已同步交接约束：后续优先继续 capability+gap+文档小步收敛节奏，不编译不跑构建，完成后直接提交。
+
 ## 本轮新增（2026-04-03，continuation-63）
 
 - 已扩展 section capability：`tests/capabilities/test_3d_section.cpp` 新增 `BrepRectangularPrismXAxisSectionYieldsDeterministicRebarPerimeter`，验证 2×2×1 矩形棱柱 x=1.0 截面在 Brep 路径同样保持四段闭合 2×1 矩形（segments=4 / perimeter=6 / area=2）。
