@@ -390,6 +390,26 @@ PolyhedronBody BuildMildlyNonPlanarHoledFaceBody()
     return PolyhedronBody({face});
 }
 
+PolyhedronBody BuildHoleDominatedNonPlanarHoledFaceBody()
+{
+    std::vector<Point3d> outer{
+        Point3d{0.0, 0.0, 0.12},
+        Point3d{6.0, 0.0, 0.00},
+        Point3d{6.0, 6.0, 0.10},
+        Point3d{0.0, 6.0, 0.00}};
+    std::vector<Point3d> hole{
+        Point3d{1.0, 1.0, 0.0},
+        Point3d{5.0, 1.0, 0.0},
+        Point3d{5.0, 5.0, 0.0},
+        Point3d{1.0, 5.0, 0.0}};
+
+    const PolyhedronFace3d face(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.2}, Vector3d{0.0, 0.0, 1.0}),
+        PolyhedronLoop3d(std::move(outer)),
+        {PolyhedronLoop3d(std::move(hole))});
+    return PolyhedronBody({face});
+}
+
 PolyhedronBody BuildSupportPlaneMismatchedCollinearLeadingLoopBody()
 {
     const PolyhedronFace3d face(
@@ -3135,6 +3155,29 @@ TEST(Conversion3dCapabilityTest, MildlyNonPlanarHoleLoopCanBeRepairedToBrepBody)
     assert(result.body.FaceCount() == 1);
     assert(result.body.VertexCount() == 8);
     assert(result.body.EdgeCount() == 8);
+}
+
+// Demonstrates refit support-plane selection now scores all loop vertices, so
+// a holed face can converge to the lower-error shared plane even when the outer
+// loop alone would suggest a worse tilted support plane.
+TEST(Conversion3dCapabilityTest, HoleDominatedNonPlanarHoledFaceRepairsToPlanarBrepBody)
+{
+    const PolyhedronBody body = BuildHoleDominatedNonPlanarHoledFaceBody();
+    assert(!body.IsValid());
+
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 1);
+    assert(result.body.VertexCount() == 8);
+    assert(result.body.EdgeCount() == 8);
+
+    for (std::size_t i = 0; i < result.body.VertexCount(); ++i)
+    {
+        const Point3d point = result.body.VertexAt(i).Point();
+        assert(std::abs(point.z) < 1e-10);
+    }
 }
 
 // Demonstrates refit-plane repair remains robust when leading loop vertices

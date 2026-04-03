@@ -181,6 +181,7 @@
 - `SupportMismatchNearEqualClosedCuboidTripleVerticesWithDuplicateLoopRepairsToValidBrepBody` — 在 triple-shared-vertices 基础上叠加一面 duplicate-loop-normalization，修复后仍保持 closed shell 确定性拓扑计数（FaceCount=6 / VertexCount=8 / EdgeCount=12），补齐 triple-vertices 的病理组合子集
 - `SupportMismatchNearEqualClosedCuboidTripleVerticesWithDualDuplicateLoopRepairsToValidBrepBody` — 在 triple-shared-vertices 基础上叠加两面 duplicate-loop-normalization，修复后仍保持 closed shell 确定性拓扑计数（FaceCount=6 / VertexCount=8 / EdgeCount=12），补齐 triple-vertices 双重复病理组合子集
 - `SupportMismatchNearEqualClosedCuboidAllVerticesWithDualDuplicateLoopRepairsToValidBrepBody` — 在 closed-cuboid all-vertices 基础上叠加两面 duplicate-loop-normalization，修复后仍保持 closed shell 确定性拓扑计数（FaceCount=6 / VertexCount=8 / EdgeCount=12），补齐 all-vertices 的双重复病理组合子集
+- `HoleDominatedNonPlanarHoledFaceRepairsToPlanarBrepBody` — 当 outer loop 比 hole loop 更偏离目标平面时，`ConvertToBrepBody(...)` 现在会基于 outer+hole 全 loop 顶点误差选择更低误差的 refit support plane，稳定回收到 planar holed face（FaceCount=1 / VertexCount=8 / EdgeCount=8，全部顶点 z≈0）
 
 ## Gap Characterization Tests
 
@@ -200,7 +201,7 @@
 - `tests/gaps/test_3d_healing_gaps.cpp`
   - 记录超出 planar open-sheet closure（含 holed shell）子策略的激进修复策略、mesh/body 联合多阶段修复仍未闭合
 - `tests/gaps/test_3d_conversion_gaps.cpp`
-  - 记录高保真 Brep->mesh 特征保持（超出 planar holed+multi-face area-preserving + shared-edge vertex-reuse + disconnected closed-shell component-preserving 子集）、鲁棒 non-planar polyhedron->Brep repair（超出 affine-planar + support-plane-refit + mild outer/hole loop-projection + collinear-leading-loop + duplicate outer/hole loop-normalization 子集）仍未闭合
+  - 记录高保真 Brep->mesh 特征保持（超出 planar holed+multi-face area-preserving + shared-edge vertex-reuse + disconnected closed-shell component-preserving 子集）、鲁棒 non-planar polyhedron->Brep repair（超出 affine-planar + support-plane-refit + all-loop scored holed-face refit + mild outer/hole loop-projection + collinear-leading-loop + duplicate outer/hole loop-normalization 子集）仍未闭合
 - 2D 历史 gap 场景已全部转正到 `tests/capabilities`；当前 `tests/gaps` 专注 3D P1 骨架跟踪
 
 ## CMake / gtest 说明

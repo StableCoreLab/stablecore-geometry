@@ -1,8 +1,11 @@
 #include "sdk/GeometryBrepConversion.h"
 
+#include <cmath>
 #include <limits>
 #include <memory>
+#include <numeric>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "sdk/LineCurve3d.h"
@@ -728,77 +731,6 @@ void BuildBodyLoopRepresentativeIds(
         return std::max(maxDistanceSquared, eps * eps);
     };
 
-    bool foundSupport = false;
-    Point3d p0{};
-    Vector3d normal{};
-    double bestNormalLength = -1.0;
-    Point3d bestP0{};
-    Vector3d bestNormal{};
-
-    int bestPreferredCount = -1;
-    double bestPreferredNormalLength = -1.0;
-    Point3d preferredP0{};
-    Vector3d preferredNormal{};
-
-    for (std::size_t i = 0; i + 2 < outer.VertexCount(); ++i)
-    {
-        const Point3d a = outer.VertexAt(i);
-        for (std::size_t j = i + 1; j + 1 < outer.VertexCount(); ++j)
-        {
-            const Point3d b = outer.VertexAt(j);
-            for (std::size_t k = j + 1; k < outer.VertexCount(); ++k)
-            {
-                const Point3d c = outer.VertexAt(k);
-                const Vector3d candidateNormal = Cross(b - a, c - a);
-                const double candidateLength = candidateNormal.Length();
-                if (candidateLength > bestNormalLength)
-                {
-                    bestNormalLength = candidateLength;
-                    bestP0 = a;
-                    bestNormal = candidateNormal;
-                }
-
-                if (candidateLength > eps)
-                {
-                    const int preferredCount =
-                        static_cast<int>(normalizedPreferredOuter[i]) +
-                        static_cast<int>(normalizedPreferredOuter[j]) +
-                        static_cast<int>(normalizedPreferredOuter[k]);
-
-                    if (!foundSupport || preferredCount > bestPreferredCount ||
-                        (preferredCount == bestPreferredCount && candidateLength > bestPreferredNormalLength))
-                    {
-                        foundSupport = true;
-                        bestPreferredCount = preferredCount;
-                        bestPreferredNormalLength = candidateLength;
-                        preferredP0 = a;
-                        preferredNormal = candidateNormal;
-                    }
-                }
-            }
-        }
-    }
-
-    if (foundSupport)
-    {
-        p0 = preferredP0;
-        normal = preferredNormal;
-    }
-    else
-    {
-        const double scaleAwareThreshold = maxLoopScaleSquared(outer) * eps;
-        if (bestNormalLength <= scaleAwareThreshold)
-        {
-            return false;
-        }
-
-        p0 = bestP0;
-        normal = bestNormal;
-        foundSupport = true;
-    }
-
-    const Plane refitPlane = Plane::FromPointAndNormal(p0, normal);
-
     std::vector<PolyhedronLoop3d> holes;
     std::vector<std::vector<std::size_t>> normalizedHoleRepresentativeIds;
     holes.reserve(face.HoleCount());
@@ -827,6 +759,132 @@ void BuildBodyLoopRepresentativeIds(
         }
         normalizedHoleRepresentativeIds.push_back(std::move(normalizedHoleIds));
     }
+
+    bool foundSupport = false;
+    Point3d p0{};
+    Vector3d normal{};
+    double bestNormalLength = -1.0;
+    Point3d bestP0{};
+    Vector3d bestNormal{};
+    double bestTotalDistance = std::numeric_limits<double>::infinity();
+    double bestMaxDistance = std::numeric_limits<double>::infinity();
+    int bestPreferredCount = -1;
+    double bestPreferredNormalLength = -1.0;
+
+    struct CandidatePoint
+    {
+        Point3d point;
+        bool preferred{false};
+    };
+
+    std::vector<CandidatePoint> candidatePoints;
+    candidatePoints.reserve(
+        outer.VertexCount() +
+        std::accumulate(
+            holes.begin(),
+            holes.end(),
+            std::size_t{0},
+            [](std::size_t total, const PolyhedronLoop3d& loop) { return total + loop.VertexCount(); }));
+    for (std::size_t i = 0; i < outer.VertexCount(); ++i)
+    {
+        candidatePoints.push_back(CandidatePoint{outer.VertexAt(i), normalizedPreferredOuter[i]});
+    }
+    for (const PolyhedronLoop3d& hole : holes)
+    {
+        for (std::size_t i = 0; i < hole.VertexCount(); ++i)
+        {
+            candidatePoints.push_back(CandidatePoint{hole.VertexAt(i), false});
+        }
+    }
+
+    auto scorePlane = [&](const Plane& plane) {
+        double totalDistance = 0.0;
+        double maxDistance = 0.0;
+
+        const auto accumulateLoopDistance = [&](const PolyhedronLoop3d& loop) {
+            for (std::size_t vertexIndex = 0; vertexIndex < loop.VertexCount(); ++vertexIndex)
+            {
+                const double distance = std::abs(plane.SignedDistanceTo(loop.VertexAt(vertexIndex), eps));
+                totalDistance += distance;
+                maxDistance = std::max(maxDistance, distance);
+            }
+        };
+
+        accumulateLoopDistance(outer);
+        for (const PolyhedronLoop3d& hole : holes)
+        {
+            accumulateLoopDistance(hole);
+        }
+
+        return std::pair<double, double>{totalDistance, maxDistance};
+    };
+
+    for (std::size_t i = 0; i + 2 < candidatePoints.size(); ++i)
+    {
+        const Point3d a = candidatePoints[i].point;
+        for (std::size_t j = i + 1; j + 1 < candidatePoints.size(); ++j)
+        {
+            const Point3d b = candidatePoints[j].point;
+            for (std::size_t k = j + 1; k < candidatePoints.size(); ++k)
+            {
+                const Point3d c = candidatePoints[k].point;
+                const Vector3d candidateNormal = Cross(b - a, c - a);
+                const double candidateLength = candidateNormal.Length();
+                if (candidateLength > bestNormalLength)
+                {
+                    bestNormalLength = candidateLength;
+                    bestP0 = a;
+                    bestNormal = candidateNormal;
+                }
+
+                if (candidateLength <= eps)
+                {
+                    continue;
+                }
+
+                const Plane candidatePlane = Plane::FromPointAndNormal(a, candidateNormal);
+                const auto [totalDistance, maxDistance] = scorePlane(candidatePlane);
+                const int preferredCount =
+                    static_cast<int>(candidatePoints[i].preferred) +
+                    static_cast<int>(candidatePoints[j].preferred) +
+                    static_cast<int>(candidatePoints[k].preferred);
+
+                const bool betterFit =
+                    !foundSupport ||
+                    totalDistance + eps < bestTotalDistance ||
+                    (std::abs(totalDistance - bestTotalDistance) <= eps &&
+                     (maxDistance + eps < bestMaxDistance ||
+                      (std::abs(maxDistance - bestMaxDistance) <= eps &&
+                       (preferredCount > bestPreferredCount ||
+                        (preferredCount == bestPreferredCount &&
+                         candidateLength > bestPreferredNormalLength)))));
+                if (betterFit)
+                {
+                    foundSupport = true;
+                    p0 = a;
+                    normal = candidateNormal;
+                    bestTotalDistance = totalDistance;
+                    bestMaxDistance = maxDistance;
+                    bestPreferredCount = preferredCount;
+                    bestPreferredNormalLength = candidateLength;
+                }
+            }
+        }
+    }
+
+    if (!foundSupport)
+    {
+        const double scaleAwareThreshold = maxLoopScaleSquared(outer) * eps;
+        if (bestNormalLength <= scaleAwareThreshold)
+        {
+            return false;
+        }
+
+        p0 = bestP0;
+        normal = bestNormal;
+    }
+
+    const Plane refitPlane = Plane::FromPointAndNormal(p0, normal);
 
     repairedFace = PolyhedronFace3d(refitPlane, outer, holes);
     if (repairedFace.IsValid(eps))

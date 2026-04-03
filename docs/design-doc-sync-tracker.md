@@ -271,3 +271,6 @@
 - 2026-04-03（continuation-74）：
   - 已扩展 general non-planar repair 的 representative capability 子集：dual-deformed unit cube 叠加 single/dual duplicate-loop-normalization 后，`ConvertToBrepBody(...)` 仍可稳定收敛 closed-shell 拓扑计数。
   - 已补齐 deformed unit cube 的 dual-duplicate-loop-normalization 子集，形成 single-/dual-deformed multi-face non-planar + duplicate-loop-normalization 的更完整代表性覆盖。
+- 2026-04-03（continuation-75）：
+  - 已将 `BuildFaceWithRefitSupportPlane(...)` 扩展为 outer+hole 全 loop 候选平面打分，按全局 signed-distance 误差优先的启发式选择 refit support plane，作为 topology-changing non-planar repair 的一阶算法推进。
+  - 已新增 holed-face capability 子集 `HoleDominatedNonPlanarHoledFaceRepairsToPlanarBrepBody`，验证 hole 主导更低误差平面时 conversion 仍可稳定回收到 planar holed face。

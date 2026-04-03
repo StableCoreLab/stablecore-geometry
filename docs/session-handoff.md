@@ -1002,3 +1002,10 @@
 - 已扩展 conversion capability：新增 `DualDeformedCubeWithDualDuplicateLoopRepairsToClosedSharedTopologyBrepBody`，验证 dual-deformed unit cube 叠加双面 duplicate-loop-normalization 后，`ConvertToBrepBody(...)` 仍可稳定收敛到 closed-shell（FaceCount=6 / VertexCount=8 / EdgeCount=12）。
 - 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，将 deformed / dual-deformed non-planar multi-face 的 single/dual duplicate-loop-normalization 子集纳入已覆盖边界说明。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
+## 本轮新增（2026-04-03，continuation-75）
+
+- 已推进 `src/sdk/GeometryBrepConversion.cpp` 的 non-planar repair 算法：`BuildFaceWithRefitSupportPlane(...)` 不再只依据 outer loop 三点选 support plane，而是对 outer + hole 全 loop 顶点枚举候选平面，并按全局 signed-distance 误差优先、shared outer 顶点偏好次之的启发式进行 refit 选面。
+- 已扩展 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 新增 `HoleDominatedNonPlanarHoledFaceRepairsToPlanarBrepBody`，验证当 outer loop 本身更偏离而 hole loop 主导更低误差平面时，`ConvertToBrepBody(...)` 仍可稳定回收到 planar holed face（FaceCount=1 / VertexCount=8 / EdgeCount=8，且全部顶点 z≈0）。
+- 已同步更新 `tests/gaps/test_3d_conversion_gaps.cpp`，将 holed-face all-loop support-plane scoring 子集纳入当前已覆盖边界说明。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。

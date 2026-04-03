@@ -264,3 +264,7 @@
 - 已扩展 conversion capability：dual-deformed unit cube + duplicate-loop-normalization，目标闭壳拓扑计数为 `FaceCount=6 / VertexCount=8 / EdgeCount=12`。
 - 已扩展 conversion capability：dual-deformed unit cube + dual-duplicate-loop-normalization，目标闭壳拓扑计数为 `FaceCount=6 / VertexCount=8 / EdgeCount=12`。
 - deformed / dual-deformed non-planar multi-face 与 duplicate-loop-normalization 的代表性组合子集现已进一步收敛；下一轮继续向更一般 topology-changing non-planar repair 推进。
+## 本轮新增（2026-04-03，continuation-75）
+- 已推进 `ConvertToBrepBody(...)` repair 算法：`BuildFaceWithRefitSupportPlane(...)` 改为对 outer + hole 全 loop 顶点枚举候选平面，并按全局 signed-distance 误差优先选择 refit support plane，不再局限于 outer-loop-only 启发式。
+- 已扩展 conversion capability：`HoleDominatedNonPlanarHoledFaceRepairsToPlanarBrepBody`，验证 hole 主导更低误差平面时，holed face 仍可稳定回收到 planar BrepFace（`FaceCount=1 / VertexCount=8 / EdgeCount=8`，且顶点 `z≈0`）。
+- 下一轮优先继续把这条 all-loop support-plane scoring 往 shared-topology / multi-face / topology-changing non-planar repair 推进，而不是再补单面代表性子集。
