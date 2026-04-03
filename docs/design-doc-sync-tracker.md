@@ -280,3 +280,6 @@
 - 2026-04-03（continuation-77）：
   - 已将 all-loop support-plane scoring 再推进到最小三面 shared-chain mixed-content 子集：`SharedChainHoleDominatedMixedContentRepairsToPlanarSharedTopologyBrepBody` 验证中间 holed face 可与左右 plain faces 共同保持共享拓扑收敛。
   - 新子场景确认三面链路下仍可把全部顶点稳定回投到 `z≈0`，为后续 shared-chain + representative-average 组合推进提供更贴近真实 repair 的基线。
+- 2026-04-03（continuation-78）：
+  - 已将 all-loop support-plane scoring 与 representative-average vertex placement 组合到最小三面 shared-chain mixed-content 子集：`SupportMismatchNearEqualSharedChainHoleDominatedMixedContentRepairsWithRepresentativeAverageTarget` 验证左右 shared-edge 的 near-equal 顶点仍可稳定收敛到 deterministic average target。
+  - 新子场景确认在 `x=2` / `x=6` 两条共享边附近，平均落点与 `z≈0` 平面回投可同时成立。
