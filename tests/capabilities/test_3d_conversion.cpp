@@ -1609,6 +1609,53 @@ PolyhedronBody BuildSupportMismatchNearEqualClosedCuboidAllVerticesWithDuplicate
     faces[2] = PolyhedronFace3d(front.SupportPlane(), PolyhedronLoop3d(std::move(loop)));
     return PolyhedronBody(std::move(faces));
 }
+
+PolyhedronBody BuildSupportMismatchNearEqualClosedCuboidDualVerticesWithDuplicateLoopBody()
+{
+    // Tiny-scale 2x1x1 closed cuboid where two non-adjacent shared vertices
+    // (v0 and v6) have near-equal variants across their 3 incident faces,
+    // and one face also needs duplicate-loop normalization.
+    const double s = 1e-5;
+    const double w = 2.0 * s;
+
+    // v0 variants: bottom/front/left
+    const Point3d v0a{1.0e-7, 0.0, 0.0};
+    const Point3d v0b{-1.0e-7, 0.0, 0.0};
+    const Point3d v0c{0.0, 0.0, 0.0};
+
+    // Stable vertices.
+    const Point3d v1{w, 0.0, 0.0};
+    const Point3d v2{w, s, 0.0};
+    const Point3d v3{0.0, s, 0.0};
+    const Point3d v4{0.0, 0.0, s};
+    const Point3d v5{w, 0.0, s};
+    const Point3d v7{0.0, s, s};
+
+    // v6 variants: top/back/right
+    const Point3d v6a{w + 2.0e-7, s, s};
+    const Point3d v6b{w - 1.0e-7, s, s};
+    const Point3d v6c{w, s, s};
+
+    const Plane mismatched =
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 3e-6}, Vector3d{0.0, 0.0, 1.0});
+
+    std::vector<Point3d> leftLoop{v0c, v4, v7, v3};
+    leftLoop.insert(leftLoop.begin(), leftLoop.front());
+
+    return PolyhedronBody({
+        // Bottom
+        PolyhedronFace3d(mismatched, PolyhedronLoop3d({v0a, v3, v2, v1})),
+        // Top
+        PolyhedronFace3d(mismatched, PolyhedronLoop3d({v4, v5, v6a, v7})),
+        // Front
+        PolyhedronFace3d(mismatched, PolyhedronLoop3d({v0b, v1, v5, v4})),
+        // Back
+        PolyhedronFace3d(mismatched, PolyhedronLoop3d({v3, v7, v6b, v2})),
+        // Left (with duplicate leading vertex)
+        PolyhedronFace3d(mismatched, PolyhedronLoop3d(std::move(leftLoop))),
+        // Right
+        PolyhedronFace3d(mismatched, PolyhedronLoop3d({v1, v2, v6c, v5}))});
+}
 } // namespace
 
 // Demonstrates that a closed PolyhedronBody (unit cube, 6 quad faces) converts
@@ -3367,4 +3414,47 @@ TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidAllVertices
     assert(result.body.ShellAt(0).IsClosed());
     assert(result.body.VertexCount() == 8);
     assert(result.body.EdgeCount() == 12);
+}
+
+// Demonstrates representative-average placement and closed-shell topology
+// recovery remain stable on a near-equal closed-cuboid dual-shared-vertices
+// subset when one face also requires duplicate-loop normalization.
+TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidDualVerticesWithDuplicateLoopRepairsToValidBrepBody)
+{
+    const PolyhedronBody body = BuildSupportMismatchNearEqualClosedCuboidDualVerticesWithDuplicateLoopBody();
+    assert(!body.IsValid());
+    assert(body.FaceCount() == 6);
+
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 6);
+    assert(result.body.ShellCount() == 1);
+    assert(result.body.ShellAt(0).IsClosed());
+    assert(result.body.VertexCount() == 8);
+    assert(result.body.EdgeCount() == 12);
+
+    const double s = 1e-5;
+    const double w = 2.0 * s;
+    const double expectedV6X = w + 1.0e-7 / 3.0;
+
+    std::size_t sharedV0Count = 0;
+    std::size_t sharedV6Count = 0;
+    for (std::size_t i = 0; i < result.body.VertexCount(); ++i)
+    {
+        const Point3d point = result.body.VertexAt(i).Point();
+        if (std::abs(point.x) < 1e-12 && std::abs(point.y) < 1e-12 && std::abs(point.z) < 1e-12)
+        {
+            ++sharedV0Count;
+        }
+        if (point.x > 1.5 * s && point.x < 2.5 * s && std::abs(point.y - s) < 1e-12 && std::abs(point.z - s) < 1e-12)
+        {
+            ++sharedV6Count;
+            assert(std::abs(point.x - expectedV6X) < 1e-10);
+        }
+    }
+
+    assert(sharedV0Count == 1);
+    assert(sharedV6Count == 1);
 }

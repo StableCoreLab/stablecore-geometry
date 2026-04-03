@@ -200,6 +200,7 @@
   - 已扩展 section capability：unit cube x=0.5 截面在 Brep 路径可稳定保持四段闭合 1×1 矩形（perimeter=4.0 / area=1.0），补齐 x 轴钢筋线周长子集的 Brep 对齐
   - 已扩展 conversion capability：support-mismatch near-equal closed-prism dual-shared-vertices 场景叠加一面 duplicate-loop-normalization 后，`ConvertToBrepBody(...)` 仍可稳定收敛 closed-shell 拓扑计数（FaceCount=5 / VertexCount=6 / EdgeCount=9）
   - 已扩展 conversion capability：support-mismatch near-equal closed-tetra dual-shared-vertices 场景叠加一面 duplicate-loop-normalization 后，`ConvertToBrepBody(...)` 仍可稳定收敛 closed-shell 拓扑计数（FaceCount=4 / VertexCount=4 / EdgeCount=6）
+  - 已扩展 conversion capability：support-mismatch near-equal closed-cuboid dual-shared-vertices 场景叠加一面 duplicate-loop-normalization 后，`ConvertToBrepBody(...)` 仍可稳定收敛 closed-shell 拓扑计数（FaceCount=6 / VertexCount=8 / EdgeCount=12）
 ## 对齐完成定义（DoD）
 
 ### 2D 对齐完成
