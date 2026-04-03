@@ -795,3 +795,83 @@ TEST(Section3dCapabilityTest, BrepRectangularPrismMidSectionYieldsDeterministicR
     assert(components.IsValid());
     assert(components.components.size() == 1);
 }
+
+// Demonstrates rectangular-prism deterministic perimeter subset also covers an
+// orthogonal axis on the Brep path: x=1 mid-cut yields a 2x1 rectangle with
+// stable segments/perimeter/area.
+TEST(Section3dCapabilityTest, BrepRectangularPrismXAxisSectionYieldsDeterministicRebarPerimeter)
+{
+    const PolyhedronBody prism({
+        PolyhedronFace3d(
+            Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, 0.0, -1.0}),
+            PolyhedronLoop3d({
+                Point3d{0.0, 0.0, 0.0}, Point3d{0.0, 2.0, 0.0},
+                Point3d{2.0, 2.0, 0.0}, Point3d{2.0, 0.0, 0.0}})),
+        PolyhedronFace3d(
+            Plane::FromPointAndNormal(Point3d{0.0, 0.0, 1.0}, Vector3d{0.0, 0.0, 1.0}),
+            PolyhedronLoop3d({
+                Point3d{0.0, 0.0, 1.0}, Point3d{2.0, 0.0, 1.0},
+                Point3d{2.0, 2.0, 1.0}, Point3d{0.0, 2.0, 1.0}})),
+        PolyhedronFace3d(
+            Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, -1.0, 0.0}),
+            PolyhedronLoop3d({
+                Point3d{0.0, 0.0, 0.0}, Point3d{2.0, 0.0, 0.0},
+                Point3d{2.0, 0.0, 1.0}, Point3d{0.0, 0.0, 1.0}})),
+        PolyhedronFace3d(
+            Plane::FromPointAndNormal(Point3d{0.0, 2.0, 0.0}, Vector3d{0.0, 1.0, 0.0}),
+            PolyhedronLoop3d({
+                Point3d{0.0, 2.0, 0.0}, Point3d{0.0, 2.0, 1.0},
+                Point3d{2.0, 2.0, 1.0}, Point3d{2.0, 2.0, 0.0}})),
+        PolyhedronFace3d(
+            Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{-1.0, 0.0, 0.0}),
+            PolyhedronLoop3d({
+                Point3d{0.0, 0.0, 0.0}, Point3d{0.0, 0.0, 1.0},
+                Point3d{0.0, 2.0, 1.0}, Point3d{0.0, 2.0, 0.0}})),
+        PolyhedronFace3d(
+            Plane::FromPointAndNormal(Point3d{2.0, 0.0, 0.0}, Vector3d{1.0, 0.0, 0.0}),
+            PolyhedronLoop3d({
+                Point3d{2.0, 0.0, 0.0}, Point3d{2.0, 2.0, 0.0},
+                Point3d{2.0, 2.0, 1.0}, Point3d{2.0, 0.0, 1.0}}))});
+    assert(prism.IsValid());
+    assert(prism.FaceCount() == 6);
+
+    const auto converted = ConvertToBrepBody(prism);
+    assert(converted.success);
+    assert(converted.issue == BrepConversionIssue3d::None);
+    assert(converted.body.IsValid());
+
+    const Plane cut = Plane::FromPointAndNormal(
+        Point3d{1.0, 1.0, 0.5},
+        Vector3d{1.0, 0.0, 0.0});
+    const auto section = Section(converted.body, cut);
+    assert(section.success);
+    assert(section.IsValid());
+
+    assert(section.contours.size() == 1);
+    assert(section.contours[0].closed);
+    assert(section.contours[0].points.size() == 4);
+    assert(section.segments.size() == 4);
+
+    double totalLength = 0.0;
+    const auto& pts = section.contours[0].points;
+    for (std::size_t i = 0; i < pts.size(); ++i)
+    {
+        const Point3d& p0 = pts[i];
+        const Point3d& p1 = pts[(i + 1) % pts.size()];
+        const double dx = p1.x - p0.x, dy = p1.y - p0.y, dz = p1.z - p0.z;
+        totalLength += std::sqrt(dx * dx + dy * dy + dz * dz);
+    }
+    assert(totalLength > 5.0 && totalLength < 7.0);
+
+    assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
+    assert(section.polygons.size() == 1);
+    assert(std::abs(geometry::sdk::Area(section.polygons[0]) - 2.0) < 1e-12);
+
+    const auto topology = BuildSectionTopology(section);
+    assert(topology.IsValid());
+    assert(topology.Roots().size() == 1);
+
+    const auto components = BuildSectionComponents(section);
+    assert(components.IsValid());
+    assert(components.components.size() == 1);
+}

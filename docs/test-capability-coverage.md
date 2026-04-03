@@ -146,6 +146,7 @@
 - `BrepUnitCubeXAxisSectionYieldsDeterministicRebarPerimeter` — unit cube x=0.5 在 Brep 路径也保持四段闭合 1×1 矩形（perimeter=4，area=1）
 - `RectangularPrismMidSectionYieldsDeterministicRebarPerimeter` — 2×2×1 矩形棱柱 z=0.5 截面四段闭合 2×2 方形，perimeter=8，area=4，扩展钢筋线周长覆盖到非单位截面
 - `BrepRectangularPrismMidSectionYieldsDeterministicRebarPerimeter` — 2×2×1 矩形棱柱 z=0.5 在 Brep 路径也保持四段闭合 2×2 方形（perimeter=8，area=4）
+- `BrepRectangularPrismXAxisSectionYieldsDeterministicRebarPerimeter` — 2×2×1 矩形棱柱 x=1.0 在 Brep 路径保持四段闭合 2×1 矩形（perimeter=6，area=2），补齐矩形棱柱横向截面的钢筋线周长子集
 
 ### Healing 子集（tests/capabilities/test_3d_healing.cpp）
 

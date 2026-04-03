@@ -87,6 +87,12 @@
 - 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 closed-cuboid dual-shared-vertices representative-average 子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
+## 本轮新增（2026-04-03，continuation-63）
+
+- 已扩展 section capability：`tests/capabilities/test_3d_section.cpp` 新增 `BrepRectangularPrismXAxisSectionYieldsDeterministicRebarPerimeter`，验证 2×2×1 矩形棱柱 x=1.0 截面在 Brep 路径同样保持四段闭合 2×1 矩形（segments=4 / perimeter=6 / area=2）。
+- 已同步收敛 `tests/gaps/test_3d_section_gaps.cpp` 文案，纳入 rectangular-prism x-axis on BrepBody path 子集。
+- 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
+
 ## 本轮新增（2026-04-02，continuation-48）
 
 - 已新增失败后自动修复工作流：`.github/workflows/ci-autofix-on-failure.yml`（监听 `ci-windows-cmake` 失败）。
