@@ -27,6 +27,13 @@ struct RepresentativePointAccumulator
     std::size_t count{0};
 };
 
+struct NonPlanarRepairPassResult
+{
+    PolyhedronBody body{};
+    std::vector<FaceLoopRepresentativeIds> representativeIds;
+    std::unordered_map<std::size_t, Point3d> representativeTargetPoints;
+};
+
 [[nodiscard]] std::size_t FindOrAddRepresentativePoint(
     const Point3d& point,
     std::vector<Point3d>& representativePoints,
@@ -78,12 +85,15 @@ void BuildBodyLoopRepresentativeIds(
     }
 }
 
-[[nodiscard]] bool ApplyRepresentativeVertexSnapping(
+template <typename FaceAccessor>
+[[nodiscard]] bool ComputeRepresentativeTargetPointsForFaceRange(
+    std::size_t faceCount,
+    const FaceAccessor& faceAt,
     const std::vector<FaceLoopRepresentativeIds>& representativeIds,
-    std::vector<PolyhedronFace3d>& faces,
-    double eps)
+    std::unordered_map<std::size_t, Point3d>& representativeTargetPoints)
 {
-    if (representativeIds.size() != faces.size())
+    representativeTargetPoints.clear();
+    if (representativeIds.size() != faceCount)
     {
         return false;
     }
@@ -106,9 +116,9 @@ void BuildBodyLoopRepresentativeIds(
         return true;
     };
 
-    for (std::size_t faceIndex = 0; faceIndex < faces.size(); ++faceIndex)
+    for (std::size_t faceIndex = 0; faceIndex < faceCount; ++faceIndex)
     {
-        const PolyhedronFace3d& face = faces[faceIndex];
+        const PolyhedronFace3d face = faceAt(faceIndex);
         const FaceLoopRepresentativeIds& ids = representativeIds[faceIndex];
 
         if (!accumulateLoop(face.OuterLoop(), ids.outer))
@@ -130,8 +140,7 @@ void BuildBodyLoopRepresentativeIds(
         }
     }
 
-    std::unordered_map<std::size_t, Point3d> representativeTargets;
-    representativeTargets.reserve(accumulators.size());
+    representativeTargetPoints.reserve(accumulators.size());
     for (const auto& [id, accumulator] : accumulators)
     {
         if (accumulator.count == 0)
@@ -140,7 +149,45 @@ void BuildBodyLoopRepresentativeIds(
         }
 
         const Vector3d average = accumulator.sum / static_cast<double>(accumulator.count);
-        representativeTargets.emplace(id, Point3d{average.x, average.y, average.z});
+        representativeTargetPoints.emplace(id, Point3d{average.x, average.y, average.z});
+    }
+
+    return true;
+}
+
+[[nodiscard]] bool ExecuteRepresentativeTargetAggregationPass(
+    const std::vector<PolyhedronFace3d>& faces,
+    const std::vector<FaceLoopRepresentativeIds>& representativeIds,
+    std::unordered_map<std::size_t, Point3d>& representativeTargetPoints)
+{
+    return ComputeRepresentativeTargetPointsForFaceRange(
+        faces.size(),
+        [&faces](const std::size_t faceIndex) -> const PolyhedronFace3d& { return faces[faceIndex]; },
+        representativeIds,
+        representativeTargetPoints);
+}
+
+[[nodiscard]] bool ExecuteRepresentativeTargetAggregationPass(
+    const PolyhedronBody& body,
+    const std::vector<FaceLoopRepresentativeIds>& representativeIds,
+    std::unordered_map<std::size_t, Point3d>& representativeTargetPoints)
+{
+    return ComputeRepresentativeTargetPointsForFaceRange(
+        body.FaceCount(),
+        [&body](const std::size_t faceIndex) { return body.FaceAt(faceIndex); },
+        representativeIds,
+        representativeTargetPoints);
+}
+
+[[nodiscard]] bool ExecuteCrossFaceSnappingPass(
+    const std::vector<FaceLoopRepresentativeIds>& representativeIds,
+    const std::unordered_map<std::size_t, Point3d>& representativeTargetPoints,
+    std::vector<PolyhedronFace3d>& faces,
+    double eps)
+{
+    if (representativeIds.size() != faces.size())
+    {
+        return false;
     }
 
     auto snapLoopToFacePlane = [&](const PolyhedronLoop3d& loop, const std::vector<std::size_t>& loopIds, const Plane& plane) {
@@ -150,8 +197,8 @@ void BuildBodyLoopRepresentativeIds(
         const Vector3d unitNormal = plane.UnitNormal(eps);
         for (std::size_t i = 0; i < loop.VertexCount(); ++i)
         {
-            const auto targetIt = representativeTargets.find(loopIds[i]);
-            const Point3d target = targetIt != representativeTargets.end() ? targetIt->second : loop.VertexAt(i);
+            const auto targetIt = representativeTargetPoints.find(loopIds[i]);
+            const Point3d target = targetIt != representativeTargetPoints.end() ? targetIt->second : loop.VertexAt(i);
 
             // Keep each snapped point on this face support plane.
             const double signedDistance = plane.SignedDistanceTo(target, eps);
@@ -532,68 +579,60 @@ void BuildBodyLoopRepresentativeIds(
     }
 }
 
-[[nodiscard]] bool ComputeRepresentativeTargetPoints(
+void BuildSharedOuterVertexPreferenceMask(
     const PolyhedronBody& body,
-    const std::vector<FaceLoopRepresentativeIds>& representativeIds,
-    std::unordered_map<std::size_t, Point3d>& representativeTargetPoints)
+    std::vector<std::vector<bool>>& facePreferredOuterVertices,
+    double eps)
 {
-    representativeTargetPoints.clear();
-    if (representativeIds.size() != body.FaceCount())
-    {
-        return false;
-    }
+    facePreferredOuterVertices.clear();
+    facePreferredOuterVertices.resize(body.FaceCount());
 
-    std::unordered_map<std::size_t, RepresentativePointAccumulator> accumulators;
-
-    auto accumulateLoop = [&](const PolyhedronLoop3d& loop, const std::vector<std::size_t>& loopIds) {
-        if (loop.VertexCount() != loopIds.size())
-        {
-            return false;
-        }
-
-        for (std::size_t i = 0; i < loop.VertexCount(); ++i)
-        {
-            const Point3d point = loop.VertexAt(i);
-            auto& accumulator = accumulators[loopIds[i]];
-            accumulator.sum = accumulator.sum + (point - Point3d{});
-            ++accumulator.count;
-        }
-
-        return true;
-    };
+    std::vector<Point3d> representatives;
+    std::vector<std::size_t> representativeCounts;
+    std::vector<std::vector<std::size_t>> faceRepresentativeIndices(body.FaceCount());
 
     for (std::size_t faceIndex = 0; faceIndex < body.FaceCount(); ++faceIndex)
     {
-        const PolyhedronFace3d face = body.FaceAt(faceIndex);
-        const FaceLoopRepresentativeIds& ids = representativeIds[faceIndex];
+        const PolyhedronLoop3d outer = body.FaceAt(faceIndex).OuterLoop();
+        auto& indices = faceRepresentativeIndices[faceIndex];
+        indices.reserve(outer.VertexCount());
 
-        if (!accumulateLoop(face.OuterLoop(), ids.outer) || ids.holes.size() != face.HoleCount())
+        for (std::size_t vertexIndex = 0; vertexIndex < outer.VertexCount(); ++vertexIndex)
         {
-            return false;
-        }
+            const Point3d point = outer.VertexAt(vertexIndex);
 
-        for (std::size_t holeIndex = 0; holeIndex < face.HoleCount(); ++holeIndex)
-        {
-            if (!accumulateLoop(face.HoleAt(holeIndex), ids.holes[holeIndex]))
+            std::size_t representativeIndex = static_cast<std::size_t>(-1);
+            for (std::size_t i = 0; i < representatives.size(); ++i)
             {
-                return false;
+                if (representatives[i].AlmostEquals(point, eps))
+                {
+                    representativeIndex = i;
+                    break;
+                }
             }
+
+            if (representativeIndex == static_cast<std::size_t>(-1))
+            {
+                representatives.push_back(point);
+                representativeCounts.push_back(0);
+                representativeIndex = representatives.size() - 1;
+            }
+
+            ++representativeCounts[representativeIndex];
+            indices.push_back(representativeIndex);
         }
     }
 
-    representativeTargetPoints.reserve(accumulators.size());
-    for (const auto& [id, accumulator] : accumulators)
+    for (std::size_t faceIndex = 0; faceIndex < body.FaceCount(); ++faceIndex)
     {
-        if (accumulator.count == 0)
+        const auto& indices = faceRepresentativeIndices[faceIndex];
+        auto& preferred = facePreferredOuterVertices[faceIndex];
+        preferred.resize(indices.size(), false);
+        for (std::size_t i = 0; i < indices.size(); ++i)
         {
-            return false;
+            preferred[i] = representativeCounts[indices[i]] > 1;
         }
-
-        const Vector3d average = accumulator.sum / static_cast<double>(accumulator.count);
-        representativeTargetPoints.emplace(id, Point3d{average.x, average.y, average.z});
     }
-
-    return true;
 }
 
 [[nodiscard]] bool ComputeSharedShellClosed(
@@ -942,11 +981,94 @@ void BuildBodyLoopRepresentativeIds(
     return true;
 }
 
+[[nodiscard]] bool ExecuteSupportPlaneScoringPass(
+    const PolyhedronBody& body,
+    const std::vector<std::vector<bool>>& facePreferredOuterVertices,
+    const std::vector<FaceLoopRepresentativeIds>* sourceRepresentativeIds,
+    std::vector<PolyhedronFace3d>& repairedFaces,
+    std::vector<FaceLoopRepresentativeIds>& repairedRepresentativeIds,
+    double eps)
+{
+    repairedFaces.clear();
+    repairedFaces.reserve(body.FaceCount());
+    repairedRepresentativeIds.clear();
+    repairedRepresentativeIds.resize(body.FaceCount());
+    const std::vector<bool> emptyPreferredOuterVertices;
+
+    for (std::size_t faceIndex = 0; faceIndex < body.FaceCount(); ++faceIndex)
+    {
+        const std::vector<bool>& preferredOuterVertices =
+            faceIndex < facePreferredOuterVertices.size()
+                ? facePreferredOuterVertices[faceIndex]
+                : emptyPreferredOuterVertices;
+        const std::vector<std::size_t>* sourceOuterIds = nullptr;
+        const std::vector<std::vector<std::size_t>>* sourceHoleIds = nullptr;
+        if (sourceRepresentativeIds != nullptr && faceIndex < sourceRepresentativeIds->size())
+        {
+            sourceOuterIds = &(*sourceRepresentativeIds)[faceIndex].outer;
+            sourceHoleIds = &(*sourceRepresentativeIds)[faceIndex].holes;
+        }
+
+        FaceLoopRepresentativeIds repairedIds;
+        PolyhedronFace3d repairedFace{};
+        if (!BuildFaceWithRefitSupportPlane(
+                body.FaceAt(faceIndex),
+                repairedFace,
+                eps,
+                preferredOuterVertices,
+                sourceOuterIds,
+                sourceHoleIds,
+                sourceRepresentativeIds != nullptr ? &repairedIds : nullptr))
+        {
+            return false;
+        }
+
+        repairedFaces.push_back(std::move(repairedFace));
+        if (sourceRepresentativeIds != nullptr)
+        {
+            repairedRepresentativeIds[faceIndex] = std::move(repairedIds);
+        }
+    }
+
+    if (sourceRepresentativeIds == nullptr)
+    {
+        repairedRepresentativeIds.clear();
+    }
+
+    return true;
+}
+
+[[nodiscard]] bool ExecuteTopologyReconciliationPass(
+    const std::vector<PolyhedronFace3d>& faces,
+    const std::vector<FaceLoopRepresentativeIds>& representativeIds,
+    NonPlanarRepairPassResult& repairResult,
+    double eps)
+{
+    PolyhedronBody repairedBody(faces);
+    if (!repairedBody.IsValid(eps))
+    {
+        return false;
+    }
+
+    repairResult.body = std::move(repairedBody);
+    repairResult.representativeIds = representativeIds;
+    repairResult.representativeTargetPoints.clear();
+    if (!representativeIds.empty() &&
+        !ExecuteRepresentativeTargetAggregationPass(
+            repairResult.body,
+            repairResult.representativeIds,
+            repairResult.representativeTargetPoints))
+    {
+        return false;
+    }
+
+    return true;
+}
+
 [[nodiscard]] bool TryRepairPolyhedronBodyForBrepConversion(
     const PolyhedronBody& body,
-    PolyhedronBody& repairedBody,
     const std::vector<FaceLoopRepresentativeIds>* sourceRepresentativeIds,
-    std::vector<FaceLoopRepresentativeIds>* repairedRepresentativeIds,
+    NonPlanarRepairPassResult& repairResult,
     double eps)
 {
     if (body.IsEmpty())
@@ -954,116 +1076,82 @@ void BuildBodyLoopRepresentativeIds(
         return false;
     }
 
-    std::vector<std::vector<bool>> facePreferredOuterVertices(body.FaceCount());
-    {
-        std::vector<Point3d> representatives;
-        std::vector<std::size_t> representativeCounts;
-        std::vector<std::vector<std::size_t>> faceRepresentativeIndices(body.FaceCount());
+    std::vector<std::vector<bool>> facePreferredOuterVertices;
+    BuildSharedOuterVertexPreferenceMask(body, facePreferredOuterVertices, eps);
 
-        for (std::size_t faceIndex = 0; faceIndex < body.FaceCount(); ++faceIndex)
-        {
-            const PolyhedronLoop3d outer = body.FaceAt(faceIndex).OuterLoop();
-            auto& indices = faceRepresentativeIndices[faceIndex];
-            indices.reserve(outer.VertexCount());
-
-            for (std::size_t vertexIndex = 0; vertexIndex < outer.VertexCount(); ++vertexIndex)
-            {
-                const Point3d point = outer.VertexAt(vertexIndex);
-
-                std::size_t representativeIndex = static_cast<std::size_t>(-1);
-                for (std::size_t i = 0; i < representatives.size(); ++i)
-                {
-                    if (representatives[i].AlmostEquals(point, eps))
-                    {
-                        representativeIndex = i;
-                        break;
-                    }
-                }
-
-                if (representativeIndex == static_cast<std::size_t>(-1))
-                {
-                    representatives.push_back(point);
-                    representativeCounts.push_back(0);
-                    representativeIndex = representatives.size() - 1;
-                }
-
-                ++representativeCounts[representativeIndex];
-                indices.push_back(representativeIndex);
-            }
-        }
-
-        for (std::size_t faceIndex = 0; faceIndex < body.FaceCount(); ++faceIndex)
-        {
-            const auto& indices = faceRepresentativeIndices[faceIndex];
-            auto& preferred = facePreferredOuterVertices[faceIndex];
-            preferred.resize(indices.size(), false);
-            for (std::size_t i = 0; i < indices.size(); ++i)
-            {
-                preferred[i] = representativeCounts[indices[i]] > 1;
-            }
-        }
-    }
-
+    // Support-plane scoring pass: select a refit support plane per face and
+    // normalize loop vertices / representative ids.
     std::vector<PolyhedronFace3d> repairedFaces;
-    repairedFaces.reserve(body.FaceCount());
-    if (repairedRepresentativeIds != nullptr)
+    std::vector<FaceLoopRepresentativeIds> repairedRepresentativeIds;
+    if (!ExecuteSupportPlaneScoringPass(
+            body,
+            facePreferredOuterVertices,
+            sourceRepresentativeIds,
+            repairedFaces,
+            repairedRepresentativeIds,
+            eps))
     {
-        repairedRepresentativeIds->clear();
-        repairedRepresentativeIds->resize(body.FaceCount());
+        return false;
     }
 
-    for (std::size_t i = 0; i < body.FaceCount(); ++i)
+    if (repairedRepresentativeIds.empty())
     {
-        const std::vector<std::size_t>* sourceOuterIds = nullptr;
-        const std::vector<std::vector<std::size_t>>* sourceHoleIds = nullptr;
-        if (sourceRepresentativeIds != nullptr && i < sourceRepresentativeIds->size())
-        {
-            sourceOuterIds = &(*sourceRepresentativeIds)[i].outer;
-            sourceHoleIds = &(*sourceRepresentativeIds)[i].holes;
-        }
-
-        FaceLoopRepresentativeIds repairedIds;
-        PolyhedronFace3d repairedFace{};
-        if (!BuildFaceWithRefitSupportPlane(
-                body.FaceAt(i),
-                repairedFace,
-                eps,
-                facePreferredOuterVertices[i],
-                sourceOuterIds,
-                sourceHoleIds,
-                repairedRepresentativeIds != nullptr ? &repairedIds : nullptr))
-        {
-            return false;
-        }
-        repairedFaces.push_back(std::move(repairedFace));
-        if (repairedRepresentativeIds != nullptr)
-        {
-            (*repairedRepresentativeIds)[i] = std::move(repairedIds);
-        }
+        repairResult = {};
+        repairResult.body = PolyhedronBody(std::move(repairedFaces));
+        return repairResult.body.IsValid(eps);
     }
 
-    if (repairedRepresentativeIds != nullptr)
+    // Establish a topology-reconciled baseline before iterative
+    // representative aggregation / cross-face snapping.
+    if (!ExecuteTopologyReconciliationPass(
+            repairedFaces,
+            repairedRepresentativeIds,
+            repairResult,
+            eps))
     {
-        std::vector<PolyhedronFace3d> snappedFaces = repairedFaces;
-        for (int iteration = 0; iteration < 2; ++iteration)
-        {
-            if (!ApplyRepresentativeVertexSnapping(*repairedRepresentativeIds, snappedFaces, eps))
-            {
-                break;
-            }
-
-            PolyhedronBody snappedBody(snappedFaces);
-            if (!snappedBody.IsValid(eps))
-            {
-                break;
-            }
-
-            repairedFaces = snappedFaces;
-        }
+        return false;
     }
 
-    repairedBody = PolyhedronBody(std::move(repairedFaces));
-    return repairedBody.IsValid(eps);
+    std::vector<PolyhedronFace3d> currentFaces = repairedFaces;
+    for (int iteration = 0; iteration < 2; ++iteration)
+    {
+        // Representative target aggregation pass.
+        std::unordered_map<std::size_t, Point3d> representativeTargetPoints;
+        if (!ExecuteRepresentativeTargetAggregationPass(
+                currentFaces,
+                repairedRepresentativeIds,
+                representativeTargetPoints))
+        {
+            break;
+        }
+
+        // Cross-face snapping pass.
+        std::vector<PolyhedronFace3d> snappedFaces = currentFaces;
+        if (!ExecuteCrossFaceSnappingPass(
+                repairedRepresentativeIds,
+                representativeTargetPoints,
+                snappedFaces,
+                eps))
+        {
+            break;
+        }
+
+        // Topology reconciliation pass.
+        NonPlanarRepairPassResult snappedResult;
+        if (!ExecuteTopologyReconciliationPass(
+                snappedFaces,
+                repairedRepresentativeIds,
+                snappedResult,
+                eps))
+        {
+            break;
+        }
+
+        currentFaces = std::move(snappedFaces);
+        repairResult = std::move(snappedResult);
+    }
+
+    return true;
 }
 } // namespace
 
@@ -1160,30 +1248,46 @@ PolyhedronBrepBodyConversion3d ConvertToBrepBody(const PolyhedronBody& body, dou
     std::vector<FaceLoopRepresentativeIds> sourceRepresentativeIds;
     BuildBodyLoopRepresentativeIds(body, sourceRepresentativeIds, eps);
 
-    std::vector<FaceLoopRepresentativeIds> repairedRepresentativeIds;
+    NonPlanarRepairPassResult repairResult;
     PolyhedronBody sourceBody = body;
     const bool requiresRepair = !sourceBody.IsValid(eps);
     if (requiresRepair &&
         !TryRepairPolyhedronBodyForBrepConversion(
             body,
-            sourceBody,
             &sourceRepresentativeIds,
-            &repairedRepresentativeIds,
+            repairResult,
             eps))
     {
         return {false, BrepConversionIssue3d::InvalidBody, 0, {}};
     }
 
+    if (requiresRepair)
+    {
+        sourceBody = repairResult.body;
+    }
+
     const std::vector<FaceLoopRepresentativeIds>& representativeIds =
-        requiresRepair ? repairedRepresentativeIds : sourceRepresentativeIds;
+        requiresRepair ? repairResult.representativeIds : sourceRepresentativeIds;
+
+    std::unordered_map<std::size_t, Point3d> representativeTargetPoints;
+    bool hasRepresentativeTargetPoints = false;
+    if (requiresRepair)
+    {
+        representativeTargetPoints = repairResult.representativeTargetPoints;
+        hasRepresentativeTargetPoints =
+            !representativeTargetPoints.empty() ||
+            ExecuteRepresentativeTargetAggregationPass(sourceBody, representativeIds, representativeTargetPoints);
+    }
+    else
+    {
+        hasRepresentativeTargetPoints =
+            ExecuteRepresentativeTargetAggregationPass(sourceBody, representativeIds, representativeTargetPoints);
+    }
 
     std::vector<BrepVertex> vertices;
     std::vector<BrepEdge> edges;
     std::vector<BrepFace> faces;
     std::unordered_map<std::size_t, std::size_t> representativeToVertexIndex;
-    std::unordered_map<std::size_t, Point3d> representativeTargetPoints;
-    const bool hasRepresentativeTargetPoints =
-        ComputeRepresentativeTargetPoints(sourceBody, representativeIds, representativeTargetPoints);
     faces.reserve(sourceBody.FaceCount());
 
     for (std::size_t faceIndex = 0; faceIndex < sourceBody.FaceCount(); ++faceIndex)

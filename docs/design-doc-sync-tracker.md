@@ -331,3 +331,7 @@
 - 2026-04-04（continuation-80）：
   - 已将 collinear-leading fallback 叠加到 hole-dominated shared-chain representative-average 子集：`SupportMismatchNearEqualSharedChainHoleDominatedFullCompositionRepairsWithRepresentativeAverageTarget` 验证 middle holed face 的外环前导共线点不会破坏左右 shared-edge 的 deterministic average target。
   - 新子场景确认在 collinear-leading + duplicate-hole 组合下，`x=2` / `x=6` 两条共享边的平均落点与 `z≈0` 平面回投仍可同时成立，并把拓扑计数推进到 `13 / 15`。
+- 2026-04-04（continuation-81）：
+  - 已将 `GeometryBrepConversion.cpp` 的 non-planar repair 主流程拆为 `support-plane scoring`、`representative target aggregation`、`cross-face snapping`、`topology reconciliation` 四个 pass helper，并让 repair 结果直接保留 topology-reconciled representative targets，供后续 Brep 拓扑回建复用。
+  - 已把 closed-cuboid all-vertices representative 子集从“仅 closed-shell 计数”提升为显式落点断言：`SupportMismatchNearEqualClosedCuboidAllVerticesRepairsWithRepresentativeAverageTarget` 及其 single/dual duplicate-loop 变体现在都要求 8 个共享顶点命中 deterministic representative-average 目标点。
+  - 已同步收敛 conversion gap 文案，移除 closed-cuboid all-vertices / single-duplicate / dual-duplicate 这组三个 representative-average open subset。

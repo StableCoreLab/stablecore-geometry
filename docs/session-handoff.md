@@ -109,7 +109,7 @@
 
 ## 本轮新增（2026-04-03，continuation-52）
 
-- 已扩展 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 新增 `SupportMismatchNearEqualClosedCuboidAllVerticesWithDuplicateLoopRepairsToValidBrepBody`，验证 support-mismatch near-equal closed-cuboid all-vertices 叠加单面 duplicate-loop-normalization 后，`ConvertToBrepBody(...)` 仍可稳定收敛到 closed-shell（FaceCount=6 / VertexCount=8 / EdgeCount=12）。
+- 已扩展 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 新增 `SupportMismatchNearEqualClosedCuboidAllVerticesWithDuplicateLoopRepairsWithRepresentativeAverageTarget`，验证 support-mismatch near-equal closed-cuboid all-vertices 叠加单面 duplicate-loop-normalization 后，`ConvertToBrepBody(...)` 仍可稳定保持 representative-average 共享顶点落点与 closed-shell 拓扑（FaceCount=6 / VertexCount=8 / EdgeCount=12）。
 - 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 closed-cuboid all-vertices with duplicate-loop-normalization 子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
@@ -175,7 +175,7 @@
 
 ## 本轮新增（2026-04-03，continuation-67）
 
-- 已扩展 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 新增 `SupportMismatchNearEqualClosedCuboidAllVerticesWithDualDuplicateLoopRepairsToValidBrepBody`，验证 support-mismatch near-equal closed-cuboid all-vertices 输入下两面同时包含 duplicate leading 顶点时，`ConvertToBrepBody(...)` 仍可稳定收敛 closed-shell（FaceCount=6 / VertexCount=8 / EdgeCount=12）。
+- 已扩展 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 新增 `SupportMismatchNearEqualClosedCuboidAllVerticesWithDualDuplicateLoopRepairsWithRepresentativeAverageTarget`，验证 support-mismatch near-equal closed-cuboid all-vertices 输入下两面同时包含 duplicate leading 顶点时，`ConvertToBrepBody(...)` 仍可稳定保持 representative-average 共享顶点落点与 closed-shell 拓扑（FaceCount=6 / VertexCount=8 / EdgeCount=12）。
 - 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，纳入 closed-cuboid all-vertices + dual-duplicate-loop-normalization 子集。
 - 已更新：`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。
 
@@ -318,7 +318,7 @@
 - 已新增 section capability：`UnitCubeXAxisSectionYieldsDeterministicRebarPerimeter` — unit cube x=0.5 截面四段闭合 1×1 矩形，perimeter=4.0，area=1.0，扩展必需-6 钢筋线周长覆盖到 x 轴方向。
 - 已新增 section capability：`RectangularPrismMidSectionYieldsDeterministicRebarPerimeter` — 2×2×1 矩形棱柱 z=0.5 截面四段闭合 2×2 方形，perimeter=8.0，area=4.0，扩展必需-6 钢筋线周长覆盖到非单位截面场景。
 - 已新增 healing capability：`XNormalPlaneBrepFaceWithoutTrimIsHealedWithBackfilledTrim` — x=0 竖面（法向+x）单面 BrepFace 保守 trim 回填，扩展必需-4 非水平 trim 回填到第三轴方向。
-- 已新增 conversion capability：`SupportMismatchNearEqualClosedCuboidAllVerticesRepairsToValidBrepBody` — tiny-scale 2×1×1 矩形盒子（纯四边形闭壳，8 顶点全部 near-equal 扰动 + 统一 support-plane mismatch），修复后保持 closed shell 拓扑（FaceCount=6 / VertexCount=8 / EdgeCount=12），扩展必需-3 representative-average 覆盖到非等边长 cuboid。
+- 已新增 conversion capability：`SupportMismatchNearEqualClosedCuboidAllVerticesRepairsWithRepresentativeAverageTarget` — tiny-scale 2×1×1 矩形盒子（纯四边形闭壳，8 顶点全部 near-equal 扰动 + 统一 support-plane mismatch），修复后 8 个共享顶点均稳定收敛到 representative-average 目标点，并保持 closed shell 拓扑（FaceCount=6 / VertexCount=8 / EdgeCount=12），扩展必需-3 representative-average 覆盖到非等边长 cuboid。
 - 已同步更新所有 gap 文案：`test_3d_conversion_gaps.cpp`（新增 closed-cuboid subset）、`test_3d_section_gaps.cpp`（新增 x 轴和矩形棱柱 perimeter subsets）、`test_3d_brep_gaps.cpp`（新增 x=0 plane subset）、`test_3d_healing_gaps.cpp`（备注三轴覆盖）。
 - 已同步更新：`docs/next-task-prompt.md`（P4-A 已收敛子集标注）、`docs/design-doc-sync-tracker.md`（新增能力条目）、`docs/test-capability-coverage.md`（新增能力描述与算量必需项列表）。
 
@@ -1125,3 +1125,9 @@
 - 已扩展 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 新增 `SupportMismatchNearEqualSharedChainHoleDominatedFullCompositionRepairsWithRepresentativeAverageTarget`，在上一轮子集基础上进一步叠加 collinear-leading fallback，使 hole-dominated shared-chain 组合推进到更接近 full-composition 的 representative-average 子集。
 - 新子场景验证中间 holed face 的 outer loop 同时具备 collinear-leading、near-equal shared-edge 扰动与 duplicate-hole normalization 时，conversion 仍可保持 deterministic average target（左右共享边 `x=2.0+1e-7` / `x=6.0+1e-7`），且全部顶点稳定回投到 `z≈0`；拓扑计数为 `FaceCount=3 / VertexCount=13 / EdgeCount=15`。
 - 已同步更新 `docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md` 与 `tests/gaps/test_3d_conversion_gaps.cpp`。
+
+## 本轮新增（2026-04-04，continuation-81）
+
+- 已重构 `src/sdk/GeometryBrepConversion.cpp` 的 non-planar repair 主路径，在不改 `ConvertToBrepBody(...)` 对外入口的前提下，将内部流程显式拆为 `support-plane scoring`、`representative target aggregation`、`cross-face snapping`、`topology reconciliation` 四个 pass helper，并让 repair 结果直接携带 reconciled representative targets 供后续拓扑回建复用。
+- 已转正 closed-cuboid all-vertices representative 子集：`tests/capabilities/test_3d_conversion.cpp` 将 `SupportMismatchNearEqualClosedCuboidAllVerticesRepairsWithRepresentativeAverageTarget`、`SupportMismatchNearEqualClosedCuboidAllVerticesWithDuplicateLoopRepairsWithRepresentativeAverageTarget`、`SupportMismatchNearEqualClosedCuboidAllVerticesWithDualDuplicateLoopRepairsWithRepresentativeAverageTarget` 统一升级为显式 representative-average 落点断言，不再只验证 closed-shell 拓扑计数。
+- 已同步收敛 `tests/gaps/test_3d_conversion_gaps.cpp` 文案，移除 closed-cuboid all-vertices / single-duplicate / dual-duplicate 这组三个 representative-average open subset；并已更新 `docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md`。

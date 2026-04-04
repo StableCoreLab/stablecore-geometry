@@ -76,10 +76,12 @@
 - `GeometryBodyBoolean`
   - 未来实现时区分 `PolyhedronBody` 路径与 `BrepBody` 路径，但保持统一 public contract
 - `GeometryBrepConversion`
-  - 将 non-planar repair 内部流程拆成更清晰的 pass：
+  - non-planar repair 内部流程已拆成更清晰的 pass：
     - support-plane scoring
     - representative target aggregation
-    - cross-face snapping / topology reconciliation
+    - cross-face snapping
+    - topology reconciliation
+  - 下一步继续把这四个 pass 的数据流用于更一般的多面 closed-shell non-planar repair，而不只停留在 closed-cuboid representative 子集
 - `GeometryHealing`
   - 将 conservative trim-backfill 与 aggressive shell policy 进一步拆层
 - `GeometrySection`

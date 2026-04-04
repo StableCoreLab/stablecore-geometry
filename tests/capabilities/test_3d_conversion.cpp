@@ -2211,6 +2211,49 @@ PolyhedronBody BuildSupportMismatchNearEqualClosedCuboidTripleVerticesWithDualDu
     faces[3] = PolyhedronFace3d(back.SupportPlane(), PolyhedronLoop3d(std::move(loop)));
     return PolyhedronBody(std::move(faces));
 }
+
+void AssertClosedCuboidAllVerticesRepresentativeTargets(const BrepBody& body)
+{
+    const double s = 1e-5;
+    const double w = 2.0 * s;
+    const double third = 1.0e-7 / 3.0;
+    const std::vector<Point3d> expectedPoints{
+        Point3d{0.0, 0.0, 0.0},
+        Point3d{w + 2.0 * third, 0.0, 0.0},
+        Point3d{w + third, s + third, 0.0},
+        Point3d{-third, s + 2.0 * third, 0.0},
+        Point3d{third, 0.0, s + third},
+        Point3d{w + third, 0.0, s - third},
+        Point3d{w + third, s + third, s + third},
+        Point3d{-third, s, s + third}};
+    std::vector<std::size_t> expectedMatchCounts(expectedPoints.size(), 0);
+
+    assert(body.VertexCount() == expectedPoints.size());
+    for (std::size_t i = 0; i < body.VertexCount(); ++i)
+    {
+        const Point3d point = body.VertexAt(i).Point();
+        bool matched = false;
+        for (std::size_t expectedIndex = 0; expectedIndex < expectedPoints.size(); ++expectedIndex)
+        {
+            const Point3d& expected = expectedPoints[expectedIndex];
+            if (std::abs(point.x - expected.x) < 1e-10 &&
+                std::abs(point.y - expected.y) < 1e-10 &&
+                std::abs(point.z - expected.z) < 1e-10)
+            {
+                ++expectedMatchCounts[expectedIndex];
+                matched = true;
+                break;
+            }
+        }
+
+        assert(matched);
+    }
+
+    for (const std::size_t count : expectedMatchCounts)
+    {
+        assert(count == 1);
+    }
+}
 } // namespace
 
 // Demonstrates that a closed PolyhedronBody (unit cube, 6 quad faces) converts
@@ -4370,13 +4413,11 @@ TEST(Conversion3dCapabilityTest, TwoSeparatedCubeBrepBodyConvertsToMeshWithTwoCo
     assert(components[1].size() == 12);
 }
 
-// Demonstrates that a tiny-scale closed rectangular box (6 quad faces, 8
-// vertices, 12 edges) with all-vertices near-equal perturbation and uniformly
-// mismatched support planes can be repaired by ConvertToBrepBody into a valid
-// closed BrepBody. This is the pure-quad closed-shell analogue of the triangular
-// prism all-vertices test, extending representative-average coverage to a
-// non-equilateral (2×1×1) cuboid topology.
-TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidAllVerticesRepairsToValidBrepBody)
+// Demonstrates the pure-quad closed-shell analogue of the triangular-prism
+// all-vertices test: a tiny-scale 2x1x1 cuboid with all 8 logical shared
+// vertices near-equal perturbed across 3 incident faces still converges to the
+// deterministic representative-average targets for every shared vertex.
+TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidAllVerticesRepairsWithRepresentativeAverageTarget)
 {
     const PolyhedronBody body = BuildSupportMismatchNearEqualClosedCuboidAllVerticesBody();
     assert(!body.IsValid());
@@ -4391,12 +4432,13 @@ TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidAllVertices
     assert(result.body.ShellAt(0).IsClosed());
     assert(result.body.VertexCount() == 8);
     assert(result.body.EdgeCount() == 12);
+    AssertClosedCuboidAllVerticesRepresentativeTargets(result.body);
 }
 
 // Demonstrates representative-average shared-vertex placement and closed-shell
 // topology recovery remain stable when the near-equal closed-cuboid input also
 // requires duplicate-loop normalization on one face.
-TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidAllVerticesWithDuplicateLoopRepairsToValidBrepBody)
+TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidAllVerticesWithDuplicateLoopRepairsWithRepresentativeAverageTarget)
 {
     const PolyhedronBody body = BuildSupportMismatchNearEqualClosedCuboidAllVerticesWithDuplicateLoopBody();
     assert(!body.IsValid());
@@ -4411,12 +4453,13 @@ TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidAllVertices
     assert(result.body.ShellAt(0).IsClosed());
     assert(result.body.VertexCount() == 8);
     assert(result.body.EdgeCount() == 12);
+    AssertClosedCuboidAllVerticesRepresentativeTargets(result.body);
 }
 
 // Demonstrates closed-shell representative-average recovery remains stable when
 // the near-equal closed-cuboid all-vertices input requires duplicate-loop
 // normalization on two faces simultaneously.
-TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidAllVerticesWithDualDuplicateLoopRepairsToValidBrepBody)
+TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidAllVerticesWithDualDuplicateLoopRepairsWithRepresentativeAverageTarget)
 {
     const PolyhedronBody body = BuildSupportMismatchNearEqualClosedCuboidAllVerticesWithDualDuplicateLoopBody();
     assert(!body.IsValid());
@@ -4431,6 +4474,7 @@ TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidAllVertices
     assert(result.body.ShellAt(0).IsClosed());
     assert(result.body.VertexCount() == 8);
     assert(result.body.EdgeCount() == 12);
+    AssertClosedCuboidAllVerticesRepresentativeTargets(result.body);
 }
 
 // Demonstrates representative-average placement and closed-shell topology
