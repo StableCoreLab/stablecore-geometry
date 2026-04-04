@@ -1,12 +1,15 @@
 #include "sdk/GeometryHealing.h"
 
 #include <algorithm>
+#include <cmath>
 #include <map>
 #include <memory>
 #include <utility>
 #include <vector>
 
 #include "sdk/GeometryMeshRepair.h"
+#include "sdk/GeometryRelation.h"
+#include "sdk/GeometryShapeOps.h"
 #include "sdk/PlaneSurface.h"
 #include "sdk/GeometryValidation.h"
 
@@ -14,6 +17,8 @@ namespace geometry::sdk
 {
 namespace
 {
+constexpr std::size_t kInvalidIndex = static_cast<std::size_t>(-1);
+
 HealingIssue3d MapMeshRepairIssue(const MeshRepairIssue3d issue)
 {
     switch (issue)
@@ -197,6 +202,504 @@ HealingIssue3d MapMeshRepairIssue(const MeshRepairIssue3d issue)
     return true;
 }
 
+struct BoundaryHalfEdge
+{
+    BrepCoedge coedge{};
+    std::size_t startVertexIndex{kInvalidIndex};
+    std::size_t endVertexIndex{kInvalidIndex};
+};
+
+struct BoundaryLoopInfo
+{
+    BrepLoop loop{};
+    Polyline2d normalizedUvRing{};
+    Point2d samplePoint{};
+    double area{0.0};
+};
+
+void AccumulateLoopEdgeUseCounts(
+    const BrepLoop& loop,
+    std::map<std::size_t, std::size_t>& edgeUseCount)
+{
+    for (const BrepCoedge& coedge : loop.Coedges())
+    {
+        ++edgeUseCount[coedge.EdgeIndex()];
+    }
+}
+
+void AccumulateShellEdgeUseCounts(
+    const BrepShell& shell,
+    std::map<std::size_t, std::size_t>& edgeUseCount)
+{
+    for (const BrepFace& face : shell.Faces())
+    {
+        AccumulateLoopEdgeUseCounts(face.OuterLoop(), edgeUseCount);
+        for (const BrepLoop& hole : face.HoleLoops())
+        {
+            AccumulateLoopEdgeUseCounts(hole, edgeUseCount);
+        }
+    }
+}
+
+[[nodiscard]] bool TryGetCoedgeVertexIndices(
+    const BrepBody& body,
+    const BrepCoedge& coedge,
+    std::size_t& startVertexIndex,
+    std::size_t& endVertexIndex)
+{
+    if (coedge.EdgeIndex() >= body.EdgeCount())
+    {
+        return false;
+    }
+
+    const BrepEdge edge = body.EdgeAt(coedge.EdgeIndex());
+    startVertexIndex = coedge.Reversed() ? edge.EndVertexIndex() : edge.StartVertexIndex();
+    endVertexIndex = coedge.Reversed() ? edge.StartVertexIndex() : edge.EndVertexIndex();
+    return startVertexIndex < body.VertexCount() && endVertexIndex < body.VertexCount();
+}
+
+void AppendUniqueLoopVertexIndices(
+    const BrepBody& body,
+    const BrepLoop& loop,
+    std::vector<std::size_t>& vertexIndices)
+{
+    for (const BrepCoedge& coedge : loop.Coedges())
+    {
+        std::size_t startVertexIndex = kInvalidIndex;
+        std::size_t endVertexIndex = kInvalidIndex;
+        if (!TryGetCoedgeVertexIndices(body, coedge, startVertexIndex, endVertexIndex))
+        {
+            continue;
+        }
+
+        if (std::find(vertexIndices.begin(), vertexIndices.end(), startVertexIndex) == vertexIndices.end())
+        {
+            vertexIndices.push_back(startVertexIndex);
+        }
+        if (std::find(vertexIndices.begin(), vertexIndices.end(), endVertexIndex) == vertexIndices.end())
+        {
+            vertexIndices.push_back(endVertexIndex);
+        }
+    }
+}
+
+[[nodiscard]] bool TryBuildStandaloneShellPlaneSurface(
+    const BrepBody& body,
+    const BrepShell& shell,
+    const GeometryTolerance3d& tolerance,
+    PlaneSurface& planeSurface)
+{
+    const double eps = std::max(tolerance.distanceEpsilon, geometry::kDefaultEpsilon);
+    std::vector<std::size_t> vertexIndices;
+    vertexIndices.reserve(shell.FaceCount() * 8);
+
+    Vector3d referenceNormal{};
+    bool hasReferenceNormal = false;
+    for (const BrepFace& face : shell.Faces())
+    {
+        const auto* facePlaneSurface = dynamic_cast<const PlaneSurface*>(face.SupportSurface());
+        if (facePlaneSurface == nullptr)
+        {
+            return false;
+        }
+
+        const Vector3d faceNormal = facePlaneSurface->SupportPlane().UnitNormal(eps);
+        if (!hasReferenceNormal)
+        {
+            referenceNormal = faceNormal;
+            hasReferenceNormal = true;
+        }
+        else if (!IsParallel(referenceNormal, faceNormal, tolerance))
+        {
+            return false;
+        }
+
+        AppendUniqueLoopVertexIndices(body, face.OuterLoop(), vertexIndices);
+        for (const BrepLoop& hole : face.HoleLoops())
+        {
+            AppendUniqueLoopVertexIndices(body, hole, vertexIndices);
+        }
+    }
+
+    if (!hasReferenceNormal || vertexIndices.size() < 3)
+    {
+        return false;
+    }
+
+    Point3d origin{};
+    Point3d firstPoint{};
+    Point3d secondPoint{};
+    bool foundPlane = false;
+    for (std::size_t i = 0; i < vertexIndices.size() && !foundPlane; ++i)
+    {
+        origin = body.VertexAt(vertexIndices[i]).Point();
+        for (std::size_t j = i + 1; j < vertexIndices.size() && !foundPlane; ++j)
+        {
+            firstPoint = body.VertexAt(vertexIndices[j]).Point();
+            if (origin.AlmostEquals(firstPoint, eps))
+            {
+                continue;
+            }
+
+            for (std::size_t k = j + 1; k < vertexIndices.size(); ++k)
+            {
+                secondPoint = body.VertexAt(vertexIndices[k]).Point();
+                const Vector3d computedNormal = Cross(firstPoint - origin, secondPoint - origin);
+                if (computedNormal.Length() <= eps)
+                {
+                    continue;
+                }
+
+                Vector3d alignedNormal = computedNormal;
+                if (Dot(alignedNormal, referenceNormal) < 0.0)
+                {
+                    alignedNormal = alignedNormal * -1.0;
+                }
+
+                const Plane shellPlane = Plane::FromPointAndNormal(origin, alignedNormal);
+                const double planeTolerance = std::max(tolerance.distanceEpsilon, 16.0 * eps);
+                bool allCoplanar = true;
+                for (const std::size_t vertexIndex : vertexIndices)
+                {
+                    if (std::abs(shellPlane.SignedDistanceTo(body.VertexAt(vertexIndex).Point(), eps)) > planeTolerance)
+                    {
+                        allCoplanar = false;
+                        break;
+                    }
+                }
+
+                if (!allCoplanar)
+                {
+                    continue;
+                }
+
+                planeSurface = PlaneSurface::FromPlane(shellPlane);
+                foundPlane = planeSurface.IsValid(tolerance);
+                break;
+            }
+        }
+    }
+
+    return foundPlane;
+}
+
+[[nodiscard]] Polyline2d NormalizeRingOrientationForShellCap(
+    const Polyline2d& ring,
+    bool counterClockwise)
+{
+    const RingOrientation2d orientation = Orientation(ring);
+    if (orientation == RingOrientation2d::Unknown)
+    {
+        return {};
+    }
+
+    if ((counterClockwise && orientation == RingOrientation2d::Clockwise) ||
+        (!counterClockwise && orientation == RingOrientation2d::CounterClockwise))
+    {
+        return Reverse(ring);
+    }
+
+    return ring;
+}
+
+[[nodiscard]] bool BuildBoundaryLoopInfos(
+    const BrepBody& body,
+    const BrepShell& shell,
+    const std::map<std::size_t, std::size_t>& edgeUseCount,
+    const PlaneSurface& planeSurface,
+    double eps,
+    std::vector<BoundaryLoopInfo>& boundaryLoops)
+{
+    boundaryLoops.clear();
+
+    std::vector<BoundaryHalfEdge> halfEdges;
+    auto collectBoundaryFromLoop = [&](const BrepLoop& loop) {
+        for (const BrepCoedge& coedge : loop.Coedges())
+        {
+            const auto countIt = edgeUseCount.find(coedge.EdgeIndex());
+            if (countIt == edgeUseCount.end() || countIt->second != 1U)
+            {
+                continue;
+            }
+
+            std::size_t startVertexIndex = kInvalidIndex;
+            std::size_t endVertexIndex = kInvalidIndex;
+            if (!TryGetCoedgeVertexIndices(body, coedge, startVertexIndex, endVertexIndex))
+            {
+                return false;
+            }
+
+            halfEdges.push_back(BoundaryHalfEdge{coedge, startVertexIndex, endVertexIndex});
+        }
+
+        return true;
+    };
+
+    for (const BrepFace& face : shell.Faces())
+    {
+        if (!collectBoundaryFromLoop(face.OuterLoop()))
+        {
+            return false;
+        }
+        for (const BrepLoop& hole : face.HoleLoops())
+        {
+            if (!collectBoundaryFromLoop(hole))
+            {
+                return false;
+            }
+        }
+    }
+
+    if (halfEdges.empty())
+    {
+        return false;
+    }
+
+    std::map<std::size_t, std::vector<std::size_t>> outgoing;
+    std::map<std::size_t, std::vector<std::size_t>> incoming;
+    for (std::size_t index = 0; index < halfEdges.size(); ++index)
+    {
+        outgoing[halfEdges[index].startVertexIndex].push_back(index);
+        incoming[halfEdges[index].endVertexIndex].push_back(index);
+    }
+
+    for (const auto& [vertexIndex, outgoingEdges] : outgoing)
+    {
+        const auto incomingIt = incoming.find(vertexIndex);
+        if (incomingIt == incoming.end() || outgoingEdges.size() != 1U || incomingIt->second.size() != 1U)
+        {
+            return false;
+        }
+    }
+
+    std::vector<bool> visited(halfEdges.size(), false);
+    for (std::size_t halfEdgeIndex = 0; halfEdgeIndex < halfEdges.size(); ++halfEdgeIndex)
+    {
+        if (visited[halfEdgeIndex])
+        {
+            continue;
+        }
+
+        std::vector<BrepCoedge> loopCoedges;
+        std::vector<Point3d> loopVertices;
+        const std::size_t startVertexIndex = halfEdges[halfEdgeIndex].startVertexIndex;
+        std::size_t currentIndex = halfEdgeIndex;
+        while (true)
+        {
+            if (visited[currentIndex])
+            {
+                return false;
+            }
+
+            const BoundaryHalfEdge& halfEdge = halfEdges[currentIndex];
+            visited[currentIndex] = true;
+            loopCoedges.push_back(halfEdge.coedge);
+            loopVertices.push_back(body.VertexAt(halfEdge.startVertexIndex).Point());
+
+            if (halfEdge.endVertexIndex == startVertexIndex)
+            {
+                break;
+            }
+
+            const auto nextIt = outgoing.find(halfEdge.endVertexIndex);
+            if (nextIt == outgoing.end() || nextIt->second.size() != 1U)
+            {
+                return false;
+            }
+
+            currentIndex = nextIt->second.front();
+        }
+
+        if (loopCoedges.size() < 3U || loopVertices.size() < 3U)
+        {
+            return false;
+        }
+
+        std::vector<Point2d> uvPoints;
+        uvPoints.reserve(loopVertices.size());
+        for (const Point3d& point : loopVertices)
+        {
+            uvPoints.push_back(ProjectPointToPlaneUv(point, planeSurface));
+        }
+
+        const Polyline2d uvRing(std::move(uvPoints), PolylineClosure::Closed);
+        const Polyline2d normalizedUvRing = NormalizeRingOrientationForShellCap(uvRing, true);
+        if (!normalizedUvRing.IsValid())
+        {
+            return false;
+        }
+
+        const Polygon2d projectedPolygon(normalizedUvRing);
+        if (!projectedPolygon.IsValid())
+        {
+            return false;
+        }
+
+        const Point2d samplePoint = Centroid(projectedPolygon);
+        if (!samplePoint.IsValid() || LocatePoint(samplePoint, projectedPolygon, eps) == PointContainment2d::Outside)
+        {
+            return false;
+        }
+
+        boundaryLoops.push_back(BoundaryLoopInfo{
+            BrepLoop(std::move(loopCoedges)),
+            normalizedUvRing,
+            samplePoint,
+            Area(projectedPolygon)});
+    }
+
+    return !boundaryLoops.empty();
+}
+
+[[nodiscard]] bool BuildBoundaryCapFaces(
+    const BrepBody& body,
+    const std::vector<BoundaryLoopInfo>& boundaryLoops,
+    const PlaneSurface& planeSurface,
+    const GeometryTolerance3d& tolerance,
+    std::vector<BrepFace>& capFaces)
+{
+    capFaces.clear();
+    if (boundaryLoops.empty())
+    {
+        return false;
+    }
+
+    std::vector<Polygon2d> projectedPolygons;
+    projectedPolygons.reserve(boundaryLoops.size());
+    for (const BoundaryLoopInfo& loopInfo : boundaryLoops)
+    {
+        const Polygon2d polygon(loopInfo.normalizedUvRing);
+        if (!polygon.IsValid())
+        {
+            return false;
+        }
+        projectedPolygons.push_back(polygon);
+    }
+
+    std::vector<std::size_t> parents(boundaryLoops.size(), kInvalidIndex);
+    std::vector<std::size_t> depths(boundaryLoops.size(), 0U);
+    for (std::size_t loopIndex = 0; loopIndex < boundaryLoops.size(); ++loopIndex)
+    {
+        std::size_t parentIndex = kInvalidIndex;
+        double parentArea = 0.0;
+        for (std::size_t candidateIndex = 0; candidateIndex < boundaryLoops.size(); ++candidateIndex)
+        {
+            if (candidateIndex == loopIndex || boundaryLoops[candidateIndex].area <= boundaryLoops[loopIndex].area)
+            {
+                continue;
+            }
+
+            const PointContainment2d containment =
+                LocatePoint(boundaryLoops[loopIndex].samplePoint, projectedPolygons[candidateIndex], tolerance.distanceEpsilon);
+            if (containment == PointContainment2d::Outside)
+            {
+                continue;
+            }
+
+            if (parentIndex == kInvalidIndex || boundaryLoops[candidateIndex].area < parentArea)
+            {
+                parentIndex = candidateIndex;
+                parentArea = boundaryLoops[candidateIndex].area;
+            }
+        }
+
+        parents[loopIndex] = parentIndex;
+    }
+
+    for (std::size_t loopIndex = 0; loopIndex < boundaryLoops.size(); ++loopIndex)
+    {
+        std::size_t depth = 0;
+        std::size_t parentIndex = parents[loopIndex];
+        while (parentIndex != kInvalidIndex)
+        {
+            ++depth;
+            parentIndex = parents[parentIndex];
+        }
+        depths[loopIndex] = depth;
+    }
+
+    for (std::size_t loopIndex = 0; loopIndex < boundaryLoops.size(); ++loopIndex)
+    {
+        if (depths[loopIndex] % 2U != 0U)
+        {
+            continue;
+        }
+
+        const BrepLoop outerLoop = ReversedLoop(boundaryLoops[loopIndex].loop);
+        CurveOnSurface outerTrim{};
+        if (!BuildTrimFromLoop(body, outerLoop, planeSurface, outerTrim, tolerance.distanceEpsilon))
+        {
+            return false;
+        }
+
+        std::vector<BrepLoop> holeLoops;
+        std::vector<CurveOnSurface> holeTrims;
+        for (std::size_t childIndex = 0; childIndex < boundaryLoops.size(); ++childIndex)
+        {
+            if (parents[childIndex] != loopIndex || depths[childIndex] != depths[loopIndex] + 1U)
+            {
+                continue;
+            }
+
+            const BrepLoop holeLoop = ReversedLoop(boundaryLoops[childIndex].loop);
+            CurveOnSurface holeTrim{};
+            if (!BuildTrimFromLoop(body, holeLoop, planeSurface, holeTrim, tolerance.distanceEpsilon))
+            {
+                return false;
+            }
+
+            holeLoops.push_back(holeLoop);
+            holeTrims.push_back(std::move(holeTrim));
+        }
+
+        BrepFace capFace(
+            std::shared_ptr<Surface>(planeSurface.Clone().release()),
+            outerLoop,
+            std::move(holeLoops),
+            std::move(outerTrim),
+            std::move(holeTrims));
+        if (!capFace.IsValid(tolerance))
+        {
+            return false;
+        }
+
+        capFaces.push_back(std::move(capFace));
+    }
+
+    return !capFaces.empty();
+}
+
+[[nodiscard]] bool TryCloseStandaloneShellWithBoundaryCaps(
+    const BrepBody& body,
+    const BrepShell& shell,
+    const GeometryTolerance3d& tolerance,
+    const std::map<std::size_t, std::size_t>& edgeUseCount,
+    BrepShell& repairedShell)
+{
+    PlaneSurface shellPlaneSurface{};
+    if (!TryBuildStandaloneShellPlaneSurface(body, shell, tolerance, shellPlaneSurface))
+    {
+        return false;
+    }
+
+    std::vector<BoundaryLoopInfo> boundaryLoops;
+    if (!BuildBoundaryLoopInfos(body, shell, edgeUseCount, shellPlaneSurface, tolerance.distanceEpsilon, boundaryLoops))
+    {
+        return false;
+    }
+
+    std::vector<BrepFace> capFaces;
+    if (!BuildBoundaryCapFaces(body, boundaryLoops, shellPlaneSurface, tolerance, capFaces))
+    {
+        return false;
+    }
+
+    std::vector<BrepFace> closedFaces = shell.Faces();
+    closedFaces.insert(closedFaces.end(), capFaces.begin(), capFaces.end());
+    repairedShell = BrepShell(std::move(closedFaces), true);
+    return repairedShell.IsValid(tolerance);
+}
+
 [[nodiscard]] bool NeedsBrepHealing(const BrepBody& body, const GeometryTolerance3d& tolerance)
 {
     for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
@@ -272,6 +775,7 @@ HealingIssue3d MapMeshRepairIssue(const MeshRepairIssue3d issue)
         std::map<std::size_t, std::size_t> edgeUseCount;
         bool eligible = true;
         bool hasBoundaryEdge = false;
+        bool hasInteriorSharedEdge = false;
         for (std::size_t faceIndex = 0; faceIndex < shell.FaceCount() && eligible; ++faceIndex)
         {
             const BrepFace face = shell.FaceAt(faceIndex);
@@ -280,20 +784,9 @@ HealingIssue3d MapMeshRepairIssue(const MeshRepairIssue3d issue)
                 eligible = false;
                 break;
             }
-
-            for (const BrepCoedge& coedge : face.OuterLoop().Coedges())
-            {
-                ++edgeUseCount[coedge.EdgeIndex()];
-            }
-
-            for (const BrepLoop& hole : face.HoleLoops())
-            {
-                for (const BrepCoedge& coedge : hole.Coedges())
-                {
-                    ++edgeUseCount[coedge.EdgeIndex()];
-                }
-            }
         }
+
+        AccumulateShellEdgeUseCounts(shell, edgeUseCount);
 
         if (!eligible || edgeUseCount.empty())
         {
@@ -313,6 +806,10 @@ HealingIssue3d MapMeshRepairIssue(const MeshRepairIssue3d issue)
             {
                 hasBoundaryEdge = true;
             }
+            else if (count == 2)
+            {
+                hasInteriorSharedEdge = true;
+            }
         }
 
         if (!hasBoundaryEdge)
@@ -322,6 +819,21 @@ HealingIssue3d MapMeshRepairIssue(const MeshRepairIssue3d issue)
 
         if (!eligible)
         {
+            repairedShells.push_back(shell);
+            continue;
+        }
+
+        if (hasInteriorSharedEdge)
+        {
+            BrepShell cappedShell{};
+            if (body.ShellCount() == 1 &&
+                TryCloseStandaloneShellWithBoundaryCaps(body, shell, tolerance, edgeUseCount, cappedShell))
+            {
+                repairedShells.push_back(std::move(cappedShell));
+                changed = true;
+                continue;
+            }
+
             repairedShells.push_back(shell);
             continue;
         }

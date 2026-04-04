@@ -69,10 +69,12 @@
   - 覆盖 ownership replacement 在 multi-face closed-shell 的子路径：unit-cube Brep 上 no-op `ReplaceOuterLoop -> ReplaceFace -> ReplaceShell` 后仍保持 `ShellCount=1 / FaceCount=6 / IsClosed=true`
 - `tests/capabilities/test_3d_healing.cpp`
   - 保守 `Heal(PolyhedronBody)` 对已合法的单位立方体不改变 face count 且 `HealingIssue3d::None`；`Heal(BrepBody)` 可对 plane-surface + line-edge 且缺失 trim 的 face 进行 trim 回填，并覆盖带孔 face 的 outer/hole trims 同时回填；`Heal(..., policy=Aggressive)` 覆盖可恢复 open planar single/multi-face sheet（含 holed shell）的确定性闭壳子策略，并覆盖 aggressive 闭壳与 trim-backfill 的组合病理子场景
+  - `Heal(..., policy=Aggressive)` 当前已形成更清晰的内部边界：无 interior shared-edge 的 open shell 仍走 mirror-style 闭壳；standalone coplanar shared-edge shell 则可走 boundary-cap fallback，而不是继续依赖整壳镜像
   - `Heal(..., policy=Aggressive)` 可在同一个 body 中同时闭合多个可恢复 open shell，并保持确定性拓扑结果
   - `Heal(..., policy=Aggressive)` 在混合 closed-shell + open-shell 输入下可保持已闭壳稳定，并仅对可恢复 open shell 执行确定性闭壳
   - `Heal(..., policy=Aggressive)` 在 mixed open-shell 输入下支持部分修复：可恢复 planar shell 可闭壳，不可恢复 shell 保持原状
   - `Heal(..., policy=Aggressive)` 在存在 shared-edge 邻接的 planar multi-face open-sheet 上也可执行确定性闭壳，不再局限于边完全不共享的分离面片
+  - `Heal(..., policy=Aggressive)` 已新增 standalone shared-edge holed shell 的代表性 boundary-cap 子集：support-plane mismatch + 缺失 trims 输入会先走 conservative trim-backfill，再补单一 holed cap face 完成闭壳
   - `Heal(..., policy=Aggressive)` 在三壳 mixed 输入下保持 deterministic：closed shell 保持稳定、eligible open shell 闭壳、ineligible open shell 保持 open
   - `Heal(..., policy=Aggressive)` 在三壳 mixed 输入下可与 conservative trim-backfill 协同：eligible open shell 先回填 trims 后闭壳，ineligible open shell 保持 open
   - `Heal(..., policy=Aggressive)` 在三壳 mixed 输入下支持 eligible multi-face open-sheet 闭壳，同时保持 closed shell 稳定与 ineligible shell open 状态
@@ -216,7 +218,7 @@
 - `tests/gaps/test_3d_brep_gaps.cpp`
   - 记录 coedge-loop ownership 编辑链路、non-planar trimmed face topology repair 仍未闭合（ownership gap 已覆盖 single-face + multi-face closed-shell no-op replacement 子集）
 - `tests/gaps/test_3d_healing_gaps.cpp`
-  - 记录超出 planar open-sheet closure（含 holed shell）子策略的激进修复策略、mesh/body 联合多阶段修复仍未闭合
+  - 记录超出当前 planar open-shell aggressive 子策略的更一般 topology-changing repair 仍未闭合；当前已覆盖 single/multi-face、holed、多壳 mixed，以及 standalone coplanar shared-edge boundary-cap 子集，但更一般 multi-shell shared-edge arbitration 与 mesh/body 联合多阶段修复仍未闭合
 - `tests/gaps/test_3d_body_boolean_gaps.cpp`
   - 记录 Delphi 级 3D body/shell boolean 语义仍未闭合；当前覆盖 invalid-input contract、deterministic identical/disjoint closed-body 子集，以及 axis-aligned single-box overlap 子集，非单-box overlap / touching / shell-policy / healing integration 仍为 gap
 - `tests/gaps/test_searchpoly_gaps.cpp`

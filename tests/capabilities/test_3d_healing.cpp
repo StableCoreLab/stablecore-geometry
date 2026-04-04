@@ -256,7 +256,9 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseRecoverableMultiFaceOpenS
 }
 
 // Demonstrates aggressive policy also supports a planar multi-face open sheet
-// whose adjacent faces share an interior edge before closure.
+// whose adjacent faces share an interior edge before closure. In this case the
+// aggressive policy closes the standalone shell by adding one boundary-cap face
+// instead of mirroring both front faces.
 TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseSharedEdgeOpenSheet)
 {
     std::vector<BrepVertex> vertices{
@@ -304,7 +306,85 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseSharedEdgeOpenSheet)
     assert(healed.body.IsValid());
     assert(healed.body.ShellCount() == 1);
     assert(healed.body.ShellAt(0).IsClosed());
-    assert(healed.body.FaceCount() == 4);
+    assert(healed.body.FaceCount() == 3);
+    const auto capFace = healed.body.ShellAt(0).FaceAt(2);
+    assert(capFace.OuterTrim().IsValid());
+    assert(capFace.HoleTrims().empty());
+}
+
+// Demonstrates the more general standalone aggressive boundary-cap subset:
+// a shared-edge multi-face shell with support-plane mismatch and missing trims
+// is first backfilled by conservative healing, then closed by adding a single
+// holed cap face that consumes the shell boundary loops.
+TEST(Healing3dCapabilityTest, AggressiveHealingCanBoundaryCapSharedEdgeHoledShellWithMissingTrims)
+{
+    std::vector<BrepVertex> vertices{
+        BrepVertex(Point3d{0.0, 0.0, 0.0}),
+        BrepVertex(Point3d{2.0, 0.0, 0.0}),
+        BrepVertex(Point3d{2.0, 4.0, 0.0}),
+        BrepVertex(Point3d{0.0, 4.0, 0.0}),
+        BrepVertex(Point3d{0.5, 1.0, 0.0}),
+        BrepVertex(Point3d{1.5, 1.0, 0.0}),
+        BrepVertex(Point3d{1.5, 3.0, 0.0}),
+        BrepVertex(Point3d{0.5, 3.0, 0.0}),
+        BrepVertex(Point3d{4.0, 0.0, 0.0}),
+        BrepVertex(Point3d{4.0, 4.0, 0.0})};
+
+    std::vector<BrepEdge> edges;
+    auto addEdge = [&](std::size_t start, std::size_t end) {
+        const Point3d first = vertices[start].Point();
+        const Point3d second = vertices[end].Point();
+        edges.emplace_back(
+            std::make_shared<LineCurve3d>(LineCurve3d::FromLine(
+                Line3d::FromOriginAndDirection(first, second - first),
+                Intervald{0.0, 1.0})),
+            start,
+            end);
+    };
+
+    addEdge(0, 1);
+    addEdge(1, 2); // shared interior edge
+    addEdge(2, 3);
+    addEdge(3, 0);
+    addEdge(1, 8);
+    addEdge(8, 9);
+    addEdge(9, 2);
+    addEdge(4, 5);
+    addEdge(5, 6);
+    addEdge(6, 7);
+    addEdge(7, 4);
+
+    const BrepLoop outerA({BrepCoedge(0, false), BrepCoedge(1, false), BrepCoedge(2, false), BrepCoedge(3, false)});
+    const BrepLoop holeA({BrepCoedge(7, false), BrepCoedge(8, false), BrepCoedge(9, false), BrepCoedge(10, false)});
+    const BrepLoop outerB({BrepCoedge(4, false), BrepCoedge(5, false), BrepCoedge(6, false), BrepCoedge(1, true)});
+
+    const PlaneSurface mismatchedSurface = PlaneSurface::FromPlane(
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.2}, Vector3d{0.0, 0.0, 1.0}));
+    const BrepFace holedFace(std::shared_ptr<Surface>(mismatchedSurface.Clone().release()), outerA, {holeA});
+    const BrepFace plainFace(std::shared_ptr<Surface>(mismatchedSurface.Clone().release()), outerB);
+    const BrepBody openBody(vertices, edges, {BrepShell({holedFace, plainFace}, false)});
+    assert(openBody.IsValid());
+    assert(!openBody.ShellAt(0).IsClosed());
+    assert(openBody.FaceCount() == 2);
+
+    const BrepHealing3d healed = Heal(openBody, geometry::sdk::GeometryTolerance3d{}, HealingPolicy3d::Aggressive);
+    assert(healed.success);
+    assert(healed.issue == HealingIssue3d::None);
+    assert(healed.body.IsValid());
+    assert(healed.body.ShellCount() == 1);
+    assert(healed.body.ShellAt(0).IsClosed());
+    assert(healed.body.FaceCount() == 3);
+
+    const auto healedHoledFace = healed.body.ShellAt(0).FaceAt(0);
+    const auto healedPlainFace = healed.body.ShellAt(0).FaceAt(1);
+    const auto capFace = healed.body.ShellAt(0).FaceAt(2);
+    assert(healedHoledFace.OuterTrim().IsValid());
+    assert(healedHoledFace.HoleTrims().size() == 1);
+    assert(healedHoledFace.HoleTrims()[0].IsValid());
+    assert(healedPlainFace.OuterTrim().IsValid());
+    assert(capFace.OuterTrim().IsValid());
+    assert(capFace.HoleTrims().size() == 1);
+    assert(capFace.HoleTrims()[0].IsValid());
 }
 
 // Demonstrates aggressive closure also supports a recoverable holed planar

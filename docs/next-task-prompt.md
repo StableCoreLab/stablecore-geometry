@@ -58,6 +58,18 @@
 - `SearchPolygonContainingPoint(...)` 的 smallest-containing candidate 选择子集
 - richer fake-edge explanation、Delphi 级 ambiguous recovery、完整 smart-search parity 仍保留为 gap
 
+当前 `GeometryHealing` 已进一步收敛到：
+
+- conservative `Heal(BrepBody)` trim-backfill：
+  - single-face missing outer trim
+  - holed-face missing outer/hole trims
+  - z=0 / y=0 / x=0 / oblique planar face orientations
+- aggressive `Heal(..., policy=Aggressive)`：
+  - mirror-style deterministic closure for recoverable planar open shells without interior shared-edge coupling
+  - standalone coplanar shared-edge shell 的 boundary-cap fallback
+  - representative composite subset：support-plane mismatch + missing trims + holed shared-edge shell
+- 更一般 multi-shell shared-edge arbitration、non-planar shell repair、mesh/body joint healing 仍保留为 gap
+
 当前策略已经固定为：
 
 1. 接口先行
@@ -111,6 +123,7 @@
   - 下一步继续把这四个 pass 的数据流用于更一般的多面 closed-shell non-planar repair，而不只停留在 closed-cuboid representative 子集
 - `GeometryHealing`
   - 将 conservative trim-backfill 与 aggressive shell policy 进一步拆层
+  - 在现有 mirror-style closure 与 standalone boundary-cap fallback 之上，继续推进更一般 multi-shell shared-edge arbitration
 - `GeometrySection`
   - 将 contour extraction、deterministic segment normalization、coplanar fragment merge 拆成更稳定的内部阶段
 - 统一 SDK 风格：

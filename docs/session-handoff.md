@@ -9,6 +9,27 @@
 - 编译 / 构建 / 运行由用户手动完成
 - 不必担心 `gtest` 环境接入，用户会按需要调整 CMake / 构建侧
 
+## 本轮新增（2026-04-04，fasttrack-healing-aggressive-shell-batch2）
+
+- 已更新 `src/sdk/GeometryHealing.cpp`，在不改 public SDK 入口的前提下继续深化 `GeometryHealing` 的 aggressive shell policy：
+  - 保留现有 conservative trim-backfill 作为前置修复层；
+  - 保留无 interior shared-edge 的 mirror-style aggressive closure；
+  - 新增 standalone coplanar shared-edge shell 的 boundary-cap fallback，避免 shared interior edge 在整壳镜像下把 edge-use 从 `2` 推高到 `4`；
+  - aggressive 新 fallback 会基于 shell boundary loops 重建 cap faces，并在需要时按 outer/hole 关系组装单一 holed cap face。
+- 已扩展 capability tests：`tests/capabilities/test_3d_healing.cpp`
+  - `AggressiveHealingCanCloseSharedEdgeOpenSheet` 已对齐为 boundary-cap 结果语义（2 个 front faces + 1 个 cap face）；
+  - 新增 `AggressiveHealingCanBoundaryCapSharedEdgeHoledShellWithMissingTrims`，覆盖 standalone shared-edge + holed + support-plane mismatch + missing-trims 的代表性组合子集；
+  - 当前更清晰地固定了 conservative trim-backfill 与 topology-changing aggressive closure 的职责边界。
+- 已同步收敛 gap test：`tests/gaps/test_3d_healing_gaps.cpp`
+  - 明确 standalone coplanar shared-edge boundary-cap 子集已收敛；
+  - 更一般 multi-shell shared-edge arbitration、non-planar shell repair、mesh/body joint healing 仍继续保留为 gap。
+- 已同步更新：
+  - `docs/session-handoff.md`
+  - `docs/next-task-prompt.md`
+  - `docs/test-capability-coverage.md`
+  - `docs/design-doc-sync-tracker.md`
+- 本轮仍未编译、未跑构建；仅完成代码、测试代码与文档同步。
+
 ## 本轮新增（2026-04-04，fasttrack-searchpoly-batch3）
 
 - 已更新 `include/sdk/GeometrySearchPoly.h` + `src/sdk/GeometrySearchPoly.cpp`：

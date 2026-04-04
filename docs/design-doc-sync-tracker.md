@@ -92,6 +92,7 @@
   - 已重写为 fast-track 稳定 API 推进版提示词
   - 已在后续批次中把 `GeometrySearchPoly` 第二批 SDK 深化与 `GeometryBodyBoolean` capability 排进主线
   - 已进一步同步 `GeometrySearchPoly` 到 branch scoring + candidate-level fake-edge diagnostics 子集，并把下一轮重点收敛到 richer fake-edge explanation 与 ambiguous recovery
+  - 已进一步同步 `GeometryHealing` 当前内部边界：conservative trim-backfill、aggressive mirror-style closure，以及 standalone shared-edge boundary-cap fallback
 
 ### `docs/delphi-interface-fasttrack.md` / `docs/delphi-test-fasttrack-matrix.md`
 
@@ -240,6 +241,8 @@
   - 已扩展 aggressive healing 组合子能力：support-plane mismatch 的 eligible holed shell（缺失 outer/hole trims）与 ineligible multi-face shell 共存时，仍可保持 deterministic 回填后闭壳/保留 open 行为
   - 已扩展 aggressive healing 组合子能力：support-plane mismatch 的 eligible multi-face（holed+plain，缺失 trims）与 ineligible multi-face shell 共存时，仍可保持 deterministic 回填后闭壳/保留 open 行为
   - 已补强 aggressive healing capability 断言：mixed support-mismatch + ineligible multiface 系列场景新增 shell-level FaceCount 分布断言
+  - 已进一步深化 aggressive healing 实现分层：对 standalone coplanar shared-edge shell 新增 boundary-cap fallback，避免 interior shared-edge 在 mirror-style closure 下把 edge-use 从 2 推高到 4
+  - 已新增 representative capability：support-plane mismatch + missing trims + holed shared-edge shell 可先经 conservative trim-backfill，再由 aggressive boundary-cap 补单一 holed cap face 完成闭壳
 - 2026-04-03：
   - 已在 `src/sdk/GeometrySection.cpp` 落地 contour 驱动的 deterministic segment 后处理：输出段由 contour 重建并执行无向去重、短毛刺过滤（长度<=eps），减少 mesh-slice 原始段顺序/重复对统计的影响
   - 已扩展 `tests/capabilities/test_3d_section.cpp`：`ObliquePrismSectionYieldsDeterministicContourLength` 新增 `section.segments.size()==3` 断言，固化钢筋线根数稳定子集
