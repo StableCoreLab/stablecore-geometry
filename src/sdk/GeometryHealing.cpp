@@ -32,6 +32,8 @@ HealingIssue3d MapMeshRepairIssue(const MeshRepairIssue3d issue)
     }
 }
 
+namespace trim_backfill
+{
 [[nodiscard]] bool AppendLoopVertices(
     const BrepBody& body,
     const BrepLoop& loop,
@@ -167,6 +169,8 @@ HealingIssue3d MapMeshRepairIssue(const MeshRepairIssue3d issue)
     return healedFace.IsValid(GeometryTolerance3d{eps, eps, eps});
 }
 
+} // namespace trim_backfill
+
 [[nodiscard]] bool ComputeShellClosed(
     const BrepShell& shell)
 {
@@ -199,9 +203,11 @@ HealingIssue3d MapMeshRepairIssue(const MeshRepairIssue3d issue)
         }
     }
 
-    return true;
+return true;
 }
 
+namespace shell_cap
+{
 struct BoundaryHalfEdge
 {
     BrepCoedge coedge{};
@@ -519,7 +525,7 @@ void AppendUniqueLoopVertexIndices(
         uvPoints.reserve(loopVertices.size());
         for (const Point3d& point : loopVertices)
         {
-            uvPoints.push_back(ProjectPointToPlaneUv(point, planeSurface));
+            uvPoints.push_back(trim_backfill::ProjectPointToPlaneUv(point, planeSurface));
         }
 
         const Polyline2d uvRing(std::move(uvPoints), PolylineClosure::Closed);
@@ -625,9 +631,9 @@ void AppendUniqueLoopVertexIndices(
             continue;
         }
 
-        const BrepLoop outerLoop = ReversedLoop(boundaryLoops[loopIndex].loop);
+        const BrepLoop outerLoop = aggressive::ReversedLoop(boundaryLoops[loopIndex].loop);
         CurveOnSurface outerTrim{};
-        if (!BuildTrimFromLoop(body, outerLoop, planeSurface, outerTrim, tolerance.distanceEpsilon))
+        if (!trim_backfill::BuildTrimFromLoop(body, outerLoop, planeSurface, outerTrim, tolerance.distanceEpsilon))
         {
             return false;
         }
@@ -641,9 +647,9 @@ void AppendUniqueLoopVertexIndices(
                 continue;
             }
 
-            const BrepLoop holeLoop = ReversedLoop(boundaryLoops[childIndex].loop);
+            const BrepLoop holeLoop = aggressive::ReversedLoop(boundaryLoops[childIndex].loop);
             CurveOnSurface holeTrim{};
-            if (!BuildTrimFromLoop(body, holeLoop, planeSurface, holeTrim, tolerance.distanceEpsilon))
+            if (!trim_backfill::BuildTrimFromLoop(body, holeLoop, planeSurface, holeTrim, tolerance.distanceEpsilon))
             {
                 return false;
             }
@@ -699,6 +705,11 @@ void AppendUniqueLoopVertexIndices(
     repairedShell = BrepShell(std::move(closedFaces), true);
     return repairedShell.IsValid(tolerance);
 }
+
+} // namespace shell_cap
+
+namespace aggressive
+{
 
 [[nodiscard]] bool NeedsBrepHealing(const BrepBody& body, const GeometryTolerance3d& tolerance)
 {
@@ -827,7 +838,7 @@ void AppendUniqueLoopVertexIndices(
         {
             BrepShell cappedShell{};
             if (body.ShellCount() == 1 &&
-                TryCloseStandaloneShellWithBoundaryCaps(body, shell, tolerance, edgeUseCount, cappedShell))
+                shell_cap::TryCloseStandaloneShellWithBoundaryCaps(body, shell, tolerance, edgeUseCount, cappedShell))
             {
                 repairedShells.push_back(std::move(cappedShell));
                 changed = true;
@@ -880,6 +891,7 @@ void AppendUniqueLoopVertexIndices(
     repairedBody = BrepBody(body.Vertices(), body.Edges(), std::move(repairedShells));
     return repairedBody.IsValid(tolerance);
 }
+} // namespace aggressive
 } // namespace
 
 MeshHealing3d Heal(const TriangleMesh& mesh, double eps)
@@ -927,7 +939,7 @@ BrepHealing3d Heal(
     HealingPolicy3d policy)
 {
     const BrepValidation3d validation = Validate(body, tolerance);
-    if (validation.valid && !NeedsBrepHealing(body, tolerance))
+    if (validation.valid && !aggressive::NeedsBrepHealing(body, tolerance))
     {
         return {true, HealingIssue3d::None, body};
     }
@@ -947,7 +959,7 @@ BrepHealing3d Heal(
         for (std::size_t faceIndex = 0; faceIndex < shell.FaceCount(); ++faceIndex)
         {
             BrepFace healedFace{};
-            if (!BuildHealedFace(body, shell.FaceAt(faceIndex), healedFace, tolerance.distanceEpsilon))
+            if (!trim_backfill::BuildHealedFace(body, shell.FaceAt(faceIndex), healedFace, tolerance.distanceEpsilon))
             {
                 return {false, HealingIssue3d::RepairFailed, {}};
             }
@@ -971,7 +983,7 @@ BrepHealing3d Heal(
     if (policy == HealingPolicy3d::Aggressive)
     {
         BrepBody aggressivelyHealedBody{};
-        if (TryAggressivelyCloseShells(healedBody, tolerance, aggressivelyHealedBody))
+        if (aggressive::TryAggressivelyCloseShells(healedBody, tolerance, aggressivelyHealedBody))
         {
             return {true, HealingIssue3d::None, std::move(aggressivelyHealedBody)};
         }

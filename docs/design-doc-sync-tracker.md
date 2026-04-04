@@ -1,4 +1,4 @@
-# 设计文档同步跟踪
+﻿# 设计文档同步跟踪
 
 ## 目的
 
@@ -131,6 +131,13 @@
 - 已明确 touching intersection / difference 仍保持 gap，不把 lower-dimensional touching 结果误抬成 3D body capability。
 - 已把这次边界调整同步到 `docs/test-capability-coverage.md`、`docs/delphi-test-fasttrack-matrix.md`、`docs/session-handoff.md` 与 `docs/next-task-prompt.md`。
 
+### `src/sdk/GeometryHealing.cpp`
+
+- status: `done`
+- notes:
+  - 已将 `GeometryHealing.cpp` 的内部结构拆成 `trim_backfill` / `shell_cap` / `aggressive` 三个 helper/pass 区块，降低后续继续扩展时的上下文负担
+  - `trim_backfill` 负责 face trim 回填，`shell_cap` 负责 standalone shell boundary cap 组装，`aggressive` 负责保守 healing 之后的 topology-changing closure
+  - 未改变 public SDK 入口，也未调整已收敛 capability 的 contract 边界
 ## 进度备注
 
 - 2026-03-27：

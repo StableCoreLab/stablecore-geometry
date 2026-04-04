@@ -1,4 +1,4 @@
-# 下一次任务提示词
+﻿# 下一次任务提示词
 
 你正在继续 `stablecore-geometry` 的 Delphi 能力替代与稳定 SDK 收敛工作。不要重新做大范围盘点，直接基于下面的当前状态继续写代码、测试代码与文档。
 
@@ -37,6 +37,7 @@
 
 - public SDK 入口保持不变
 - 已覆盖 conservative trim-backfill 与 representative aggressive shell boundary-cap 子集
+- src/sdk/GeometryHealing.cpp 已按 trim-backfill / shell-cap / aggressive 三个内部 pass helper 拆层，便于继续推进而不改外部 contract
 - 更一般 multi-shell shared-edge arbitration、non-planar shell repair、mesh/body joint healing 仍为 gap
 
 ### GeometrySearchPoly
@@ -76,9 +77,8 @@
 
 ### P3：继续深化 GeometrySearchPoly / GeometryBodyBoolean
 
-- `GeometrySearchPoly`：推进 richer fake-edge explanation 与 ambiguous recovery
-- `GeometrySearchPoly`：推进 richer fake-edge explanation 与 ambiguous recovery，但保持 result-consistency / auto-flag contract 只做确定性补强
-- `GeometryBodyBoolean`：推进更一般 overlap / touching-union 子集，但保持 `InvalidInput` / `UnsupportedOperation` contract 稳定
+- GeometrySearchPoly：推进 richer fake-edge explanation 与 ambiguous recovery，但保持 result-consistency / auto-flag contract 只做确定性补强
+- GeometryBodyBoolean：推进更一般 overlap / touching-union 子集，但保持 InvalidInput / UnsupportedOperation contract 稳定
 
 ## 交付口径
 

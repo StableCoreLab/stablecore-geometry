@@ -9,6 +9,17 @@
 - 编译 / 构建 / 运行由用户手动完成
 - 不必担心 `gtest` 环境接入，用户会按需要调整 CMake / 构建侧
 
+## 本轮新增（2026-04-04，fasttrack-healing-internal-pass-split）
+
+- 已更新 `src/sdk/GeometryHealing.cpp`：
+  - 在不改 public SDK 入口与现有 healing contract 的前提下，把内部逻辑显式拆成 `trim_backfill`、`shell_cap`、`aggressive` 三个 helper/pass 区块；
+  - `trim_backfill` 负责 trim 补齐，`shell_cap` 负责 standalone shell 的 boundary cap 组装，`aggressive` 负责保守 healing 之后的 topology-changing closure；
+  - 没有重写策略，没有扩大 capability 边界，行为保持不漂移。
+- 已同步更新：
+  - `docs/next-task-prompt.md`
+  - `docs/design-doc-sync-tracker.md`
+- 本轮未编译、未跑构建；仅做内部拆层与文档同步。
+
 ## 本轮新增（2026-04-04，fasttrack-searchpoly-consistency-batch4）
 
 - 已更新 `tests/capabilities/test_searchpoly_sdk.cpp`：
