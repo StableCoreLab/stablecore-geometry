@@ -1,5 +1,7 @@
 #include "sdk/GeometryBodyBoolean.h"
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <utility>
 
@@ -31,7 +33,8 @@ namespace
     BodyBooleanResult3d result;
     result.issue = BodyBooleanIssue3d::UnsupportedOperation;
     result.message =
-        "3D body boolean currently supports only deterministic identical/disjoint closed-body subsets.";
+        "3D body boolean currently supports only deterministic identical/disjoint closed-body subsets "
+        "plus axis-aligned single-box overlap subsets.";
     return result;
 }
 
@@ -68,6 +71,14 @@ namespace
     return std::abs(left - right) <= epsilon;
 }
 
+[[nodiscard]] bool NearlyEqualScaled(double left, double right, double epsilon)
+{
+    const double scale = std::max(std::abs(left), std::abs(right));
+    const double absoluteTolerance = epsilon * epsilon * epsilon;
+    const double relativeTolerance = epsilon * scale;
+    return std::abs(left - right) <= std::max(absoluteTolerance, relativeTolerance);
+}
+
 [[nodiscard]] bool BoundsEqual(const Box3d& left, const Box3d& right, double epsilon)
 {
     return left.IsValid() && right.IsValid() &&
@@ -83,8 +94,389 @@ namespace
 {
     return left.IsValid() && right.IsValid() &&
            (left.MaxPoint().x < right.MinPoint().x - epsilon || right.MaxPoint().x < left.MinPoint().x - epsilon ||
-            left.MaxPoint().y < right.MinPoint().y - epsilon || right.MaxPoint().y < left.MinPoint().y - epsilon ||
-            left.MaxPoint().z < right.MinPoint().z - epsilon || right.MaxPoint().z < left.MinPoint().z - epsilon);
+           left.MaxPoint().y < right.MinPoint().y - epsilon || right.MaxPoint().y < left.MinPoint().y - epsilon ||
+           left.MaxPoint().z < right.MinPoint().z - epsilon || right.MaxPoint().z < left.MinPoint().z - epsilon);
+}
+
+[[nodiscard]] double BoxVolume(const Box3d& box)
+{
+    if (!box.IsValid())
+    {
+        return 0.0;
+    }
+
+    return box.Width() * box.Height() * box.Depth();
+}
+
+[[nodiscard]] bool HasPositiveBoxVolume(const Box3d& box, double epsilon)
+{
+    return box.IsValid() && box.Width() > epsilon && box.Height() > epsilon && box.Depth() > epsilon;
+}
+
+[[nodiscard]] double CoordinateAt(const Point3d& point, int axis)
+{
+    switch (axis)
+    {
+    case 0:
+        return point.x;
+    case 1:
+        return point.y;
+    default:
+        return point.z;
+    }
+}
+
+[[nodiscard]] double BoxMinAt(const Box3d& box, int axis)
+{
+    return CoordinateAt(box.MinPoint(), axis);
+}
+
+[[nodiscard]] double BoxMaxAt(const Box3d& box, int axis)
+{
+    return CoordinateAt(box.MaxPoint(), axis);
+}
+
+[[nodiscard]] double NormalAt(const Vector3d& vector, int axis)
+{
+    switch (axis)
+    {
+    case 0:
+        return vector.x;
+    case 1:
+        return vector.y;
+    default:
+        return vector.z;
+    }
+}
+
+[[nodiscard]] bool CoordinateMatchesEitherBoundary(double value, double minValue, double maxValue, double epsilon)
+{
+    return NearlyEqual(value, minValue, epsilon) || NearlyEqual(value, maxValue, epsilon);
+}
+
+[[nodiscard]] bool TryComputePositiveIntersectionBox(
+    const Box3d& first,
+    const Box3d& second,
+    double epsilon,
+    Box3d& overlap)
+{
+    if (!first.IsValid() || !second.IsValid())
+    {
+        return false;
+    }
+
+    overlap = Box3d::FromMinMax(
+        Point3d{
+            std::max(first.MinPoint().x, second.MinPoint().x),
+            std::max(first.MinPoint().y, second.MinPoint().y),
+            std::max(first.MinPoint().z, second.MinPoint().z)},
+        Point3d{
+            std::min(first.MaxPoint().x, second.MaxPoint().x),
+            std::min(first.MaxPoint().y, second.MaxPoint().y),
+            std::min(first.MaxPoint().z, second.MaxPoint().z)});
+    return HasPositiveBoxVolume(overlap, epsilon);
+}
+
+[[nodiscard]] PolyhedronBody BuildAxisAlignedBoxPolyhedronBody(const Box3d& box)
+{
+    const Point3d minPoint = box.MinPoint();
+    const Point3d maxPoint = box.MaxPoint();
+
+    return PolyhedronBody(
+        {
+            PolyhedronFace3d(
+                Plane::FromPointAndNormal(
+                    Point3d{minPoint.x, minPoint.y, minPoint.z},
+                    Vector3d{0.0, 0.0, -1.0}),
+                PolyhedronLoop3d(
+                    {
+                        Point3d{minPoint.x, minPoint.y, minPoint.z},
+                        Point3d{minPoint.x, maxPoint.y, minPoint.z},
+                        Point3d{maxPoint.x, maxPoint.y, minPoint.z},
+                        Point3d{maxPoint.x, minPoint.y, minPoint.z},
+                    })),
+            PolyhedronFace3d(
+                Plane::FromPointAndNormal(
+                    Point3d{minPoint.x, minPoint.y, maxPoint.z},
+                    Vector3d{0.0, 0.0, 1.0}),
+                PolyhedronLoop3d(
+                    {
+                        Point3d{minPoint.x, minPoint.y, maxPoint.z},
+                        Point3d{maxPoint.x, minPoint.y, maxPoint.z},
+                        Point3d{maxPoint.x, maxPoint.y, maxPoint.z},
+                        Point3d{minPoint.x, maxPoint.y, maxPoint.z},
+                    })),
+            PolyhedronFace3d(
+                Plane::FromPointAndNormal(
+                    Point3d{minPoint.x, minPoint.y, minPoint.z},
+                    Vector3d{0.0, -1.0, 0.0}),
+                PolyhedronLoop3d(
+                    {
+                        Point3d{minPoint.x, minPoint.y, minPoint.z},
+                        Point3d{maxPoint.x, minPoint.y, minPoint.z},
+                        Point3d{maxPoint.x, minPoint.y, maxPoint.z},
+                        Point3d{minPoint.x, minPoint.y, maxPoint.z},
+                    })),
+            PolyhedronFace3d(
+                Plane::FromPointAndNormal(
+                    Point3d{maxPoint.x, minPoint.y, minPoint.z},
+                    Vector3d{1.0, 0.0, 0.0}),
+                PolyhedronLoop3d(
+                    {
+                        Point3d{maxPoint.x, minPoint.y, minPoint.z},
+                        Point3d{maxPoint.x, maxPoint.y, minPoint.z},
+                        Point3d{maxPoint.x, maxPoint.y, maxPoint.z},
+                        Point3d{maxPoint.x, minPoint.y, maxPoint.z},
+                    })),
+            PolyhedronFace3d(
+                Plane::FromPointAndNormal(
+                    Point3d{minPoint.x, maxPoint.y, minPoint.z},
+                    Vector3d{0.0, 1.0, 0.0}),
+                PolyhedronLoop3d(
+                    {
+                        Point3d{minPoint.x, maxPoint.y, minPoint.z},
+                        Point3d{minPoint.x, maxPoint.y, maxPoint.z},
+                        Point3d{maxPoint.x, maxPoint.y, maxPoint.z},
+                        Point3d{maxPoint.x, maxPoint.y, minPoint.z},
+                    })),
+            PolyhedronFace3d(
+                Plane::FromPointAndNormal(
+                    Point3d{minPoint.x, minPoint.y, minPoint.z},
+                    Vector3d{-1.0, 0.0, 0.0}),
+                PolyhedronLoop3d(
+                    {
+                        Point3d{minPoint.x, minPoint.y, minPoint.z},
+                        Point3d{minPoint.x, minPoint.y, maxPoint.z},
+                        Point3d{minPoint.x, maxPoint.y, maxPoint.z},
+                        Point3d{minPoint.x, maxPoint.y, minPoint.z},
+                    })),
+        });
+}
+
+[[nodiscard]] BodyBooleanResult3d MakeAxisAlignedBoxResult(
+    const Box3d& box,
+    double epsilon,
+    const char* message)
+{
+    const PolyhedronBrepBodyConversion3d converted = ConvertToBrepBody(BuildAxisAlignedBoxPolyhedronBody(box), epsilon);
+    if (!converted.success)
+    {
+        return MakeUnsupportedResult();
+    }
+
+    return MakeSingleBodyResult(converted.body, message);
+}
+
+[[nodiscard]] bool FaceMatchesAxisAlignedBox(
+    const PolyhedronFace3d& face,
+    const Box3d& box,
+    double epsilon,
+    int& axis,
+    bool& onMaxSide)
+{
+    if (face.HoleCount() != 0 || face.OuterLoop().VertexCount() != 4)
+    {
+        return false;
+    }
+
+    const Vector3d unitNormal = face.SupportPlane().UnitNormal(epsilon);
+    if (!unitNormal.IsValid())
+    {
+        return false;
+    }
+
+    axis = -1;
+    if (std::abs(unitNormal.x) > epsilon && std::abs(unitNormal.y) <= epsilon && std::abs(unitNormal.z) <= epsilon)
+    {
+        axis = 0;
+    }
+    else if (
+        std::abs(unitNormal.y) > epsilon && std::abs(unitNormal.x) <= epsilon && std::abs(unitNormal.z) <= epsilon)
+    {
+        axis = 1;
+    }
+    else if (
+        std::abs(unitNormal.z) > epsilon && std::abs(unitNormal.x) <= epsilon && std::abs(unitNormal.y) <= epsilon)
+    {
+        axis = 2;
+    }
+
+    if (axis < 0)
+    {
+        return false;
+    }
+
+    const double faceCoordinate = CoordinateAt(face.OuterLoop().VertexAt(0), axis);
+    const bool onMinSide = NearlyEqual(faceCoordinate, BoxMinAt(box, axis), epsilon);
+    onMaxSide = NearlyEqual(faceCoordinate, BoxMaxAt(box, axis), epsilon);
+    if (onMinSide == onMaxSide)
+    {
+        return false;
+    }
+
+    const double normalComponent = NormalAt(unitNormal, axis);
+    if ((onMaxSide && normalComponent <= 0.0) || (onMinSide && normalComponent >= 0.0))
+    {
+        return false;
+    }
+
+    const int otherAxis0 = (axis + 1) % 3;
+    const int otherAxis1 = (axis + 2) % 3;
+    std::array<bool, 4> seenCorners{};
+    for (const Point3d& vertex : face.OuterLoop().Vertices())
+    {
+        if (!NearlyEqual(CoordinateAt(vertex, axis), faceCoordinate, epsilon))
+        {
+            return false;
+        }
+
+        const double coordinate0 = CoordinateAt(vertex, otherAxis0);
+        const double coordinate1 = CoordinateAt(vertex, otherAxis1);
+        if (!CoordinateMatchesEitherBoundary(
+                coordinate0,
+                BoxMinAt(box, otherAxis0),
+                BoxMaxAt(box, otherAxis0),
+                epsilon) ||
+            !CoordinateMatchesEitherBoundary(
+                coordinate1,
+                BoxMinAt(box, otherAxis1),
+                BoxMaxAt(box, otherAxis1),
+                epsilon))
+        {
+            return false;
+        }
+
+        const bool high0 = NearlyEqual(coordinate0, BoxMaxAt(box, otherAxis0), epsilon);
+        const bool high1 = NearlyEqual(coordinate1, BoxMaxAt(box, otherAxis1), epsilon);
+        const std::size_t cornerIndex = (high0 ? 2U : 0U) + (high1 ? 1U : 0U);
+        if (seenCorners[cornerIndex])
+        {
+            return false;
+        }
+        seenCorners[cornerIndex] = true;
+    }
+
+    return seenCorners[0] && seenCorners[1] && seenCorners[2] && seenCorners[3];
+}
+
+[[nodiscard]] bool TryExtractAxisAlignedBox(const PolyhedronBody& body, double epsilon, Box3d& box)
+{
+    if (!body.IsValid(epsilon) || body.FaceCount() != 6)
+    {
+        return false;
+    }
+
+    box = body.Bounds();
+    if (!HasPositiveBoxVolume(box, epsilon))
+    {
+        return false;
+    }
+
+    std::array<bool, 6> seenFaces{};
+    for (std::size_t faceIndex = 0; faceIndex < body.FaceCount(); ++faceIndex)
+    {
+        int axis = -1;
+        bool onMaxSide = false;
+        if (!FaceMatchesAxisAlignedBox(body.FaceAt(faceIndex), box, epsilon, axis, onMaxSide))
+        {
+            return false;
+        }
+
+        const std::size_t slot = static_cast<std::size_t>(axis * 2 + (onMaxSide ? 1 : 0));
+        if (seenFaces[slot])
+        {
+            return false;
+        }
+        seenFaces[slot] = true;
+    }
+
+    return seenFaces[0] && seenFaces[1] && seenFaces[2] && seenFaces[3] && seenFaces[4] && seenFaces[5];
+}
+
+[[nodiscard]] bool TryExtractAxisAlignedBox(const BrepBody& body, double epsilon, Box3d& box)
+{
+    if (body.ShellCount() != 1 || !body.ShellAt(0).IsClosed())
+    {
+        return false;
+    }
+
+    const BrepBodyConversion3d converted = ConvertToPolyhedronBody(body, epsilon);
+    if (!converted.success)
+    {
+        return false;
+    }
+
+    return TryExtractAxisAlignedBox(converted.body, epsilon, box);
+}
+
+[[nodiscard]] bool TryComputeSingleBoxUnion(
+    const Box3d& first,
+    const Box3d& second,
+    const Box3d& overlap,
+    double epsilon,
+    Box3d& united)
+{
+    united = Box3d::FromMinMax(
+        Point3d{
+            std::min(first.MinPoint().x, second.MinPoint().x),
+            std::min(first.MinPoint().y, second.MinPoint().y),
+            std::min(first.MinPoint().z, second.MinPoint().z)},
+        Point3d{
+            std::max(first.MaxPoint().x, second.MaxPoint().x),
+            std::max(first.MaxPoint().y, second.MaxPoint().y),
+            std::max(first.MaxPoint().z, second.MaxPoint().z)});
+    if (!HasPositiveBoxVolume(united, epsilon))
+    {
+        return false;
+    }
+
+    const double unionVolume = BoxVolume(first) + BoxVolume(second) - BoxVolume(overlap);
+    return NearlyEqualScaled(BoxVolume(united), unionVolume, epsilon);
+}
+
+[[nodiscard]] bool TryComputeSingleBoxDifference(
+    const Box3d& first,
+    const Box3d& overlap,
+    double epsilon,
+    Box3d& difference)
+{
+    std::vector<Box3d> candidates;
+    candidates.reserve(6);
+
+    auto addCandidate = [&](const Point3d& minPoint, const Point3d& maxPoint) {
+        const Box3d candidate = Box3d::FromMinMax(minPoint, maxPoint);
+        if (HasPositiveBoxVolume(candidate, epsilon))
+        {
+            candidates.push_back(candidate);
+        }
+    };
+
+    addCandidate(
+        Point3d{first.MinPoint().x, first.MinPoint().y, first.MinPoint().z},
+        Point3d{overlap.MinPoint().x, first.MaxPoint().y, first.MaxPoint().z});
+    addCandidate(
+        Point3d{overlap.MaxPoint().x, first.MinPoint().y, first.MinPoint().z},
+        Point3d{first.MaxPoint().x, first.MaxPoint().y, first.MaxPoint().z});
+    addCandidate(
+        Point3d{overlap.MinPoint().x, first.MinPoint().y, first.MinPoint().z},
+        Point3d{overlap.MaxPoint().x, overlap.MinPoint().y, first.MaxPoint().z});
+    addCandidate(
+        Point3d{overlap.MinPoint().x, overlap.MaxPoint().y, first.MinPoint().z},
+        Point3d{overlap.MaxPoint().x, first.MaxPoint().y, first.MaxPoint().z});
+    addCandidate(
+        Point3d{overlap.MinPoint().x, overlap.MinPoint().y, first.MinPoint().z},
+        Point3d{overlap.MaxPoint().x, overlap.MaxPoint().y, overlap.MinPoint().z});
+    addCandidate(
+        Point3d{overlap.MinPoint().x, overlap.MinPoint().y, overlap.MaxPoint().z},
+        Point3d{overlap.MaxPoint().x, overlap.MaxPoint().y, first.MaxPoint().z});
+
+    if (candidates.size() != 1)
+    {
+        return false;
+    }
+
+    difference = candidates.front();
+    return NearlyEqualScaled(BoxVolume(difference), BoxVolume(first) - BoxVolume(overlap), epsilon);
 }
 
 [[nodiscard]] bool BodiesLookIdentical(const BrepBody& first, const BrepBody& second, double epsilon)
@@ -107,6 +499,19 @@ namespace
         return MakeSingleBodyResult(first, "Deterministic identical-body intersection subset.");
     }
 
+    Box3d firstBox;
+    Box3d secondBox;
+    Box3d overlapBox;
+    if (TryExtractAxisAlignedBox(first, epsilon, firstBox) &&
+        TryExtractAxisAlignedBox(second, epsilon, secondBox) &&
+        TryComputePositiveIntersectionBox(firstBox, secondBox, epsilon, overlapBox))
+    {
+        return MakeAxisAlignedBoxResult(
+            overlapBox,
+            epsilon,
+            "Deterministic axis-aligned overlap-box intersection subset.");
+    }
+
     return MakeUnsupportedResult();
 }
 
@@ -125,6 +530,21 @@ namespace
         return MakeMultiBodyResult({first, second}, "Deterministic disjoint-body union subset.");
     }
 
+    Box3d firstBox;
+    Box3d secondBox;
+    Box3d overlapBox;
+    Box3d unionBox;
+    if (TryExtractAxisAlignedBox(first, epsilon, firstBox) &&
+        TryExtractAxisAlignedBox(second, epsilon, secondBox) &&
+        TryComputePositiveIntersectionBox(firstBox, secondBox, epsilon, overlapBox) &&
+        TryComputeSingleBoxUnion(firstBox, secondBox, overlapBox, epsilon, unionBox))
+    {
+        return MakeAxisAlignedBoxResult(
+            unionBox,
+            epsilon,
+            "Deterministic axis-aligned overlap-box union subset.");
+    }
+
     return MakeUnsupportedResult();
 }
 
@@ -137,6 +557,21 @@ namespace
     if (BoundsDisjoint(first.Bounds(), second.Bounds(), epsilon))
     {
         return MakeSingleBodyResult(first, "Deterministic disjoint-body difference subset.");
+    }
+
+    Box3d firstBox;
+    Box3d secondBox;
+    Box3d overlapBox;
+    Box3d differenceBox;
+    if (TryExtractAxisAlignedBox(first, epsilon, firstBox) &&
+        TryExtractAxisAlignedBox(second, epsilon, secondBox) &&
+        TryComputePositiveIntersectionBox(firstBox, secondBox, epsilon, overlapBox) &&
+        TryComputeSingleBoxDifference(firstBox, overlapBox, epsilon, differenceBox))
+    {
+        return MakeAxisAlignedBoxResult(
+            differenceBox,
+            epsilon,
+            "Deterministic axis-aligned overlap-box difference subset.");
     }
 
     return MakeUnsupportedResult();

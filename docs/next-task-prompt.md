@@ -32,6 +32,17 @@
 - `tests/capabilities/test_3d_body_boolean_sdk.cpp`
 - `tests/gaps/test_3d_body_boolean_gaps.cpp`
 
+当前 `GeometryBodyBoolean` 已进一步收敛到：
+
+- invalid-input contract
+- identical closed-body `IntersectBodies(...)` / `UnionBodies(...)`
+- disjoint closed-body `UnionBodies(...)` / `DifferenceBodies(...)`
+- axis-aligned closed-box overlap 子集：
+  - `IntersectBodies(...)` 的正体积 overlap box
+  - `UnionBodies(...)` 中结果仍为单一 closed box 的 overlap/containment 子集
+  - `DifferenceBodies(...)` 中结果仍为单一 closed box 的单侧 slab 子集
+- 非单-box overlap、touching shell 语义、shell-policy、topology-preserving healing integration 仍保留为 gap
+
 当前策略已经固定为：
 
 1. 接口先行
@@ -45,7 +56,7 @@
 
 优先做：
 
-- 在现有 identical/disjoint closed-body 子集基础上继续补更有业务价值的 overlap 子集
+- 在现有 identical/disjoint + axis-aligned single-box overlap 子集基础上继续补更有业务价值的 overlap 子集
 - 保持 `InvalidInput` / `UnsupportedOperation` contract 稳定
 - 未覆盖语义继续留在 `tests/gaps/test_3d_body_boolean_gaps.cpp`
 

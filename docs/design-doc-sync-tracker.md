@@ -97,6 +97,7 @@
 - status: `done`
 - notes:
   - 已同步 `GeometryBodyBoolean` 从纯接口预留推进到第一批 deterministic closed-body capability
+  - 已进一步同步到 axis-aligned single-box overlap capability，并把矩阵状态更新为 first overlap subset landed
   - 已把下一轮重点更新为 body boolean richer overlap 子集与 SearchPoly branch scoring
 
 ### `docs/ai-task-routing.md`

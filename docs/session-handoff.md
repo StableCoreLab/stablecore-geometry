@@ -9,6 +9,30 @@
 - 编译 / 构建 / 运行由用户手动完成
 - 不必担心 `gtest` 环境接入，用户会按需要调整 CMake / 构建侧
 
+## 本轮新增（2026-04-04，fasttrack-bodyboolean-batch2）
+
+- 已更新 `src/sdk/GeometryBodyBoolean.cpp`：
+  - 在保持 `include/sdk/GeometryBodyBoolean.h` public contract 不变的前提下，将 `GeometryBodyBoolean` 从 identical/disjoint closed-body 子集进一步推进到 axis-aligned single-box overlap 子集；
+  - 当前已新增：
+    - `IntersectBodies(...)`：axis-aligned closed boxes 的正体积 overlap box
+    - `UnionBodies(...)`：axis-aligned closed boxes 中 union 结果仍为单一 closed box 的 overlap/containment 子集
+    - `DifferenceBodies(...)`：axis-aligned closed boxes 中 difference 结果仍为单一 closed box 的单侧 slab 子集
+  - 非单-box overlap、touching shell 语义、shell-policy，以及 topology-preserving healing integration 继续保留为 `UnsupportedOperation`。
+- 已扩展 capability tests：`tests/capabilities/test_3d_body_boolean_sdk.cpp`
+  - 补齐 PolyhedronBody 路径 overlap intersection / union / difference 子集；
+  - 补齐 direct BrepBody 路径 overlap union 子集；
+  - 补齐 non-box overlap union / difference 继续返回 `UnsupportedOperation` 的稳定 contract。
+- 已同步 gap test：`tests/gaps/test_3d_body_boolean_gaps.cpp`
+  - 明确当前 gap 已收敛为非单-box overlap、touching/shell-policy 与 healing integration，而不是回退到“所有 overlap 都未支持”。
+- 已同步更新：
+  - `docs/session-handoff.md`
+  - `docs/next-task-prompt.md`
+  - `docs/test-capability-coverage.md`
+  - `docs/delphi-interface-fasttrack.md`
+  - `docs/delphi-test-fasttrack-matrix.md`
+  - `docs/design-doc-sync-tracker.md`
+- 本轮仍未编译、未跑构建；仅完成代码、测试代码与文档同步。
+
 ## 本轮新增（2026-04-04，fasttrack-followup-planning）
 
 - 已重写 `docs/next-task-prompt.md`，把下一轮工作明确收敛到三条主线：
