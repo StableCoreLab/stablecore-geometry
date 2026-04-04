@@ -12,18 +12,10 @@
 
 namespace geometry::sdk
 {
-[[nodiscard]] GEOMETRY_API double Length(const Polyline2d& polyline);
 [[nodiscard]] GEOMETRY_API double Perimeter(const Polygon2d& polygon);
-
-[[nodiscard]] GEOMETRY_API Box2d Bounds(const Polyline2d& polyline);
-[[nodiscard]] GEOMETRY_API Box2d Bounds(const Polygon2d& polygon);
-
-[[nodiscard]] GEOMETRY_API bool IsClosed(const Polyline2d& polyline);
 [[nodiscard]] GEOMETRY_API RingOrientation2d Orientation(const Polyline2d& ring);
 [[nodiscard]] GEOMETRY_API bool IsClockwise(const Polyline2d& ring);
 [[nodiscard]] GEOMETRY_API bool IsCounterClockwise(const Polyline2d& ring);
-
-[[nodiscard]] GEOMETRY_API double Area(const Polygon2d& polygon);
 [[nodiscard]] GEOMETRY_API Point2d Centroid(const Polygon2d& polygon);
 
 [[nodiscard]] GEOMETRY_API LineSegment2d Reverse(const LineSegment2d& segment);

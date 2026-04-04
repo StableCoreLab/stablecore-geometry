@@ -555,8 +555,8 @@ void AppendUniqueLoopVertexIndices(
         boundaryLoops.push_back(BoundaryLoopInfo{
             BrepLoop(std::move(loopCoedges)),
             normalizedUvRing,
-            samplePoint,
-            Area(projectedPolygon)});
+            samplePoint,projectedPolygon.Area()
+            });
     }
 
     return !boundaryLoops.empty();

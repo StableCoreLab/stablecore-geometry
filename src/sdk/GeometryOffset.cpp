@@ -172,7 +172,7 @@ void AppendOffsetRing(const Polyline2d& ring, MultiPolyline2d& output)
     if (normalized.IsClosed())
     {
         if (normalized.PointCount() < 3 ||
-            std::abs(Area(Polygon2d(normalized))) <= 256.0 * geometry::kDefaultEpsilon * geometry::kDefaultEpsilon)
+            std::abs(Polygon2d(normalized).Area()) <= 256.0 * geometry::kDefaultEpsilon * geometry::kDefaultEpsilon)
         {
             return;
         }
@@ -307,7 +307,7 @@ void AppendRecoveredOffsetRing(
     for (std::size_t i = 0; i < polygons.Count(); ++i)
     {
         const Polygon2d& candidate = polygons[i];
-        double score = Area(candidate);
+        double score = candidate.Area();
         const PointContainment2d referenceContainment = LocatePoint(reference, candidate, eps);
         const PointContainment2d candidateContainment = LocatePoint(Centroid(candidate), source, eps);
         const PolygonContainment2d relation = Relate(candidate, source, eps);
@@ -329,7 +329,7 @@ void AppendRecoveredOffsetRing(
             {
                 score -= 1e7;
             }
-            if (Area(candidate) + eps < Area(source))
+            if (candidate.Area() + eps < source.Area())
             {
                 score -= 1e8;
             }
@@ -352,7 +352,7 @@ void AppendRecoveredOffsetRing(
             {
                 score += 1e7;
             }
-            if (Area(candidate) > Area(source) + eps)
+            if (candidate.Area() > source.Area() + eps)
             {
                 score -= 1e7;
             }
@@ -382,7 +382,7 @@ void AppendRecoveredOffsetRing(
             continue;
         }
 
-        const double candidateArea = std::abs(Area(polygons[i]));
+        const double candidateArea = std::abs(polygons[i].Area());
         if (candidateArea > bestArea)
         {
             best = polygons[i];
@@ -404,8 +404,8 @@ void AppendRecoveredOffsetRing(
     }
 
     const bool outward = distance >= 0.0;
-    const double sourceArea = std::abs(Area(source));
-    const double candidateArea = std::abs(Area(candidate));
+    const double sourceArea = std::abs(source.Area());
+    const double candidateArea = std::abs(candidate.Area());
     const PolygonContainment2d relation = Relate(candidate, source, eps);
 
     if (outward)
@@ -419,7 +419,7 @@ void AppendRecoveredOffsetRing(
 
         const MultiPolygon2d repairedCandidates = Union(candidate, source, eps);
         const Polygon2d repaired = SelectLargestPolygon(repairedCandidates);
-        if (repaired.IsValid() && std::abs(Area(repaired)) + eps >= sourceArea)
+        if (repaired.IsValid() && std::abs(repaired.Area()) + eps >= sourceArea)
         {
             return repaired;
         }
@@ -437,7 +437,7 @@ void AppendRecoveredOffsetRing(
 
     const MultiPolygon2d repairedCandidates = Intersect(candidate, source, eps);
     const Polygon2d repaired = SelectLargestPolygon(repairedCandidates);
-    if (repaired.IsValid() && std::abs(Area(repaired)) <= sourceArea + eps)
+    if (repaired.IsValid() && std::abs(repaired.Area()) <= sourceArea + eps)
     {
         return repaired;
     }
@@ -478,7 +478,7 @@ void AppendRecoveredOffsetRing(
             continue;
         }
 
-        double score = -std::abs(std::abs(Area(candidate)) - std::abs(Area(source)));
+        double score = -std::abs(std::abs(candidate.Area()) - std::abs(source.Area()));
         if (LocatePoint(candidateReference, source, eps) != PointContainment2d::Outside)
         {
             score += 1e9;

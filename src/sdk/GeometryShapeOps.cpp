@@ -51,32 +51,8 @@ namespace
 
     return Point2d{cx / (6.0 * signedArea), cy / (6.0 * signedArea)};
 }
+
 } // namespace
-
-double Length(const Polyline2d& polyline)
-{
-    if (!polyline.IsValid())
-    {
-        return 0.0;
-    }
-
-    const std::size_t pointCount = polyline.PointCount();
-    if (pointCount < 2)
-    {
-        return 0.0;
-    }
-
-    double total = 0.0;
-    const std::size_t segmentCount = polyline.IsClosed() ? pointCount : pointCount - 1;
-    for (std::size_t i = 0; i < segmentCount; ++i)
-    {
-        const Point2d start = polyline.PointAt(i);
-        const Point2d end = polyline.PointAt((i + 1) % pointCount);
-        total += Distance(start, end);
-    }
-
-    return total;
-}
 
 double Perimeter(const Polygon2d& polygon)
 {
@@ -85,28 +61,13 @@ double Perimeter(const Polygon2d& polygon)
         return 0.0;
     }
 
-    double total = Length(polygon.OuterRing());
+    double total = polygon.OuterRing().Length();
     for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
     {
-        total += Length(polygon.HoleAt(i));
+        total += polygon.HoleAt(i).Length();
     }
 
     return total;
-}
-
-Box2d Bounds(const Polyline2d& polyline)
-{
-    return polyline.Bounds();
-}
-
-Box2d Bounds(const Polygon2d& polygon)
-{
-    return polygon.Bounds();
-}
-
-bool IsClosed(const Polyline2d& polyline)
-{
-    return polyline.IsClosed();
 }
 
 RingOrientation2d Orientation(const Polyline2d& ring)
@@ -128,22 +89,6 @@ bool IsClockwise(const Polyline2d& ring)
 bool IsCounterClockwise(const Polyline2d& ring)
 {
     return Orientation(ring) == RingOrientation2d::CounterClockwise;
-}
-
-double Area(const Polygon2d& polygon)
-{
-    if (!polygon.IsValid())
-    {
-        return 0.0;
-    }
-
-    double total = SignedArea(polygon.OuterRing());
-    for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
-    {
-        total += SignedArea(polygon.HoleAt(i));
-    }
-
-    return std::abs(total);
 }
 
 Point2d Centroid(const Polygon2d& polygon)

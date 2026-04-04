@@ -46,36 +46,6 @@ double Distance(const Point2d& point, const Segment2d& segment)
     return std::sqrt(DistanceSquared(point, segment));
 }
 
-double Length(const LineSegment2d& segment)
-{
-    return segment.Length();
-}
-
-double Length(const ArcSegment2d& segment)
-{
-    return segment.Length();
-}
-
-double Length(const Segment2d& segment)
-{
-    return segment.Length();
-}
-
-Box2d Bounds(const LineSegment2d& segment)
-{
-    return segment.Bounds();
-}
-
-Box2d Bounds(const ArcSegment2d& segment)
-{
-    return segment.Bounds();
-}
-
-Box2d Bounds(const Segment2d& segment)
-{
-    return segment.Bounds();
-}
-
 bool Contains(const Box2d& box, const Point2d& point, double eps)
 {
     if (!box.IsValid())

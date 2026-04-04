@@ -1,4 +1,4 @@
-﻿#include <gtest/gtest.h>
+#include <gtest/gtest.h>
 #include <cassert>
 #include <cmath>
 #include <memory>
@@ -849,7 +849,7 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(holedFaceMesh.success);
     assert(holedFaceMesh.issue == MeshConversionIssue3d::None);
     assert(holedFaceMesh.mesh.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(holedFaceMesh.mesh.SurfaceArea(), Area(projectedFace.polygon), 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(holedFaceMesh.mesh.SurfaceArea(), projectedFace.polygon.Area(), 1e-12);
 
     const std::vector<BrepVertex> brepVertices{
         BrepVertex(Point3d{0.0, 0.0, 5.0}),
@@ -1051,7 +1051,7 @@ TEST(SdkTest, CoversCurrentCapabilities)
         Plane::FromPointAndNormal(Point3d{0.0, 0.0, 5.0}, Vector3d{0.0, 0.0, 1.0}));
     assert(brepSection.success);
     assert(brepSection.polygons.size() == 1);
-    GEOMETRY_TEST_ASSERT_NEAR(Area(brepSection.polygons[0]), 4.0, 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(brepSection.polygons[0].Area(), 4.0, 1e-12);
 
     const BrepBody invalidBrepBody(
         brepVertices,
@@ -1226,7 +1226,7 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(middleSection.contours[0].closed);
     assert(middleSection.contours[0].points.size() == 4);
     assert(middleSection.polygons.size() == 1);
-    GEOMETRY_TEST_ASSERT_NEAR(Area(middleSection.polygons[0]), 1.0, 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(middleSection.polygons[0].Area(), 1.0, 1e-12);
     GEOMETRY_TEST_ASSERT_NEAR(middleSection.origin.z, 0.5, 1e-12);
     const SectionFaceRebuild3d rebuiltMiddleFaces = RebuildSectionFaces(middleSection);
     assert(rebuiltMiddleFaces.success);
@@ -1290,7 +1290,7 @@ TEST(SdkTest, CoversCurrentCapabilities)
     assert(coplanarSection.IsValid());
     assert(coplanarSection.contours.size() == 1);
     assert(coplanarSection.polygons.size() == 1);
-    GEOMETRY_TEST_ASSERT_NEAR(Area(coplanarSection.polygons[0]), 1.0, 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(coplanarSection.polygons[0].Area(), 1.0, 1e-12);
     const SectionFaceRebuild3d rebuiltCoplanarFaces = RebuildSectionFaces(coplanarSection);
     assert(rebuiltCoplanarFaces.success);
     assert(rebuiltCoplanarFaces.faces.size() == 1);

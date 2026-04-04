@@ -289,7 +289,7 @@ struct AxisAlignedBox
                 continue;
             }
 
-            const double candidateArea = std::abs(Area(rebuilt[i]));
+            const double candidateArea = std::abs(rebuilt[i].Area());
             if (candidateArea > bestArea)
             {
                 best = rebuilt[i];
@@ -303,7 +303,7 @@ struct AxisAlignedBox
         }
         clippedPolygon = best;
     }
-    if (std::abs(Area(clippedPolygon)) <= std::max(64.0 * eps * eps, 1e-14))
+    if (std::abs(clippedPolygon.Area()) <= std::max(64.0 * eps * eps, 1e-14))
     {
         return fallback;
     }
@@ -355,7 +355,7 @@ struct AxisAlignedBox
 
         AxisAlignedBox strip{minX, minY, maxX, maxY};
         Polygon2d polygon = MakeAxisAlignedBoxPolygon(strip);
-        if (polygon.IsValid() && std::abs(Area(polygon)) > areaTol)
+        if (polygon.IsValid() && std::abs(polygon.Area()) > areaTol)
         {
             fallback.Add(std::move(polygon));
         }
@@ -439,7 +439,7 @@ void AppendPolygons(const MultiPolygon2d& source, MultiPolygon2d& destination)
     double total = 0.0;
     for (std::size_t polygonIndex = 0; polygonIndex < polygons.Count(); ++polygonIndex)
     {
-        total += std::abs(Area(polygons[polygonIndex]));
+        total += std::abs(polygons[polygonIndex].Area());
     }
     return total;
 }
@@ -1472,7 +1472,7 @@ void SortOutgoing(const std::vector<DirectedEdge>& edges, std::vector<std::vecto
     std::vector<std::size_t> parents(loops.size(), static_cast<std::size_t>(-1));
     for (std::size_t i = 0; i < loops.size(); ++i)
     {
-        const double loopArea = Area(loops[i]);
+        const double loopArea = loops[i].Area();
         double bestArea = 0.0;
         for (std::size_t j = 0; j < loops.size(); ++j)
         {
@@ -1481,7 +1481,7 @@ void SortOutgoing(const std::vector<DirectedEdge>& edges, std::vector<std::vecto
                 continue;
             }
 
-            const double containerArea = Area(loops[j]);
+            const double containerArea = loops[j].Area();
             if (containerArea <= loopArea + eps)
             {
                 continue;
@@ -1555,7 +1555,7 @@ void SortOutgoing(const std::vector<DirectedEdge>& edges, std::vector<std::vecto
         }
 
         Polygon2d polygon(outerRing, std::move(holes));
-        if (polygon.IsValid() && Validate(polygon, eps).valid && Area(polygon) > areaTol)
+        if (polygon.IsValid() && Validate(polygon, eps).valid && polygon.Area() > areaTol)
         {
             faces.push_back(std::move(polygon));
         }

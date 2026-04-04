@@ -199,6 +199,15 @@
   - `GeometryBrepConversion / GeometryHealing / GeometrySection` 的复杂 repair 流程继续拆成内部清晰 pass，而不是把不稳定 helper 暴露成产品依赖点
 - 本轮仍未编译、未跑构建；只同步了下轮安排与 API 稳定化重构清单。
 
+## 本轮新增（2026-04-04，member-wrapper-cleanup）
+
+- 已收回 17 个 2D 天然属性自由函数包装，转为以成员方法为主：
+  - `LineSegment2d` / `ArcSegment2d` / `Segment2d` 的 `PointAt`、`PointAtLength`、`Length`、`Bounds`
+  - `Polyline2d` 的 `Length`、`Bounds`、`IsClosed`
+  - `Polygon2d` 的 `Bounds`、`Area`
+- 已同步更新相关实现、测试与任务提示词，删除了旧的 2D 自由函数入口依赖。
+- 本轮未编译、未跑构建；仅完成接口收口与文档同步。
+
 ## 本轮新增（2026-04-04，fasttrack-searchpoly-batch2）
 
 - 已更新 `include/sdk/GeometrySearchPoly.h` + `src/sdk/GeometrySearchPoly.cpp`：
@@ -409,12 +418,12 @@
 - 自动修复流程：重跑 configure/build/test 复现 -> 执行 `scripts/ci-autofix.ps1` 确定性修复 ->
   有改动则自动提 PR，无改动则自动建 issue。
 - 已新增修复钩子脚本：`scripts/ci-autofix.ps1`（当前内置安全规则：workflow/doc 行尾归一化，预留后续规则扩展点）。
-- 已更新：`docs/cloud-ci-handoff.md`（自动修复能力边界与使用说明）。
+- 已更新：`docs/archive/cloud-ci-handoff.md`（自动修复能力边界与使用说明）。
 
 ## 本轮新增（2026-04-02，continuation-47）
 
 - 已新增云端执行工作流：`.github/workflows/ci-windows-cmake.yml`，触发 push(main)/PR/manual，执行 configure/build/test。
-- 已新增关机接力说明：`docs/cloud-ci-handoff.md`，包含触发方式、云端命令、失败定位顺序、下轮优先项。
+- 已新增关机接力说明：`docs/archive/cloud-ci-handoff.md`，包含触发方式、云端命令、失败定位顺序、下轮优先项。
 - 该工作流复用仓库既有 CMake preset（`vs2022-x64` / `vs2022-x64-build` / `vs2022-x64-test`），避免重复维护本地与云端构建参数。
 
 ## 本轮新增（2026-04-02，continuation-29）
@@ -928,7 +937,7 @@
   - `docs/segment-design.md`
   - `docs/polyline-design.md`
   - `docs/polygon-design.md`
-  - `docs/box-design.md`
+- `docs/archive/box-design.md`
 - 文档同步进度记录在：
   - `docs/design-doc-sync-tracker.md`
 - 后续会话在完成有意义任务后，应及时更新 `docs/session-handoff.md`

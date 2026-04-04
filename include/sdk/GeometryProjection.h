@@ -111,23 +111,6 @@ struct GEOMETRY_API FaceProjection3d
     const PolyhedronFace3d& face,
     const GeometryTolerance3d& tolerance = {});
 
-[[nodiscard]] GEOMETRY_API Point2d PointAt(const LineSegment2d& segment, double parameter);
-[[nodiscard]] GEOMETRY_API Point2d PointAt(const ArcSegment2d& segment, double parameter);
-[[nodiscard]] GEOMETRY_API Point2d PointAt(const Segment2d& segment, double parameter);
-
-[[nodiscard]] GEOMETRY_API Point2d PointAtLength(
-    const LineSegment2d& segment,
-    double length,
-    bool clampToSegment = false);
-[[nodiscard]] GEOMETRY_API Point2d PointAtLength(
-    const ArcSegment2d& segment,
-    double length,
-    bool clampToSegment = false);
-[[nodiscard]] GEOMETRY_API Point2d PointAtLength(
-    const Segment2d& segment,
-    double length,
-    bool clampToSegment = false);
-
 [[nodiscard]] GEOMETRY_API double ParameterAtLength(
     const LineSegment2d& segment,
     double length,

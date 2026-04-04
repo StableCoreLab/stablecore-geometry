@@ -24,7 +24,7 @@ double TotalArea(const geometry::sdk::MultiPolygon2d& polygons)
     double total = 0.0;
     for (std::size_t i = 0; i < polygons.Count(); ++i)
     {
-        total += geometry::sdk::Area(polygons[i]);
+        total += polygons[i].Area();
     }
     return total;
 }

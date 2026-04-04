@@ -41,8 +41,8 @@ TEST(SdkAlgorithmsTest, CoversCurrentCapabilities)
         geometry::sdk::Distance(Point2d{1.0, 1.0}, arc),
         std::abs(std::sqrt(2.0) - 2.0),
         1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Length(line), 4.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_BOX_NEAR(geometry::sdk::Bounds(arc), Box2d::FromMinMax(Point2d{0.0, 0.0}, Point2d{2.0, 2.0}), 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(line.Length(), 4.0, 1e-12);
+    GEOMETRY_TEST_ASSERT_BOX_NEAR(arc.Bounds(), Box2d::FromMinMax(Point2d{0.0, 0.0}, Point2d{2.0, 2.0}), 1e-12);
 
     const SegmentProjection2d lineProjection =
         geometry::sdk::ProjectPointToLineSegment(Point2d{1.0, 2.0}, line, true);
@@ -57,7 +57,7 @@ TEST(SdkAlgorithmsTest, CoversCurrentCapabilities)
         1e-12);
 
     GEOMETRY_TEST_ASSERT_POINT_NEAR(
-        geometry::sdk::PointAtLength(line, 2.0, true),
+        line.PointAtLength(2.0, true),
         (Point2d{2.0, 0.0}),
         1e-12);
     GEOMETRY_TEST_ASSERT_VECTOR_NEAR(
@@ -90,7 +90,7 @@ TEST(SdkAlgorithmsTest, CoversCurrentCapabilities)
         PolylineClosure::Closed);
     const Polyline2d holeRing = geometry::test::MakeSdkRectangleHoleRing(Point2d{1.0, 1.0}, Point2d{3.0, 3.0});
     const Polygon2d polygon(ccwRing, {holeRing});
-    GEOMETRY_TEST_ASSERT_NEAR(geometry::sdk::Area(polygon), 12.0, 1e-12);
+    GEOMETRY_TEST_ASSERT_NEAR(polygon.Area(), 12.0, 1e-12);
     GEOMETRY_TEST_ASSERT_POINT_NEAR(geometry::sdk::Centroid(polygon), (Point2d{2.0, 2.0}), 1e-12);
     assert(geometry::sdk::Orientation(ccwRing) == RingOrientation2d::CounterClockwise);
     assert(geometry::sdk::IsCounterClockwise(ccwRing));

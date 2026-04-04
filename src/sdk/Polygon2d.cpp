@@ -162,6 +162,11 @@ Polyline2d Polygon2d::HoleAt(std::size_t index) const
     return Polyline2d(std::move(points), PolylineClosure::Closed);
 }
 
+double Polygon2d::Area() const
+{
+    return impl_->polygon.Area();
+}
+
 Box2d Polygon2d::Bounds() const
 {
     return impl_->polygon.Bounds();

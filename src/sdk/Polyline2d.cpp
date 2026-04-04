@@ -101,6 +101,11 @@ bool Polyline2d::IsClosed() const
     return impl_->polyline.IsClosed();
 }
 
+double Polyline2d::Length() const
+{
+    return impl_->polyline.Length();
+}
+
 std::size_t Polyline2d::PointCount() const
 {
     return impl_->polyline.VertexCount();

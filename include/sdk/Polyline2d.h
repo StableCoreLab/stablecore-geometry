@@ -32,6 +32,7 @@ public:
     [[nodiscard]] bool IsClosed() const;
     [[nodiscard]] std::size_t PointCount() const;
     [[nodiscard]] std::size_t SegmentCount() const;
+    [[nodiscard]] double Length() const;
     [[nodiscard]] Point2d PointAt(std::size_t index) const;
     [[nodiscard]] Box2d Bounds() const;
     [[nodiscard]] std::string DebugString() const;

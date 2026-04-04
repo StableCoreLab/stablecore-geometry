@@ -6,7 +6,8 @@
 
 ## 2026-04-04 文档同步
 
-- 本轮仅做交接与路线文档同步，没有触碰算法实现或 SDK 代码。
+- 本轮既做了交接与路线文档同步，也完成了 17 个 2D 天然属性自由函数包装的成员化收口。
+- 已完成 17 个 2D 天然属性自由函数包装的成员化回收，并同步调整相关测试与任务提示词。
 - 已把当前收敛能力与 open gap 重新对齐到：
   - `GeometrySection`
   - `GeometryHealing`
@@ -43,7 +44,7 @@
   - 已按当前 `Polygon2 / sdk::Polygon2d / MultiPolygon2d` API 与设计结论重写
   - 已同步 `OuterRing / HoleCount / HoleAt / Bounds`
 
-### `docs/box-design.md`
+### `docs/archive/box-design.md`
 
 - status: `done`
 - notes:

@@ -199,7 +199,7 @@ double Area(const PolyhedronFace3d& face, const GeometryTolerance3d& tolerance)
         return 0.0;
     }
 
-    return std::abs(geometry::sdk::Area(projection.polygon));
+    return std::abs(projection.polygon.Area());
 }
 
 double Area(const BrepFace& face, double eps)

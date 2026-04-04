@@ -138,7 +138,7 @@ docs/
 
 - `point-vector-design.md`
 - `segment-design.md`
-- `box-design.md`
+- `archive/box-design.md`
 - `polyline-design.md`
 - `polygon-design.md`
 - `sdk-design.md`

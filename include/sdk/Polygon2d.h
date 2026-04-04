@@ -29,6 +29,7 @@ public:
     [[nodiscard]] std::size_t HoleCount() const;
     [[nodiscard]] Polyline2d OuterRing() const;
     [[nodiscard]] Polyline2d HoleAt(std::size_t index) const;
+    [[nodiscard]] double Area() const;
     [[nodiscard]] Box2d Bounds() const;
     [[nodiscard]] std::string DebugString() const;
 

@@ -270,7 +270,7 @@ TEST(Section3dCapabilityTest, BrepBodyAdjacentCoplanarFacesMergeIntoSinglePolygo
     assert(components.IsValid());
     assert(components.components.size() == 1);
     assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
-    assert(std::abs(geometry::sdk::Area(section.polygons[0]) - 2.0) < 1e-12);
+    assert(std::abs(section.polygons[0].Area() - 2.0) < 1e-12);
 }
 
 // Demonstrates Section(BrepBody, Plane) also supports multi-component area
@@ -336,7 +336,7 @@ TEST(Section3dCapabilityTest, AdjacentCoplanarFacesMergeIntoSingleSectionPolygon
     assert(components.components.size() == 1);
     assert(components.components[0].faceIndices.size() == 1);
     assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
-    assert(std::abs(geometry::sdk::Area(section.polygons[0]) - 2.0) < 1e-12);
+    assert(std::abs(section.polygons[0].Area() - 2.0) < 1e-12);
 }
 
 // Demonstrates that the face-merge subset extends beyond two adjacent faces:
@@ -360,7 +360,7 @@ TEST(Section3dCapabilityTest, ThreeCoplanarFacesInLStripMergeIntoSinglePolygon)
     assert(section.polygons.size() == 1);
     assert(section.contours.size() == 1);
     assert(section.contours[0].closed);
-    // Rectangle 3×1 → 4 corners
+    // Rectangle 3脳1 鈫?4 corners
     assert(section.contours[0].points.size() == 4);
 
     const auto topology = BuildSectionTopology(section);
@@ -373,7 +373,7 @@ TEST(Section3dCapabilityTest, ThreeCoplanarFacesInLStripMergeIntoSinglePolygon)
     assert(components.components[0].faceIndices.size() == 1);
 
     assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
-    assert(std::abs(geometry::sdk::Area(section.polygons[0]) - 3.0) < 1e-12);
+    assert(std::abs(section.polygons[0].Area() - 3.0) < 1e-12);
 }
 
 // Demonstrates that the same three-face coplanar strip merge semantics are
@@ -410,7 +410,7 @@ TEST(Section3dCapabilityTest, BrepThreeCoplanarFacesInStripMergeIntoSinglePolygo
     assert(components.IsValid());
     assert(components.components.size() == 1);
     assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
-    assert(std::abs(geometry::sdk::Area(section.polygons[0]) - 3.0) < 1e-12);
+    assert(std::abs(section.polygons[0].Area() - 3.0) < 1e-12);
 }
 
 // Demonstrates higher-order coplanar fragment merge semantics beyond strips:
@@ -445,7 +445,7 @@ TEST(Section3dCapabilityTest, CoplanarFrameFacesMergeIntoSinglePolygonWithHole)
     assert(components.components.size() == 1);
 
     assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
-    assert(std::abs(geometry::sdk::Area(section.polygons[0]) - 8.0) < 1e-12);
+    assert(std::abs(section.polygons[0].Area() - 8.0) < 1e-12);
 }
 
 // Demonstrates mixed section semantics: a coplanar frame component and a
@@ -476,7 +476,7 @@ TEST(Section3dCapabilityTest, MixedCoplanarAndNonPlanarSectionBuildsTwoAreaCompo
         {
             ++polygonsWithHole;
         }
-        totalArea += geometry::sdk::Area(polygon);
+        totalArea += polygon.Area();
     }
     assert(polygonsWithHole == 1);
     assert(std::abs(totalArea - 9.0) < 1e-12);
@@ -524,7 +524,7 @@ TEST(Section3dCapabilityTest, BrepMixedCoplanarAndNonPlanarSectionBuildsTwoAreaC
         {
             ++polygonsWithHole;
         }
-        totalArea += geometry::sdk::Area(polygon);
+        totalArea += polygon.Area();
     }
     assert(polygonsWithHole == 1);
     assert(std::abs(totalArea - 9.0) < 1e-12);
@@ -542,7 +542,7 @@ TEST(Section3dCapabilityTest, BrepMixedCoplanarAndNonPlanarSectionBuildsTwoAreaC
 
 // Demonstrates that a mid-plane cut through a unit cube (whose 4 intersected
 // faces are mutually non-coplanar) stitches into exactly one closed contour
-// with exactly 4 corner points — proving that segment stitching across
+// with exactly 4 corner points 鈥?proving that segment stitching across
 // non-coplanar face pairs is deterministic for convex closed bodies.
 // This narrows the NonPlanarDominantSectionGraphRemainsOpen gap to the
 // specific subset: convex-body oblique-face-to-face stitching.
@@ -568,9 +568,9 @@ TEST(Section3dCapabilityTest, UnitCubeMidPlaneSectionYieldsFourSegmentClosedCont
     assert(section.segments.size() == 4);
 
     assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
-    // Area of the 1×1 rectangle in the xz plane.
+    // Area of the 1脳1 rectangle in the xz plane.
     assert(section.polygons.size() == 1);
-    assert(std::abs(geometry::sdk::Area(section.polygons[0]) - 1.0) < 1e-12);
+    assert(std::abs(section.polygons[0].Area() - 1.0) < 1e-12);
 
     const auto topology = BuildSectionTopology(section);
     assert(topology.IsValid());
@@ -608,7 +608,7 @@ TEST(Section3dCapabilityTest, BrepUnitCubeMidPlaneSectionYieldsFourSegmentClosed
 
     assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
     assert(section.polygons.size() == 1);
-    assert(std::abs(geometry::sdk::Area(section.polygons[0]) - 1.0) < 1e-12);
+    assert(std::abs(section.polygons[0].Area() - 1.0) < 1e-12);
 
     const auto topology = BuildSectionTopology(section);
     assert(topology.IsValid());
@@ -660,14 +660,14 @@ TEST(Section3dCapabilityTest, ObliquePrismSectionYieldsDeterministicContourLengt
     assert(section.success);
     assert(section.IsValid());
 
-    // Horizontal mid-section of a triangular prism = triangle → closed contour
+    // Horizontal mid-section of a triangular prism = triangle 鈫?closed contour
     assert(!section.contours.empty());
     assert(section.contours[0].closed);
     assert(section.segments.size() == 3);
 
     // Perimeter of the cross-section triangle should equal side-length sum.
     // Equilateral triangle of side 1: perimeter = 3.0 (approximately, since
-    // c0 uses 0.866 ≈ sqrt(3)/2).
+    // c0 uses 0.866 鈮?sqrt(3)/2).
     double totalLength = 0.0;
     const auto& pts = section.contours[0].points;
     for (std::size_t i = 0; i < pts.size(); ++i)
@@ -677,7 +677,7 @@ TEST(Section3dCapabilityTest, ObliquePrismSectionYieldsDeterministicContourLengt
         const double dx = p1.x - p0.x, dy = p1.y - p0.y, dz = p1.z - p0.z;
         totalLength += std::sqrt(dx * dx + dy * dy + dz * dz);
     }
-    // Perimeter ≈ 3.0 (equilateral triangle side=1)
+    // Perimeter 鈮?3.0 (equilateral triangle side=1)
     assert(totalLength > 2.5 && totalLength < 3.5);
     assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
 }
@@ -741,7 +741,7 @@ TEST(Section3dCapabilityTest, BrepObliquePrismSectionYieldsDeterministicContourL
 }
 
 // Demonstrates that cutting the unit cube with a plane perpendicular to the
-// x-axis (x=0.5) produces a deterministic 1×1 square cross-section with
+// x-axis (x=0.5) produces a deterministic 1脳1 square cross-section with
 // known perimeter (4.0) and area (1.0). Extends rebar-length coverage to
 // a third axis direction, complementing the y-axis mid-plane and the
 // triangular-prism tests already present.
@@ -768,7 +768,7 @@ TEST(Section3dCapabilityTest, UnitCubeXAxisSectionYieldsDeterministicRebarPerime
     assert(section.contours[0].closed);
     assert(section.contours[0].points.size() == 4);
 
-    // Perimeter of the 1×1 square cross-section in the yz-plane = 4.0.
+    // Perimeter of the 1脳1 square cross-section in the yz-plane = 4.0.
     double totalLength = 0.0;
     const auto& pts = section.contours[0].points;
     for (std::size_t i = 0; i < pts.size(); ++i)
@@ -782,7 +782,7 @@ TEST(Section3dCapabilityTest, UnitCubeXAxisSectionYieldsDeterministicRebarPerime
 
     assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
     assert(section.polygons.size() == 1);
-    assert(std::abs(geometry::sdk::Area(section.polygons[0]) - 1.0) < 1e-12);
+    assert(std::abs(section.polygons[0].Area() - 1.0) < 1e-12);
 
     const auto topology = BuildSectionTopology(section);
     assert(topology.IsValid());
@@ -830,7 +830,7 @@ TEST(Section3dCapabilityTest, BrepUnitCubeXAxisSectionYieldsDeterministicRebarPe
 
     assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
     assert(section.polygons.size() == 1);
-    assert(std::abs(geometry::sdk::Area(section.polygons[0]) - 1.0) < 1e-12);
+    assert(std::abs(section.polygons[0].Area() - 1.0) < 1e-12);
 
     const auto topology = BuildSectionTopology(section);
     assert(topology.IsValid());
@@ -841,14 +841,14 @@ TEST(Section3dCapabilityTest, BrepUnitCubeXAxisSectionYieldsDeterministicRebarPe
     assert(components.components.size() == 1);
 }
 
-// Demonstrates that cutting a 2×2×1 rectangular prism (box) at its z mid-plane
-// (z=0.5) yields a deterministic 2×2 square cross-section with perimeter 8.0
+// Demonstrates that cutting a 2脳2脳1 rectangular prism (box) at its z mid-plane
+// (z=0.5) yields a deterministic 2脳2 square cross-section with perimeter 8.0
 // and area 4.0. Validates that the rebar-line perimeter assertion scales to
-// non-square cross-sections, extending 必需-6 rebar coverage beyond unit
+// non-square cross-sections, extending 蹇呴渶-6 rebar coverage beyond unit
 // triangular-prism and unit-cube subsets.
 TEST(Section3dCapabilityTest, RectangularPrismMidSectionYieldsDeterministicRebarPerimeter)
 {
-    // 2×2×1 rectangular box: x in [0,2], y in [0,2], z in [0,1].
+    // 2脳2脳1 rectangular box: x in [0,2], y in [0,2], z in [0,1].
     const PolyhedronBody prism({
         PolyhedronFace3d(
             Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.0}, Vector3d{0.0, 0.0, -1.0}),
@@ -884,7 +884,7 @@ TEST(Section3dCapabilityTest, RectangularPrismMidSectionYieldsDeterministicRebar
     assert(prism.FaceCount() == 6);
 
     // z=0.5 mid-plane cuts all four side faces (front/back/left/right), yielding
-    // a 2×2 square cross-section; bottom and top remain parallel and uncut.
+    // a 2脳2 square cross-section; bottom and top remain parallel and uncut.
     const Plane cut = Plane::FromPointAndNormal(
         Point3d{1.0, 1.0, 0.5},
         Vector3d{0.0, 0.0, 1.0});
@@ -897,7 +897,7 @@ TEST(Section3dCapabilityTest, RectangularPrismMidSectionYieldsDeterministicRebar
     assert(section.contours[0].points.size() == 4);
     assert(section.segments.size() == 4);
 
-    // Perimeter of 2×2 square cross-section = 8.0.
+    // Perimeter of 2脳2 square cross-section = 8.0.
     double totalLength = 0.0;
     const auto& pts = section.contours[0].points;
     for (std::size_t i = 0; i < pts.size(); ++i)
@@ -911,7 +911,7 @@ TEST(Section3dCapabilityTest, RectangularPrismMidSectionYieldsDeterministicRebar
 
     assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
     assert(section.polygons.size() == 1);
-    assert(std::abs(geometry::sdk::Area(section.polygons[0]) - 4.0) < 1e-12);
+    assert(std::abs(section.polygons[0].Area() - 4.0) < 1e-12);
 
     const auto topology = BuildSectionTopology(section);
     assert(topology.IsValid());
@@ -990,7 +990,7 @@ TEST(Section3dCapabilityTest, BrepRectangularPrismMidSectionYieldsDeterministicR
 
     assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
     assert(section.polygons.size() == 1);
-    assert(std::abs(geometry::sdk::Area(section.polygons[0]) - 4.0) < 1e-12);
+    assert(std::abs(section.polygons[0].Area() - 4.0) < 1e-12);
 
     const auto topology = BuildSectionTopology(section);
     assert(topology.IsValid());
@@ -1002,8 +1002,8 @@ TEST(Section3dCapabilityTest, BrepRectangularPrismMidSectionYieldsDeterministicR
 }
 
 // Demonstrates rectangular-prism deterministic perimeter subset covers an
-// orthogonal axis on the Polyhedron path: x=1 mid-cut yields a 2×1 rectangle
-// (y∈[0,2], z∈[0,1]) with stable segments/perimeter/area.
+// orthogonal axis on the Polyhedron path: x=1 mid-cut yields a 2脳1 rectangle
+// (y鈭圼0,2], z鈭圼0,1]) with stable segments/perimeter/area.
 TEST(Section3dCapabilityTest, RectangularPrismXAxisSectionYieldsDeterministicRebarPerimeter)
 {
     const PolyhedronBody prism({
@@ -1040,8 +1040,8 @@ TEST(Section3dCapabilityTest, RectangularPrismXAxisSectionYieldsDeterministicReb
     assert(prism.IsValid());
     assert(prism.FaceCount() == 6);
 
-    // x=1 cuts front(y=0)/back(y=2)/bottom(z=0)/top(z=1) – 4 faces, leaving
-    // the two x-normal caps parallel and uncut → 2×1 rectangle in the yz-plane.
+    // x=1 cuts front(y=0)/back(y=2)/bottom(z=0)/top(z=1) 鈥?4 faces, leaving
+    // the two x-normal caps parallel and uncut 鈫?2脳1 rectangle in the yz-plane.
     const Plane cut = Plane::FromPointAndNormal(
         Point3d{1.0, 1.0, 0.5},
         Vector3d{1.0, 0.0, 0.0});
@@ -1054,7 +1054,7 @@ TEST(Section3dCapabilityTest, RectangularPrismXAxisSectionYieldsDeterministicReb
     assert(section.contours[0].points.size() == 4);
     assert(section.segments.size() == 4);
 
-    // Perimeter of 2×1 rectangle = 6.0.
+    // Perimeter of 2脳1 rectangle = 6.0.
     double totalLength = 0.0;
     const auto& pts = section.contours[0].points;
     for (std::size_t i = 0; i < pts.size(); ++i)
@@ -1068,7 +1068,7 @@ TEST(Section3dCapabilityTest, RectangularPrismXAxisSectionYieldsDeterministicReb
 
     assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
     assert(section.polygons.size() == 1);
-    assert(std::abs(geometry::sdk::Area(section.polygons[0]) - 2.0) < 1e-12);
+    assert(std::abs(section.polygons[0].Area() - 2.0) < 1e-12);
 
     const auto topology = BuildSectionTopology(section);
     assert(topology.IsValid());
@@ -1148,7 +1148,7 @@ TEST(Section3dCapabilityTest, BrepRectangularPrismXAxisSectionYieldsDeterministi
 
     assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
     assert(section.polygons.size() == 1);
-    assert(std::abs(geometry::sdk::Area(section.polygons[0]) - 2.0) < 1e-12);
+    assert(std::abs(section.polygons[0].Area() - 2.0) < 1e-12);
 
     const auto topology = BuildSectionTopology(section);
     assert(topology.IsValid());
@@ -1160,8 +1160,8 @@ TEST(Section3dCapabilityTest, BrepRectangularPrismXAxisSectionYieldsDeterministi
 }
 
 // Demonstrates rectangular-prism deterministic perimeter subset covers the
-// y-axis on the Polyhedron path: y=1 mid-cut yields a 2×1 rectangle
-// (x∈[0,2], z∈[0,1]) with stable segments/perimeter/area.
+// y-axis on the Polyhedron path: y=1 mid-cut yields a 2脳1 rectangle
+// (x鈭圼0,2], z鈭圼0,1]) with stable segments/perimeter/area.
 TEST(Section3dCapabilityTest, RectangularPrismYAxisSectionYieldsDeterministicRebarPerimeter)
 {
     const PolyhedronBody prism({
@@ -1198,7 +1198,7 @@ TEST(Section3dCapabilityTest, RectangularPrismYAxisSectionYieldsDeterministicReb
     assert(prism.IsValid());
     assert(prism.FaceCount() == 6);
 
-    // y=1 cuts left(x=0)/right(x=2)/bottom(z=0)/top(z=1) → 2×1 rectangle in xz.
+    // y=1 cuts left(x=0)/right(x=2)/bottom(z=0)/top(z=1) 鈫?2脳1 rectangle in xz.
     const Plane cut2 = Plane::FromPointAndNormal(
         Point3d{1.0, 1.0, 0.5},
         Vector3d{0.0, 1.0, 0.0});
@@ -1224,7 +1224,7 @@ TEST(Section3dCapabilityTest, RectangularPrismYAxisSectionYieldsDeterministicReb
 
     assert(ClassifySectionContent(section2) == SectionContentKind3d::Area);
     assert(section2.polygons.size() == 1);
-    assert(std::abs(geometry::sdk::Area(section2.polygons[0]) - 2.0) < 1e-12);
+    assert(std::abs(section2.polygons[0].Area() - 2.0) < 1e-12);
 
     const auto topology2 = BuildSectionTopology(section2);
     assert(topology2.IsValid());
@@ -1303,7 +1303,7 @@ TEST(Section3dCapabilityTest, BrepRectangularPrismYAxisSectionYieldsDeterministi
 
     assert(ClassifySectionContent(section3) == SectionContentKind3d::Area);
     assert(section3.polygons.size() == 1);
-    assert(std::abs(geometry::sdk::Area(section3.polygons[0]) - 2.0) < 1e-12);
+    assert(std::abs(section3.polygons[0].Area() - 2.0) < 1e-12);
 
     const auto topology3 = BuildSectionTopology(section3);
     assert(topology3.IsValid());
@@ -1314,8 +1314,8 @@ TEST(Section3dCapabilityTest, BrepRectangularPrismYAxisSectionYieldsDeterministi
     assert(components3.components.size() == 1);
 }
 
-// Demonstrates that cutting a unit cube (x,y,z ∈ [0,1]) at z=0.5 (horizontal
-// mid-plane) yields a deterministic 1×1 square cross-section with perimeter 4.0
+// Demonstrates that cutting a unit cube (x,y,z 鈭?[0,1]) at z=0.5 (horizontal
+// mid-plane) yields a deterministic 1脳1 square cross-section with perimeter 4.0
 // and area 1.0, extending the rebar-line coverage to the z-axis direction on
 // the PolyhedronBody path.
 TEST(Section3dCapabilityTest, UnitCubeZAxisSectionYieldsDeterministicRebarPerimeter)
@@ -1340,7 +1340,7 @@ TEST(Section3dCapabilityTest, UnitCubeZAxisSectionYieldsDeterministicRebarPerime
     assert(section.contours[0].closed);
     assert(section.contours[0].points.size() == 4);
 
-    // Perimeter of the 1×1 square cross-section in the xy-plane = 4.0.
+    // Perimeter of the 1脳1 square cross-section in the xy-plane = 4.0.
     double totalLength = 0.0;
     const auto& pts = section.contours[0].points;
     for (std::size_t i = 0; i < pts.size(); ++i)
@@ -1354,7 +1354,7 @@ TEST(Section3dCapabilityTest, UnitCubeZAxisSectionYieldsDeterministicRebarPerime
 
     assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
     assert(section.polygons.size() == 1);
-    assert(std::abs(geometry::sdk::Area(section.polygons[0]) - 1.0) < 1e-12);
+    assert(std::abs(section.polygons[0].Area() - 1.0) < 1e-12);
 
     const auto topology = BuildSectionTopology(section);
     assert(topology.IsValid());
@@ -1402,7 +1402,7 @@ TEST(Section3dCapabilityTest, BrepUnitCubeZAxisSectionYieldsDeterministicRebarPe
 
     assert(ClassifySectionContent(section) == SectionContentKind3d::Area);
     assert(section.polygons.size() == 1);
-    assert(std::abs(geometry::sdk::Area(section.polygons[0]) - 1.0) < 1e-12);
+    assert(std::abs(section.polygons[0].Area() - 1.0) < 1e-12);
 
     const auto topology = BuildSectionTopology(section);
     assert(topology.IsValid());

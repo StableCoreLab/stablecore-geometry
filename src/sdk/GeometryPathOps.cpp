@@ -85,7 +85,7 @@ struct VertexGraph2d
         return {};
     }
 
-    const double total = Length(polyline);
+    const double total = polyline.Length();
     startLength = std::clamp(startLength, 0.0, total);
     endLength = std::clamp(endLength, 0.0, total);
     if (endLength < startLength + geometry::kDefaultEpsilon)
@@ -294,7 +294,7 @@ void AppendPolygonBoundaries(const Polygon2d& polygon, MultiPolyline2d& boundari
             continue;
         }
 
-        const double candidateArea = std::abs(Area(polygons[i]));
+        const double candidateArea = std::abs(polygons[i].Area());
         if (candidateArea > bestArea)
         {
             best = polygons[i];
@@ -1016,7 +1016,7 @@ void SortOutgoing(const std::vector<DirectedEdge>& edges, std::vector<std::vecto
             continue;
         }
 
-        const double area = std::abs(Area(Polygon2d(ring)));
+        const double area = std::abs(Polygon2d(ring).Area());
         const double score = ComputeRingCandidateScore(
             area,
             syntheticPerimeter,
@@ -1060,7 +1060,7 @@ void SortOutgoing(const std::vector<DirectedEdge>& edges, std::vector<std::vecto
     std::vector<std::size_t> parents(loops.size(), static_cast<std::size_t>(-1));
     for (std::size_t i = 0; i < loops.size(); ++i)
     {
-        const double loopArea = Area(loops[i]);
+        const double loopArea = loops[i].Area();
         double bestArea = 0.0;
         for (std::size_t j = 0; j < loops.size(); ++j)
         {
@@ -1069,7 +1069,7 @@ void SortOutgoing(const std::vector<DirectedEdge>& edges, std::vector<std::vecto
                 continue;
             }
 
-            const double containerArea = Area(loops[j]);
+            const double containerArea = loops[j].Area();
             if (containerArea <= loopArea + eps)
             {
                 continue;

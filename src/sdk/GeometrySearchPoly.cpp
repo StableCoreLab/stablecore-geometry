@@ -312,7 +312,7 @@ void AccumulateRingMetrics(
         AccumulateRingMetrics(polygon.HoleAt(holeIndex), analysis, epsilon, metrics);
     }
 
-    const double polygonArea = Area(polygon);
+    const double polygonArea = polygon.Area();
     metrics.branchScore = ComputeBranchScore(
         std::abs(polygonArea),
         metrics.inferredSyntheticPerimeter,
@@ -327,7 +327,7 @@ void AccumulateRingMetrics(
     const Polygon2d& polygon,
     const CandidateMetrics2d& metrics)
 {
-    const double polygonArea = Area(polygon);
+    const double polygonArea = polygon.Area();
     return SearchPolyCandidate2d{
         polygon,
         std::abs(polygonArea),

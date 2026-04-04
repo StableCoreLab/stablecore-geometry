@@ -120,36 +120,6 @@ SegmentProjection2d ProjectPointToSegment(
     return ProjectPointToLineSegment(point, LineSegment2d(segmentStart, segmentEnd), clampToSegment);
 }
 
-Point2d PointAt(const LineSegment2d& segment, double parameter)
-{
-    return segment.PointAt(parameter);
-}
-
-Point2d PointAt(const ArcSegment2d& segment, double parameter)
-{
-    return segment.PointAt(parameter);
-}
-
-Point2d PointAt(const Segment2d& segment, double parameter)
-{
-    return segment.PointAt(parameter);
-}
-
-Point2d PointAtLength(const LineSegment2d& segment, double length, bool clampToSegment)
-{
-    return segment.PointAtLength(length, clampToSegment);
-}
-
-Point2d PointAtLength(const ArcSegment2d& segment, double length, bool clampToSegment)
-{
-    return segment.PointAtLength(length, clampToSegment);
-}
-
-Point2d PointAtLength(const Segment2d& segment, double length, bool clampToSegment)
-{
-    return segment.PointAtLength(length, clampToSegment);
-}
-
 double ParameterAtLength(const LineSegment2d& segment, double length, bool clampToSegment)
 {
     const double totalLength = segment.Length();

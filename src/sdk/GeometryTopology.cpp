@@ -201,7 +201,7 @@ bool PolygonTopology2d::Build(const MultiPolygon2d& polygons, double eps)
                 continue;
             }
 
-            const double area = Area(polygons_[j]);
+            const double area = polygons_[j].Area();
             if (bestParent == static_cast<std::size_t>(-1) || area < bestArea)
             {
                 bestParent = j;
