@@ -557,6 +557,49 @@ PolyhedronBody BuildSupportMismatchNearEqualSharedChainHoleDominatedMixedContent
     return PolyhedronBody({faceA, faceB, faceC});
 }
 
+PolyhedronBody BuildSupportMismatchNearEqualSharedChainHoleDominatedFullCompositionBody()
+{
+    const Plane mismatchedPlane =
+        Plane::FromPointAndNormal(Point3d{0.0, 0.0, 0.2}, Vector3d{0.0, 0.0, 1.0});
+
+    const double dx = 2.0e-7;
+
+    const Point3d a{0.0, 0.0, 0.0};
+    const Point3d b{2.0, 0.0, 0.0};
+    const Point3d c{2.0, 2.0, 0.0};
+    const Point3d d{0.0, 2.0, 0.0};
+
+    const Point3d b2{2.0 + dx, 0.0, 0.0};
+    const Point3d c2{2.0 + dx, 2.0, 0.0};
+    const Point3d m{4.0 + dx, 0.0, 0.0};
+    const Point3d e{6.0 + dx, 0.0, 0.12};
+    const Point3d f{6.0 + dx, 2.0, 0.10};
+
+    const Point3d e2{6.0, 0.0, 0.0};
+    const Point3d f2{6.0, 2.0, 0.0};
+    const Point3d g{8.0, 0.0, 0.0};
+    const Point3d h{8.0, 2.0, 0.0};
+
+    std::vector<Point3d> hole{
+        Point3d{2.6, 0.4, 0.0},
+        Point3d{5.4, 0.4, 0.0},
+        Point3d{5.4, 0.4, 0.0},
+        Point3d{5.4, 1.6, 0.0},
+        Point3d{2.6, 1.6, 0.0}};
+
+    const PolyhedronFace3d faceA(
+        mismatchedPlane,
+        PolyhedronLoop3d({a, b, c, d}));
+    const PolyhedronFace3d faceB(
+        mismatchedPlane,
+        PolyhedronLoop3d({b2, m, e, f, c2}),
+        {PolyhedronLoop3d(std::move(hole))});
+    const PolyhedronFace3d faceC(
+        mismatchedPlane,
+        PolyhedronLoop3d({e2, g, h, f2}));
+    return PolyhedronBody({faceA, faceB, faceC});
+}
+
 PolyhedronBody BuildSupportPlaneMismatchedCollinearLeadingLoopBody()
 {
     const PolyhedronFace3d face(
@@ -3445,6 +3488,52 @@ TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualSharedChainHoleDominate
     assert(result.body.FaceCount() == 3);
     assert(result.body.VertexCount() == 12);
     assert(result.body.EdgeCount() == 14);
+    assert(result.body.ShellCount() == 1);
+    assert(!result.body.ShellAt(0).IsClosed());
+
+    const double expectedLeftX = 2.0 + 0.5 * 2.0e-7;
+    const double expectedRightX = 6.0 + 0.5 * 2.0e-7;
+    std::size_t leftCount = 0;
+    std::size_t rightCount = 0;
+    for (std::size_t i = 0; i < result.body.VertexCount(); ++i)
+    {
+        const Point3d point = result.body.VertexAt(i).Point();
+        assert(std::abs(point.z) < 1e-10);
+
+        if (std::abs(point.y) < 1e-12 || std::abs(point.y - 2.0) < 1e-12)
+        {
+            if (std::abs(point.x - expectedLeftX) < 1e-10)
+            {
+                ++leftCount;
+            }
+            if (std::abs(point.x - expectedRightX) < 1e-10)
+            {
+                ++rightCount;
+            }
+        }
+    }
+
+    assert(leftCount == 2);
+    assert(rightCount == 2);
+}
+
+// Demonstrates collinear-leading fallback also composes with the
+// hole-dominated shared-chain representative-average path after duplicate-hole
+// normalization: the middle holed face still picks the lower-error plane while
+// shared-edge targets remain deterministic.
+TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualSharedChainHoleDominatedFullCompositionRepairsWithRepresentativeAverageTarget)
+{
+    const PolyhedronBody body = BuildSupportMismatchNearEqualSharedChainHoleDominatedFullCompositionBody();
+    assert(!body.IsValid());
+    assert(body.FaceCount() == 3);
+
+    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
+    assert(result.success);
+    assert(result.issue == BrepConversionIssue3d::None);
+    assert(result.body.IsValid());
+    assert(result.body.FaceCount() == 3);
+    assert(result.body.VertexCount() == 13);
+    assert(result.body.EdgeCount() == 15);
     assert(result.body.ShellCount() == 1);
     assert(!result.body.ShellAt(0).IsClosed());
 

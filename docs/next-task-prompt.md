@@ -284,3 +284,7 @@
 - 已扩展 conversion capability：`SupportMismatchNearEqualSharedChainHoleDominatedMixedContentWithDuplicateHoleRepairsWithRepresentativeAverageTarget`，验证 duplicate-hole normalization 已可叠加到最小三面 shared-chain hole-dominated + representative-average 子集。
 - 左右共享边继续稳定收敛到 `x=2.0+1e-7` / `x=6.0+1e-7`，且三面全部顶点仍保持 `z≈0`。
 - 下一轮优先继续把这条线再叠上 collinear-leading，往更接近 full-composition 的 topology-changing non-planar repair 推进。
+## 本轮新增（2026-04-04，continuation-80）
+- 已扩展 conversion capability：`SupportMismatchNearEqualSharedChainHoleDominatedFullCompositionRepairsWithRepresentativeAverageTarget`，验证 collinear-leading fallback 已可叠加到最小三面 shared-chain hole-dominated + duplicate-hole + representative-average 子集。
+- 左右共享边继续稳定收敛到 `x=2.0+1e-7` / `x=6.0+1e-7`，全部顶点保持 `z≈0`，拓扑计数推进到 `FaceCount=3 / VertexCount=13 / EdgeCount=15`。
+- 下一轮优先考虑是否还需要把这条 hole-dominated 线再叠 outer duplicate，或者转向真正修改 repair 策略本体。

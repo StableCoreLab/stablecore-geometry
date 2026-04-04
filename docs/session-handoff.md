@@ -1033,3 +1033,9 @@
 - 已扩展 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 新增 `SupportMismatchNearEqualSharedChainHoleDominatedMixedContentWithDuplicateHoleRepairsWithRepresentativeAverageTarget`，将 duplicate-hole normalization 叠加到上一轮的 hole-dominated shared-chain representative-average 子集。
 - 新子场景验证中间 holed face 在 hole loop 含 duplicate 顶点、且 outer loop 更偏离目标平面时，conversion 仍可同时保持 deterministic average target（左右共享边 `x=2.0+1e-7` / `x=6.0+1e-7`）与三面顶点 `z≈0` 的平面回投。
 - 已同步更新 `docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md` 与 `tests/gaps/test_3d_conversion_gaps.cpp`。
+
+## 本轮新增（2026-04-04，continuation-80）
+
+- 已扩展 conversion capability：`tests/capabilities/test_3d_conversion.cpp` 新增 `SupportMismatchNearEqualSharedChainHoleDominatedFullCompositionRepairsWithRepresentativeAverageTarget`，在上一轮子集基础上进一步叠加 collinear-leading fallback，使 hole-dominated shared-chain 组合推进到更接近 full-composition 的 representative-average 子集。
+- 新子场景验证中间 holed face 的 outer loop 同时具备 collinear-leading、near-equal shared-edge 扰动与 duplicate-hole normalization 时，conversion 仍可保持 deterministic average target（左右共享边 `x=2.0+1e-7` / `x=6.0+1e-7`），且全部顶点稳定回投到 `z≈0`；拓扑计数为 `FaceCount=3 / VertexCount=13 / EdgeCount=15`。
+- 已同步更新 `docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md`、`docs/next-task-prompt.md` 与 `tests/gaps/test_3d_conversion_gaps.cpp`。

@@ -186,6 +186,7 @@
 - `SharedChainHoleDominatedMixedContentRepairsToPlanarSharedTopologyBrepBody` — all-loop support-plane scoring 已进一步推进到最小三面 shared-chain mixed-content 子集：中间 holed face 的 outer loop 比 hole loop 更偏离目标平面时，conversion 仍可与左右 plain faces 共同收敛到共享 open-shell 拓扑（FaceCount=3 / VertexCount=12 / EdgeCount=14，全部顶点 z≈0）
 - `SupportMismatchNearEqualSharedChainHoleDominatedMixedContentRepairsWithRepresentativeAverageTarget` — 在最小三面 shared-chain mixed-content 子集上叠加 near-equal shared-edge 扰动后，all-loop support-plane scoring 与 representative-average 可同时成立：左右共享边分别稳定收敛到 `x=2.0+1e-7` / `x=6.0+1e-7`，且全部顶点保持 `z≈0`（FaceCount=3 / VertexCount=12 / EdgeCount=14）
 - `SupportMismatchNearEqualSharedChainHoleDominatedMixedContentWithDuplicateHoleRepairsWithRepresentativeAverageTarget` — 在上述最小三面 shared-chain mixed-content 子集上进一步叠加 duplicate-hole normalization 后，all-loop support-plane scoring 与 representative-average 仍可同时成立：左右共享边继续稳定收敛到 `x=2.0+1e-7` / `x=6.0+1e-7`，且全部顶点保持 `z≈0`（FaceCount=3 / VertexCount=12 / EdgeCount=14）
+- `SupportMismatchNearEqualSharedChainHoleDominatedFullCompositionRepairsWithRepresentativeAverageTarget` — 在上述子集上进一步叠加 collinear-leading fallback 后，all-loop support-plane scoring 与 representative-average 仍可同时成立：左右共享边继续稳定收敛到 `x=2.0+1e-7` / `x=6.0+1e-7`，全部顶点保持 `z≈0`，拓扑计数推进到 `FaceCount=3 / VertexCount=13 / EdgeCount=15`
 
 ## Gap Characterization Tests
 

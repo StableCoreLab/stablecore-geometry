@@ -286,3 +286,6 @@
 - 2026-04-04（continuation-79）：
   - 已将 duplicate-hole normalization 叠加到 hole-dominated shared-chain representative-average 子集：`SupportMismatchNearEqualSharedChainHoleDominatedMixedContentWithDuplicateHoleRepairsWithRepresentativeAverageTarget` 验证 middle holed face 的 hole loop 归一化不会破坏左右 shared-edge 的 deterministic average target。
   - 新子场景确认在 hole loop 含 duplicate 顶点时，`x=2` / `x=6` 两条共享边的平均落点与 `z≈0` 平面回投仍可同时成立。
+- 2026-04-04（continuation-80）：
+  - 已将 collinear-leading fallback 叠加到 hole-dominated shared-chain representative-average 子集：`SupportMismatchNearEqualSharedChainHoleDominatedFullCompositionRepairsWithRepresentativeAverageTarget` 验证 middle holed face 的外环前导共线点不会破坏左右 shared-edge 的 deterministic average target。
+  - 新子场景确认在 collinear-leading + duplicate-hole 组合下，`x=2` / `x=6` 两条共享边的平均落点与 `z≈0` 平面回投仍可同时成立，并把拓扑计数推进到 `13 / 15`。
