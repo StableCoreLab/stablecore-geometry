@@ -4,6 +4,16 @@
 
 这份文档用于跟踪历史 2D 设计文档与当前代码 / API 状态之间的同步修复工作。
 
+## 2026-04-04 文档同步
+
+- 本轮仅做交接与路线文档同步，没有触碰算法实现或 SDK 代码。
+- 已把当前收敛能力与 open gap 重新对齐到：
+  - `GeometrySection`
+  - `GeometryHealing`
+  - `GeometrySearchPoly`
+  - `GeometryBodyBoolean`
+- 已保持 `docs/session-handoff.md`、`docs/next-task-prompt.md`、`docs/test-capability-coverage.md`、`docs/design-doc-sync-tracker.md` 四份文档的状态一致性。
+
 ## 状态说明
 
 - `pending`：尚未开始

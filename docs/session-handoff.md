@@ -9,6 +9,25 @@
 - 编译 / 构建 / 运行由用户手动完成
 - 不必担心 `gtest` 环境接入，用户会按需要调整 CMake / 构建侧
 
+## 本轮新增（2026-04-04，docs-handoff-sync）
+
+- 本轮仅同步交接与路线文档，不修改算法实现，也不改 SDK 暴露面。
+- 当前已收敛能力保持不变：
+  - `GeometrySection`：coplanar merge、mixed coplanar + non-planar coexistence、deterministic contour 后处理
+  - `GeometryHealing`：conservative trim-backfill、aggressive shell boundary-cap fallback
+  - `GeometrySearchPoly`：diagnostics、candidate ranking、branch scoring、fake-edge diagnostics、smallest-containing 选择
+  - `GeometryBodyBoolean`：identical / disjoint closed-body、axis-aligned single-box overlap、face-touching union
+- 当前 open gap 仍保持不变：
+  - `GeometrySection` 的更一般 non-manifold stitching / mixed open-curve arbitration / 更高阶 non-planar dominant stitching
+  - `GeometryHealing` 的更一般 multi-shell shared-edge arbitration / non-planar shell repair / mesh-body joint healing
+  - `GeometrySearchPoly` 的 richer fake-edge explanation / ambiguous recovery / full smart-search parity
+  - `GeometryBodyBoolean` 的 touching intersection / difference / 更一般 overlap / shell-policy / healing integration
+- 下一轮优先级仍建议维持：
+  - P1 `GeometrySection`
+  - P2 `GeometryHealing`
+  - P3 `GeometrySearchPoly` / `GeometryBodyBoolean`
+  - P4 SDK 风格收口与 `include/sdk` 暴露面整理
+
 ## 本轮新增（2026-04-04，fasttrack-sdk-umbrella-surface-batch5）
 
 - 已更新 `include/sdk/Geometry.h`：

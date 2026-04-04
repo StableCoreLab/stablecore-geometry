@@ -11,6 +11,11 @@
   - 放当前仍未补齐的能力缺口说明性用例
   - 这些用例使用 `GTEST_SKIP()` 明确标记为已知差距，便于后续逐步转正
 
+## 2026-04-04 文档同步备注
+
+- 本轮仅做文档同步，未新增 capability 或 gap 代码。
+- 下面的覆盖布局与子集清单仍与当前代码状态一致，重点是把已收敛能力、仍保留 gap 和下一轮优先级继续对齐。
+
 ## Capability Tests
 
 - `tests/capabilities/test_box.cpp`
@@ -61,6 +66,7 @@
   - 覆盖 `Section(BrepBody, Plane)` 的三棱柱 mid-section 确定性三段闭合轮廓（perimeter≈3）
   - 覆盖 2×2×1 矩形棱柱 z=0.5 截面的确定性四段闭合方形轮廓（perimeter=8.0 / area=4.0），验证非单位截面的钢筋线周长稳定性
   - `Section(...)` 在输出阶段新增 contour 驱动的 deterministic segment 后处理：基于 contour 重建线段并做无向去重、共线简化后短毛刺抑制（长度<=eps 段过滤），稳定钢筋线根数统计
+  - 当前仍保留的 gap：更一般 ambiguous non-manifold contour stitching、mixed open-curve / area arbitration、非邻接 coplanar fragment 跨 convex-hull gap 的 merge
 - `tests/capabilities/test_3d_brep.cpp`
   - 倾斜截面经过 `RebuildSectionBrepBody(...)` 得到只读 topology 完整的单面 `BrepBody`（1 shell / 1 face / 4 coedge loop），双立方体截面经 `RebuildSectionBrepBodies(...)` 稳定拆分为 2 个独立 body；并新增最小 coedge-loop 编辑链路 `InsertCoedge -> FlipCoedgeDirection -> RemoveCoedge`
   - 覆盖端到端 Brep 路径：`ConvertToBrepBody -> Section(BrepBody, Plane) -> RebuildSectionBrepBodies` 在双组件输入下稳定输出 2 个独立重建 body
@@ -89,6 +95,7 @@
   - `Heal(..., policy=Aggressive)` 在 support-plane mismatch 的 eligible multi-face（holed+plain，缺失 trims）与 ineligible multi-face shell 共存时，仍可先回填后闭壳并保持 ineligible open
   - `Heal(..., policy=Aggressive)` 在 mixed support-mismatch + ineligible multiface 系列场景中已补齐 shell-level FaceCount 分布断言，避免仅靠总 FaceCount 掩盖 shell 归属回归
   - `Heal(BrepBody)` 保守 trim 回填现已覆盖 z=0（水平面，法向+z）、y=0（竖面，法向+y）、x=0（竖面，法向+x）三个轴向平面，以及 oblique 平面 x+y+z=0（法向(1,1,1)）子样例，验证 trim 回填对非轴对齐平面的稳定性
+  - 当前仍保留的 gap：更一般 multi-shell shared-edge arbitration、non-planar shell repair、mesh/body joint healing
 - `tests/capabilities/test_3d_conversion.cpp`
   - 单位立方体（6 quad faces）经 `ConvertToTriangleMesh(PolyhedronBody)` 得到 12 triangles，`SurfaceArea ≈ 6.0`；并可经 `ConvertToBrepBody(PolyhedronBody)` 得到 `FaceCount() == 6` 的有效 `BrepBody`，覆盖 affine-skew 非轴对齐子类输入、support-plane mismatch 可修复子场景（含 shared-chain mixed-content full-composition 下的 support-plane refit）、mild non-planar outer/hole loop 顶点投影修复子场景、leading collinear loop 顶点下的稳健法向回退、duplicate outer/hole loop 顶点归一化修复、tiny-scale non-planar（含 holed/multi-face/mixed-content/shared-edge/shared-chain/shared-chain-mixed-content）输入下的 scale-aware 法向回退与投影修复，以及 duplicate/hole/collinear-leading normalization 与 shared-edge chain 修复的组合稳定性；同时覆盖 planar holed、planar multi-face、以及 planar holed+multi-face `BrepBody` 到 mesh 的面积保持子场景
 - `tests/capabilities/test_3d_body_boolean_sdk.cpp`
@@ -205,7 +212,11 @@
 - `SharedChainHoleDominatedMixedContentRepairsToPlanarSharedTopologyBrepBody` — all-loop support-plane scoring 已进一步推进到最小三面 shared-chain mixed-content 子集：中间 holed face 的 outer loop 比 hole loop 更偏离目标平面时，conversion 仍可与左右 plain faces 共同收敛到共享 open-shell 拓扑（FaceCount=3 / VertexCount=12 / EdgeCount=14，全部顶点 z≈0）
 - `SupportMismatchNearEqualSharedChainHoleDominatedMixedContentRepairsWithRepresentativeAverageTarget` — 在最小三面 shared-chain mixed-content 子集上叠加 near-equal shared-edge 扰动后，all-loop support-plane scoring 与 representative-average 可同时成立：左右共享边分别稳定收敛到 `x=2.0+1e-7` / `x=6.0+1e-7`，且全部顶点保持 `z≈0`（FaceCount=3 / VertexCount=12 / EdgeCount=14）
 - `SupportMismatchNearEqualSharedChainHoleDominatedMixedContentWithDuplicateHoleRepairsWithRepresentativeAverageTarget` — 在上述最小三面 shared-chain mixed-content 子集上进一步叠加 duplicate-hole normalization 后，all-loop support-plane scoring 与 representative-average 仍可同时成立：左右共享边继续稳定收敛到 `x=2.0+1e-7` / `x=6.0+1e-7`，且全部顶点保持 `z≈0`（FaceCount=3 / VertexCount=12 / EdgeCount=14）
-- `SupportMismatchNearEqualSharedChainHoleDominatedFullCompositionRepairsWithRepresentativeAverageTarget` — 在上述子集上进一步叠加 collinear-leading fallback 后，all-loop support-plane scoring 与 representative-average 仍可同时成立：左右共享边继续稳定收敛到 `x=2.0+1e-7` / `x=6.0+1e-7`，全部顶点保持 `z≈0`，拓扑计数推进到 `FaceCount=3 / VertexCount=13 / EdgeCount=15`
+  - `SupportMismatchNearEqualSharedChainHoleDominatedFullCompositionRepairsWithRepresentativeAverageTarget` — 在上述子集上进一步叠加 collinear-leading fallback 后，all-loop support-plane scoring 与 representative-average 仍可同时成立：左右共享边继续稳定收敛到 `x=2.0+1e-7` / `x=6.0+1e-7`，全部顶点保持 `z≈0`，拓扑计数推进到 `FaceCount=3 / VertexCount=13 / EdgeCount=15`
+
+- `tests/capabilities/test_3d_body_boolean_sdk.cpp`
+  - `GeometryBodyBoolean` 当前 deterministic SDK 子集：空输入 invalid-input contract、identical closed-body 的 intersection/union、disjoint closed-body 的 union/difference，以及 axis-aligned closed-box overlap / face-touching union 的代表性子集；touching intersection/difference 仍明确保留为 gap
+  - 当前仍保留的 gap：更一般 overlap、touching intersection/difference、shell-policy、healing integration
 
 ## Gap Characterization Tests
 
