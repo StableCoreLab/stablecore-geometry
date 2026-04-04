@@ -9,6 +9,34 @@
 - 编译 / 构建 / 运行由用户手动完成
 - 不必担心 `gtest` 环境接入，用户会按需要调整 CMake / 构建侧
 
+## 本轮新增（2026-04-04，fasttrack-searchpoly-batch3）
+
+- 已更新 `include/sdk/GeometrySearchPoly.h` + `src/sdk/GeometrySearchPoly.cpp`：
+  - 在保持稳定 SDK 入口仍位于 `include/sdk/GeometrySearchPoly.h` 的前提下，继续深化 `GeometrySearchPoly`；
+  - 为 `SearchPolyCandidate2d` 新增显式 candidate-level 诊断字段：
+    - `branchScore`
+    - `inferredSyntheticPerimeter`
+    - `inferredSyntheticEdgeCount`
+    - `branchVertexCount`
+    - `syntheticBranchVertexCount`
+  - 为 `SearchPolyResult2d` 新增 `usedBranchScoring`，显式标记本次排序是否已使用 branch/synthetic penalty；
+  - `SearchPolygons(...)` 现在会基于 candidate-level synthetic-edge 覆盖分析与 explicit branch vertex 计数，按 branch score -> area -> hole-count -> ring-size 排序，而不再只是 area/hole-count 排序。
+- 已扩展 capability tests：`tests/capabilities/test_searchpoly_sdk.cpp`
+  - 补齐 clean candidate 与 synthetic candidate 并存时的 branch-score 排序子集；
+  - 补齐 ambiguous fake-edge 候选的 candidate-level synthetic diagnostics；
+  - 补齐 explicit branch vertex 子集的 branch penalty；
+  - 保留并扩展原有 invalid-input / representative closed-loop / smallest-containing candidate 语义断言。
+- 已同步 gap test：`tests/gaps/test_searchpoly_gaps.cpp`
+  - 明确当前 gap 已收敛为 richer fake-edge explanation、Delphi 级 ambiguous recovery 与完整 smart-search parity，而不再回退到“branch scoring 尚未接入”。
+- 已同步更新：
+  - `docs/session-handoff.md`
+  - `docs/next-task-prompt.md`
+  - `docs/test-capability-coverage.md`
+  - `docs/delphi-interface-fasttrack.md`
+  - `docs/delphi-test-fasttrack-matrix.md`
+  - `docs/design-doc-sync-tracker.md`
+- 本轮仍未编译、未跑构建；仅完成代码、测试代码与文档同步。
+
 ## 本轮新增（2026-04-04，fasttrack-bodyboolean-batch2）
 
 - 已更新 `src/sdk/GeometryBodyBoolean.cpp`：

@@ -46,12 +46,17 @@ struct GEOMETRY_API SearchPolyCandidate2d
 {
     Polygon2d polygon{};
     double absoluteArea{0.0};
+    double branchScore{0.0};
+    double inferredSyntheticPerimeter{0.0};
     std::size_t holeCount{0};
+    std::size_t inferredSyntheticEdgeCount{0};
+    std::size_t branchVertexCount{0};
+    std::size_t syntheticBranchVertexCount{0};
     std::size_t rank{0};
 
     [[nodiscard]] bool IsValid() const
     {
-        return polygon.IsValid() && absoluteArea >= 0.0;
+        return polygon.IsValid() && absoluteArea >= 0.0 && inferredSyntheticPerimeter >= 0.0;
     }
 };
 
@@ -64,6 +69,7 @@ struct GEOMETRY_API SearchPolyResult2d
     bool usedAutoClose{false};
     bool usedAutoExtend{false};
     bool usedSyntheticEdges{false};
+    bool usedBranchScoring{false};
 
     [[nodiscard]] bool IsSuccess() const
     {

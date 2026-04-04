@@ -13,7 +13,7 @@ This file fixes the fast-track replacement target for the Delphi geometry stack:
 
 | Delphi capability family | Delphi evidence | C++ target surface | Current status |
 | --- | --- | --- | --- |
-| `SearchPoly` / fake-edge / auto-close / branch cleanup | `GGLSearchPolyFunc2d.pas` | `GeometrySearchPoly.h` + `GeometryPathOps.h` | first SDK surface landed |
+| `SearchPoly` / fake-edge / auto-close / branch cleanup | `GGLSearchPolyFunc2d.pas` | `GeometrySearchPoly.h` + `GeometryPathOps.h` | branch-scored subset landed |
 | polygon relation tree / contains hierarchy | `GGLPolyRelation.pas` | `GeometryRelation.h` + `GeometryTopology.h` | usable subset |
 | offset with rebuilt polygon recovery | `GGLOffsetFunc2d.pas` | `GeometryOffset.h` | usable subset |
 | 2D boolean | GGJ + Geo2DLib product use | `GeometryBoolean.h` | usable subset |
@@ -37,6 +37,7 @@ This file fixes the fast-track replacement target for the Delphi geometry stack:
 
 - `GeometrySearchPoly.h`
   - formalizes Delphi-style polygon search as a first-class SDK entry instead of leaving product to call `BuildMultiPolygonByLines(...)` ad hoc
+  - current stable subset covers invalid-input contract, candidate ranking, branch scoring, candidate-level fake-edge diagnostics, and smallest-containing candidate lookup
 - `GeometryBodyBoolean.h`
   - reserves Delphi-style body/shell boolean SDK names so product can wire against stable APIs now
   - current stable subset covers invalid-input contract, identical/disjoint closed-body subsets, and axis-aligned single-box overlap subsets whose result remains one closed box
@@ -47,6 +48,6 @@ This file fixes the fast-track replacement target for the Delphi geometry stack:
 
 ## Next Batches
 
-- deepen `GeometrySearchPoly` toward Delphi-grade explicit branch scoring and fake-edge explanation
+- deepen `GeometrySearchPoly` from the current branch-scored + candidate fake-edge diagnostic subset toward richer fake-edge explanation and Delphi-grade ambiguous recovery
 - deepen `GeometryBodyBoolean` from identical/disjoint + axis-aligned single-box overlap subsets toward non-box overlap, touching/shell-policy, and healing-integrated cases
 - continue shrinking gap tests only when corresponding capability tests turn green

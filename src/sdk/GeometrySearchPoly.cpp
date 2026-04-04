@@ -3,8 +3,10 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <utility>
 #include <vector>
 
+#include "algorithm/Predicate2.h"
 #include "sdk/GeometryMetrics.h"
 #include "sdk/GeometryPathOps.h"
 #include "sdk/GeometryRelation.h"
@@ -17,6 +19,23 @@ struct GraphVertex2d
 {
     Point2d point{};
     std::size_t degree{0};
+};
+
+struct LineNetworkAnalysis2d
+{
+    SearchPolyDiagnostics2d diagnostics{};
+    std::vector<GraphVertex2d> vertices{};
+    std::vector<LineSegment2d> segments{};
+    double repairTolerance{0.0};
+};
+
+struct CandidateMetrics2d
+{
+    double inferredSyntheticPerimeter{0.0};
+    std::size_t inferredSyntheticEdgeCount{0};
+    std::size_t branchVertexCount{0};
+    std::size_t syntheticBranchVertexCount{0};
+    double branchScore{0.0};
 };
 
 [[nodiscard]] std::size_t FindOrAddVertex(
@@ -36,14 +55,40 @@ struct GraphVertex2d
     return vertices.size() - 1;
 }
 
-[[nodiscard]] SearchPolyDiagnostics2d AnalyzeLineNetwork(
+[[nodiscard]] double ComputeRepairToleranceFromSegments(const std::vector<LineSegment2d>& segments, double epsilon)
+{
+    double totalLength = 0.0;
+    double maxLength = 0.0;
+    std::size_t counted = 0;
+    for (const LineSegment2d& segment : segments)
+    {
+        const double length = segment.Length();
+        if (length <= epsilon)
+        {
+            continue;
+        }
+
+        totalLength += length;
+        maxLength = std::max(maxLength, length);
+        ++counted;
+    }
+
+    if (counted == 0)
+    {
+        return 16.0 * epsilon;
+    }
+
+    const double averageLength = totalLength / static_cast<double>(counted);
+    return std::max(16.0 * epsilon, std::min(0.2 * averageLength, 0.25 * maxLength));
+}
+
+[[nodiscard]] LineNetworkAnalysis2d AnalyzeLineNetwork(
     const MultiPolyline2d& lines,
     double epsilon)
 {
-    SearchPolyDiagnostics2d diagnostics;
-    diagnostics.inputPolylineCount = lines.Count();
+    LineNetworkAnalysis2d analysis;
+    analysis.diagnostics.inputPolylineCount = lines.Count();
 
-    std::vector<GraphVertex2d> vertices;
     for (std::size_t lineIndex = 0; lineIndex < lines.Count(); ++lineIndex)
     {
         const Polyline2d& line = lines[lineIndex];
@@ -62,46 +107,243 @@ struct GraphVertex2d
                 continue;
             }
 
-            ++diagnostics.inputSegmentCount;
-            const std::size_t from = FindOrAddVertex(vertices, start, epsilon);
-            const std::size_t to = FindOrAddVertex(vertices, end, epsilon);
+            ++analysis.diagnostics.inputSegmentCount;
+            analysis.segments.push_back(LineSegment2d(start, end));
+            const std::size_t from = FindOrAddVertex(analysis.vertices, start, epsilon);
+            const std::size_t to = FindOrAddVertex(analysis.vertices, end, epsilon);
             if (from != to)
             {
-                ++vertices[from].degree;
-                ++vertices[to].degree;
+                ++analysis.vertices[from].degree;
+                ++analysis.vertices[to].degree;
             }
         }
     }
 
-    diagnostics.uniqueVertexCount = vertices.size();
-    for (const GraphVertex2d& vertex : vertices)
+    analysis.diagnostics.uniqueVertexCount = analysis.vertices.size();
+    for (const GraphVertex2d& vertex : analysis.vertices)
     {
         if (vertex.degree == 1)
         {
-            ++diagnostics.danglingEndpointCount;
+            ++analysis.diagnostics.danglingEndpointCount;
         }
         else if (vertex.degree > 2)
         {
-            ++diagnostics.branchVertexCount;
+            ++analysis.diagnostics.branchVertexCount;
         }
     }
 
-    diagnostics.inferredSyntheticEdgeCount = diagnostics.danglingEndpointCount / 2U;
-    return diagnostics;
+    analysis.diagnostics.inferredSyntheticEdgeCount = analysis.diagnostics.danglingEndpointCount / 2U;
+    analysis.repairTolerance = ComputeRepairToleranceFromSegments(analysis.segments, epsilon);
+    return analysis;
 }
 
-[[nodiscard]] SearchPolyCandidate2d MakeCandidate(const Polygon2d& polygon)
+[[nodiscard]] double ComputeBranchScore(
+    double area,
+    double inferredSyntheticPerimeter,
+    std::size_t branchVertexCount,
+    std::size_t syntheticBranchVertexCount,
+    double repairTolerance,
+    double epsilon)
+{
+    const double scale = std::max(repairTolerance, 16.0 * epsilon);
+    const double syntheticPenalty = inferredSyntheticPerimeter * scale;
+    const double branchPenalty = static_cast<double>(branchVertexCount) * 0.5 * scale;
+    const double syntheticBranchPenalty = static_cast<double>(syntheticBranchVertexCount) * 1.5 * scale;
+    return area - syntheticPenalty - branchPenalty - syntheticBranchPenalty;
+}
+
+[[nodiscard]] std::size_t BranchDegreeAtPoint(
+    const std::vector<GraphVertex2d>& vertices,
+    const Point2d& point,
+    double epsilon)
+{
+    for (const GraphVertex2d& vertex : vertices)
+    {
+        if (vertex.point.AlmostEquals(point, epsilon))
+        {
+            return vertex.degree;
+        }
+    }
+    return 0;
+}
+
+[[nodiscard]] bool CoversBoundaryEdge(
+    const LineSegment2d& boundaryEdge,
+    const std::vector<LineSegment2d>& inputSegments,
+    double epsilon)
+{
+    if (!boundaryEdge.IsValid())
+    {
+        return false;
+    }
+
+    const Vector2d direction = boundaryEdge.endPoint - boundaryEdge.startPoint;
+    const double length = direction.Length();
+    const double lengthSquared = direction.LengthSquared();
+    if (length <= epsilon || lengthSquared <= epsilon * epsilon)
+    {
+        return false;
+    }
+
+    std::vector<std::pair<double, double>> intervals;
+    intervals.reserve(inputSegments.size());
+    for (const LineSegment2d& inputSegment : inputSegments)
+    {
+        if (!inputSegment.IsValid())
+        {
+            continue;
+        }
+
+        const double startOffset = std::abs(Cross(direction, inputSegment.startPoint - boundaryEdge.startPoint));
+        const double endOffset = std::abs(Cross(direction, inputSegment.endPoint - boundaryEdge.startPoint));
+        if (startOffset > epsilon * length || endOffset > epsilon * length)
+        {
+            continue;
+        }
+
+        double t0 = Dot(inputSegment.startPoint - boundaryEdge.startPoint, direction) / lengthSquared;
+        double t1 = Dot(inputSegment.endPoint - boundaryEdge.startPoint, direction) / lengthSquared;
+        if (t1 < t0)
+        {
+            std::swap(t0, t1);
+        }
+
+        const double clippedStart = std::max(0.0, t0);
+        const double clippedEnd = std::min(1.0, t1);
+        if (clippedEnd <= clippedStart + epsilon / length)
+        {
+            continue;
+        }
+
+        intervals.emplace_back(clippedStart, clippedEnd);
+    }
+
+    if (intervals.empty())
+    {
+        return false;
+    }
+
+    std::sort(intervals.begin(), intervals.end(), [](const std::pair<double, double>& left, const std::pair<double, double>& right) {
+        if (std::abs(left.first - right.first) > 1e-12)
+        {
+            return left.first < right.first;
+        }
+        return left.second < right.second;
+    });
+
+    const double parameterTolerance = epsilon / length;
+    double coveredUntil = 0.0;
+    bool seeded = false;
+    for (const auto& interval : intervals)
+    {
+        if (!seeded)
+        {
+            if (interval.first > parameterTolerance)
+            {
+                return false;
+            }
+            coveredUntil = interval.second;
+            seeded = true;
+            continue;
+        }
+
+        if (interval.first > coveredUntil + parameterTolerance)
+        {
+            return false;
+        }
+        coveredUntil = std::max(coveredUntil, interval.second);
+    }
+
+    return seeded && coveredUntil >= 1.0 - parameterTolerance;
+}
+
+void AccumulateRingMetrics(
+    const Polyline2d& ring,
+    const LineNetworkAnalysis2d& analysis,
+    double epsilon,
+    CandidateMetrics2d& metrics)
+{
+    if (!ring.IsValid() || ring.PointCount() < 3)
+    {
+        return;
+    }
+
+    const std::size_t segmentCount = ring.PointCount();
+    for (std::size_t segmentIndex = 0; segmentIndex < segmentCount; ++segmentIndex)
+    {
+        const Point2d start = ring.PointAt(segmentIndex);
+        const Point2d end = ring.PointAt((segmentIndex + 1) % segmentCount);
+        if (start.AlmostEquals(end, epsilon))
+        {
+            continue;
+        }
+
+        const LineSegment2d boundaryEdge(start, end);
+        const double edgeLength = boundaryEdge.Length();
+
+        const bool inferredSynthetic = !CoversBoundaryEdge(boundaryEdge, analysis.segments, epsilon);
+        if (inferredSynthetic)
+        {
+            ++metrics.inferredSyntheticEdgeCount;
+            metrics.inferredSyntheticPerimeter += edgeLength;
+        }
+
+        if (BranchDegreeAtPoint(analysis.vertices, start, epsilon) > 2U)
+        {
+            ++metrics.branchVertexCount;
+            if (inferredSynthetic)
+            {
+                ++metrics.syntheticBranchVertexCount;
+            }
+        }
+    }
+}
+
+[[nodiscard]] CandidateMetrics2d AnalyzeCandidate(
+    const Polygon2d& polygon,
+    const LineNetworkAnalysis2d& analysis,
+    double epsilon)
+{
+    CandidateMetrics2d metrics;
+    AccumulateRingMetrics(polygon.OuterRing(), analysis, epsilon, metrics);
+    for (std::size_t holeIndex = 0; holeIndex < polygon.HoleCount(); ++holeIndex)
+    {
+        AccumulateRingMetrics(polygon.HoleAt(holeIndex), analysis, epsilon, metrics);
+    }
+
+    metrics.branchScore = ComputeBranchScore(
+        std::abs(Area(polygon)),
+        metrics.inferredSyntheticPerimeter,
+        metrics.branchVertexCount,
+        metrics.syntheticBranchVertexCount,
+        analysis.repairTolerance,
+        epsilon);
+    return metrics;
+}
+
+[[nodiscard]] SearchPolyCandidate2d MakeCandidate(
+    const Polygon2d& polygon,
+    const CandidateMetrics2d& metrics)
 {
     return SearchPolyCandidate2d{
         polygon,
         std::abs(Area(polygon)),
+        metrics.branchScore,
+        metrics.inferredSyntheticPerimeter,
         polygon.HoleCount(),
+        metrics.inferredSyntheticEdgeCount,
+        metrics.branchVertexCount,
+        metrics.syntheticBranchVertexCount,
         0};
 }
 
 void RankCandidates(std::vector<SearchPolyCandidate2d>& candidates)
 {
     std::stable_sort(candidates.begin(), candidates.end(), [](const SearchPolyCandidate2d& left, const SearchPolyCandidate2d& right) {
+        if (std::abs(left.branchScore - right.branchScore) > 1e-12)
+        {
+            return left.branchScore > right.branchScore;
+        }
         if (std::abs(left.absoluteArea - right.absoluteArea) > 1e-12)
         {
             return left.absoluteArea > right.absoluteArea;
@@ -129,7 +371,8 @@ SearchPolyResult2d SearchPolygons(const MultiPolyline2d& lines, SearchPolyOption
         return result;
     }
 
-    result.diagnostics = AnalyzeLineNetwork(lines, options.epsilon);
+    const LineNetworkAnalysis2d analysis = AnalyzeLineNetwork(lines, options.epsilon);
+    result.diagnostics = analysis.diagnostics;
     result.polygons = BuildMultiPolygonByLines(lines, options.epsilon);
     if (result.polygons.Count() == 0)
     {
@@ -142,7 +385,7 @@ SearchPolyResult2d SearchPolygons(const MultiPolyline2d& lines, SearchPolyOption
     {
         if (result.polygons[index].IsValid())
         {
-            result.candidates.push_back(MakeCandidate(result.polygons[index]));
+            result.candidates.push_back(MakeCandidate(result.polygons[index], AnalyzeCandidate(result.polygons[index], analysis, options.epsilon)));
         }
     }
 
@@ -155,12 +398,21 @@ SearchPolyResult2d SearchPolygons(const MultiPolyline2d& lines, SearchPolyOption
 
     RankCandidates(result.candidates);
 
-    if (result.diagnostics.danglingEndpointCount > 0)
+    result.usedSyntheticEdges =
+        std::any_of(result.candidates.begin(), result.candidates.end(), [](const SearchPolyCandidate2d& candidate) {
+            return candidate.inferredSyntheticEdgeCount > 0;
+        });
+    result.usedBranchScoring =
+        std::any_of(result.candidates.begin(), result.candidates.end(), [](const SearchPolyCandidate2d& candidate) {
+            return candidate.inferredSyntheticEdgeCount > 0 || candidate.branchVertexCount > 0 ||
+                   candidate.syntheticBranchVertexCount > 0;
+        });
+
+    if (result.diagnostics.danglingEndpointCount > 0 && result.usedSyntheticEdges)
     {
         result.usedAutoClose = options.autoClose;
-        result.usedSyntheticEdges = options.allowFakeEdges;
     }
-    if (result.diagnostics.branchVertexCount > 0)
+    if (result.diagnostics.branchVertexCount > 0 && result.usedBranchScoring)
     {
         result.usedAutoExtend = options.autoExtend;
     }

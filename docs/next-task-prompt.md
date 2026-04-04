@@ -43,6 +43,21 @@
   - `DifferenceBodies(...)` 中结果仍为单一 closed box 的单侧 slab 子集
 - 非单-box overlap、touching shell 语义、shell-policy、topology-preserving healing integration 仍保留为 gap
 
+当前 `GeometrySearchPoly` 已进一步收敛到：
+
+- invalid-input contract
+- 代表性 closed-loop build 子集
+- candidate ranking
+- branch scoring
+- candidate-level fake-edge diagnostics：
+  - `branchScore`
+  - `inferredSyntheticPerimeter`
+  - `inferredSyntheticEdgeCount`
+  - `branchVertexCount`
+  - `syntheticBranchVertexCount`
+- `SearchPolygonContainingPoint(...)` 的 smallest-containing candidate 选择子集
+- richer fake-edge explanation、Delphi 级 ambiguous recovery、完整 smart-search parity 仍保留为 gap
+
 当前策略已经固定为：
 
 1. 接口先行
@@ -69,8 +84,8 @@
 
 优先做：
 
-- 在现有 diagnostics + ranking 的基础上继续补 branch scoring
-- 增加更明确的 fake-edge explanation
+- 在现有 diagnostics + branch scoring + candidate-level fake-edge diagnostics 的基础上继续补更明确的 fake-edge explanation
+- 继续推进 Delphi 级 ambiguous recovery
 - 继续把 Delphi 风格 smart-search 差距显式留在 `tests/gaps/test_searchpoly_gaps.cpp`
 
 目标：
@@ -84,6 +99,7 @@
 - `GeometrySearchPoly`
   - 把当前对 `BuildMultiPolygonByLines(...)` 的薄封装，重构为独立实现层
   - 外部只保留 `GeometrySearchPoly.h`
+  - 将当前 branch scoring / fake-edge diagnostics 继续沉淀为正式结果语义，而不是停留在底层 pathops 行为侧推
 - `GeometryBodyBoolean`
   - 未来实现时区分 `PolyhedronBody` 路径与 `BrepBody` 路径，但保持统一 public contract
 - `GeometryBrepConversion`

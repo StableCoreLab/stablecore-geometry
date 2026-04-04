@@ -8,7 +8,7 @@ This matrix turns Delphi-replacement work into an interface-and-tests program.
 
 | SDK surface | Minimum tests required | Current state |
 | --- | --- | --- |
-| `GeometrySearchPoly.h` | invalid-input contract, closed-loop representative capability, candidate ranking, repair diagnostics, point-containing candidate lookup | second batch landed |
+| `GeometrySearchPoly.h` | invalid-input contract, closed-loop representative capability, candidate ranking, branch scoring, fake-edge diagnostics, point-containing candidate lookup | third batch landed |
 | `GeometryOffset.h` | line/arc/polyline/polygon offset contracts, rebuilt output capability, split-output capability | covered |
 | `GeometryRelation.h` | point location, containment ordering, representative nested/hole topology capability | covered subset |
 | `GeometryBoolean.h` | invalid operands, crossing/containment/equal/touching representative capabilities | covered subset |
@@ -31,5 +31,5 @@ The algorithm library is considered ready for product development when:
 ## Immediate Work Queue
 
 1. deepen `GeometryBodyBoolean` beyond identical/disjoint + axis-aligned single-box overlap subsets.
-2. expand `GeometrySearchPoly` with branch scoring and fake-edge explanation.
+2. deepen `GeometrySearchPoly` beyond the current branch-scored + candidate fake-edge diagnostic subset toward richer explanation and ambiguous recovery.
 3. keep syncing `docs/test-capability-coverage.md` and gap docs as soon as a subset changes state.

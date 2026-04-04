@@ -91,6 +91,14 @@
 - notes:
   - 已重写为 fast-track 稳定 API 推进版提示词
   - 已在后续批次中把 `GeometrySearchPoly` 第二批 SDK 深化与 `GeometryBodyBoolean` capability 排进主线
+  - 已进一步同步 `GeometrySearchPoly` 到 branch scoring + candidate-level fake-edge diagnostics 子集，并把下一轮重点收敛到 richer fake-edge explanation 与 ambiguous recovery
+
+### `docs/delphi-interface-fasttrack.md` / `docs/delphi-test-fasttrack-matrix.md`
+
+- status: `done`
+- notes:
+  - 已同步 `GeometrySearchPoly` 从 second batch candidate ranking / repair diagnostics 推进到 branch scoring + candidate-level fake-edge diagnostics
+  - 已把矩阵状态更新为 third batch landed，并将下一轮 SearchPoly 重点收敛到 richer fake-edge explanation 与 ambiguous recovery
 
 ### `docs/delphi-interface-fasttrack.md` / `docs/delphi-test-fasttrack-matrix.md`
 
@@ -98,7 +106,7 @@
 - notes:
   - 已同步 `GeometryBodyBoolean` 从纯接口预留推进到第一批 deterministic closed-body capability
   - 已进一步同步到 axis-aligned single-box overlap capability，并把矩阵状态更新为 first overlap subset landed
-  - 已把下一轮重点更新为 body boolean richer overlap 子集与 SearchPoly branch scoring
+  - 已把下一轮重点更新为 body boolean richer overlap 子集与 SearchPoly richer fake-edge explanation / ambiguous recovery
 
 ### `docs/ai-task-routing.md`
 
