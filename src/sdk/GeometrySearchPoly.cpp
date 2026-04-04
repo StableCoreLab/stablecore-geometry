@@ -10,6 +10,7 @@
 #include "sdk/GeometryMetrics.h"
 #include "sdk/GeometryPathOps.h"
 #include "sdk/GeometryRelation.h"
+#include "sdk/GeometryShapeOps.h"
 
 namespace geometry::sdk
 {
@@ -311,8 +312,9 @@ void AccumulateRingMetrics(
         AccumulateRingMetrics(polygon.HoleAt(holeIndex), analysis, epsilon, metrics);
     }
 
+    const double polygonArea = Area(polygon);
     metrics.branchScore = ComputeBranchScore(
-        std::abs(Area(polygon)),
+        std::abs(polygonArea),
         metrics.inferredSyntheticPerimeter,
         metrics.branchVertexCount,
         metrics.syntheticBranchVertexCount,
@@ -325,9 +327,10 @@ void AccumulateRingMetrics(
     const Polygon2d& polygon,
     const CandidateMetrics2d& metrics)
 {
+    const double polygonArea = Area(polygon);
     return SearchPolyCandidate2d{
         polygon,
-        std::abs(Area(polygon)),
+        std::abs(polygonArea),
         metrics.branchScore,
         metrics.inferredSyntheticPerimeter,
         polygon.HoleCount(),
@@ -408,7 +411,7 @@ SearchPolyResult2d SearchPolygons(const MultiPolyline2d& lines, SearchPolyOption
                    candidate.syntheticBranchVertexCount > 0;
         });
 
-    if (result.diagnostics.danglingEndpointCount > 0 && result.usedSyntheticEdges)
+    if (result.diagnostics.danglingEndpointCount > 0)
     {
         result.usedAutoClose = options.autoClose;
     }

@@ -944,6 +944,14 @@ PolyhedronSection3d Section(
         return result;
     }
 
+    if (hasCoplanarFace)
+    {
+        // Let the graph reconstruction below own the final contour/polygon
+        // set so coplanar faces are not counted twice.
+        result.contours.clear();
+        result.polygons.clear();
+    }
+
     std::vector<Point2d> projectedNodes;
     std::vector<Point3d> nodePoints3d;
     std::vector<IndexedSegment2d> indexedSegments;

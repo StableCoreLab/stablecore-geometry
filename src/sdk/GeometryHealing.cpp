@@ -206,6 +206,11 @@ namespace trim_backfill
 return true;
 }
 
+namespace aggressive
+{
+[[nodiscard]] BrepLoop ReversedLoop(const BrepLoop& loop);
+}
+
 namespace shell_cap
 {
 struct BoundaryHalfEdge
@@ -797,7 +802,7 @@ namespace aggressive
             }
         }
 
-        AccumulateShellEdgeUseCounts(shell, edgeUseCount);
+        shell_cap::AccumulateShellEdgeUseCounts(shell, edgeUseCount);
 
         if (!eligible || edgeUseCount.empty())
         {

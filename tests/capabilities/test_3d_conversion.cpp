@@ -72,6 +72,17 @@ PolyhedronLoop3d SkewLoop(const PolyhedronLoop3d& loop)
     return PolyhedronLoop3d(std::move(vertices));
 }
 
+std::vector<PolyhedronLoop3d> CopyFaceHoles(const PolyhedronFace3d& face)
+{
+    std::vector<PolyhedronLoop3d> holes;
+    holes.reserve(face.HoleCount());
+    for (std::size_t holeIndex = 0; holeIndex < face.HoleCount(); ++holeIndex)
+    {
+        holes.push_back(face.HoleAt(holeIndex));
+    }
+    return holes;
+}
+
 Plane SupportPlaneFromLoop(const PolyhedronLoop3d& loop)
 {
     const std::vector<Point3d>& vertices = loop.Vertices();
@@ -279,7 +290,7 @@ PolyhedronBody BuildDeformedUnitCubeWithDuplicateLoopBody()
     }
 
     loop.insert(loop.begin(), loop.front());
-    faces[4] = PolyhedronFace3d(leftFace.SupportPlane(), PolyhedronLoop3d(std::move(loop)), leftFace.Holes());
+    faces[4] = PolyhedronFace3d(leftFace.SupportPlane(), PolyhedronLoop3d(std::move(loop)), CopyFaceHoles(leftFace));
     return PolyhedronBody(std::move(faces));
 }
 
@@ -300,7 +311,7 @@ PolyhedronBody BuildDeformedUnitCubeWithDualDuplicateLoopBody()
     }
 
     loop.insert(loop.begin(), loop.front());
-    faces[2] = PolyhedronFace3d(frontFace.SupportPlane(), PolyhedronLoop3d(std::move(loop)), frontFace.Holes());
+    faces[2] = PolyhedronFace3d(frontFace.SupportPlane(), PolyhedronLoop3d(std::move(loop)), CopyFaceHoles(frontFace));
     return PolyhedronBody(std::move(faces));
 }
 
@@ -321,7 +332,7 @@ PolyhedronBody BuildDualDeformedUnitCubeWithDuplicateLoopBody()
     }
 
     loop.insert(loop.begin(), loop.front());
-    faces[4] = PolyhedronFace3d(leftFace.SupportPlane(), PolyhedronLoop3d(std::move(loop)), leftFace.Holes());
+    faces[4] = PolyhedronFace3d(leftFace.SupportPlane(), PolyhedronLoop3d(std::move(loop)), CopyFaceHoles(leftFace));
     return PolyhedronBody(std::move(faces));
 }
 
@@ -342,7 +353,7 @@ PolyhedronBody BuildDualDeformedUnitCubeWithDualDuplicateLoopBody()
     }
 
     loop.insert(loop.begin(), loop.front());
-    faces[5] = PolyhedronFace3d(rightFace.SupportPlane(), PolyhedronLoop3d(std::move(loop)), rightFace.Holes());
+    faces[5] = PolyhedronFace3d(rightFace.SupportPlane(), PolyhedronLoop3d(std::move(loop)), CopyFaceHoles(rightFace));
     return PolyhedronBody(std::move(faces));
 }
 

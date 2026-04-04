@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "sdk/GeometryBrepConversion.h"
+#include "sdk/PlaneSurface.h"
 
 namespace geometry::sdk
 {
@@ -38,11 +39,27 @@ namespace
     return result;
 }
 
+[[nodiscard]] BrepBody EnsureClosedSingleShell(BrepBody body)
+{
+    if (body.ShellCount() != 1)
+    {
+        return body;
+    }
+
+    const BrepShell shell = body.ShellAt(0);
+    if (shell.IsClosed())
+    {
+        return body;
+    }
+
+    return BrepBody(body.Vertices(), body.Edges(), {BrepShell(shell.Faces(), true)});
+}
+
 [[nodiscard]] BodyBooleanResult3d MakeSingleBodyResult(BrepBody body, const char* message)
 {
     BodyBooleanResult3d result;
     result.issue = BodyBooleanIssue3d::None;
-    result.body = std::move(body);
+    result.body = EnsureClosedSingleShell(std::move(body));
     result.message = message;
     return result;
 }
@@ -152,6 +169,175 @@ namespace
 [[nodiscard]] bool CoordinateMatchesEitherBoundary(double value, double minValue, double maxValue, double epsilon)
 {
     return NearlyEqual(value, minValue, epsilon) || NearlyEqual(value, maxValue, epsilon);
+}
+
+[[nodiscard]] bool AppendLoopVerticesFromBody(
+    const BrepBody& body,
+    const BrepLoop& loop,
+    std::vector<Point3d>& vertices,
+    double epsilon)
+{
+    vertices.clear();
+    if (!loop.IsValid())
+    {
+        return false;
+    }
+
+    vertices.reserve(loop.CoedgeCount());
+    for (std::size_t i = 0; i < loop.CoedgeCount(); ++i)
+    {
+        const BrepCoedge coedge = loop.CoedgeAt(i);
+        if (coedge.EdgeIndex() >= body.EdgeCount())
+        {
+            return false;
+        }
+
+        const BrepEdge edge = body.EdgeAt(coedge.EdgeIndex());
+        const std::size_t vertexIndex = coedge.Reversed() ? edge.EndVertexIndex() : edge.StartVertexIndex();
+        if (vertexIndex >= body.VertexCount())
+        {
+            return false;
+        }
+
+        const Point3d point = body.VertexAt(vertexIndex).Point();
+        if (vertices.empty() || !vertices.back().AlmostEquals(point, epsilon))
+        {
+            vertices.push_back(point);
+        }
+    }
+
+    while (vertices.size() >= 2 && vertices.front().AlmostEquals(vertices.back(), epsilon))
+    {
+        vertices.pop_back();
+    }
+
+    return vertices.size() >= 3;
+}
+
+[[nodiscard]] bool FaceMatchesAxisAlignedBox(
+    const BrepBody& body,
+    const BrepFace& face,
+    const Box3d& box,
+    double epsilon,
+    int& axis,
+    bool& onMaxSide)
+{
+    if (face.HoleCount() != 0 || face.OuterLoop().CoedgeCount() != 4)
+    {
+        return false;
+    }
+
+    const auto* planeSurface = dynamic_cast<const PlaneSurface*>(face.SupportSurface());
+    if (planeSurface == nullptr)
+    {
+        return false;
+    }
+
+    std::vector<Point3d> outerVertices;
+    if (!AppendLoopVerticesFromBody(body, face.OuterLoop(), outerVertices, epsilon) || outerVertices.size() != 4)
+    {
+        return false;
+    }
+
+    const Vector3d unitNormal = planeSurface->SupportPlane().UnitNormal(epsilon);
+    if (!unitNormal.IsValid())
+    {
+        return false;
+    }
+
+    axis = -1;
+    if (std::abs(unitNormal.x) > epsilon && std::abs(unitNormal.y) <= epsilon && std::abs(unitNormal.z) <= epsilon)
+    {
+        axis = 0;
+    }
+    else if (std::abs(unitNormal.y) > epsilon && std::abs(unitNormal.x) <= epsilon && std::abs(unitNormal.z) <= epsilon)
+    {
+        axis = 1;
+    }
+    else if (std::abs(unitNormal.z) > epsilon && std::abs(unitNormal.x) <= epsilon && std::abs(unitNormal.y) <= epsilon)
+    {
+        axis = 2;
+    }
+
+    if (axis < 0)
+    {
+        return false;
+    }
+
+    const double faceCoordinate = CoordinateAt(outerVertices[0], axis);
+    const bool onMinSide = NearlyEqual(faceCoordinate, BoxMinAt(box, axis), epsilon);
+    onMaxSide = NearlyEqual(faceCoordinate, BoxMaxAt(box, axis), epsilon);
+    if (onMinSide == onMaxSide)
+    {
+        return false;
+    }
+
+    const double normalComponent = NormalAt(unitNormal, axis);
+    if ((onMaxSide && normalComponent <= 0.0) || (onMinSide && normalComponent >= 0.0))
+    {
+        return false;
+    }
+
+    const int otherAxis0 = (axis + 1) % 3;
+    const int otherAxis1 = (axis + 2) % 3;
+    std::array<bool, 4> seenCorners{};
+    for (const Point3d& vertex : outerVertices)
+    {
+        if (!NearlyEqual(CoordinateAt(vertex, axis), faceCoordinate, epsilon))
+        {
+            return false;
+        }
+
+        const double coordinate0 = CoordinateAt(vertex, otherAxis0);
+        const double coordinate1 = CoordinateAt(vertex, otherAxis1);
+        if (!CoordinateMatchesEitherBoundary(coordinate0, BoxMinAt(box, otherAxis0), BoxMaxAt(box, otherAxis0), epsilon) ||
+            !CoordinateMatchesEitherBoundary(coordinate1, BoxMinAt(box, otherAxis1), BoxMaxAt(box, otherAxis1), epsilon))
+        {
+            return false;
+        }
+
+        const bool bit0 = NearlyEqual(coordinate0, BoxMaxAt(box, otherAxis0), epsilon);
+        const bool bit1 = NearlyEqual(coordinate1, BoxMaxAt(box, otherAxis1), epsilon);
+        const std::size_t cornerIndex = static_cast<std::size_t>(bit0 ? 1 : 0) + static_cast<std::size_t>(bit1 ? 2 : 0);
+        seenCorners[cornerIndex] = true;
+    }
+
+    return seenCorners[0] && seenCorners[1] && seenCorners[2] && seenCorners[3];
+}
+
+[[nodiscard]] bool TryExtractAxisAlignedBoxFromBrep(const BrepBody& body, double epsilon, Box3d& box)
+{
+    if (body.ShellCount() != 1)
+    {
+        return false;
+    }
+
+    box = body.Bounds();
+    if (!HasPositiveBoxVolume(box, epsilon))
+    {
+        return false;
+    }
+
+    std::array<bool, 6> seenFaces{};
+    const BrepShell shell = body.ShellAt(0);
+    for (std::size_t faceIndex = 0; faceIndex < shell.FaceCount(); ++faceIndex)
+    {
+        int axis = -1;
+        bool onMaxSide = false;
+        if (!FaceMatchesAxisAlignedBox(body, shell.FaceAt(faceIndex), box, epsilon, axis, onMaxSide))
+        {
+            return false;
+        }
+
+        const std::size_t slot = static_cast<std::size_t>(axis * 2 + (onMaxSide ? 1 : 0));
+        if (seenFaces[slot])
+        {
+            return false;
+        }
+        seenFaces[slot] = true;
+    }
+
+    return seenFaces[0] && seenFaces[1] && seenFaces[2] && seenFaces[3] && seenFaces[4] && seenFaces[5];
 }
 
 [[nodiscard]] bool TryComputePositiveIntersectionBox(
@@ -419,9 +605,9 @@ namespace
 
 [[nodiscard]] bool TryExtractAxisAlignedBox(const BrepBody& body, double epsilon, Box3d& box)
 {
-    if (body.ShellCount() != 1 || !body.ShellAt(0).IsClosed())
+    if (TryExtractAxisAlignedBoxFromBrep(body, epsilon, box))
     {
-        return false;
+        return true;
     }
 
     const BrepBodyConversion3d converted = ConvertToPolyhedronBody(body, epsilon);
