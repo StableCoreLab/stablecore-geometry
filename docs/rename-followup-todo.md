@@ -14,7 +14,7 @@
   - 外部正式入口固定为 `include/sdk/GeometryBodyBoolean.h`
   - 后续即使内部实现拆为 `PolyhedronBody` 路径和 `BrepBody` 路径，public contract 也保持统一
 - `Geometry.h`
-  - 继续作为稳定 umbrella header
+  - 继续作为稳定 umbrella header，并只聚合稳定 `include/sdk` 入口
   - 新增 Delphi-facing SDK 时，优先从这里统一暴露，而不是让产品侧直接拼接内部头文件
 
 ## P2：需要继续拆层的内部算法
@@ -36,6 +36,7 @@
 ## P3：接口风格统一
 
 - 统一 Delphi-facing SDK 的 `Options / Result / Issue` 设计风格
+- 统一 Delphi-facing SDK 的 `Options / Result / Issue` 设计风格，并尽量让 `Geometry.h` 作为唯一产品侧 umbrella 入口
 - 尽量避免把临时 helper 直接暴露给产品侧
 - 新增 capability 时，优先补公共 SDK 入口，再补内部深实现
 - 对外承诺的接口一旦进入 `include/sdk`，后续尽量只增不破

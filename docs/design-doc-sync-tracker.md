@@ -138,6 +138,14 @@
   - 已将 `GeometryHealing.cpp` 的内部结构拆成 `trim_backfill` / `shell_cap` / `aggressive` 三个 helper/pass 区块，降低后续继续扩展时的上下文负担
   - `trim_backfill` 负责 face trim 回填，`shell_cap` 负责 standalone shell boundary cap 组装，`aggressive` 负责保守 healing 之后的 topology-changing closure
   - 未改变 public SDK 入口，也未调整已收敛 capability 的 contract 边界
+
+### `include/sdk/Geometry.h` / `tests/capabilities/test_sdk_umbrella.cpp`
+
+- status: `done`
+- notes:
+  - 已将 `Geometry.h` 明确为稳定 umbrella header，只聚合 `GeometryApi` / `GeometrySearchPoly` / `GeometryBodyBoolean`
+  - 已新增 umbrella contract test，确保产品侧仅依赖 `include/sdk` 时仍可直接使用稳定 SDK 入口
+  - 本轮属于命名、收口、暴露面一致性整理，不改变 public SDK contract
 ## 进度备注
 
 - 2026-03-27：

@@ -52,6 +52,12 @@
 - 已覆盖 identical / disjoint closed-body 子集与 axis-aligned single-box overlap 子集，以及 face-touching union 子集
 - touching intersection / difference、shell-policy、healing integration 仍为 gap
 
+### Geometry.h / include-sdk 收口
+
+- `include/sdk/Geometry.h` 继续作为稳定 umbrella header，只聚合 `GeometryApi` / `GeometrySearchPoly` / `GeometryBodyBoolean`
+- 已新增仅包含 `sdk/Geometry.h` 的 umbrella contract test，确认产品侧可以只依赖稳定 SDK 入口
+- `Options / Result / Issue` 风格统一继续作为命名与暴露面收口的一部分，但本轮不做大范围 API 重设计
+
 ## 下一轮优先级
 
 ### P1：继续深化 GeometrySection
@@ -79,6 +85,11 @@
 
 - GeometrySearchPoly：推进 richer fake-edge explanation 与 ambiguous recovery，但保持 result-consistency / auto-flag contract 只做确定性补强
 - GeometryBodyBoolean：推进更一般 overlap / touching-union 子集，但保持 InvalidInput / UnsupportedOperation contract 稳定
+
+### P4：继续推进 SDK 风格统一与接口收口
+
+- 继续收紧 `include/sdk` 暴露面，优先通过 umbrella / public contract 文档收口，而不是扩散临时 helper
+- 继续统一 Delphi-facing SDK 的 `Options / Result / Issue` 风格，但避免引入大范围 API 重设计
 
 ## 交付口径
 

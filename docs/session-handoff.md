@@ -9,6 +9,20 @@
 - 编译 / 构建 / 运行由用户手动完成
 - 不必担心 `gtest` 环境接入，用户会按需要调整 CMake / 构建侧
 
+## 本轮新增（2026-04-04，fasttrack-sdk-umbrella-surface-batch5）
+
+- 已更新 `include/sdk/Geometry.h`：
+  - 补充稳定 umbrella header 说明，明确它只负责聚合稳定 `include/sdk` 入口；
+  - 保持 `GeometryApi` + `GeometrySearchPoly` + `GeometryBodyBoolean` 的产品侧收口方式不变，只做说明性整理。
+- 已新增 `tests/capabilities/test_sdk_umbrella.cpp`：
+  - 用仅包含 `sdk/Geometry.h` 的测试文件验证 umbrella header 可直接暴露 `SearchPolygons(...)`、`IntersectBodies(...)`、`UnionBodies(...)`、`DifferenceBodies(...)` 等稳定入口；
+  - 同时验证 `InvalidInput` / success 路径结果对象在 umbrella 入口下可正常使用。
+- 已更新：
+  - `docs/next-task-prompt.md`
+  - `docs/rename-followup-todo.md`
+  - `docs/design-doc-sync-tracker.md`
+- 本轮未编译、未跑构建；仅做命名/收口/暴露面一致性整理。
+
 ## 本轮新增（2026-04-04，fasttrack-healing-internal-pass-split）
 
 - 已更新 `src/sdk/GeometryHealing.cpp`：
