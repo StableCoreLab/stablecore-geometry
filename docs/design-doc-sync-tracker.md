@@ -92,6 +92,13 @@
   - 已重写为 fast-track 稳定 API 推进版提示词
   - 已在后续批次中把 `GeometrySearchPoly` 第二批 SDK 深化与 `GeometryBodyBoolean` capability 排进主线
 
+### `docs/delphi-interface-fasttrack.md` / `docs/delphi-test-fasttrack-matrix.md`
+
+- status: `done`
+- notes:
+  - 已同步 `GeometryBodyBoolean` 从纯接口预留推进到第一批 deterministic closed-body capability
+  - 已把下一轮重点更新为 body boolean richer overlap 子集与 SearchPoly branch scoring
+
 ## 进度备注
 
 - 2026-03-27：

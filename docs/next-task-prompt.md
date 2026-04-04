@@ -41,11 +41,11 @@
 
 ## 下一轮优先级
 
-### P1：推进 `GeometryBodyBoolean` 第一批 capability
+### P1：继续深化 `GeometryBodyBoolean`
 
 优先做：
 
-- 先挑一个 deterministic closed-body 代表性子集落 capability
+- 在现有 identical/disjoint closed-body 子集基础上继续补更有业务价值的 overlap 子集
 - 保持 `InvalidInput` / `UnsupportedOperation` contract 稳定
 - 未覆盖语义继续留在 `tests/gaps/test_3d_body_boolean_gaps.cpp`
 

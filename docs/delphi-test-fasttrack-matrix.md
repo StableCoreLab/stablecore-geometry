@@ -15,7 +15,7 @@ This matrix turns Delphi-replacement work into an interface-and-tests program.
 | `GeometrySection.h` | section contract, deterministic contour/segment counts, topology/components, Brep path parity | covered subset |
 | `GeometryBrepConversion.h` | invalid-input contract, representative conversion capabilities, explicit open-gap coverage | covered subset |
 | `GeometryHealing.h` | conservative trim-backfill contract, representative aggressive-policy capabilities, explicit open-gap coverage | covered subset |
-| `GeometryBodyBoolean.h` | invalid-input contract, representative body boolean capability once implemented, explicit gap coverage until then | interface only |
+| `GeometryBodyBoolean.h` | invalid-input contract, identical/disjoint closed-body representative capability, explicit gap coverage beyond that subset | first deterministic subset landed |
 | `GeometryMeshConversion.h` | representative Brep/Polyhedron mesh conversion capability, fidelity gaps | covered subset |
 
 ## Definition Of Done For Fast-Track
@@ -30,6 +30,6 @@ The algorithm library is considered ready for product development when:
 
 ## Immediate Work Queue
 
-1. expand `GeometrySearchPoly` with candidate ranking and synthetic-edge diagnostics.
-2. replace `GeometryBodyBoolean` stubs with the first deterministic closed-body subset.
+1. deepen `GeometryBodyBoolean` beyond identical/disjoint closed-body subsets.
+2. expand `GeometrySearchPoly` with branch scoring and fake-edge explanation.
 3. keep syncing `docs/test-capability-coverage.md` and gap docs as soon as a subset changes state.

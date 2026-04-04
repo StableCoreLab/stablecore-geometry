@@ -43,6 +43,28 @@
   - `docs/design-doc-sync-tracker.md`
 - 当前下一轮优先级已更清晰地转向 `GeometryBodyBoolean` 第一批 deterministic capability。
 
+## 本轮新增（2026-04-04，fasttrack-bodyboolean-batch1）
+
+- 已更新 `src/sdk/GeometryBodyBoolean.cpp`：
+  - 将 `GeometryBodyBoolean` 从纯 contract stub 推进到第一批 deterministic closed-body 子集；
+  - 当前已覆盖：
+    - identical closed-body `IntersectBodies(...)`
+    - identical closed-body `UnionBodies(...)`
+    - disjoint closed-body `UnionBodies(...)`
+    - disjoint closed-body `DifferenceBodies(...)`
+  - 其余 richer overlap / topology-changing 语义继续保留为 `UnsupportedOperation`。
+- 已扩展 capability tests：`tests/capabilities/test_3d_body_boolean_sdk.cpp`
+  - 补齐 PolyhedronBody 路径 identical intersection / union
+  - 补齐 disjoint union / difference
+  - 补齐 BrepBody 路径 identical intersection
+- 已同步收紧 gap 文案：`tests/gaps/test_3d_body_boolean_gaps.cpp`
+  - 明确当前只收敛 deterministic identical/disjoint closed-body 子集，Delphi 级 overlap boolean 与 shell-policy 仍未闭合。
+- 已同步更新：
+  - `docs/delphi-interface-fasttrack.md`
+  - `docs/delphi-test-fasttrack-matrix.md`
+  - `docs/test-capability-coverage.md`
+- 当前下一轮可继续把 `GeometryBodyBoolean` 往 overlap 子集推进，或者切回 `GeometrySearchPoly` 的 branch scoring / fake-edge explanation。
+
 ## 本轮新增（2026-04-04，fasttrack-interface-tests）
 
 - 已新增 Delphi 快补总表：`docs/delphi-interface-fasttrack.md`，把 Delphi 实际使用能力映射到 C++ 目标 SDK 面，并把“接口先行 + 测试先行”固定成当前主策略。

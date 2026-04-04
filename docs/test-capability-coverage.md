@@ -85,7 +85,7 @@
 - `tests/capabilities/test_3d_conversion.cpp`
   - 单位立方体（6 quad faces）经 `ConvertToTriangleMesh(PolyhedronBody)` 得到 12 triangles，`SurfaceArea ≈ 6.0`；并可经 `ConvertToBrepBody(PolyhedronBody)` 得到 `FaceCount() == 6` 的有效 `BrepBody`，覆盖 affine-skew 非轴对齐子类输入、support-plane mismatch 可修复子场景（含 shared-chain mixed-content full-composition 下的 support-plane refit）、mild non-planar outer/hole loop 顶点投影修复子场景、leading collinear loop 顶点下的稳健法向回退、duplicate outer/hole loop 顶点归一化修复、tiny-scale non-planar（含 holed/multi-face/mixed-content/shared-edge/shared-chain/shared-chain-mixed-content）输入下的 scale-aware 法向回退与投影修复，以及 duplicate/hole/collinear-leading normalization 与 shared-edge chain 修复的组合稳定性；同时覆盖 planar holed、planar multi-face、以及 planar holed+multi-face `BrepBody` 到 mesh 的面积保持子场景
 - `tests/capabilities/test_3d_body_boolean_sdk.cpp`
-  - `GeometryBodyBoolean` 第一批 SDK 面：空 `PolyhedronBody` 输入下的 invalid-input contract 已固定，允许产品先按稳定 3D body boolean 入口编程
+  - `GeometryBodyBoolean` 第一批 deterministic SDK 子集：空输入 invalid-input contract、identical closed-body 的 intersection/union、disjoint closed-body 的 union/difference，允许产品先按稳定 3D body boolean 入口编程
   - `ConvertToBrepBody(...)` 在 tiny-scale shared-edge 邻接链 mixed-content full-composition 下，支持 outer/hole 双重复顶点归一化与 support-mismatch + collinear-leading 组合修复稳定叠加
   - `ConvertToBrepBody(...)` 在 tiny-scale shared-edge 邻接链修复后可全局复用共享顶点/边，避免按 face 重复建拓扑并保持共享边一致性子集稳定
   - `ConvertToBrepBody(...)` 在 closed-shell 代表性输入（单位立方体）上可收敛到共享拓扑 Brep：1 shell / 8 vertices / 12 edges / closed shell
@@ -210,7 +210,7 @@
 - `tests/gaps/test_3d_healing_gaps.cpp`
   - 记录超出 planar open-sheet closure（含 holed shell）子策略的激进修复策略、mesh/body 联合多阶段修复仍未闭合
 - `tests/gaps/test_3d_body_boolean_gaps.cpp`
-  - 记录 Delphi 级 3D body/shell boolean 语义仍未闭合；当前只保留稳定 SDK 面与 invalid-input contract
+  - 记录 Delphi 级 3D body/shell boolean 语义仍未闭合；当前只覆盖 deterministic identical/disjoint closed-body 子集与 invalid-input contract
 - `tests/gaps/test_searchpoly_gaps.cpp`
   - 记录 Delphi 级 smart-search branch scoring、fake-edge explanation 与完整 ambiguous recovery 仍未闭合；当前已固定稳定 SDK 入口、candidate ranking 与 repair diagnostics
 - `tests/gaps/test_3d_conversion_gaps.cpp`
