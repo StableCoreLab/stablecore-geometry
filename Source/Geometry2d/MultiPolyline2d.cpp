@@ -1,4 +1,4 @@
-﻿#include "Geometry2d/MultiPolyline2d.h"
+#include "Geometry2d/SCMultiPolyline2d.h"
 
 #include <sstream>
 #include <utility>
@@ -7,25 +7,29 @@
 
 namespace Geometry
 {
-    MultiPolyline2d::MultiPolyline2d( std::vector<Polyline2d> polylines ) :
-        polylines_( std::move( polylines ) )
+    SCMultiPolyline2d::SCMultiPolyline2d(std::vector<SCPolyline2d> polylines) : polylines_(std::move(polylines))
     {
     }
 
-    MultiPolyline2d::MultiPolyline2d( std::initializer_list<Polyline2d> polylines ) :
-        polylines_( polylines )
+    SCMultiPolyline2d::SCMultiPolyline2d(std::initializer_list<SCPolyline2d> polylines) : polylines_(polylines)
     {
     }
 
-    std::size_t MultiPolyline2d::Count() const { return polylines_.size(); }
-
-    bool MultiPolyline2d::IsEmpty() const { return polylines_.empty(); }
-
-    bool MultiPolyline2d::IsValid() const
+    std::size_t SCMultiPolyline2d::Count() const
     {
-        for( const auto &polyline : polylines_ )
+        return polylines_.size();
+    }
+
+    bool SCMultiPolyline2d::IsEmpty() const
+    {
+        return polylines_.empty();
+    }
+
+    bool SCMultiPolyline2d::IsValid() const
+    {
+        for (const auto& polyline : polylines_)
         {
-            if( !polyline.IsValid() )
+            if (!polyline.IsValid())
             {
                 return false;
             }
@@ -34,68 +38,92 @@ namespace Geometry
         return true;
     }
 
-    void MultiPolyline2d::Clear() { polylines_.clear(); }
-
-    void MultiPolyline2d::Add( Polyline2d polyline ) { polylines_.push_back( std::move( polyline ) ); }
-
-    const Polyline2d &MultiPolyline2d::PolylineAt( std::size_t index ) const
+    void SCMultiPolyline2d::Clear()
     {
-        return polylines_.at( index );
+        polylines_.clear();
     }
 
-    Polyline2d &MultiPolyline2d::PolylineAt( std::size_t index ) { return polylines_.at( index ); }
+    void SCMultiPolyline2d::Add(SCPolyline2d polyline)
+    {
+        polylines_.push_back(std::move(polyline));
+    }
 
-    const Polyline2d &MultiPolyline2d::operator[]( std::size_t index ) const
+    const SCPolyline2d& SCMultiPolyline2d::PolylineAt(std::size_t index) const
+    {
+        return polylines_.at(index);
+    }
+
+    SCPolyline2d& SCMultiPolyline2d::PolylineAt(std::size_t index)
+    {
+        return polylines_.at(index);
+    }
+
+    const SCPolyline2d& SCMultiPolyline2d::operator[](std::size_t index) const
     {
         return polylines_[index];
     }
 
-    Polyline2d &MultiPolyline2d::operator[]( std::size_t index ) { return polylines_[index]; }
+    SCPolyline2d& SCMultiPolyline2d::operator[](std::size_t index)
+    {
+        return polylines_[index];
+    }
 
-    std::size_t MultiPolyline2d::PointCount() const
+    std::size_t SCMultiPolyline2d::PointCount() const
     {
         std::size_t count = 0;
-        for( const auto &polyline : polylines_ )
+        for (const auto& polyline : polylines_)
         {
             count += polyline.PointCount();
         }
         return count;
     }
 
-    std::size_t MultiPolyline2d::SegmentCount() const
+    std::size_t SCMultiPolyline2d::SegmentCount() const
     {
         std::size_t count = 0;
-        for( const auto &polyline : polylines_ )
+        for (const auto& polyline : polylines_)
         {
             count += polyline.SegmentCount();
         }
         return count;
     }
 
-    Box2d MultiPolyline2d::Bounds() const
+    SCBox2d SCMultiPolyline2d::Bounds() const
     {
-        Box2d box;
-        for( const auto &polyline : polylines_ )
+        SCBox2d box;
+        for (const auto& polyline : polylines_)
         {
-            box.ExpandToInclude( polyline.Bounds() );
+            box.ExpandToInclude(polyline.Bounds());
         }
         return box;
     }
 
-    std::string MultiPolyline2d::DebugString() const
+    std::string SCMultiPolyline2d::DebugString() const
     {
         std::ostringstream stream;
-        stream << "MultiPolyline2d{count=" << Count() << ", pointCount=" << PointCount()
-               << ", segmentCount=" << SegmentCount() << ", valid=" << ( IsValid() ? "true" : "false" )
+        stream << "SCMultiPolyline2d{count=" << Count() << ", pointCount=" << PointCount()
+               << ", segmentCount=" << SegmentCount() << ", valid=" << (IsValid() ? "true" : "false")
                << ", bounds=" << Bounds().DebugString() << "}";
         return stream.str();
     }
 
-    const std::vector<Polyline2d> &MultiPolyline2d::Polylines() const { return polylines_; }
+    const std::vector<SCPolyline2d>& SCMultiPolyline2d::Polylines() const
+    {
+        return polylines_;
+    }
 
-    std::vector<Polyline2d> &MultiPolyline2d::Polylines() { return polylines_; }
+    std::vector<SCPolyline2d>& SCMultiPolyline2d::Polylines()
+    {
+        return polylines_;
+    }
 
-    const std::vector<Polyline2d> &MultiPolyline2d::Data() const { return Polylines(); }
+    const std::vector<SCPolyline2d>& SCMultiPolyline2d::Data() const
+    {
+        return Polylines();
+    }
 
-    std::vector<Polyline2d> &MultiPolyline2d::Data() { return Polylines(); }
+    std::vector<SCPolyline2d>& SCMultiPolyline2d::Data()
+    {
+        return Polylines();
+    }
 }  // namespace Geometry

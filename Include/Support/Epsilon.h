@@ -14,7 +14,8 @@ namespace Geometry
     // Shared topology matching for cross-face representative grouping.
     extern GEOMETRY_API const double kSharedTopologyMatchEpsilon;
 
-    // Loop cleanup removes consecutive duplicate vertices and trims closed loops.
+    // Loop cleanup removes consecutive duplicate vertices and trims closed
+    // loops.
     extern GEOMETRY_API const double kLoopCleanupEpsilon;
 
     // Representative-id aggregation uses a looser match than exact topology
@@ -28,11 +29,12 @@ namespace Geometry
     // converted vertices onto shared output topology.
     extern GEOMETRY_API const double kBrepVertexDedupEpsilon;
 
-    // Plane projection uses the default distance epsilon when building 2D trims.
+    // Plane projection uses the default distance epsilon when building 2D
+    // trims.
     extern GEOMETRY_API const double kPlaneProjectionEpsilon;
 
-    // Body-boolean internals use the default geometric epsilon for option fallbacks
-    // and deterministic result ordering.
+    // Body-boolean internals use the default geometric epsilon for option
+    // fallbacks and deterministic result ordering.
     extern GEOMETRY_API const double kBodyBooleanDefaultEpsilon;
 
     // 2D/3D intersection internals use the default geometric epsilon for their
@@ -47,8 +49,8 @@ namespace Geometry
     // normalization helpers.
     extern GEOMETRY_API const double kPathOpsDefaultEpsilon;
 
-    // Offset helpers use the default geometric epsilon for degeneracy checks and
-    // polygon rebuild fallbacks.
+    // Offset helpers use the default geometric epsilon for degeneracy checks
+    // and polygon rebuild fallbacks.
     extern GEOMETRY_API const double kOffsetDefaultEpsilon;
 
     // Axis operations use the default geometric epsilon for segment and arc
@@ -59,8 +61,8 @@ namespace Geometry
     // parameter clamping checks.
     extern GEOMETRY_API const double kAlgorithmsDefaultEpsilon;
 
-    // Arc-segment helpers use the default geometric epsilon for validity and arc
-    // endpoint checks.
+    // Arc-segment helpers use the default geometric epsilon for validity and
+    // arc endpoint checks.
     extern GEOMETRY_API const double kArcSegmentDefaultEpsilon;
 
     // Healing and repair helpers use the default geometric epsilon for fallback
@@ -102,14 +104,16 @@ namespace Geometry
     // branches and rings.
     extern GEOMETRY_API const double kSearchPolyComparisonEpsilon;
 
-    // Offset helpers retry line-based rebuilding with a slightly looser epsilon.
+    // Offset helpers retry line-based rebuilding with a slightly looser
+    // epsilon.
     extern GEOMETRY_API const double kOffsetRebuildFallbackEpsilon;
 
-    // Hole distances are weighted slightly higher during support-plane scoring so
-    // hole-dominated faces prefer the plane implied by their interior loop.
+    // Hole distances are weighted slightly higher during support-plane scoring
+    // so hole-dominated faces prefer the plane implied by their interior loop.
     extern GEOMETRY_API const double kSupportPlaneHoleDistanceWeight;
 
-    // Support-plane scoring treats distances below this threshold as effectively
-    // on-plane when comparing candidate refit planes.
+    // Support-plane scoring treats distances below this threshold as
+    // effectively on-plane when comparing candidate refit planes.
     extern GEOMETRY_API const double kSupportPlaneOnPlaneEpsilon;
 }  // namespace Geometry
+

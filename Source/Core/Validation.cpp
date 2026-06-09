@@ -1,4 +1,4 @@
-﻿#include "Core/Validation.h"
+#include "Core/Validation.h"
 
 #include <map>
 #include <memory>
@@ -9,40 +9,40 @@
 
 namespace Geometry
 {
-    bool HasSelfIntersection( const Polyline2d &ring, double eps )
+    bool HasSelfIntersection(const SCPolyline2d& ring, double eps)
     {
-        if( !ring.IsClosed() || ring.SegmentCount() < 3 )
+        if (!ring.IsClosed() || ring.SegmentCount() < 3)
         {
             return false;
         }
 
         const std::size_t n = ring.SegmentCount();
-        std::vector<std::unique_ptr<Segment2d>> segments;
-        segments.reserve( n );
-        for( std::size_t i = 0; i < n; ++i )
+        std::vector<std::unique_ptr<ISCSegment2d>> segments;
+        segments.reserve(n);
+        for (std::size_t i = 0; i < n; ++i)
         {
-            segments.push_back( ring.SegmentAt( i ) );
+            segments.push_back(ring.SegmentAt(i));
         }
 
-        for( std::size_t i = 0; i < n; ++i )
+        for (std::size_t i = 0; i < n; ++i)
         {
-            if( segments[i] == nullptr )
+            if (segments[i] == nullptr)
             {
                 continue;
             }
-            for( std::size_t j = i + 1; j < n; ++j )
+            for (std::size_t j = i + 1; j < n; ++j)
             {
-                if( j == i || j == ( i + 1 ) % n || ( i == 0 && j + 1 == n ) )
+                if (j == i || j == (i + 1) % n || (i == 0 && j + 1 == n))
                 {
                     continue;
                 }
 
-                if( segments[j] == nullptr )
+                if (segments[j] == nullptr)
                 {
                     continue;
                 }
 
-                if( HasIntersection( *segments[i], *segments[j], eps ) )
+                if (HasIntersection(*segments[i], *segments[j], eps))
                 {
                     return true;
                 }
@@ -52,237 +52,237 @@ namespace Geometry
         return false;
     }
 
-    PolygonValidation2d Validate( const Polyline2d &ring, double eps )
+    SCPolygonValidation2d Validate(const SCPolyline2d& ring, double eps)
     {
-        if( !ring.IsClosed() || ring.SegmentCount() == 0 )
+        if (!ring.IsClosed() || ring.SegmentCount() == 0)
         {
-            return { false, !ring.IsClosed() ? PolygonValidationIssue2d::NotClosed
-                                             : PolygonValidationIssue2d::TooFewPoints };
+            return {false,
+                    !ring.IsClosed() ? SCPolygonValidationIssue2d::NotClosed : SCPolygonValidationIssue2d::TooFewPoints};
         }
-        if( Orientation( ring ) == RingOrientation2d::Unknown )
+        if (Orientation(ring) == SCRingOrientation2d::Unknown)
         {
-            return { false, PolygonValidationIssue2d::InvalidOrientation };
+            return {false, SCPolygonValidationIssue2d::InvalidOrientation};
         }
-        if( HasSelfIntersection( ring, eps ) )
+        if (HasSelfIntersection(ring, eps))
         {
-            return { false, PolygonValidationIssue2d::SelfIntersection };
+            return {false, SCPolygonValidationIssue2d::SelfIntersection};
         }
-        return { true, PolygonValidationIssue2d::None };
+        return {true, SCPolygonValidationIssue2d::None};
     }
 
-    PolygonValidation2d Validate( const Polygon2d &polygon, double eps )
+    SCPolygonValidation2d Validate(const SCPolygon2d& polygon, double eps)
     {
-        if( !polygon.IsValid() )
+        if (!polygon.IsValid())
         {
-            if( !polygon.OuterRing().IsClosed() )
+            if (!polygon.OuterRing().IsClosed())
             {
-                return { false, PolygonValidationIssue2d::NotClosed };
+                return {false, SCPolygonValidationIssue2d::NotClosed};
             }
-            return { false, PolygonValidationIssue2d::InvalidOrientation };
+            return {false, SCPolygonValidationIssue2d::InvalidOrientation};
         }
 
-        PolygonValidation2d outer = Validate( polygon.OuterRing(), eps );
-        if( !outer.valid )
+        SCPolygonValidation2d outer = Validate(polygon.OuterRing(), eps);
+        if (!outer.valid)
         {
             return outer;
         }
 
-        for( std::size_t i = 0; i < polygon.HoleCount(); ++i )
+        for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
         {
-            PolygonValidation2d hole = Validate( polygon.HoleAt( i ), eps );
-            if( !hole.valid )
+            SCPolygonValidation2d hole = Validate(polygon.HoleAt(i), eps);
+            if (!hole.valid)
             {
                 return hole;
             }
         }
 
-        return { true, PolygonValidationIssue2d::None };
+        return {true, SCPolygonValidationIssue2d::None};
     }
 
-    MeshValidation3d Validate( const TriangleMesh &mesh, double eps )
+    SCMeshValidation3d Validate(const TriangleMesh& mesh, double eps)
     {
-        const auto &vertices = mesh.Vertices();
-        const auto &triangles = mesh.Triangles();
+        const auto& vertices = mesh.Vertices();
+        const auto& triangles = mesh.Triangles();
 
-        for( std::size_t i = 0; i < vertices.size(); ++i )
+        for (std::size_t i = 0; i < vertices.size(); ++i)
         {
-            if( !vertices[i].IsValid() )
+            if (!vertices[i].IsValid())
             {
-                return { false, MeshValidationIssue3d::InvalidVertex, i };
+                return {false, SCMeshValidationIssue3d::InvalidVertex, i};
             }
         }
 
-        for( std::size_t i = 0; i < triangles.size(); ++i )
+        for (std::size_t i = 0; i < triangles.size(); ++i)
         {
-            const TriangleMesh::TriangleIndices &tri = triangles[i];
-            if( tri[0] >= vertices.size() || tri[1] >= vertices.size() || tri[2] >= vertices.size() )
+            const TriangleMesh::TriangleIndices& tri = triangles[i];
+            if (tri[0] >= vertices.size() || tri[1] >= vertices.size() || tri[2] >= vertices.size())
             {
-                return { false, MeshValidationIssue3d::InvalidIndex, i };
+                return {false, SCMeshValidationIssue3d::InvalidIndex, i};
             }
 
-            if( tri[0] == tri[1] || tri[1] == tri[2] || tri[0] == tri[2] )
+            if (tri[0] == tri[1] || tri[1] == tri[2] || tri[0] == tri[2])
             {
-                return { false, MeshValidationIssue3d::DuplicateIndex, i };
+                return {false, SCMeshValidationIssue3d::DuplicateIndex, i};
             }
 
-            if( Triangle3d{ vertices[tri[0]], vertices[tri[1]], vertices[tri[2]] }.IsDegenerate( eps ) )
+            if (SCTriangle3d{vertices[tri[0]], vertices[tri[1]], vertices[tri[2]]}.IsDegenerate(eps))
             {
-                return { false, MeshValidationIssue3d::DegenerateTriangle, i };
+                return {false, SCMeshValidationIssue3d::DegenerateTriangle, i};
             }
         }
 
-        return { true, MeshValidationIssue3d::None, 0 };
+        return {true, SCMeshValidationIssue3d::None, 0};
     }
 
-    PolyhedronValidation3d Validate( const PolyhedronBody &body, double eps )
+    SCPolyhedronValidation3d Validate(const PolyhedronBody& body, double eps)
     {
-        if( body.IsEmpty() )
+        if (body.IsEmpty())
         {
-            return { false, PolyhedronValidationIssue3d::EmptyBody, 0 };
+            return {false, SCPolyhedronValidationIssue3d::EmptyBody, 0};
         }
 
-        for( std::size_t i = 0; i < body.FaceCount(); ++i )
+        for (std::size_t i = 0; i < body.FaceCount(); ++i)
         {
-            if( !body.FaceAt( i ).IsValid( eps ) )
+            if (!body.FaceAt(i).IsValid(eps))
             {
-                return { false, PolyhedronValidationIssue3d::InvalidFace, i };
+                return {false, SCPolyhedronValidationIssue3d::InvalidFace, i};
             }
         }
 
-        return { true, PolyhedronValidationIssue3d::None, 0 };
+        return {true, SCPolyhedronValidationIssue3d::None, 0};
     }
 
     namespace
     {
         struct UndirectedEdgeKey
         {
-            std::size_t first{ 0 };
-            std::size_t second{ 0 };
+            std::size_t first{0};
+            std::size_t second{0};
 
-            [[nodiscard]] bool operator<( const UndirectedEdgeKey &other ) const
+            [[nodiscard]] bool operator<(const UndirectedEdgeKey& other) const
             {
-                return first < other.first || ( first == other.first && second < other.second );
+                return first < other.first || (first == other.first && second < other.second);
             }
         };
 
-        [[nodiscard]] UndirectedEdgeKey MakeUndirectedEdgeKey( std::size_t a, std::size_t b )
+        [[nodiscard]] UndirectedEdgeKey MakeUndirectedEdgeKey(std::size_t a, std::size_t b)
         {
-            return a < b ? UndirectedEdgeKey{ a, b } : UndirectedEdgeKey{ b, a };
+            return a < b ? UndirectedEdgeKey{a, b} : UndirectedEdgeKey{b, a};
         }
     }  // namespace
 
-    BrepValidation3d Validate( const BrepBody &body, const GeometryTolerance3d &tolerance )
+    SCBrepValidation3d Validate(const SCBrepBody& body, const SCGeometryTolerance3d& tolerance)
     {
-        if( body.IsEmpty() )
+        if (body.IsEmpty())
         {
-            return { false, BrepValidationIssue3d::EmptyBody, 0 };
+            return {false, SCBrepValidationIssue3d::EmptyBody, 0};
         }
 
-        for( std::size_t i = 0; i < body.VertexCount(); ++i )
+        for (std::size_t i = 0; i < body.VertexCount(); ++i)
         {
-            if( !body.VertexAt( i ).IsValid() )
+            if (!body.VertexAt(i).IsValid())
             {
-                return { false, BrepValidationIssue3d::InvalidVertex, i };
+                return {false, SCBrepValidationIssue3d::InvalidVertex, i};
             }
         }
 
-        for( std::size_t i = 0; i < body.EdgeCount(); ++i )
+        for (std::size_t i = 0; i < body.EdgeCount(); ++i)
         {
-            if( !body.EdgeAt( i ).IsValid( tolerance ) )
+            if (!body.EdgeAt(i).IsValid(tolerance))
             {
-                return { false, BrepValidationIssue3d::InvalidEdge, i };
+                return {false, SCBrepValidationIssue3d::InvalidEdge, i};
             }
         }
 
-        for( std::size_t i = 0; i < body.ShellCount(); ++i )
+        for (std::size_t i = 0; i < body.ShellCount(); ++i)
         {
-            if( !body.ShellAt( i ).IsValid( tolerance ) )
+            if (!body.ShellAt(i).IsValid(tolerance))
             {
-                return { false, BrepValidationIssue3d::InvalidShell, i };
+                return {false, SCBrepValidationIssue3d::InvalidShell, i};
             }
         }
 
-        if( !body.IsValid( tolerance ) )
+        if (!body.IsValid(tolerance))
         {
-            return { false, BrepValidationIssue3d::InvalidShell, 0 };
+            return {false, SCBrepValidationIssue3d::InvalidShell, 0};
         }
 
         std::map<UndirectedEdgeKey, std::size_t> edgeUseCounts;
-        for( std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex )
+        for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
         {
-            const BrepShell shell = body.ShellAt( shellIndex );
-            for( std::size_t faceIndex = 0; faceIndex < shell.FaceCount(); ++faceIndex )
+            const SCBrepShell shell = body.ShellAt(shellIndex);
+            for (std::size_t faceIndex = 0; faceIndex < shell.FaceCount(); ++faceIndex)
             {
-                const BrepFace face = shell.FaceAt( faceIndex );
-                auto accumulateLoop = [&]( const BrepLoop &loop ) {
-                    for( const BrepCoedge &coedge : loop.Coedges() )
+                const SCBrepFace face = shell.FaceAt(faceIndex);
+                auto accumulateLoop = [&](const SCBrepLoop& loop) {
+                    for (const SCBrepCoedge& coedge : loop.Coedges())
                     {
-                        const BrepEdge edge = body.EdgeAt( coedge.EdgeIndex() );
-                        ++edgeUseCounts[MakeUndirectedEdgeKey( edge.StartVertexIndex(),
-                                                               edge.EndVertexIndex() )];
+                        const SCBrepEdge edge = body.EdgeAt(coedge.EdgeIndex());
+                        ++edgeUseCounts[MakeUndirectedEdgeKey(edge.StartVertexIndex(), edge.EndVertexIndex())];
                     }
                 };
 
-                accumulateLoop( face.OuterLoop() );
-                for( const BrepLoop &hole : face.HoleLoops() )
+                accumulateLoop(face.OuterLoop());
+                for (const SCBrepLoop& hole : face.HoleLoops())
                 {
-                    accumulateLoop( hole );
+                    accumulateLoop(hole);
                 }
             }
         }
 
-        for( std::size_t edgeIndex = 0; edgeIndex < body.EdgeCount(); ++edgeIndex )
+        for (std::size_t edgeIndex = 0; edgeIndex < body.EdgeCount(); ++edgeIndex)
         {
-            const BrepEdge edge = body.EdgeAt( edgeIndex );
-            const auto it = edgeUseCounts.find(
-                MakeUndirectedEdgeKey( edge.StartVertexIndex(), edge.EndVertexIndex() ) );
-            if( it == edgeUseCounts.end() || it->second == 0 || it->second > 2 )
+            const SCBrepEdge edge = body.EdgeAt(edgeIndex);
+            const auto it = edgeUseCounts.find(MakeUndirectedEdgeKey(edge.StartVertexIndex(), edge.EndVertexIndex()));
+            if (it == edgeUseCounts.end() || it->second == 0 || it->second > 2)
             {
-                return { false, BrepValidationIssue3d::InvalidFaceAdjacency, edgeIndex };
+                return {false, SCBrepValidationIssue3d::InvalidFaceAdjacency, edgeIndex};
             }
         }
 
-        return { true, BrepValidationIssue3d::None, 0 };
+        return {true, SCBrepValidationIssue3d::None, 0};
     }
 
-    SectionValidation3d Validate( const PolyhedronSection3d &section, double eps )
+    SCSectionValidation3d Validate(const SCPolyhedronSection3d& section, double eps)
     {
-        if( !section.success )
+        if (!section.success)
         {
-            return { false, SectionValidationIssue3d::InvalidSectionState, 0 };
+            return {false, SCSectionValidationIssue3d::InvalidSectionState, 0};
         }
 
-        if( !section.origin.IsValid() || !section.uAxis.IsValid() || !section.vAxis.IsValid() ||
+        if (!section.origin.IsValid() || !section.uAxis.IsValid() || !section.vAxis.IsValid() ||
             section.uAxis.Length() <= eps || section.vAxis.Length() <= eps ||
-            Cross( section.uAxis, section.vAxis ).Length() <= eps )
+            Cross(section.uAxis, section.vAxis).Length() <= eps)
         {
-            return { false, SectionValidationIssue3d::InvalidBasis, 0 };
+            return {false, SCSectionValidationIssue3d::InvalidBasis, 0};
         }
 
-        for( std::size_t i = 0; i < section.segments.size(); ++i )
+        for (std::size_t i = 0; i < section.segments.size(); ++i)
         {
-            if( !section.segments[i].IsValid( eps ) )
+            if (!section.segments[i].IsValid(eps))
             {
-                return { false, SectionValidationIssue3d::InvalidSegment, i };
+                return {false, SCSectionValidationIssue3d::InvalidSegment, i};
             }
         }
 
-        for( std::size_t i = 0; i < section.contours.size(); ++i )
+        for (std::size_t i = 0; i < section.contours.size(); ++i)
         {
-            if( !section.contours[i].IsValid( eps ) )
+            if (!section.contours[i].IsValid(eps))
             {
-                return { false, SectionValidationIssue3d::InvalidContour, i };
+                return {false, SCSectionValidationIssue3d::InvalidContour, i};
             }
         }
 
-        for( std::size_t i = 0; i < section.polygons.size(); ++i )
+        for (std::size_t i = 0; i < section.polygons.size(); ++i)
         {
-            if( !section.polygons[i].IsValid() )
+            if (!section.polygons[i].IsValid())
             {
-                return { false, SectionValidationIssue3d::InvalidPolygon, i };
+                return {false, SCSectionValidationIssue3d::InvalidPolygon, i};
             }
         }
 
-        return { true, SectionValidationIssue3d::None, 0 };
+        return {true, SCSectionValidationIssue3d::None, 0};
     }
 }  // namespace Geometry
+
+

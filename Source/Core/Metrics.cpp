@@ -1,4 +1,4 @@
-﻿#include "Core/Metrics.h"
+#include "Core/Metrics.h"
 
 #include <cmath>
 
@@ -6,19 +6,19 @@
 
 namespace Geometry
 {
-    double DistanceSquared( const Point2d &lhs, const Point2d &rhs )
+    double DistanceSquared(const SCPoint2d& lhs, const SCPoint2d& rhs)
     {
-        return ( rhs - lhs ).LengthSquared();
+        return (rhs - lhs).LengthSquared();
     }
 
-    double Distance( const Point2d &lhs, const Point2d &rhs )
+    double Distance(const SCPoint2d& lhs, const SCPoint2d& rhs)
     {
-        return std::sqrt( DistanceSquared( lhs, rhs ) );
+        return std::sqrt(DistanceSquared(lhs, rhs));
     }
 
-    bool Contains( const Box2d &box, const Point2d &point, double eps )
+    bool Contains(const SCBox2d& box, const SCPoint2d& point, double eps)
     {
-        if( !box.IsValid() )
+        if (!box.IsValid())
         {
             return false;
         }
@@ -27,45 +27,44 @@ namespace Geometry
                point.x <= box.MaxPoint().x + eps && point.y <= box.MaxPoint().y + eps;
     }
 
-    bool Intersects( const Box2d &lhs, const Box2d &rhs, double eps )
+    bool Intersects(const SCBox2d& lhs, const SCBox2d& rhs, double eps)
     {
-        if( !lhs.IsValid() || !rhs.IsValid() )
+        if (!lhs.IsValid() || !rhs.IsValid())
         {
             return false;
         }
 
-        return !(
-            lhs.MaxPoint().x < rhs.MinPoint().x - eps || lhs.MaxPoint().y < rhs.MinPoint().y - eps ||
-            rhs.MaxPoint().x < lhs.MinPoint().x - eps || rhs.MaxPoint().y < lhs.MinPoint().y - eps );
+        return !(lhs.MaxPoint().x < rhs.MinPoint().x - eps || lhs.MaxPoint().y < rhs.MinPoint().y - eps ||
+                 rhs.MaxPoint().x < lhs.MinPoint().x - eps || rhs.MaxPoint().y < lhs.MinPoint().y - eps);
     }
 
-    double DistanceSquared( const Point2d &point, const LineSegment2d &segment )
+    double DistanceSquared(const SCPoint2d& point, const SCLineSegment2d& segment)
     {
-        return ProjectPointToLineSegment( point, segment, true ).distanceSquared;
+        return ProjectPointToLineSegment(point, segment, true).distanceSquared;
     }
 
-    double DistanceSquared( const Point2d &point, const ArcSegment2d &segment )
+    double DistanceSquared(const SCPoint2d& point, const SCArcSegment2d& segment)
     {
-        return ProjectPointToArcSegment( point, segment, true ).distanceSquared;
+        return ProjectPointToArcSegment(point, segment, true).distanceSquared;
     }
 
-    double DistanceSquared( const Point2d &point, const Segment2d &segment )
+    double DistanceSquared(const SCPoint2d& point, const ISCSegment2d& segment)
     {
-        return ProjectPointToSegment( point, segment, true ).distanceSquared;
+        return ProjectPointToSegment(point, segment, true).distanceSquared;
     }
 
-    double Distance( const Point2d &point, const LineSegment2d &segment )
+    double Distance(const SCPoint2d& point, const SCLineSegment2d& segment)
     {
-        return std::sqrt( DistanceSquared( point, segment ) );
+        return std::sqrt(DistanceSquared(point, segment));
     }
 
-    double Distance( const Point2d &point, const ArcSegment2d &segment )
+    double Distance(const SCPoint2d& point, const SCArcSegment2d& segment)
     {
-        return std::sqrt( DistanceSquared( point, segment ) );
+        return std::sqrt(DistanceSquared(point, segment));
     }
 
-    double Distance( const Point2d &point, const Segment2d &segment )
+    double Distance(const SCPoint2d& point, const ISCSegment2d& segment)
     {
-        return std::sqrt( DistanceSquared( point, segment ) );
+        return std::sqrt(DistanceSquared(point, segment));
     }
 }  // namespace Geometry

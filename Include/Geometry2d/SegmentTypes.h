@@ -2,13 +2,13 @@
 
 namespace Geometry
 {
-    enum class SegmentKind2
+    enum class SCSegmentKind2
     {
         Line,
         Arc
     };
 
-    enum class ArcDirection
+    enum class SCArcDirection
     {
         Clockwise,
         CounterClockwise

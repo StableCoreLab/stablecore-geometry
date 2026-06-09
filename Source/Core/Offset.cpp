@@ -1,4 +1,4 @@
-﻿#include "Core/Offset.h"
+#include "Core/Offset.h"
 
 #include <algorithm>
 #include <cmath>
@@ -15,19 +15,19 @@
 #include "Core/Relation.h"
 #include "Core/ShapeOps.h"
 #include "Core/Validation.h"
-#include "Geometry2d/PathOps.h"
+#include "Geometry2d/SCPathOps.h"
 #include "Support/Epsilon.h"
 
 namespace Geometry
 {
     namespace
     {
-        [[nodiscard]] bool ContainsArcSegment( const Polyline2d &polyline )
+        [[nodiscard]] bool ContainsArcSegment(const SCPolyline2d& polyline)
         {
-            for( std::size_t i = 0; i < polyline.SegmentCount(); ++i )
+            for (std::size_t i = 0; i < polyline.SegmentCount(); ++i)
             {
-                std::unique_ptr<Segment2d> segment = polyline.SegmentAt( i );
-                if( segment != nullptr && segment->Kind() == SegmentKind2::Arc )
+                std::unique_ptr<ISCSegment2d> segment = polyline.SegmentAt(i);
+                if (segment != nullptr && segment->Kind() == SCSegmentKind2::Arc)
                 {
                     return true;
                 }
@@ -36,125 +36,117 @@ namespace Geometry
             return false;
         }
 
-        [[nodiscard]] Polyline2d OffsetSegmentPolyline( const Polyline2d &polyline, double distance )
+        [[nodiscard]] SCPolyline2d OffsetSegmentPolyline(const SCPolyline2d& polyline, double distance)
         {
-            if( !polyline.IsValid() || polyline.SegmentCount() == 0 )
+            if (!polyline.IsValid() || polyline.SegmentCount() == 0)
             {
-                return Polyline2d( polyline.IsClosed() ? PolylineClosure::Closed : PolylineClosure::Open );
+                return SCPolyline2d(polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
             }
 
-            std::vector<std::shared_ptr<Segment2d>> segments;
-            segments.reserve( polyline.SegmentCount() * 2 + ( polyline.IsClosed() ? 1 : 0 ) );
-            for( std::size_t i = 0; i < polyline.SegmentCount(); ++i )
+            std::vector<std::shared_ptr<ISCSegment2d>> segments;
+            segments.reserve(polyline.SegmentCount() * 2 + (polyline.IsClosed() ? 1 : 0));
+            for (std::size_t i = 0; i < polyline.SegmentCount(); ++i)
             {
-                std::unique_ptr<Segment2d> source = polyline.SegmentAt( i );
-                if( source == nullptr )
+                std::unique_ptr<ISCSegment2d> source = polyline.SegmentAt(i);
+                if (source == nullptr)
                 {
-                    return Polyline2d( polyline.IsClosed() ? PolylineClosure::Closed
-                                                           : PolylineClosure::Open );
+                    return SCPolyline2d(polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
                 }
 
-                std::shared_ptr<Segment2d> offsetSegment;
-                switch( source->Kind() )
+                std::shared_ptr<ISCSegment2d> offsetSegment;
+                switch (source->Kind())
                 {
-                case SegmentKind2::Line:
-                {
-                    const LineSegment2d segment =
-                        Offset( static_cast<const LineSegment2d &>( *source ), distance );
-                    if( !segment.IsValid() )
-                    {
-                        return Polyline2d( polyline.IsClosed() ? PolylineClosure::Closed
-                                                               : PolylineClosure::Open );
+                    case SCSegmentKind2::Line: {
+                        const SCLineSegment2d segment = Offset(static_cast<const SCLineSegment2d&>(*source), distance);
+                        if (!segment.IsValid())
+                        {
+                            return SCPolyline2d(polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
+                        }
+                        offsetSegment = std::make_shared<SCLineSegment2d>(segment);
+                        break;
                     }
-                    offsetSegment = std::make_shared<LineSegment2d>( segment );
-                    break;
-                }
-                case SegmentKind2::Arc:
-                {
-                    const ArcSegment2d segment =
-                        Offset( static_cast<const ArcSegment2d &>( *source ), distance );
-                    if( !segment.IsValid() )
-                    {
-                        return Polyline2d( polyline.IsClosed() ? PolylineClosure::Closed
-                                                               : PolylineClosure::Open );
+                    case SCSegmentKind2::Arc: {
+                        const SCArcSegment2d segment = Offset(static_cast<const SCArcSegment2d&>(*source), distance);
+                        if (!segment.IsValid())
+                        {
+                            return SCPolyline2d(polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
+                        }
+                        offsetSegment = std::make_shared<SCArcSegment2d>(segment);
+                        break;
                     }
-                    offsetSegment = std::make_shared<ArcSegment2d>( segment );
-                    break;
-                }
-                default:
-                    return Polyline2d( polyline.IsClosed() ? PolylineClosure::Closed
-                                                           : PolylineClosure::Open );
+                    default:
+                        return SCPolyline2d(polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
                 }
 
-                if( !segments.empty() &&
-                    !segments.back()->EndPoint().AlmostEquals( offsetSegment->StartPoint(),
-                                                               Geometry::kOffsetDefaultEpsilon ) )
+                if (!segments.empty() && !segments.back()->EndPoint().AlmostEquals(offsetSegment->StartPoint(),
+                                                                                   Geometry::kOffsetDefaultEpsilon))
                 {
-                    segments.push_back( std::make_shared<LineSegment2d>( segments.back()->EndPoint(),
-                                                                         offsetSegment->StartPoint() ) );
+                    segments.push_back(
+                        std::make_shared<SCLineSegment2d>(segments.back()->EndPoint(), offsetSegment->StartPoint()));
                 }
 
-                segments.push_back( std::move( offsetSegment ) );
+                segments.push_back(std::move(offsetSegment));
             }
 
-            if( polyline.IsClosed() && !segments.empty() &&
-                !segments.back()->EndPoint().AlmostEquals( segments.front()->StartPoint(),
-                                                           Geometry::kOffsetDefaultEpsilon ) )
+            if (polyline.IsClosed() && !segments.empty() &&
+                !segments.back()->EndPoint().AlmostEquals(segments.front()->StartPoint(),
+                                                          Geometry::kOffsetDefaultEpsilon))
             {
                 segments.push_back(
-                    std::make_shared<LineSegment2d>( segments.back()->EndPoint(), segments.front()->StartPoint() ) );
+                    std::make_shared<SCLineSegment2d>(segments.back()->EndPoint(), segments.front()->StartPoint()));
             }
 
-            return Polyline2d( std::move( segments ),
-                               polyline.IsClosed() ? PolylineClosure::Closed : PolylineClosure::Open );
+            return SCPolyline2d(std::move(segments),
+                              polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
         }
 
-        [[nodiscard]] double SignedRingArea( const Polyline2d &ring )
+        [[nodiscard]] double SignedRingArea(const SCPolyline2d& ring)
         {
-            return Detail::ComputeSignedArea( ring );
+            return Detail::ComputeSignedArea(ring);
         }
 
-        [[nodiscard]] Vector2d LeftNormal( const Vector2d &direction )
+        [[nodiscard]] SCVector2d LeftNormal(const SCVector2d& direction)
         {
             const double length = direction.Length();
-            if( length <= Geometry::kOffsetDefaultEpsilon )
+            if (length <= Geometry::kOffsetDefaultEpsilon)
             {
-                return Vector2d{};
+                return SCVector2d{};
             }
 
-            return Vector2d{ -direction.y / length, direction.x / length };
+            return SCVector2d{-direction.y / length, direction.x / length};
         }
 
-        [[nodiscard]] bool IsZeroVector( const Vector2d &vector )
+        [[nodiscard]] bool IsZeroVector(const SCVector2d& vector)
         {
-            return vector.LengthSquared() <=
-                   Geometry::kOffsetDefaultEpsilon * Geometry::kOffsetDefaultEpsilon;
+            return vector.LengthSquared() <= Geometry::kOffsetDefaultEpsilon * Geometry::kOffsetDefaultEpsilon;
         }
 
-        [[nodiscard]] Point2d IntersectLines( const Point2d &firstPoint, const Vector2d &firstDirection,
-                                              const Point2d &secondPoint,
-                                              const Vector2d &secondDirection, bool &success )
+        [[nodiscard]] SCPoint2d IntersectLines(const SCPoint2d& firstPoint,
+                                             const SCVector2d& firstDirection,
+                                             const SCPoint2d& secondPoint,
+                                             const SCVector2d& secondDirection,
+                                             bool& success)
         {
-            const double denom =
-                firstDirection.x * secondDirection.y - firstDirection.y * secondDirection.x;
-            if( std::abs( denom ) <= Geometry::kOffsetDefaultEpsilon )
+            const double denom = firstDirection.x * secondDirection.y - firstDirection.y * secondDirection.x;
+            if (std::abs(denom) <= Geometry::kOffsetDefaultEpsilon)
             {
                 success = false;
-                return Point2d{};
+                return SCPoint2d{};
             }
 
-            const Vector2d delta = secondPoint - firstPoint;
-            const double t = ( delta.x * secondDirection.y - delta.y * secondDirection.x ) / denom;
-            success = std::isfinite( t );
-            return Point2d{ firstPoint.x + firstDirection.x * t, firstPoint.y + firstDirection.y * t };
+            const SCVector2d delta = secondPoint - firstPoint;
+            const double t = (delta.x * secondDirection.y - delta.y * secondDirection.x) / denom;
+            success = std::isfinite(t);
+            return SCPoint2d{firstPoint.x + firstDirection.x * t, firstPoint.y + firstDirection.y * t};
         }
 
-        [[nodiscard]] std::vector<Point2d> BuildOffsetVertices( const std::vector<Point2d> &vertices,
-                                                                bool closed, double distance,
-                                                                const OffsetOptions2d &options )
+        [[nodiscard]] std::vector<SCPoint2d> BuildOffsetVertices(const std::vector<SCPoint2d>& vertices,
+                                                               bool closed,
+                                                               double distance,
+                                                               const SCOffsetOptions2d& options)
         {
-            std::vector<Point2d> result;
-            if( vertices.size() < 2 )
+            std::vector<SCPoint2d> result;
+            if (vertices.size() < 2)
             {
                 return result;
             }
@@ -162,295 +154,283 @@ namespace Geometry
             const std::size_t count = vertices.size();
             const std::size_t segmentCount = closed ? count : count - 1;
 
-            std::vector<Vector2d> directions;
-            directions.reserve( segmentCount );
-            std::vector<Vector2d> normals;
-            normals.reserve( segmentCount );
-            for( std::size_t i = 0; i < segmentCount; ++i )
+            std::vector<SCVector2d> directions;
+            directions.reserve(segmentCount);
+            std::vector<SCVector2d> normals;
+            normals.reserve(segmentCount);
+            for (std::size_t i = 0; i < segmentCount; ++i)
             {
-                const Point2d &start = vertices[i];
-                const Point2d &end = vertices[( i + 1 ) % count];
-                const Vector2d direction = end - start;
-                directions.push_back( direction );
-                normals.push_back( LeftNormal( direction ) );
+                const SCPoint2d& start = vertices[i];
+                const SCPoint2d& end = vertices[(i + 1) % count];
+                const SCVector2d direction = end - start;
+                directions.push_back(direction);
+                normals.push_back(LeftNormal(direction));
             }
 
-            result.reserve( count );
-            if( !closed )
+            result.reserve(count);
+            if (!closed)
             {
-                result.push_back( vertices.front() + normals.front() * distance );
-                for( std::size_t i = 1; i + 1 < count; ++i )
+                result.push_back(vertices.front() + normals.front() * distance);
+                for (std::size_t i = 1; i + 1 < count; ++i)
                 {
                     const std::size_t prev = i - 1;
                     const std::size_t next = i;
-                    const Point2d prevPoint = vertices[i] + normals[prev] * distance;
-                    const Point2d nextPoint = vertices[i] + normals[next] * distance;
+                    const SCPoint2d prevPoint = vertices[i] + normals[prev] * distance;
+                    const SCPoint2d nextPoint = vertices[i] + normals[next] * distance;
                     bool success = false;
-                    Point2d joined = IntersectLines( prevPoint, directions[prev], nextPoint,
-                                                     directions[next], success );
-                    const double maxJoinDistance =
-                        std::abs( distance ) * std::max( 1.0, options.miterLimit );
-                    if( !success || Distance( joined, vertices[i] ) > maxJoinDistance )
+                    SCPoint2d joined = IntersectLines(prevPoint, directions[prev], nextPoint, directions[next], success);
+                    const double maxJoinDistance = std::abs(distance) * std::max(1.0, options.miterLimit);
+                    if (!success || Distance(joined, vertices[i]) > maxJoinDistance)
                     {
-                        const Vector2d blended = normals[prev] + normals[next];
-                        const Vector2d direction =
-                            IsZeroVector( blended ) ? normals[next] : blended / blended.Length();
-                        joined =
-                            vertices[i] + direction * std::min( std::abs( distance ), maxJoinDistance );
+                        const SCVector2d blended = normals[prev] + normals[next];
+                        const SCVector2d direction = IsZeroVector(blended) ? normals[next] : blended / blended.Length();
+                        joined = vertices[i] + direction * std::min(std::abs(distance), maxJoinDistance);
                     }
-                    result.push_back( joined );
+                    result.push_back(joined);
                 }
-                result.push_back( vertices.back() + normals.back() * distance );
+                result.push_back(vertices.back() + normals.back() * distance);
                 return result;
             }
 
-            for( std::size_t i = 0; i < count; ++i )
+            for (std::size_t i = 0; i < count; ++i)
             {
-                const std::size_t prev = ( i + count - 1 ) % count;
+                const std::size_t prev = (i + count - 1) % count;
                 const std::size_t next = i % segmentCount;
-                const Point2d prevPoint = vertices[i] + normals[prev] * distance;
-                const Point2d nextPoint = vertices[i] + normals[next] * distance;
+                const SCPoint2d prevPoint = vertices[i] + normals[prev] * distance;
+                const SCPoint2d nextPoint = vertices[i] + normals[next] * distance;
                 bool success = false;
-                Point2d joined =
-                    IntersectLines( prevPoint, directions[prev], nextPoint, directions[next], success );
-                const double maxJoinDistance =
-                    std::abs( distance ) * std::max( 1.0, options.miterLimit );
-                if( !success || Distance( joined, vertices[i] ) > maxJoinDistance )
+                SCPoint2d joined = IntersectLines(prevPoint, directions[prev], nextPoint, directions[next], success);
+                const double maxJoinDistance = std::abs(distance) * std::max(1.0, options.miterLimit);
+                if (!success || Distance(joined, vertices[i]) > maxJoinDistance)
                 {
-                    const Vector2d blended = normals[prev] + normals[next];
-                    const Vector2d direction =
-                        IsZeroVector( blended ) ? normals[next] : blended / blended.Length();
-                    joined = vertices[i] + direction * std::min( std::abs( distance ), maxJoinDistance );
+                    const SCVector2d blended = normals[prev] + normals[next];
+                    const SCVector2d direction = IsZeroVector(blended) ? normals[next] : blended / blended.Length();
+                    joined = vertices[i] + direction * std::min(std::abs(distance), maxJoinDistance);
                 }
-                result.push_back( joined );
+                result.push_back(joined);
             }
 
             return result;
         }
 
-        [[nodiscard]] Polyline2d BuildPolylineFromVertices( std::vector<Point2d> vertices, bool closed )
+        [[nodiscard]] SCPolyline2d BuildPolylineFromVertices(std::vector<SCPoint2d> vertices, bool closed)
         {
-            if( vertices.size() < 2 )
+            if (vertices.size() < 2)
             {
-                return Polyline2d( closed ? PolylineClosure::Closed : PolylineClosure::Open );
+                return SCPolyline2d(closed ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
             }
 
-            return Normalize( Polyline2d( std::move( vertices ),
-                                          closed ? PolylineClosure::Closed : PolylineClosure::Open ) );
+            return Normalize(SCPolyline2d(std::move(vertices), closed ? SCPolylineClosure::Closed : SCPolylineClosure::Open));
         }
 
-        [[nodiscard]] double RingDistance( const Polyline2d &ring, double distance, bool isHole )
+        [[nodiscard]] double RingDistance(const SCPolyline2d& ring, double distance, bool isHole)
         {
-            const bool ccw = Orientation( ring ) == RingOrientation2d::CounterClockwise;
+            const bool ccw = Orientation(ring) == SCRingOrientation2d::CounterClockwise;
             const double outward = ccw ? -distance : distance;
             return isHole ? -outward : outward;
         }
 
-        void AppendOffsetRing( const Polyline2d &ring, MultiPolyline2d &output )
+        void AppendOffsetRing(const SCPolyline2d& ring, SCMultiPolyline2d& output)
         {
-            const Polyline2d normalized = Normalize( ring, Geometry::kOffsetDefaultEpsilon );
-            if( !normalized.IsValid() )
+            const SCPolyline2d normalized = Normalize(ring, Geometry::kOffsetDefaultEpsilon);
+            if (!normalized.IsValid())
             {
                 return;
             }
-            if( normalized.IsClosed() )
+            if (normalized.IsClosed())
             {
-                if( normalized.SegmentCount() == 0 ||
-                    std::abs( SignedRingArea( normalized ) ) <=
-                        256.0 * Geometry::kOffsetDefaultEpsilon * Geometry::kOffsetDefaultEpsilon )
+                if (normalized.SegmentCount() == 0 ||
+                    std::abs(SignedRingArea(normalized)) <=
+                        256.0 * Geometry::kOffsetDefaultEpsilon * Geometry::kOffsetDefaultEpsilon)
                 {
                     return;
                 }
-            }
-            else if( normalized.PointCount() < 2 )
+            } else if (normalized.PointCount() < 2)
             {
                 return;
             }
 
-            output.Add( normalized );
+            output.Add(normalized);
         }
 
-        void AppendRecoveredOffsetRing( const Polyline2d &ring, double signedDistance,
-                                        const OffsetOptions2d &options, MultiPolyline2d &output )
+        void AppendRecoveredOffsetRing(const SCPolyline2d& ring,
+                                       double signedDistance,
+                                       const SCOffsetOptions2d& options,
+                                       SCMultiPolyline2d& output)
         {
             const std::size_t before = output.Count();
-            const Polyline2d primary = Offset( ring, signedDistance, options );
-            AppendOffsetRing( primary, output );
-            if( output.Count() > before )
+            const SCPolyline2d primary = Offset(ring, signedDistance, options);
+            AppendOffsetRing(primary, output);
+            if (output.Count() > before)
             {
                 return;
             }
 
-            const Polyline2d reversed = Reverse( ring );
-            const Polyline2d reverseFallback = Offset( reversed, -signedDistance, options );
-            AppendOffsetRing( reverseFallback, output );
-            if( output.Count() > before )
+            const SCPolyline2d reversed = Reverse(ring);
+            const SCPolyline2d reverseFallback = Offset(reversed, -signedDistance, options);
+            AppendOffsetRing(reverseFallback, output);
+            if (output.Count() > before)
             {
                 return;
             }
 
-            OffsetOptions2d conservativeOptions = options;
-            conservativeOptions.miterLimit = std::max( 1.0, std::min( options.miterLimit, 2.0 ) );
-            const Polyline2d conservative = Offset( ring, signedDistance, conservativeOptions );
-            AppendOffsetRing( conservative, output );
+            SCOffsetOptions2d conservativeOptions = options;
+            conservativeOptions.miterLimit = std::max(1.0, std::min(options.miterLimit, 2.0));
+            const SCPolyline2d conservative = Offset(ring, signedDistance, conservativeOptions);
+            AppendOffsetRing(conservative, output);
         }
 
-        [[nodiscard]] Polyline2d NormalizeOuterRing( Polyline2d ring )
+        [[nodiscard]] SCPolyline2d NormalizeOuterRing(SCPolyline2d ring)
         {
-            if( Orientation( ring ) != RingOrientation2d::CounterClockwise )
+            if (Orientation(ring) != SCRingOrientation2d::CounterClockwise)
             {
-                ring = Reverse( ring );
+                ring = Reverse(ring);
             }
             return ring;
         }
 
-        [[nodiscard]] Polyline2d NormalizeHoleRing( Polyline2d ring )
+        [[nodiscard]] SCPolyline2d NormalizeHoleRing(SCPolyline2d ring)
         {
-            if( Orientation( ring ) != RingOrientation2d::Clockwise )
+            if (Orientation(ring) != SCRingOrientation2d::Clockwise)
             {
-                ring = Reverse( ring );
+                ring = Reverse(ring);
             }
             return ring;
         }
 
-        [[nodiscard]] Polygon2d NormalizePolygonOrientationForOffset( const Polygon2d &polygon )
+        [[nodiscard]] SCPolygon2d NormalizePolygonOrientationForOffset(const SCPolygon2d& polygon)
         {
-            const Polyline2d outer = NormalizeOuterRing( polygon.OuterRing() );
-            std::vector<Polyline2d> holes;
-            holes.reserve( polygon.HoleCount() );
-            for( std::size_t i = 0; i < polygon.HoleCount(); ++i )
+            const SCPolyline2d outer = NormalizeOuterRing(polygon.OuterRing());
+            std::vector<SCPolyline2d> holes;
+            holes.reserve(polygon.HoleCount());
+            for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
             {
-                holes.push_back( NormalizeHoleRing( polygon.HoleAt( i ) ) );
+                holes.push_back(NormalizeHoleRing(polygon.HoleAt(i)));
             }
-            return Polygon2d( outer, std::move( holes ) );
+            return SCPolygon2d(outer, std::move(holes));
         }
 
-        [[nodiscard]] MultiPolygon2d BuildOffsetPolygons( const MultiPolyline2d &rings, double eps )
+        [[nodiscard]] SCMultiPolygon2d BuildOffsetPolygons(const SCMultiPolyline2d& rings, double eps)
         {
-            if( rings.IsEmpty() )
+            if (rings.IsEmpty())
             {
                 return {};
             }
 
-            MultiPolygon2d rebuilt = BuildMultiPolygonByLines( rings, eps );
-            if( !rebuilt.IsEmpty() )
+            SCMultiPolygon2d rebuilt = BuildMultiPolygonByLines(rings, eps);
+            if (!rebuilt.IsEmpty())
             {
                 return rebuilt;
             }
 
-            MultiPolyline2d reversedRings;
-            for( std::size_t i = 0; i < rings.Count(); ++i )
+            SCMultiPolyline2d reversedRings;
+            for (std::size_t i = 0; i < rings.Count(); ++i)
             {
-                reversedRings.Add( Reverse( rings[i] ) );
+                reversedRings.Add(Reverse(rings[i]));
             }
-            rebuilt = BuildMultiPolygonByLines( reversedRings, eps );
-            if( !rebuilt.IsEmpty() )
+            rebuilt = BuildMultiPolygonByLines(reversedRings, eps);
+            if (!rebuilt.IsEmpty())
             {
                 return rebuilt;
             }
 
-            return BuildMultiPolygonByLines( rings,
-                                             std::max( eps, Geometry::kOffsetRebuildFallbackEpsilon ) );
+            return BuildMultiPolygonByLines(rings, std::max(eps, Geometry::kOffsetRebuildFallbackEpsilon));
         }
 
-        [[nodiscard]] Point2d PrimaryReferencePoint( const Polygon2d &polygon, double eps )
+        [[nodiscard]] SCPoint2d PrimaryReferencePoint(const SCPolygon2d& polygon, double eps)
         {
-            const Point2d centroid = Centroid( polygon );
-            if( LocatePoint( centroid, polygon, eps ) != PointContainment2d::Outside )
+            const SCPoint2d centroid = Centroid(polygon);
+            if (LocatePoint(centroid, polygon, eps) != SCPointContainment2d::Outside)
             {
                 return centroid;
             }
 
-            const Polyline2d &outer = polygon.OuterRing();
-            for( std::size_t i = 0; i < outer.PointCount(); ++i )
+            const SCPolyline2d& outer = polygon.OuterRing();
+            for (std::size_t i = 0; i < outer.PointCount(); ++i)
             {
-                const Point2d start = outer.PointAt( i );
-                const Point2d end = outer.PointAt( ( i + 1 ) % outer.PointCount() );
-                const Point2d midpoint{ 0.5 * ( start.x + end.x ), 0.5 * ( start.y + end.y ) };
-                if( LocatePoint( midpoint, polygon, eps ) != PointContainment2d::Outside )
+                const SCPoint2d start = outer.PointAt(i);
+                const SCPoint2d end = outer.PointAt((i + 1) % outer.PointCount());
+                const SCPoint2d midpoint{0.5 * (start.x + end.x), 0.5 * (start.y + end.y)};
+                if (LocatePoint(midpoint, polygon, eps) != SCPointContainment2d::Outside)
                 {
                     return midpoint;
                 }
             }
 
-            return outer.PointAt( 0 );
+            return outer.PointAt(0);
         }
 
-        [[nodiscard]] Polygon2d SelectBestOffsetPolygon( const Polygon2d &source,
-                                                         const MultiPolygon2d &polygons, double distance,
-                                                         double eps )
+        [[nodiscard]] SCPolygon2d SelectBestOffsetPolygon(const SCPolygon2d& source,
+                                                        const SCMultiPolygon2d& polygons,
+                                                        double distance,
+                                                        double eps)
         {
-            if( polygons.IsEmpty() )
+            if (polygons.IsEmpty())
             {
                 return {};
             }
 
-            const Point2d reference = PrimaryReferencePoint( source, eps );
+            const SCPoint2d reference = PrimaryReferencePoint(source, eps);
             const bool outward = distance >= 0.0;
             std::size_t bestIndex = 0;
             double bestScore = -1.0;
-            for( std::size_t i = 0; i < polygons.Count(); ++i )
+            for (std::size_t i = 0; i < polygons.Count(); ++i)
             {
-                const Polygon2d &candidate = polygons[i];
+                const SCPolygon2d& candidate = polygons[i];
                 double score = candidate.Area();
-                const PointContainment2d referenceContainment = LocatePoint( reference, candidate, eps );
-                const PointContainment2d candidateContainment =
-                    LocatePoint( Centroid( candidate ), source, eps );
-                const PolygonContainment2d relation = Relate( candidate, source, eps );
-                if( outward )
+                const SCPointContainment2d referenceContainment = LocatePoint(reference, candidate, eps);
+                const SCPointContainment2d candidateContainment = LocatePoint(Centroid(candidate), source, eps);
+                const PolygonContainment2d relation = Relate(candidate, source, eps);
+                if (outward)
                 {
-                    if( referenceContainment != PointContainment2d::Outside )
+                    if (referenceContainment != SCPointContainment2d::Outside)
                     {
                         score += 1e9;
                     }
-                    if( relation == PolygonContainment2d::FirstContainsSecond )
+                    if (relation == PolygonContainment2d::FirstContainsSecond)
                     {
                         score += 1e9;
-                    }
-                    else if( relation == PolygonContainment2d::Touching ||
-                             relation == PolygonContainment2d::Intersecting )
+                    } else if (relation == PolygonContainment2d::Touching ||
+                               relation == PolygonContainment2d::Intersecting)
                     {
                         score += 1e7;
-                    }
-                    else if( relation == PolygonContainment2d::Disjoint )
+                    } else if (relation == PolygonContainment2d::Disjoint)
                     {
                         score -= 1e7;
                     }
-                    if( candidate.Area() + eps < source.Area() )
+                    if (candidate.Area() + eps < source.Area())
                     {
                         score -= 1e8;
                     }
-                }
-                else
+                } else
                 {
-                    if( candidateContainment != PointContainment2d::Outside )
+                    if (candidateContainment != SCPointContainment2d::Outside)
                     {
                         score += 1e9;
                     }
-                    if( referenceContainment != PointContainment2d::Outside )
+                    if (referenceContainment != SCPointContainment2d::Outside)
                     {
                         score += 1e6;
                     }
-                    if( relation == PolygonContainment2d::SecondContainsFirst )
+                    if (relation == PolygonContainment2d::SecondContainsFirst)
                     {
                         score += 1e9;
-                    }
-                    else if( relation == PolygonContainment2d::Touching ||
-                             relation == PolygonContainment2d::Intersecting )
+                    } else if (relation == PolygonContainment2d::Touching ||
+                               relation == PolygonContainment2d::Intersecting)
                     {
                         score += 1e7;
                     }
-                    if( candidate.Area() > source.Area() + eps )
+                    if (candidate.Area() > source.Area() + eps)
                     {
                         score -= 1e7;
                     }
                 }
 
-                score -= static_cast<double>( std::abs( static_cast<int>( candidate.HoleCount() ) -
-                                                        static_cast<int>( source.HoleCount() ) ) ) *
+                score -= static_cast<double>(
+                             std::abs(static_cast<int>(candidate.HoleCount()) - static_cast<int>(source.HoleCount()))) *
                          1e4;
 
-                if( score > bestScore )
+                if (score > bestScore)
                 {
                     bestScore = score;
                     bestIndex = i;
@@ -460,19 +440,19 @@ namespace Geometry
             return polygons[bestIndex];
         }
 
-        [[nodiscard]] Polygon2d SelectLargestPolygon( const MultiPolygon2d &polygons )
+        [[nodiscard]] SCPolygon2d SelectLargestPolygon(const SCMultiPolygon2d& polygons)
         {
-            Polygon2d best;
+            SCPolygon2d best;
             double bestArea = 0.0;
-            for( std::size_t i = 0; i < polygons.Count(); ++i )
+            for (std::size_t i = 0; i < polygons.Count(); ++i)
             {
-                if( !polygons[i].IsValid() )
+                if (!polygons[i].IsValid())
                 {
                     continue;
                 }
 
-                const double candidateArea = std::abs( polygons[i].Area() );
-                if( candidateArea > bestArea )
+                const double candidateArea = std::abs(polygons[i].Area());
+                if (candidateArea > bestArea)
                 {
                     best = polygons[i];
                     bestArea = candidateArea;
@@ -481,32 +461,33 @@ namespace Geometry
             return best;
         }
 
-        [[nodiscard]] Polygon2d RecoverOffsetSemanticFlip( const Polygon2d &source,
-                                                           const Polygon2d &candidate, double distance,
-                                                           double eps )
+        [[nodiscard]] SCPolygon2d RecoverOffsetSemanticFlip(const SCPolygon2d& source,
+                                                          const SCPolygon2d& candidate,
+                                                          double distance,
+                                                          double eps)
         {
-            if( !candidate.IsValid() )
+            if (!candidate.IsValid())
             {
                 return candidate;
             }
 
             const bool outward = distance >= 0.0;
-            const double sourceArea = std::abs( source.Area() );
-            const double candidateArea = std::abs( candidate.Area() );
-            const PolygonContainment2d relation = Relate( candidate, source, eps );
+            const double sourceArea = std::abs(source.Area());
+            const double candidateArea = std::abs(candidate.Area());
+            const PolygonContainment2d relation = Relate(candidate, source, eps);
 
-            if( outward )
+            if (outward)
             {
-                const bool needsRepair = relation == PolygonContainment2d::SecondContainsFirst ||
-                                         candidateArea + eps < sourceArea;
-                if( !needsRepair )
+                const bool needsRepair =
+                    relation == PolygonContainment2d::SecondContainsFirst || candidateArea + eps < sourceArea;
+                if (!needsRepair)
                 {
                     return candidate;
                 }
 
-                const MultiPolygon2d repairedCandidates = Union( candidate, source, eps );
-                const Polygon2d repaired = SelectLargestPolygon( repairedCandidates );
-                if( repaired.IsValid() && std::abs( repaired.Area() ) + eps >= sourceArea )
+                const SCMultiPolygon2d repairedCandidates = Union(candidate, source, eps);
+                const SCPolygon2d repaired = SelectLargestPolygon(repairedCandidates);
+                if (repaired.IsValid() && std::abs(repaired.Area()) + eps >= sourceArea)
                 {
                     return repaired;
                 }
@@ -515,16 +496,15 @@ namespace Geometry
             }
 
             const bool needsRepair = relation == PolygonContainment2d::FirstContainsSecond ||
-                                     relation == PolygonContainment2d::Disjoint ||
-                                     candidateArea > sourceArea + eps;
-            if( !needsRepair )
+                                     relation == PolygonContainment2d::Disjoint || candidateArea > sourceArea + eps;
+            if (!needsRepair)
             {
                 return candidate;
             }
 
-            const MultiPolygon2d repairedCandidates = Intersect( candidate, source, eps );
-            const Polygon2d repaired = SelectLargestPolygon( repairedCandidates );
-            if( repaired.IsValid() && std::abs( repaired.Area() ) <= sourceArea + eps )
+            const SCMultiPolygon2d repairedCandidates = Intersect(candidate, source, eps);
+            const SCPolygon2d repaired = SelectLargestPolygon(repairedCandidates);
+            if (repaired.IsValid() && std::abs(repaired.Area()) <= sourceArea + eps)
             {
                 return repaired;
             }
@@ -532,12 +512,11 @@ namespace Geometry
             return candidate;
         }
 
-        [[nodiscard]] bool IsPointInsideAnyPolygon( const Point2d &point, const MultiPolygon2d &polygons,
-                                                    double eps )
+        [[nodiscard]] bool IsPointInsideAnyPolygon(const SCPoint2d& point, const SCMultiPolygon2d& polygons, double eps)
         {
-            for( std::size_t i = 0; i < polygons.Count(); ++i )
+            for (std::size_t i = 0; i < polygons.Count(); ++i)
             {
-                if( LocatePoint( point, polygons[i], eps ) != PointContainment2d::Outside )
+                if (LocatePoint(point, polygons[i], eps) != SCPointContainment2d::Outside)
                 {
                     return true;
                 }
@@ -545,55 +524,53 @@ namespace Geometry
             return false;
         }
 
-        [[nodiscard]] Polygon2d PickMostRelatedSourcePolygon( const Polygon2d &candidate,
-                                                              const MultiPolygon2d &sources, double eps )
+        [[nodiscard]] SCPolygon2d PickMostRelatedSourcePolygon(const SCPolygon2d& candidate,
+                                                             const SCMultiPolygon2d& sources,
+                                                             double eps)
         {
-            if( !candidate.IsValid() || sources.IsEmpty() )
+            if (!candidate.IsValid() || sources.IsEmpty())
             {
                 return {};
             }
 
-            const Point2d candidateReference = PrimaryReferencePoint( candidate, eps );
-            std::size_t bestIndex = static_cast<std::size_t>( -1 );
+            const SCPoint2d candidateReference = PrimaryReferencePoint(candidate, eps);
+            std::size_t bestIndex = static_cast<std::size_t>(-1);
             double bestScore = -1e100;
-            for( std::size_t i = 0; i < sources.Count(); ++i )
+            for (std::size_t i = 0; i < sources.Count(); ++i)
             {
-                const Polygon2d &source = sources[i];
-                if( !source.IsValid() )
+                const SCPolygon2d& source = sources[i];
+                if (!source.IsValid())
                 {
                     continue;
                 }
 
-                double score = -std::abs( std::abs( candidate.Area() ) - std::abs( source.Area() ) );
-                if( LocatePoint( candidateReference, source, eps ) != PointContainment2d::Outside )
+                double score = -std::abs(std::abs(candidate.Area()) - std::abs(source.Area()));
+                if (LocatePoint(candidateReference, source, eps) != SCPointContainment2d::Outside)
                 {
                     score += 1e9;
                 }
 
-                const PolygonContainment2d relation = Relate( candidate, source, eps );
-                if( relation == PolygonContainment2d::Equal )
+                const PolygonContainment2d relation = Relate(candidate, source, eps);
+                if (relation == PolygonContainment2d::Equal)
                 {
                     score += 1e10;
-                }
-                else if( relation == PolygonContainment2d::Touching ||
-                         relation == PolygonContainment2d::Intersecting )
+                } else if (relation == PolygonContainment2d::Touching || relation == PolygonContainment2d::Intersecting)
                 {
                     score += 1e7;
-                }
-                else if( relation == PolygonContainment2d::FirstContainsSecond ||
-                         relation == PolygonContainment2d::SecondContainsFirst )
+                } else if (relation == PolygonContainment2d::FirstContainsSecond ||
+                           relation == PolygonContainment2d::SecondContainsFirst)
                 {
                     score += 1e6;
                 }
 
-                if( score > bestScore )
+                if (score > bestScore)
                 {
                     bestScore = score;
                     bestIndex = i;
                 }
             }
 
-            if( bestIndex == static_cast<std::size_t>( -1 ) )
+            if (bestIndex == static_cast<std::size_t>(-1))
             {
                 return {};
             }
@@ -601,91 +578,90 @@ namespace Geometry
             return sources[bestIndex];
         }
 
-        [[nodiscard]] MultiPolygon2d RecoverMultiPolygonSemanticFlip( const MultiPolygon2d &sources,
-                                                                      const MultiPolygon2d &candidates,
-                                                                      double distance, double eps )
+        [[nodiscard]] SCMultiPolygon2d RecoverMultiPolygonSemanticFlip(const SCMultiPolygon2d& sources,
+                                                                     const SCMultiPolygon2d& candidates,
+                                                                     double distance,
+                                                                     double eps)
         {
-            if( candidates.IsEmpty() || sources.IsEmpty() )
+            if (candidates.IsEmpty() || sources.IsEmpty())
             {
                 return candidates;
             }
 
             const bool outward = distance >= 0.0;
-            MultiPolygon2d repaired;
-            for( std::size_t i = 0; i < candidates.Count(); ++i )
+            SCMultiPolygon2d repaired;
+            for (std::size_t i = 0; i < candidates.Count(); ++i)
             {
-                const Polygon2d &candidate = candidates[i];
-                if( !candidate.IsValid() )
+                const SCPolygon2d& candidate = candidates[i];
+                if (!candidate.IsValid())
                 {
                     continue;
                 }
 
-                const Polygon2d bestSource = PickMostRelatedSourcePolygon( candidate, sources, eps );
-                Polygon2d recovered = candidate;
-                if( bestSource.IsValid() )
+                const SCPolygon2d bestSource = PickMostRelatedSourcePolygon(candidate, sources, eps);
+                SCPolygon2d recovered = candidate;
+                if (bestSource.IsValid())
                 {
-                    recovered = RecoverOffsetSemanticFlip( bestSource, candidate, distance, eps );
+                    recovered = RecoverOffsetSemanticFlip(bestSource, candidate, distance, eps);
                 }
 
-                if( !recovered.IsValid() )
-                {
-                    continue;
-                }
-
-                const Point2d reference = PrimaryReferencePoint( recovered, eps );
-                const bool insideAnySource = IsPointInsideAnyPolygon( reference, sources, eps );
-                if( !outward && !insideAnySource )
+                if (!recovered.IsValid())
                 {
                     continue;
                 }
 
-                if( outward )
+                const SCPoint2d reference = PrimaryReferencePoint(recovered, eps);
+                const bool insideAnySource = IsPointInsideAnyPolygon(reference, sources, eps);
+                if (!outward && !insideAnySource)
+                {
+                    continue;
+                }
+
+                if (outward)
                 {
                     bool related = false;
-                    for( std::size_t sourceIndex = 0; sourceIndex < sources.Count(); ++sourceIndex )
+                    for (std::size_t sourceIndex = 0; sourceIndex < sources.Count(); ++sourceIndex)
                     {
-                        const PolygonContainment2d relation =
-                            Relate( recovered, sources[sourceIndex], eps );
-                        if( relation != PolygonContainment2d::Disjoint )
+                        const PolygonContainment2d relation = Relate(recovered, sources[sourceIndex], eps);
+                        if (relation != PolygonContainment2d::Disjoint)
                         {
                             related = true;
                             break;
                         }
                     }
-                    if( !related )
+                    if (!related)
                     {
                         continue;
                     }
                 }
 
-                repaired.Add( std::move( recovered ) );
+                repaired.Add(std::move(recovered));
             }
 
-            if( !outward )
+            if (!outward)
             {
                 return repaired;
             }
 
-            // For outward offsets, keep at least one related result per source polygon
-            // to avoid rare semantic-flip shrink where a source component disappears.
-            for( std::size_t sourceIndex = 0; sourceIndex < sources.Count(); ++sourceIndex )
+            // For outward offsets, keep at least one related result per source
+            // polygon to avoid rare semantic-flip shrink where a source
+            // component disappears.
+            for (std::size_t sourceIndex = 0; sourceIndex < sources.Count(); ++sourceIndex)
             {
-                const Polygon2d &source = sources[sourceIndex];
+                const SCPolygon2d& source = sources[sourceIndex];
                 bool represented = false;
-                for( std::size_t candidateIndex = 0; candidateIndex < repaired.Count();
-                     ++candidateIndex )
+                for (std::size_t candidateIndex = 0; candidateIndex < repaired.Count(); ++candidateIndex)
                 {
-                    if( Relate( repaired[candidateIndex], source, eps ) !=
-                        PolygonContainment2d::Disjoint )
+                    if (Relate(repaired[candidateIndex], source, eps) != PolygonContainment2d::Disjoint)
                     {
                         represented = true;
                         break;
                     }
                 }
 
-                if( !represented && source.IsValid() )
+                if (!represented && source.IsValid())
                 {
-                    repaired.Add( Polygon2d( source ) );
+                    repaired.Add(SCPolygon2d(source));
                 }
             }
 
@@ -693,192 +669,179 @@ namespace Geometry
         }
     }  // namespace
 
-    LineSegment2d Offset( const LineSegment2d &segment, double distance )
+    SCLineSegment2d Offset(const SCLineSegment2d& segment, double distance)
     {
-        if( !segment.IsValid() )
+        if (!segment.IsValid())
         {
             return segment;
         }
 
-        const Vector2d direction = segment.endPoint - segment.startPoint;
-        const Vector2d normal = LeftNormal( direction );
-        if( IsZeroVector( normal ) )
+        const SCVector2d direction = segment.endPoint - segment.startPoint;
+        const SCVector2d normal = LeftNormal(direction);
+        if (IsZeroVector(normal))
         {
             return segment;
         }
 
-        return LineSegment2d( segment.startPoint + normal * distance,
-                              segment.endPoint + normal * distance );
+        return SCLineSegment2d(segment.startPoint + normal * distance, segment.endPoint + normal * distance);
     }
 
-    ArcSegment2d Offset( const ArcSegment2d &segment, double distance )
+    SCArcSegment2d Offset(const SCArcSegment2d& segment, double distance)
     {
-        if( !segment.IsValid() )
+        if (!segment.IsValid())
         {
             return segment;
         }
 
-        const double adjustedRadius = segment.Direction() == ArcDirection::CounterClockwise
-                                          ? segment.radius - distance
-                                          : segment.radius + distance;
-        if( !( adjustedRadius > Geometry::kOffsetDefaultEpsilon ) )
+        const double adjustedRadius = segment.Direction() == SCArcDirection::CounterClockwise ? segment.radius - distance
+                                                                                            : segment.radius + distance;
+        if (!(adjustedRadius > Geometry::kOffsetDefaultEpsilon))
         {
-            return ArcSegment2d{};
+            return SCArcSegment2d{};
         }
-        return ArcSegment2d( segment.center, adjustedRadius, segment.startAngle, segment.sweepAngle );
+        return SCArcSegment2d(segment.center, adjustedRadius, segment.startAngle, segment.sweepAngle);
     }
 
-    Polyline2d Offset( const Polyline2d &polyline, double distance, OffsetOptions2d options )
+    SCPolyline2d Offset(const SCPolyline2d& polyline, double distance, SCOffsetOptions2d options)
     {
-        if( !polyline.IsValid() || polyline.PointCount() < 2 )
+        if (!polyline.IsValid() || polyline.PointCount() < 2)
         {
-            return Polyline2d( polyline.IsClosed() ? PolylineClosure::Closed : PolylineClosure::Open );
+            return SCPolyline2d(polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
         }
 
-        if( ContainsArcSegment( polyline ) )
+        if (ContainsArcSegment(polyline))
         {
-            return OffsetSegmentPolyline( polyline, distance );
+            return OffsetSegmentPolyline(polyline, distance);
         }
 
-        std::vector<Point2d> vertices;
-        vertices.reserve( polyline.PointCount() );
-        for( std::size_t i = 0; i < polyline.PointCount(); ++i )
+        std::vector<SCPoint2d> vertices;
+        vertices.reserve(polyline.PointCount());
+        for (std::size_t i = 0; i < polyline.PointCount(); ++i)
         {
-            vertices.push_back( polyline.PointAt( i ) );
+            vertices.push_back(polyline.PointAt(i));
         }
 
-        return BuildPolylineFromVertices(
-            BuildOffsetVertices( vertices, polyline.IsClosed(), distance, options ),
-            polyline.IsClosed() );
+        return BuildPolylineFromVertices(BuildOffsetVertices(vertices, polyline.IsClosed(), distance, options),
+                                         polyline.IsClosed());
     }
 
-    Polygon2d Offset( const Polygon2d &polygon, double distance, OffsetOptions2d options )
+    SCPolygon2d Offset(const SCPolygon2d& polygon, double distance, SCOffsetOptions2d options)
     {
-        Polygon2d source = NormalizePolygonByLines( polygon, Geometry::kOffsetDefaultEpsilon );
-        if( !source.IsValid() )
+        SCPolygon2d source = NormalizePolygonByLines(polygon, Geometry::kOffsetDefaultEpsilon);
+        if (!source.IsValid())
         {
             source = polygon;
         }
-        if( !source.IsValid() )
+        if (!source.IsValid())
         {
-            source = NormalizePolygonOrientationForOffset( polygon );
+            source = NormalizePolygonOrientationForOffset(polygon);
         }
 
-        if( !source.IsValid() )
+        if (!source.IsValid())
         {
-            return Polygon2d();
+            return SCPolygon2d();
         }
 
-        MultiPolyline2d offsetRings;
-        const Polyline2d outerRing = source.OuterRing();
-        AppendRecoveredOffsetRing( outerRing, RingDistance( outerRing, distance, false ), options,
-                                   offsetRings );
-        for( std::size_t i = 0; i < source.HoleCount(); ++i )
+        SCMultiPolyline2d offsetRings;
+        const SCPolyline2d outerRing = source.OuterRing();
+        AppendRecoveredOffsetRing(outerRing, RingDistance(outerRing, distance, false), options, offsetRings);
+        for (std::size_t i = 0; i < source.HoleCount(); ++i)
         {
-            const Polyline2d hole = source.HoleAt( i );
-            AppendRecoveredOffsetRing( hole, RingDistance( hole, distance, true ), options,
-                                       offsetRings );
+            const SCPolyline2d hole = source.HoleAt(i);
+            AppendRecoveredOffsetRing(hole, RingDistance(hole, distance, true), options, offsetRings);
         }
 
-        const MultiPolygon2d rebuilt =
-            BuildOffsetPolygons( offsetRings, Geometry::kOffsetDefaultEpsilon );
-        if( rebuilt.IsEmpty() )
+        const SCMultiPolygon2d rebuilt = BuildOffsetPolygons(offsetRings, Geometry::kOffsetDefaultEpsilon);
+        if (rebuilt.IsEmpty())
         {
-            const Polyline2d offsetOuter =
-                Offset( outerRing, RingDistance( outerRing, distance, false ), options );
-            if( !offsetOuter.IsValid() || !offsetOuter.IsClosed() )
+            const SCPolyline2d offsetOuter = Offset(outerRing, RingDistance(outerRing, distance, false), options);
+            if (!offsetOuter.IsValid() || !offsetOuter.IsClosed())
             {
                 return {};
             }
 
-            std::vector<Polyline2d> holes;
-            holes.reserve( source.HoleCount() );
-            for( std::size_t i = 0; i < source.HoleCount(); ++i )
+            std::vector<SCPolyline2d> holes;
+            holes.reserve(source.HoleCount());
+            for (std::size_t i = 0; i < source.HoleCount(); ++i)
             {
-                const Polyline2d hole = source.HoleAt( i );
-                const Polyline2d offsetHole =
-                    Offset( hole, RingDistance( hole, distance, true ), options );
-                if( !offsetHole.IsValid() || !offsetHole.IsClosed() )
+                const SCPolyline2d hole = source.HoleAt(i);
+                const SCPolyline2d offsetHole = Offset(hole, RingDistance(hole, distance, true), options);
+                if (!offsetHole.IsValid() || !offsetHole.IsClosed())
                 {
                     continue;
                 }
-                holes.push_back( NormalizeHoleRing( offsetHole ) );
+                holes.push_back(NormalizeHoleRing(offsetHole));
             }
 
-            Polygon2d fallback( NormalizeOuterRing( offsetOuter ), std::move( holes ) );
-            if( fallback.IsValid() )
+            SCPolygon2d fallback(NormalizeOuterRing(offsetOuter), std::move(holes));
+            if (fallback.IsValid())
             {
                 return fallback;
             }
             return {};
         }
 
-        const Polygon2d selected =
-            SelectBestOffsetPolygon( source, rebuilt, distance, Geometry::kOffsetDefaultEpsilon );
-        return RecoverOffsetSemanticFlip( source, selected, distance, Geometry::kOffsetDefaultEpsilon );
+        const SCPolygon2d selected = SelectBestOffsetPolygon(source, rebuilt, distance, Geometry::kOffsetDefaultEpsilon);
+        return RecoverOffsetSemanticFlip(source, selected, distance, Geometry::kOffsetDefaultEpsilon);
     }
 
-    MultiPolygon2d OffsetToMultiPolygon( const Polygon2d &polygon, double distance,
-                                         OffsetOptions2d options )
+    SCMultiPolygon2d OffsetToMultiPolygon(const SCPolygon2d& polygon, double distance, SCOffsetOptions2d options)
     {
-        if( !polygon.IsValid() )
+        if (!polygon.IsValid())
         {
             return {};
         }
 
-        return Offset( MultiPolygon2d{ polygon }, distance, options );
+        return Offset(SCMultiPolygon2d{polygon}, distance, options);
     }
 
-    MultiPolyline2d Offset( const MultiPolyline2d &polylines, double distance, OffsetOptions2d options )
+    SCMultiPolyline2d Offset(const SCMultiPolyline2d& polylines, double distance, SCOffsetOptions2d options)
     {
-        MultiPolyline2d result;
-        for( std::size_t i = 0; i < polylines.Count(); ++i )
+        SCMultiPolyline2d result;
+        for (std::size_t i = 0; i < polylines.Count(); ++i)
         {
-            Polyline2d offset = Offset( polylines[i], distance, options );
-            if( offset.PointCount() >= 2 )
+            SCPolyline2d offset = Offset(polylines[i], distance, options);
+            if (offset.PointCount() >= 2)
             {
-                result.Add( std::move( offset ) );
+                result.Add(std::move(offset));
             }
         }
         return result;
     }
 
-    MultiPolygon2d Offset( const MultiPolygon2d &polygons, double distance, OffsetOptions2d options )
+    SCMultiPolygon2d Offset(const SCMultiPolygon2d& polygons, double distance, SCOffsetOptions2d options)
     {
-        MultiPolyline2d offsetRings;
-        MultiPolygon2d normalizedSources;
-        for( std::size_t i = 0; i < polygons.Count(); ++i )
+        SCMultiPolyline2d offsetRings;
+        SCMultiPolygon2d normalizedSources;
+        for (std::size_t i = 0; i < polygons.Count(); ++i)
         {
-            Polygon2d source = NormalizePolygonByLines( polygons[i], Geometry::kOffsetDefaultEpsilon );
-            if( !source.IsValid() )
+            SCPolygon2d source = NormalizePolygonByLines(polygons[i], Geometry::kOffsetDefaultEpsilon);
+            if (!source.IsValid())
             {
                 source = polygons[i];
             }
-            if( !source.IsValid() )
+            if (!source.IsValid())
             {
-                source = NormalizePolygonOrientationForOffset( polygons[i] );
+                source = NormalizePolygonOrientationForOffset(polygons[i]);
             }
-            if( !source.IsValid() )
+            if (!source.IsValid())
             {
                 continue;
             }
 
-            normalizedSources.Add( Polygon2d( source ) );
+            normalizedSources.Add(SCPolygon2d(source));
 
-            const Polyline2d outerRing = source.OuterRing();
-            AppendRecoveredOffsetRing( outerRing, RingDistance( outerRing, distance, false ), options,
-                                       offsetRings );
-            for( std::size_t holeIndex = 0; holeIndex < source.HoleCount(); ++holeIndex )
+            const SCPolyline2d outerRing = source.OuterRing();
+            AppendRecoveredOffsetRing(outerRing, RingDistance(outerRing, distance, false), options, offsetRings);
+            for (std::size_t holeIndex = 0; holeIndex < source.HoleCount(); ++holeIndex)
             {
-                const Polyline2d hole = source.HoleAt( holeIndex );
-                AppendRecoveredOffsetRing( hole, RingDistance( hole, distance, true ), options,
-                                           offsetRings );
+                const SCPolyline2d hole = source.HoleAt(holeIndex);
+                AppendRecoveredOffsetRing(hole, RingDistance(hole, distance, true), options, offsetRings);
             }
         }
 
-        const MultiPolygon2d rebuilt =
-            BuildOffsetPolygons( offsetRings, Geometry::kOffsetDefaultEpsilon );
-        return RecoverMultiPolygonSemanticFlip( normalizedSources, rebuilt, distance,
-                                                Geometry::kOffsetDefaultEpsilon );
+        const SCMultiPolygon2d rebuilt = BuildOffsetPolygons(offsetRings, Geometry::kOffsetDefaultEpsilon);
+        return RecoverMultiPolygonSemanticFlip(normalizedSources, rebuilt, distance, Geometry::kOffsetDefaultEpsilon);
     }
 }  // namespace Geometry
+

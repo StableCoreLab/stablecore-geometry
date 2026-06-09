@@ -1,98 +1,111 @@
 #pragma once
 
-#include "Brep/BrepBody.h"
-#include "Brep/BrepEdge.h"
-#include "Brep/BrepFace.h"
-#include "Brep/BrepVertex.h"
+#include "Brep/SCBrepBody.h"
+#include "Brep/SCBrepEdge.h"
+#include "Brep/SCBrepFace.h"
+#include "Brep/SCBrepVertex.h"
 #include "Brep/PolyhedronBody.h"
 #include "Brep/PolyhedronFace3d.h"
 #include "Core/GeometryTypes.h"
 #include "Export/GeometryExport.h"
-#include "Geometry2d/ArcSegment2d.h"
-#include "Geometry2d/LineSegment2d.h"
-#include "Geometry2d/Polygon2d.h"
-#include "Geometry2d/Segment2d.h"
-#include "Geometry3d/Surface.h"
+#include "Geometry2d/SCArcSegment2d.h"
+#include "Geometry2d/SCLineSegment2d.h"
+#include "Geometry2d/SCPolygon2d.h"
+#include "Geometry2d/ISCSegment2d.h"
+#include "Geometry3d/ISCSurface.h"
 #include "Geometry3d/TriangleMesh.h"
 
 namespace Geometry
 {
-    [[nodiscard]] GEOMETRY_API SegmentProjection2d ProjectPointToLineSegment(
-        const Point2d &point, const LineSegment2d &segment, bool clampToSegment = true );
+    [[nodiscard]] GEOMETRY_API SCSegmentProjection2d ProjectPointToLineSegment(const SCPoint2d& point,
+                                                                             const SCLineSegment2d& segment,
+                                                                             bool clampToSegment = true);
 
-    [[nodiscard]] GEOMETRY_API SegmentProjection2d ProjectPointToArcSegment(
-        const Point2d &point, const ArcSegment2d &segment, bool clampToSegment = true );
+    [[nodiscard]] GEOMETRY_API SCSegmentProjection2d ProjectPointToArcSegment(const SCPoint2d& point,
+                                                                            const SCArcSegment2d& segment,
+                                                                            bool clampToSegment = true);
 
-    [[nodiscard]] GEOMETRY_API SegmentProjection2d ProjectPointToSegment( const Point2d &point,
-                                                                          const Segment2d &segment,
-                                                                          bool clampToSegment = true );
+    [[nodiscard]] GEOMETRY_API SCSegmentProjection2d ProjectPointToSegment(const SCPoint2d& point,
+                                                                         const ISCSegment2d& segment,
+                                                                         bool clampToSegment = true);
 
-    [[nodiscard]] GEOMETRY_API SegmentProjection2d ProjectPointToSegment( const Point2d &point,
-                                                                          const Point2d &segmentStart,
-                                                                          const Point2d &segmentEnd,
-                                                                          bool clampToSegment = true );
+    [[nodiscard]] GEOMETRY_API SCSegmentProjection2d ProjectPointToSegment(const SCPoint2d& point,
+                                                                         const SCPoint2d& segmentStart,
+                                                                         const SCPoint2d& segmentEnd,
+                                                                         bool clampToSegment = true);
 
-    [[nodiscard]] GEOMETRY_API LineProjection3d ProjectPointToLine(
-        const Point3d &point, const Line3d &line, const GeometryTolerance3d &tolerance = {} );
+    [[nodiscard]] GEOMETRY_API SCLineProjection3d ProjectPointToLine(const SCPoint3d& point,
+                                                                   const SCLine3d& line,
+                                                                   const SCGeometryTolerance3d& tolerance = {});
 
-    [[nodiscard]] GEOMETRY_API PlaneProjection3d ProjectPointToPlane(
-        const Point3d &point, const Plane &plane, const GeometryTolerance3d &tolerance = {} );
+    [[nodiscard]] GEOMETRY_API SCPlaneProjection3d ProjectPointToPlane(const SCPoint3d& point,
+                                                                     const SCPlane& plane,
+                                                                     const SCGeometryTolerance3d& tolerance = {});
 
-    [[nodiscard]] GEOMETRY_API CurveProjection3d ProjectPointToCurve(
-        const Point3d &point, const Curve3d &curve, const GeometryTolerance3d &tolerance = {} );
+    [[nodiscard]] GEOMETRY_API SCCurveProjection3d ProjectPointToCurve(const SCPoint3d& point,
+                                                                     const ISCCurve3d& curve,
+                                                                     const SCGeometryTolerance3d& tolerance = {});
 
-    [[nodiscard]] GEOMETRY_API CurveOnSurfaceProjection3d
-    ProjectPointToCurveOnSurface( const Point3d &point, const CurveOnSurface &curveOnSurface,
-                                  const GeometryTolerance3d &tolerance = {} );
+    [[nodiscard]] GEOMETRY_API SCCurveOnSurfaceProjection3d ProjectPointToCurveOnSurface(
+        const SCPoint3d& point, const SCCurveOnSurface& curveOnSurface, const SCGeometryTolerance3d& tolerance = {});
 
-    [[nodiscard]] GEOMETRY_API SurfaceProjection3d ProjectPointToSurface(
-        const Point3d &point, const Surface &surface, const GeometryTolerance3d &tolerance = {} );
+    [[nodiscard]] GEOMETRY_API SCSurfaceProjection3d ProjectPointToSurface(const SCPoint3d& point,
+                                                                         const ISCSurface& surface,
+                                                                         const SCGeometryTolerance3d& tolerance = {});
 
-    [[nodiscard]] GEOMETRY_API BrepFaceProjection3d ProjectPointToBrepFace(
-        const Point3d &point, const BrepFace &face, const GeometryTolerance3d &tolerance = {} );
+    [[nodiscard]] GEOMETRY_API SCBrepFaceProjection3d ProjectPointToBrepFace(const SCPoint3d& point,
+                                                                           const SCBrepFace& face,
+                                                                           const SCGeometryTolerance3d& tolerance = {});
 
-    [[nodiscard]] GEOMETRY_API BrepEdgeProjection3d ProjectPointToBrepEdge(
-        const Point3d &point, const BrepEdge &edge, const GeometryTolerance3d &tolerance = {} );
+    [[nodiscard]] GEOMETRY_API SCBrepEdgeProjection3d ProjectPointToBrepEdge(const SCPoint3d& point,
+                                                                           const SCBrepEdge& edge,
+                                                                           const SCGeometryTolerance3d& tolerance = {});
 
-    [[nodiscard]] GEOMETRY_API BrepVertexProjection3d ProjectPointToBrepVertex(
-        const Point3d &point, const BrepVertex &vertex, const GeometryTolerance3d &tolerance = {} );
+    [[nodiscard]] GEOMETRY_API SCBrepVertexProjection3d
+    ProjectPointToBrepVertex(const SCPoint3d& point, const SCBrepVertex& vertex, const SCGeometryTolerance3d& tolerance = {});
 
-    [[nodiscard]] GEOMETRY_API BrepBodyProjection3d ProjectPointToBrepBody(
-        const Point3d &point, const BrepBody &body, const GeometryTolerance3d &tolerance = {} );
+    [[nodiscard]] GEOMETRY_API SCBrepBodyProjection3d ProjectPointToBrepBody(const SCPoint3d& point,
+                                                                           const SCBrepBody& body,
+                                                                           const SCGeometryTolerance3d& tolerance = {});
 
-    [[nodiscard]] GEOMETRY_API PolyhedronFaceProjection3d ProjectPointToPolyhedronFace(
-        const Point3d &point, const PolyhedronFace3d &face, const GeometryTolerance3d &tolerance = {} );
+    [[nodiscard]] GEOMETRY_API SCPolyhedronFaceProjection3d ProjectPointToPolyhedronFace(
+        const SCPoint3d& point, const PolyhedronFace3d& face, const SCGeometryTolerance3d& tolerance = {});
 
-    [[nodiscard]] GEOMETRY_API PolyhedronBodyProjection3d ProjectPointToPolyhedronBody(
-        const Point3d &point, const PolyhedronBody &body, const GeometryTolerance3d &tolerance = {} );
+    [[nodiscard]] GEOMETRY_API SCPolyhedronBodyProjection3d ProjectPointToPolyhedronBody(
+        const SCPoint3d& point, const PolyhedronBody& body, const SCGeometryTolerance3d& tolerance = {});
 
-    [[nodiscard]] GEOMETRY_API TriangleMeshProjection3d ProjectPointToTriangleMesh(
-        const Point3d &point, const TriangleMesh &mesh, const GeometryTolerance3d &tolerance = {} );
+    [[nodiscard]] GEOMETRY_API SCTriangleMeshProjection3d ProjectPointToTriangleMesh(
+        const SCPoint3d& point, const TriangleMesh& mesh, const SCGeometryTolerance3d& tolerance = {});
 
-    struct GEOMETRY_API FaceProjection3d
+    struct GEOMETRY_API SCFaceProjection3d
     {
-        bool success{ false };
-        Polygon2d polygon{};
-        Point3d origin{};
-        Vector3d uAxis{};
-        Vector3d vAxis{};
+        bool success{false};
+        SCPolygon2d polygon{};
+        SCPoint3d origin{};
+        SCVector3d uAxis{};
+        SCVector3d vAxis{};
     };
 
-    [[nodiscard]] GEOMETRY_API FaceProjection3d
-    ProjectFaceToPolygon2d( const PolyhedronFace3d &face, const GeometryTolerance3d &tolerance = {} );
+    [[nodiscard]] GEOMETRY_API SCFaceProjection3d ProjectFaceToPolygon2d(const PolyhedronFace3d& face,
+                                                                       const SCGeometryTolerance3d& tolerance = {});
 
-    [[nodiscard]] GEOMETRY_API double ParameterAtLength( const LineSegment2d &segment, double length,
-                                                         bool clampToSegment = false );
-    [[nodiscard]] GEOMETRY_API double ParameterAtLength( const ArcSegment2d &segment, double length,
-                                                         bool clampToSegment = false );
-    [[nodiscard]] GEOMETRY_API double ParameterAtLength( const Segment2d &segment, double length,
-                                                         bool clampToSegment = false );
+    [[nodiscard]] GEOMETRY_API double ParameterAtLength(const SCLineSegment2d& segment,
+                                                        double length,
+                                                        bool clampToSegment = false);
+    [[nodiscard]] GEOMETRY_API double ParameterAtLength(const SCArcSegment2d& segment,
+                                                        double length,
+                                                        bool clampToSegment = false);
+    [[nodiscard]] GEOMETRY_API double ParameterAtLength(const ISCSegment2d& segment,
+                                                        double length,
+                                                        bool clampToSegment = false);
 
-    [[nodiscard]] GEOMETRY_API Vector2d TangentAt( const LineSegment2d &segment, double parameter );
-    [[nodiscard]] GEOMETRY_API Vector2d TangentAt( const ArcSegment2d &segment, double parameter );
-    [[nodiscard]] GEOMETRY_API Vector2d TangentAt( const Segment2d &segment, double parameter );
+    [[nodiscard]] GEOMETRY_API SCVector2d TangentAt(const SCLineSegment2d& segment, double parameter);
+    [[nodiscard]] GEOMETRY_API SCVector2d TangentAt(const SCArcSegment2d& segment, double parameter);
+    [[nodiscard]] GEOMETRY_API SCVector2d TangentAt(const ISCSegment2d& segment, double parameter);
 
-    [[nodiscard]] GEOMETRY_API Vector2d NormalAt( const LineSegment2d &segment, double parameter );
-    [[nodiscard]] GEOMETRY_API Vector2d NormalAt( const ArcSegment2d &segment, double parameter );
-    [[nodiscard]] GEOMETRY_API Vector2d NormalAt( const Segment2d &segment, double parameter );
+    [[nodiscard]] GEOMETRY_API SCVector2d NormalAt(const SCLineSegment2d& segment, double parameter);
+    [[nodiscard]] GEOMETRY_API SCVector2d NormalAt(const SCArcSegment2d& segment, double parameter);
+    [[nodiscard]] GEOMETRY_API SCVector2d NormalAt(const ISCSegment2d& segment, double parameter);
 }  // namespace Geometry
+
+

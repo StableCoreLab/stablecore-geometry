@@ -3,19 +3,16 @@
 #include <vector>
 
 #include "Export/GeometryExport.h"
-#include "Geometry2d/ArcSegment2d.h"
-#include "Geometry2d/LineSegment2d.h"
-#include "Geometry2d/Segment2d.h"
-#include "Types/Geometry2d/Point2.h"
+#include "Geometry2d/SCArcSegment2d.h"
+#include "Geometry2d/SCLineSegment2d.h"
+#include "Geometry2d/ISCSegment2d.h"
+#include "Types/Geometry2d/SCPoint2.h"
 
 namespace Geometry
 {
-    [[nodiscard]] GEOMETRY_API std::vector<Point2d> Sample( const LineSegment2d &segment,
-                                                            std::size_t partCount );
-    [[nodiscard]] GEOMETRY_API std::vector<Point2d> Sample( const ArcSegment2d &segment,
-                                                            std::size_t partCount );
-    [[nodiscard]] GEOMETRY_API std::vector<Point2d> Sample( const Segment2d &segment,
-                                                            std::size_t partCount );
-    [[nodiscard]] GEOMETRY_API std::vector<Point2d> SampleByMaxAngle( const ArcSegment2d &segment,
-                                                                      double maxAngleRadians );
+    [[nodiscard]] GEOMETRY_API std::vector<SCPoint2d> Sample(const SCLineSegment2d& segment, std::size_t partCount);
+    [[nodiscard]] GEOMETRY_API std::vector<SCPoint2d> Sample(const SCArcSegment2d& segment, std::size_t partCount);
+    [[nodiscard]] GEOMETRY_API std::vector<SCPoint2d> Sample(const ISCSegment2d& segment, std::size_t partCount);
+    [[nodiscard]] GEOMETRY_API std::vector<SCPoint2d> SampleByMaxAngle(const SCArcSegment2d& segment,
+                                                                     double maxAngleRadians);
 }  // namespace Geometry

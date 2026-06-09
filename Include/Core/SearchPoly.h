@@ -3,21 +3,21 @@
 #include <vector>
 #include "Core/GeometryTypes.h"
 #include "Export/GeometryExport.h"
-#include "Geometry2d/Polygon2d.h"
-#include "Geometry2d/LineSegment2d.h"
-#include "Geometry2d/MultiPolygon2d.h"
-#include "Geometry2d/MultiPolyline2d.h"
+#include "Geometry2d/SCPolygon2d.h"
+#include "Geometry2d/SCLineSegment2d.h"
+#include "Geometry2d/SCMultiPolygon2d.h"
+#include "Geometry2d/SCMultiPolyline2d.h"
 
 namespace Geometry
 {
-    enum class SearchPolyIssue2d
+    enum class SCSearchPolyIssue2d
     {
         None,
         InvalidInput,
         NoClosedPolygonFound
     };
 
-    enum class SearchPolyPenaltyKind2d
+    enum class SCSearchPolyPenaltyKind2d
     {
         None,
         SyntheticClosure,
@@ -26,7 +26,7 @@ namespace Geometry
         Mixed
     };
 
-    enum class SearchPolySyntheticEdgeKind2d
+    enum class SCSearchPolySyntheticEdgeKind2d
     {
         Unknown,
         GapClosure,
@@ -34,7 +34,7 @@ namespace Geometry
         Mixed
     };
 
-    enum class SearchPolySyntheticEdgeSource2d
+    enum class SCSearchPolySyntheticEdgeSource2d
     {
         Unknown,
         SingleGapClose,
@@ -42,14 +42,14 @@ namespace Geometry
         MixedBridge
     };
 
-    struct GEOMETRY_API SearchPolyDiagnostics2d
+    struct GEOMETRY_API SCSearchPolyDiagnostics2d
     {
-        std::size_t inputPolylineCount{ 0 };
-        std::size_t inputSegmentCount{ 0 };
-        std::size_t uniqueVertexCount{ 0 };
-        std::size_t danglingEndpointCount{ 0 };
-        std::size_t branchVertexCount{ 0 };
-        std::size_t inferredSyntheticEdgeCount{ 0 };
+        std::size_t inputPolylineCount{0};
+        std::size_t inputSegmentCount{0};
+        std::size_t uniqueVertexCount{0};
+        std::size_t danglingEndpointCount{0};
+        std::size_t branchVertexCount{0};
+        std::size_t inferredSyntheticEdgeCount{0};
 
         [[nodiscard]] bool RequiresRepair() const
         {
@@ -57,35 +57,31 @@ namespace Geometry
         }
     };
 
-    struct GEOMETRY_API SearchPolyOptions2d
+    struct GEOMETRY_API SCSearchPolyOptions2d
     {
-        double epsilon{ 1e-9 };
-        bool autoClose{ true };
-        bool autoExtend{ true };
-        bool allowFakeEdges{ true };
-        bool removeBranches{ true };
+        double epsilon{1e-9};
+        bool autoClose{true};
+        bool autoExtend{true};
+        bool allowFakeEdges{true};
+        bool removeBranches{true};
     };
 
-    struct GEOMETRY_API SearchPolyCandidate2d
+    struct GEOMETRY_API SCSearchPolyCandidate2d
     {
-        Polygon2d polygon{};
-        double absoluteArea{ 0.0 };
-        double branchScore{ 0.0 };
-        double inferredSyntheticPerimeter{ 0.0 };
-        std::size_t holeCount{ 0 };
-        std::size_t inferredSyntheticEdgeCount{ 0 };
-        std::size_t branchVertexCount{ 0 };
-        std::size_t syntheticBranchVertexCount{ 0 };
-        SearchPolyPenaltyKind2d dominantPenaltyKind{ SearchPolyPenaltyKind2d::None };
-        SearchPolySyntheticEdgeKind2d dominantSyntheticEdgeKind{
-            SearchPolySyntheticEdgeKind2d::Unknown
-        };
-        SearchPolySyntheticEdgeSource2d dominantSyntheticEdgeSource{
-            SearchPolySyntheticEdgeSource2d::Unknown
-        };
-        std::vector<LineSegment2d> inferredSyntheticEdges{};
-        std::vector<SearchPolySyntheticEdgeKind2d> inferredSyntheticEdgeKinds{};
-        std::vector<SearchPolySyntheticEdgeSource2d> inferredSyntheticEdgeSources{};
+        SCPolygon2d polygon{};
+        double absoluteArea{0.0};
+        double branchScore{0.0};
+        double inferredSyntheticPerimeter{0.0};
+        std::size_t holeCount{0};
+        std::size_t inferredSyntheticEdgeCount{0};
+        std::size_t branchVertexCount{0};
+        std::size_t syntheticBranchVertexCount{0};
+        SCSearchPolyPenaltyKind2d dominantPenaltyKind{SCSearchPolyPenaltyKind2d::None};
+        SCSearchPolySyntheticEdgeKind2d dominantSyntheticEdgeKind{SCSearchPolySyntheticEdgeKind2d::Unknown};
+        SCSearchPolySyntheticEdgeSource2d dominantSyntheticEdgeSource{SCSearchPolySyntheticEdgeSource2d::Unknown};
+        std::vector<SCLineSegment2d> inferredSyntheticEdges{};
+        std::vector<SCSearchPolySyntheticEdgeKind2d> inferredSyntheticEdgeKinds{};
+        std::vector<SCSearchPolySyntheticEdgeSource2d> inferredSyntheticEdgeSources{};
         std::vector<std::size_t> inferredSyntheticEdgeStartVertexIndices{};
         std::vector<std::size_t> inferredSyntheticEdgeEndVertexIndices{};
         std::vector<std::size_t> inferredSyntheticEdgeStartDegrees{};
@@ -93,7 +89,7 @@ namespace Geometry
         std::vector<std::size_t> inferredSyntheticEdgeDanglingTouchCounts{};
         std::vector<std::size_t> inferredSyntheticEdgeBranchTouchCounts{};
         std::vector<double> inferredSyntheticEdgeLengths{};
-        std::size_t rank{ 0 };
+        std::size_t rank{0};
 
         [[nodiscard]] bool IsValid() const
         {
@@ -101,60 +97,49 @@ namespace Geometry
         }
     };
 
-    struct GEOMETRY_API SearchPolyResult2d
+    struct GEOMETRY_API SCSearchPolyResult2d
     {
-        SearchPolyIssue2d issue{ SearchPolyIssue2d::None };
-        MultiPolygon2d polygons{};
-        std::vector<SearchPolyCandidate2d> candidates{};
-        SearchPolyDiagnostics2d diagnostics{};
-        double bestCandidateScoreMargin{ 0.0 };
-        double bestCandidateSyntheticPerimeter{ 0.0 };
-        std::size_t bestCandidateSyntheticEdgeCount{ 0 };
-        SearchPolySyntheticEdgeKind2d bestCandidateSyntheticEdgeKind{
-            SearchPolySyntheticEdgeKind2d::Unknown
-        };
-        SearchPolySyntheticEdgeSource2d bestCandidateSyntheticEdgeSource{
-            SearchPolySyntheticEdgeSource2d::Unknown
-        };
-        double runnerUpSyntheticPerimeter{ 0.0 };
-        std::size_t runnerUpSyntheticEdgeCount{ 0 };
-        SearchPolySyntheticEdgeKind2d runnerUpSyntheticEdgeKind{
-            SearchPolySyntheticEdgeKind2d::Unknown
-        };
-        SearchPolySyntheticEdgeSource2d runnerUpSyntheticEdgeSource{
-            SearchPolySyntheticEdgeSource2d::Unknown
-        };
-        std::size_t runnerUpBranchVertexCount{ 0 };
-        SearchPolyPenaltyKind2d bestCandidatePenaltyKind{ SearchPolyPenaltyKind2d::None };
-        SearchPolyPenaltyKind2d runnerUpPenaltyKind{ SearchPolyPenaltyKind2d::None };
-        SearchPolyPenaltyKind2d ambiguousTopPenaltyKind{ SearchPolyPenaltyKind2d::None };
-        SearchPolySyntheticEdgeKind2d ambiguousTopSyntheticEdgeKind{
-            SearchPolySyntheticEdgeKind2d::Unknown
-        };
-        SearchPolySyntheticEdgeSource2d ambiguousTopSyntheticEdgeSource{
-            SearchPolySyntheticEdgeSource2d::Unknown
-        };
-        std::size_t ambiguousTopCandidateCountWithSyntheticEdges{ 0 };
-        std::size_t ambiguousTopCandidateCountWithBranchPenalty{ 0 };
-        bool bestCandidateBeatsSyntheticRunnerUp{ false };
-        bool bestCandidateBeatsBranchRunnerUp{ false };
-        std::size_t candidateCountWithSyntheticEdges{ 0 };
-        std::size_t candidateCountWithBranchPenalty{ 0 };
-        std::size_t ambiguousTopCandidateCount{ 0 };
-        bool usedAutoClose{ false };
-        bool usedAutoExtend{ false };
-        bool usedSyntheticEdges{ false };
-        bool usedBranchScoring{ false };
+        SCSearchPolyIssue2d issue{SCSearchPolyIssue2d::None};
+        SCMultiPolygon2d polygons{};
+        std::vector<SCSearchPolyCandidate2d> candidates{};
+        SCSearchPolyDiagnostics2d diagnostics{};
+        double bestCandidateScoreMargin{0.0};
+        double bestCandidateSyntheticPerimeter{0.0};
+        std::size_t bestCandidateSyntheticEdgeCount{0};
+        SCSearchPolySyntheticEdgeKind2d bestCandidateSyntheticEdgeKind{SCSearchPolySyntheticEdgeKind2d::Unknown};
+        SCSearchPolySyntheticEdgeSource2d bestCandidateSyntheticEdgeSource{SCSearchPolySyntheticEdgeSource2d::Unknown};
+        double runnerUpSyntheticPerimeter{0.0};
+        std::size_t runnerUpSyntheticEdgeCount{0};
+        SCSearchPolySyntheticEdgeKind2d runnerUpSyntheticEdgeKind{SCSearchPolySyntheticEdgeKind2d::Unknown};
+        SCSearchPolySyntheticEdgeSource2d runnerUpSyntheticEdgeSource{SCSearchPolySyntheticEdgeSource2d::Unknown};
+        std::size_t runnerUpBranchVertexCount{0};
+        SCSearchPolyPenaltyKind2d bestCandidatePenaltyKind{SCSearchPolyPenaltyKind2d::None};
+        SCSearchPolyPenaltyKind2d runnerUpPenaltyKind{SCSearchPolyPenaltyKind2d::None};
+        SCSearchPolyPenaltyKind2d ambiguousTopPenaltyKind{SCSearchPolyPenaltyKind2d::None};
+        SCSearchPolySyntheticEdgeKind2d ambiguousTopSyntheticEdgeKind{SCSearchPolySyntheticEdgeKind2d::Unknown};
+        SCSearchPolySyntheticEdgeSource2d ambiguousTopSyntheticEdgeSource{SCSearchPolySyntheticEdgeSource2d::Unknown};
+        std::size_t ambiguousTopCandidateCountWithSyntheticEdges{0};
+        std::size_t ambiguousTopCandidateCountWithBranchPenalty{0};
+        bool bestCandidateBeatsSyntheticRunnerUp{false};
+        bool bestCandidateBeatsBranchRunnerUp{false};
+        std::size_t candidateCountWithSyntheticEdges{0};
+        std::size_t candidateCountWithBranchPenalty{0};
+        std::size_t ambiguousTopCandidateCount{0};
+        bool usedAutoClose{false};
+        bool usedAutoExtend{false};
+        bool usedSyntheticEdges{false};
+        bool usedBranchScoring{false};
 
         [[nodiscard]] bool IsSuccess() const
         {
-            return issue == SearchPolyIssue2d::None && polygons.Count() > 0;
+            return issue == SCSearchPolyIssue2d::None && polygons.Count() > 0;
         }
     };
 
-    [[nodiscard]] GEOMETRY_API SearchPolyResult2d SearchPolygons( const MultiPolyline2d &lines,
-                                                                  SearchPolyOptions2d options = {} );
+    [[nodiscard]] GEOMETRY_API SCSearchPolyResult2d SearchPolygons(const SCMultiPolyline2d& lines,
+                                                                 SCSearchPolyOptions2d options = {});
 
-    [[nodiscard]] GEOMETRY_API std::optional<SearchPolyCandidate2d> SearchPolygonContainingPoint(
-        const MultiPolyline2d &lines, const Point2d &point, SearchPolyOptions2d options = {} );
+    [[nodiscard]] GEOMETRY_API std::optional<SCSearchPolyCandidate2d> SearchPolygonContainingPoint(
+        const SCMultiPolyline2d& lines, const SCPoint2d& point, SCSearchPolyOptions2d options = {});
 }  // namespace Geometry
+

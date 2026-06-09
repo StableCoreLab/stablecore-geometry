@@ -1,4 +1,4 @@
-﻿#include "Geometry3d/PlaneSurface.h"
+#include "Geometry3d/SCPlaneSurface.h"
 
 #include <algorithm>
 #include <cmath>
@@ -7,32 +7,32 @@ namespace Geometry
 {
     namespace
     {
-        [[nodiscard]] Vector3d MakePerpendicularVector( const Vector3d &normal, double eps )
+        [[nodiscard]] SCVector3d MakePerpendicularVector(const SCVector3d& normal, double eps)
         {
-            const Vector3d normalized = normal.Normalized( eps );
-            if( normalized.Length() <= eps )
+            const SCVector3d normalized = normal.Normalized(eps);
+            if (normalized.Length() <= eps)
             {
-                return Vector3d{};
+                return SCVector3d{};
             }
 
-            // Prefer world-aligned in-plane axes when possible so plane UV coordinates
-            // remain stable and intuitive, especially for axis-aligned support planes.
-            Vector3d referenceAxis{ 1.0, 0.0, 0.0 };
-            if( std::abs( Dot( normalized, referenceAxis ) ) >= 1.0 - eps )
+            // Prefer world-aligned in-plane axes when possible so plane UV
+            // coordinates remain stable and intuitive, especially for
+            // axis-aligned support planes.
+            SCVector3d referenceAxis{1.0, 0.0, 0.0};
+            if (std::abs(Dot(normalized, referenceAxis)) >= 1.0 - eps)
             {
-                referenceAxis = Vector3d{ 0.0, 1.0, 0.0 };
+                referenceAxis = SCVector3d{0.0, 1.0, 0.0};
             }
 
-            const Vector3d inPlane = referenceAxis - normalized * Dot( referenceAxis, normalized );
-            return inPlane.Normalized( eps );
+            const SCVector3d inPlane = referenceAxis - normalized * Dot(referenceAxis, normalized);
+            return inPlane.Normalized(eps);
         }
     }  // namespace
 
-    PlaneSurface PlaneSurface::FromPlane( const Plane &plane, Intervald uRange, Intervald vRange,
-                                          double eps )
+    SCPlaneSurface SCPlaneSurface::FromPlane(const SCPlane& plane, SCIntervald uRange, SCIntervald vRange, double eps)
     {
-        const Vector3d uAxis = MakePerpendicularVector( plane.normal, eps );
-        const Vector3d vAxis = Cross( plane.UnitNormal( eps ), uAxis ).Normalized( eps );
-        return PlaneSurface( plane, uAxis, vAxis, uRange, vRange );
+        const SCVector3d uAxis = MakePerpendicularVector(plane.normal, eps);
+        const SCVector3d vAxis = Cross(plane.UnitNormal(eps), uAxis).Normalized(eps);
+        return SCPlaneSurface(plane, uAxis, vAxis, uRange, vRange);
     }
 }  // namespace Geometry

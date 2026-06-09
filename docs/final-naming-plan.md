@@ -1,32 +1,17 @@
-# 最终命名规划
+# 鏈€缁堝懡鍚嶈鍒?
+鏈枃瀹氫箟褰撳墠鍙戝竷鐗?Geometry 鍏叡闈㈢殑鍛藉悕瑙勫垯銆?
+## 鎬诲垯
 
-本文定义当前发布版 Geometry 公共面的命名规则。
+- `SC` 鍙繚鐣欑粰宸ョ▼韬唤浣跨敤锛屼緥濡備粨搴撳悕銆佽В鍐虫柟妗堝悕銆丆Make target銆佸寘鍚嶅拰鍐呴儴鏋勫缓鏍囪瘑銆?- 鍏叡绫诲瀷鍚嶃€佸叕鍏卞嚱鏁板悕銆佸叕鍏辨暟鎹粨鏋勪笉浣跨敤 `SC` 鍓嶇紑銆?- 榛樿鍙戝竷闈笉浣跨敤 `ISC`銆?- 闇€瑕佽法 DLL 鐨勫叕鍏?ABI 绋冲畾鏁版嵁缁撴瀯缁х画閫氳繃 `GEOMETRY_API` 瀵煎嚭銆?- 鍏叡闈㈡寜鐩綍鍜岃涔夊懡鍚嶏紝涓嶆寜浜у搧鍓嶇紑缁勭粐銆?
+## 鍛藉悕绌洪棿
 
-## 总则
+- 褰撳墠鍏叡鍛藉悕绌洪棿涓?`Geometry`銆?- `Geometry::Sdk` 鍙厑璁镐綔涓鸿縼绉绘湡闂寸殑涓存椂鍒悕銆?- 鏈枃妗ｉ€傜敤浜庢簮鐮佹爲涓殑鏂囦欢銆佺被鍨嬨€佺粨鏋滃拰鍏叡 API锛屼笉閫傜敤浜庡畨瑁呭悗鐨勭洰褰曞墠缂€銆?
+### 鍏煎绛栫暐
 
-- `SC` 只保留给工程身份使用，例如仓库名、解决方案名、CMake target、包名和内部构建标识。
-- 公共类型名、公共函数名、公共数据结构不使用 `SC` 前缀。
-- 默认发布面不使用 `ISC`。
-- 需要跨 DLL 的公共 ABI 稳定数据结构继续通过 `GEOMETRY_API` 导出。
-- 公共面按目录和语义命名，不按产品前缀组织。
+- 鍙繚鐣欎竴涓粠 `Geometry::Sdk` 鎸囧悜 `Geometry` 鐨勮繃娓″埆鍚嶃€?- 涓嶆仮澶?`SC*` 鎴?`ISC*` 鍏煎绫汇€?- 涓嶆妸鍏煎澶存斁杩涢粯璁ゅ畨瑁呴潰銆?- 杩佺Щ鏈熺粨鏉熷悗鍒犻櫎鍒悕銆?
+## 婧愮爜 Include/Core
 
-## 命名空间
-
-- 当前公共命名空间为 `Geometry`。
-- `Geometry::Sdk` 只允许作为迁移期间的临时别名。
-- 本文档适用于源码树中的文件、类型、结果和公共 API，不适用于安装后的目录前缀。
-
-### 兼容策略
-
-- 只保留一个从 `Geometry::Sdk` 指向 `Geometry` 的过渡别名。
-- 不恢复 `SC*` 或 `ISC*` 兼容类。
-- 不把兼容头放进默认安装面。
-- 迁移期结束后删除别名。
-
-## 源码 Include/Core
-
-保留：
-
+淇濈暀锛?
 - `GeometryApi.h`
 - `GeometryTypes.h`
 - `Algorithms.h`
@@ -47,32 +32,29 @@
 - `Transform.h`
 - `Validation.h`
 
-删除：
+鍒犻櫎锛?
+- `SC*` 鍏煎鍚嶅瓧
+- `ISC*` 鍏煎鍚嶅瓧
 
-- `SC*` 兼容名字
-- `ISC*` 兼容名字
+## 婧愮爜 Include/Geometry2d
 
-## 源码 Include/Geometry2d
+淇濈暀锛?
+- `SCArcSegment2d.h`
+- `SCBoxTree2d.h`
+- `SCCircle2d.h`
+- `SCEllipse2d.h`
+- `SCKDTree2d.h`
+- `SCLineSegment2d.h`
+- `SCMultiPolygon2d.h`
+- `SCMultiPolyline2d.h`
+- `SCPathOps.h`
+- `SCPolygon2d.h`
+- `SCPolyline2d.h`
+- `SCRectangle2d.h`
+- `ISCSegment2d.h`
+- `SCSegmentSearch2d.h`
 
-保留：
-
-- `ArcSegment2d.h`
-- `BoxTree2d.h`
-- `Circle2d.h`
-- `Ellipse2d.h`
-- `KDTree2d.h`
-- `LineSegment2d.h`
-- `MultiPolygon2d.h`
-- `MultiPolyline2d.h`
-- `PathOps.h`
-- `Polygon2d.h`
-- `Polyline2d.h`
-- `Rectangle2d.h`
-- `Segment2d.h`
-- `SegmentSearch2d.h`
-
-删除：
-
+鍒犻櫎锛?
 - `SCArcSegment2d.h`
 - `SCCircle2d.h`
 - `SCLineSegment2d.h`
@@ -82,29 +64,26 @@
 - `ISCPolygon2d.h`
 - `ISCPolyline2d.h`
 
-## 源码 Include/Geometry3d
+## 婧愮爜 Include/Geometry3d
 
-保留：
-
-- `Curve3d.h`
-- `CurveOnSurface.h`
-- `LineCurve3d.h`
-- `NurbsCurve3d.h`
-- `NurbsSurface.h`
-- `OffsetSurface.h`
-- `PlaneSurface.h`
-- `RuledSurface.h`
-- `Surface.h`
+淇濈暀锛?
+- `ISCCurve3d.h`
+- `SCCurveOnSurface.h`
+- `SCLineCurve3d.h`
+- `SCNurbsCurve3d.h`
+- `SCNurbsSurface.h`
+- `SCOffsetSurface.h`
+- `SCPlaneSurface.h`
+- `SCRuledSurface.h`
+- `ISCSurface.h`
 - `TriangleMesh.h`
 
-删除：
+鍒犻櫎锛?
+- `ISCCurve3d.h`
 
-- `SCCurve3d.h`
+## 婧愮爜 Include/Brep
 
-## 源码 Include/Brep
-
-保留：
-
+淇濈暀锛?
 - `BodyBoolean.h`
 - `BrepBody.h`
 - `BrepCoedge.h`
@@ -125,14 +104,12 @@
 - `Tessellation.h`
 - `Topology.h`
 
-删除：
+鍒犻櫎锛?
+- 涓嶅啀淇濈暀棰濆鐨勫叕鍏卞寘瑁呭ご
 
-- 不再保留额外的公共包装头
+## 婧愮爜 Include/Support 涓?Include/Types
 
-## 源码 Include/Support 与 Include/Types
-
-保留：
-
+淇濈暀锛?
 - `Support/Epsilon.h`
 - `Support/Geometry2d/Normalize2.h`
 - `Support/Geometry2d/Predicate2.h`
@@ -140,13 +117,8 @@
 - `Types/Geometry3d/*`
 - `Types/Detail/Segment2Detail.h`
 
-删除：
+鍒犻櫎锛?
+- 鏃犵敤鏁存暟鍒悕鍜屽吋瀹硅緟鍔?- 鎵€鏈?`SC*` / `ISC*` 鍏煎澶?
+## ABI 璇存槑
 
-- 无用整数别名和兼容辅助
-- 所有 `SC*` / `ISC*` 兼容头
-
-## ABI 说明
-
-- 需要跨 DLL 的公共值类型，应继续放在导出头里并保持 `GEOMETRY_API`。
-- 不要为了 DLL 可见性给值类型额外加 `SC` 前缀。
-- 只供内部使用的类型，应放入 detail 头或源文件，而不是继续放进源码 `Include/`。
+- 闇€瑕佽法 DLL 鐨勫叕鍏卞€肩被鍨嬶紝搴旂户缁斁鍦ㄥ鍑哄ご閲屽苟淇濇寔 `GEOMETRY_API`銆?- 涓嶈涓轰簡 DLL 鍙鎬х粰鍊肩被鍨嬮澶栧姞 `SC` 鍓嶇紑銆?- 鍙緵鍐呴儴浣跨敤鐨勭被鍨嬶紝搴旀斁鍏?detail 澶存垨婧愭枃浠讹紝鑰屼笉鏄户缁斁杩涙簮鐮?`Include/`銆?

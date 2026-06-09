@@ -8,8 +8,8 @@
 #include "Support/Epsilon.h"
 #include "Brep/PolyhedronLoop3d.h"
 #include "Export/GeometryExport.h"
-#include "Types/Geometry3d/Box3.h"
-#include "Types/Geometry3d/Plane.h"
+#include "Types/Geometry3d/SCBox3.h"
+#include "Types/Geometry3d/SCPlane.h"
 
 namespace Geometry
 {
@@ -17,26 +17,25 @@ namespace Geometry
     {
     public:
         PolyhedronFace3d() = default;
-        explicit PolyhedronFace3d( PolyhedronLoop3d outerLoop ) : outerLoop_( std::move( outerLoop ) ) {}
-        PolyhedronFace3d( Plane supportPlane, PolyhedronLoop3d outerLoop,
-                          std::vector<PolyhedronLoop3d> holes = {} ) :
-            supportPlane_( supportPlane ),
-            outerLoop_( std::move( outerLoop ) ),
-            holes_( std::move( holes ) )
+        explicit PolyhedronFace3d(PolyhedronLoop3d outerLoop) : outerLoop_(std::move(outerLoop))
+        {
+        }
+        PolyhedronFace3d(SCPlane supportPlane, PolyhedronLoop3d outerLoop, std::vector<PolyhedronLoop3d> holes = {})
+            : supportPlane_(supportPlane), outerLoop_(std::move(outerLoop)), holes_(std::move(holes))
         {
         }
 
-        [[nodiscard]] bool IsValid( double eps = Geometry::kDefaultEpsilon ) const
+        [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
         {
-            if( !supportPlane_.IsValid( eps ) || !outerLoop_.IsValid( eps ) )
+            if (!supportPlane_.IsValid(eps) || !outerLoop_.IsValid(eps))
             {
                 return false;
             }
 
-            auto loopOnPlane = [&]( const PolyhedronLoop3d &loop ) {
-                for( const Point3d &vertex : loop.Vertices() )
+            auto loopOnPlane = [&](const PolyhedronLoop3d& loop) {
+                for (const SCPoint3d& vertex : loop.Vertices())
                 {
-                    if( std::abs( supportPlane_.SignedDistanceTo( vertex, eps ) ) > eps )
+                    if (std::abs(supportPlane_.SignedDistanceTo(vertex, eps)) > eps)
                     {
                         return false;
                     }
@@ -44,14 +43,14 @@ namespace Geometry
                 return true;
             };
 
-            if( !loopOnPlane( outerLoop_ ) )
+            if (!loopOnPlane(outerLoop_))
             {
                 return false;
             }
 
-            for( const PolyhedronLoop3d &hole : holes_ )
+            for (const PolyhedronLoop3d& hole : holes_)
             {
-                if( !hole.IsValid( eps ) || !loopOnPlane( hole ) )
+                if (!hole.IsValid(eps) || !loopOnPlane(hole))
                 {
                     return false;
                 }
@@ -60,22 +59,34 @@ namespace Geometry
             return true;
         }
 
-        [[nodiscard]] Plane SupportPlane() const { return supportPlane_; }
-
-        [[nodiscard]] PolyhedronLoop3d OuterLoop() const { return outerLoop_; }
-
-        [[nodiscard]] std::size_t HoleCount() const { return holes_.size(); }
-
-        [[nodiscard]] PolyhedronLoop3d HoleAt( std::size_t index ) const { return holes_.at( index ); }
-
-        [[nodiscard]] Box3d Bounds() const
+        [[nodiscard]] SCPlane SupportPlane() const
         {
-            Box3d bounds = outerLoop_.Bounds();
-            for( const PolyhedronLoop3d &hole : holes_ )
+            return supportPlane_;
+        }
+
+        [[nodiscard]] PolyhedronLoop3d OuterLoop() const
+        {
+            return outerLoop_;
+        }
+
+        [[nodiscard]] std::size_t HoleCount() const
+        {
+            return holes_.size();
+        }
+
+        [[nodiscard]] PolyhedronLoop3d HoleAt(std::size_t index) const
+        {
+            return holes_.at(index);
+        }
+
+        [[nodiscard]] SCBox3d Bounds() const
+        {
+            SCBox3d bounds = outerLoop_.Bounds();
+            for (const PolyhedronLoop3d& hole : holes_)
             {
-                for( const Point3d &vertex : hole.Vertices() )
+                for (const SCPoint3d& vertex : hole.Vertices())
                 {
-                    bounds.ExpandToInclude( vertex );
+                    bounds.ExpandToInclude(vertex);
                 }
             }
             return bounds;
@@ -89,8 +100,11 @@ namespace Geometry
         }
 
     private:
-        Plane supportPlane_{};
+        SCPlane supportPlane_{};
         PolyhedronLoop3d outerLoop_{};
         std::vector<PolyhedronLoop3d> holes_{};
     };
 }  // namespace Geometry
+
+
+

@@ -1,16 +1,16 @@
 #pragma once
 #include "Core/GeometryTypes.h"
-#include "Brep/BrepBody.h"
+#include "Brep/SCBrepBody.h"
 #include "Brep/PolyhedronBody.h"
 #include "Core/Section.h"
-#include "Geometry2d/Polygon2d.h"
-#include "Geometry2d/Polyline2d.h"
+#include "Geometry2d/SCPolygon2d.h"
+#include "Geometry2d/SCPolyline2d.h"
 #include "Geometry3d/TriangleMesh.h"
 #include "Support/Epsilon.h"
 
 namespace Geometry
 {
-    enum class PolygonValidationIssue2d
+    enum class SCPolygonValidationIssue2d
     {
         None,
         TooFewPoints,
@@ -19,13 +19,13 @@ namespace Geometry
         SelfIntersection
     };
 
-    struct GEOMETRY_API PolygonValidation2d
+    struct GEOMETRY_API SCPolygonValidation2d
     {
-        bool valid{ false };
-        PolygonValidationIssue2d issue{ PolygonValidationIssue2d::None };
+        bool valid{false};
+        SCPolygonValidationIssue2d issue{SCPolygonValidationIssue2d::None};
     };
 
-    enum class MeshValidationIssue3d
+    enum class SCMeshValidationIssue3d
     {
         None,
         InvalidVertex,
@@ -34,28 +34,28 @@ namespace Geometry
         DegenerateTriangle
     };
 
-    struct GEOMETRY_API MeshValidation3d
+    struct GEOMETRY_API SCMeshValidation3d
     {
-        bool valid{ false };
-        MeshValidationIssue3d issue{ MeshValidationIssue3d::None };
-        std::size_t elementIndex{ 0 };
+        bool valid{false};
+        SCMeshValidationIssue3d issue{SCMeshValidationIssue3d::None};
+        std::size_t elementIndex{0};
     };
 
-    enum class PolyhedronValidationIssue3d
+    enum class SCPolyhedronValidationIssue3d
     {
         None,
         EmptyBody,
         InvalidFace
     };
 
-    struct GEOMETRY_API PolyhedronValidation3d
+    struct GEOMETRY_API SCPolyhedronValidation3d
     {
-        bool valid{ false };
-        PolyhedronValidationIssue3d issue{ PolyhedronValidationIssue3d::None };
-        std::size_t faceIndex{ 0 };
+        bool valid{false};
+        SCPolyhedronValidationIssue3d issue{SCPolyhedronValidationIssue3d::None};
+        std::size_t faceIndex{0};
     };
 
-    enum class BrepValidationIssue3d
+    enum class SCBrepValidationIssue3d
     {
         None,
         EmptyBody,
@@ -65,14 +65,14 @@ namespace Geometry
         InvalidFaceAdjacency
     };
 
-    struct GEOMETRY_API BrepValidation3d
+    struct GEOMETRY_API SCBrepValidation3d
     {
-        bool valid{ false };
-        BrepValidationIssue3d issue{ BrepValidationIssue3d::None };
-        std::size_t elementIndex{ 0 };
+        bool valid{false};
+        SCBrepValidationIssue3d issue{SCBrepValidationIssue3d::None};
+        std::size_t elementIndex{0};
     };
 
-    enum class SectionValidationIssue3d
+    enum class SCSectionValidationIssue3d
     {
         None,
         InvalidSectionState,
@@ -82,25 +82,26 @@ namespace Geometry
         InvalidPolygon
     };
 
-    struct GEOMETRY_API SectionValidation3d
+    struct GEOMETRY_API SCSectionValidation3d
     {
-        bool valid{ false };
-        SectionValidationIssue3d issue{ SectionValidationIssue3d::None };
-        std::size_t elementIndex{ 0 };
+        bool valid{false};
+        SCSectionValidationIssue3d issue{SCSectionValidationIssue3d::None};
+        std::size_t elementIndex{0};
     };
 
-    [[nodiscard]] GEOMETRY_API bool HasSelfIntersection( const Polyline2d &ring,
-                                                         double eps = Geometry::kDefaultEpsilon );
-    [[nodiscard]] GEOMETRY_API PolygonValidation2d Validate( const Polyline2d &ring,
-                                                             double eps = Geometry::kDefaultEpsilon );
-    [[nodiscard]] GEOMETRY_API PolygonValidation2d Validate( const Polygon2d &polygon,
-                                                             double eps = Geometry::kDefaultEpsilon );
-    [[nodiscard]] GEOMETRY_API MeshValidation3d Validate( const TriangleMesh &mesh,
-                                                          double eps = Geometry::kDefaultEpsilon );
-    [[nodiscard]] GEOMETRY_API PolyhedronValidation3d Validate( const PolyhedronBody &body,
-                                                                double eps = Geometry::kDefaultEpsilon );
-    [[nodiscard]] GEOMETRY_API BrepValidation3d Validate( const BrepBody &body,
-                                                          const GeometryTolerance3d &tolerance = {} );
-    [[nodiscard]] GEOMETRY_API SectionValidation3d Validate( const PolyhedronSection3d &section,
-                                                             double eps = Geometry::kDefaultEpsilon );
+    [[nodiscard]] GEOMETRY_API bool HasSelfIntersection(const SCPolyline2d& ring, double eps = Geometry::kDefaultEpsilon);
+    [[nodiscard]] GEOMETRY_API SCPolygonValidation2d Validate(const SCPolyline2d& ring,
+                                                            double eps = Geometry::kDefaultEpsilon);
+    [[nodiscard]] GEOMETRY_API SCPolygonValidation2d Validate(const SCPolygon2d& polygon,
+                                                            double eps = Geometry::kDefaultEpsilon);
+    [[nodiscard]] GEOMETRY_API SCMeshValidation3d Validate(const TriangleMesh& mesh,
+                                                         double eps = Geometry::kDefaultEpsilon);
+    [[nodiscard]] GEOMETRY_API SCPolyhedronValidation3d Validate(const PolyhedronBody& body,
+                                                               double eps = Geometry::kDefaultEpsilon);
+    [[nodiscard]] GEOMETRY_API SCBrepValidation3d Validate(const SCBrepBody& body,
+                                                         const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCSectionValidation3d Validate(const SCPolyhedronSection3d& section,
+                                                            double eps = Geometry::kDefaultEpsilon);
 }  // namespace Geometry
+
+

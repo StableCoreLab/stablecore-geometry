@@ -1,4 +1,4 @@
-﻿#include "Brep/MeshOps.h"
+#include "Brep/MeshOps.h"
 
 #include <algorithm>
 #include <array>
@@ -11,7 +11,7 @@ namespace Geometry
 {
     namespace
     {
-        constexpr std::size_t kNoTriangle = std::size_t( -1 );
+        constexpr std::size_t kNoTriangle = std::size_t(-1);
 
         struct EdgeRecord
         {
@@ -22,62 +22,59 @@ namespace Geometry
 
         struct EdgeKey
         {
-            std::size_t first{ 0 };
-            std::size_t second{ 0 };
+            std::size_t first{0};
+            std::size_t second{0};
 
-            [[nodiscard]] bool operator==( const EdgeKey &other ) const = default;
+            [[nodiscard]] bool operator==(const EdgeKey& other) const = default;
         };
 
         struct EdgeKeyHash
         {
-            [[nodiscard]] std::size_t operator()( const EdgeKey &key ) const
+            [[nodiscard]] std::size_t operator()(const EdgeKey& key) const
             {
-                const std::size_t firstHash = std::hash<std::size_t>{}( key.first );
-                const std::size_t secondHash = std::hash<std::size_t>{}( key.second );
-                return firstHash ^
-                       ( secondHash + 0x9e3779b9U + ( firstHash << 6U ) + ( firstHash >> 2U ) );
+                const std::size_t firstHash = std::hash<std::size_t>{}(key.first);
+                const std::size_t secondHash = std::hash<std::size_t>{}(key.second);
+                return firstHash ^ (secondHash + 0x9e3779b9U + (firstHash << 6U) + (firstHash >> 2U));
             }
         };
 
-        [[nodiscard]] EdgeKey MakeUndirectedEdgeKey( std::size_t first, std::size_t second )
+        [[nodiscard]] EdgeKey MakeUndirectedEdgeKey(std::size_t first, std::size_t second)
         {
-            return EdgeKey{ std::min( first, second ), std::max( first, second ) };
+            return EdgeKey{std::min(first, second), std::max(first, second)};
         }
 
         [[nodiscard]] const std::array<std::array<std::size_t, 2>, 3> TriangleEdges(
-            const TriangleMesh::TriangleIndices &tri )
+            const TriangleMesh::TriangleIndices& tri)
         {
-            return { {
-                { tri[0], tri[1] },
-                { tri[1], tri[2] },
-                { tri[2], tri[0] },
-            } };
+            return {{
+                {tri[0], tri[1]},
+                {tri[1], tri[2]},
+                {tri[2], tri[0]},
+            }};
         }
 
-        [[nodiscard]] std::unordered_map<EdgeKey, EdgeRecord, EdgeKeyHash> BuildEdgeRecords(
-            const TriangleMesh &mesh )
+        [[nodiscard]] std::unordered_map<EdgeKey, EdgeRecord, EdgeKeyHash> BuildEdgeRecords(const TriangleMesh& mesh)
         {
             std::unordered_map<EdgeKey, EdgeRecord, EdgeKeyHash> edgeRecords;
-            edgeRecords.reserve( mesh.TriangleCount() * 3 );
-            for( std::size_t triangleIndex = 0; triangleIndex < mesh.TriangleCount(); ++triangleIndex )
+            edgeRecords.reserve(mesh.TriangleCount() * 3);
+            for (std::size_t triangleIndex = 0; triangleIndex < mesh.TriangleCount(); ++triangleIndex)
             {
-                const auto edges = TriangleEdges( mesh.TriangleIndicesAt( triangleIndex ) );
-                for( std::size_t edgeIndex = 0; edgeIndex < edges.size(); ++edgeIndex )
+                const auto edges = TriangleEdges(mesh.TriangleIndicesAt(triangleIndex));
+                for (std::size_t edgeIndex = 0; edgeIndex < edges.size(); ++edgeIndex)
                 {
-                    const EdgeKey key =
-                        MakeUndirectedEdgeKey( edges[edgeIndex][0], edges[edgeIndex][1] );
-                    EdgeRecord &record = edgeRecords[key];
-                    record.triangleIndices.push_back( triangleIndex );
-                    record.edgeIndices.push_back( edgeIndex );
-                    record.directedEdges.push_back( edges[edgeIndex] );
+                    const EdgeKey key = MakeUndirectedEdgeKey(edges[edgeIndex][0], edges[edgeIndex][1]);
+                    EdgeRecord& record = edgeRecords[key];
+                    record.triangleIndices.push_back(triangleIndex);
+                    record.edgeIndices.push_back(edgeIndex);
+                    record.directedEdges.push_back(edges[edgeIndex]);
                 }
             }
             return edgeRecords;
         }
 
-        [[nodiscard]] bool HasOppositeOrientation( const EdgeRecord &record )
+        [[nodiscard]] bool HasOppositeOrientation(const EdgeRecord& record)
         {
-            if( record.directedEdges.size() != 2 )
+            if (record.directedEdges.size() != 2)
             {
                 return false;
             }
@@ -87,17 +84,17 @@ namespace Geometry
         }
     }  // namespace
 
-    Vector3d TriangleNormal( const TriangleMesh &mesh, std::size_t triangleIndex, double eps )
+    SCVector3d TriangleNormal(const TriangleMesh& mesh, std::size_t triangleIndex, double eps)
     {
-        if( !mesh.IsValid( eps ) || triangleIndex >= mesh.TriangleCount() )
+        if (!mesh.IsValid(eps) || triangleIndex >= mesh.TriangleCount())
         {
             return {};
         }
 
-        const Triangle3d triangle = mesh.TriangleAt( triangleIndex );
-        const Vector3d normal = triangle.Normal();
+        const SCTriangle3d triangle = mesh.TriangleAt(triangleIndex);
+        const SCVector3d normal = triangle.Normal();
         const double length = normal.Length();
-        if( length <= eps )
+        if (length <= eps)
         {
             return {};
         }
@@ -105,38 +102,38 @@ namespace Geometry
         return normal / length;
     }
 
-    std::vector<Vector3d> ComputeTriangleNormals( const TriangleMesh &mesh, double eps )
+    std::vector<SCVector3d> ComputeTriangleNormals(const TriangleMesh& mesh, double eps)
     {
-        std::vector<Vector3d> normals;
-        normals.reserve( mesh.TriangleCount() );
-        for( std::size_t i = 0; i < mesh.TriangleCount(); ++i )
+        std::vector<SCVector3d> normals;
+        normals.reserve(mesh.TriangleCount());
+        for (std::size_t i = 0; i < mesh.TriangleCount(); ++i)
         {
-            normals.push_back( TriangleNormal( mesh, i, eps ) );
+            normals.push_back(TriangleNormal(mesh, i, eps));
         }
         return normals;
     }
 
-    Vector3d VertexNormal( const TriangleMesh &mesh, std::size_t vertexIndex, double eps )
+    SCVector3d VertexNormal(const TriangleMesh& mesh, std::size_t vertexIndex, double eps)
     {
-        if( !mesh.IsValid( eps ) || vertexIndex >= mesh.VertexCount() )
+        if (!mesh.IsValid(eps) || vertexIndex >= mesh.VertexCount())
         {
             return {};
         }
 
-        Vector3d accumulated{};
-        for( std::size_t i = 0; i < mesh.TriangleCount(); ++i )
+        SCVector3d accumulated{};
+        for (std::size_t i = 0; i < mesh.TriangleCount(); ++i)
         {
-            const TriangleMesh::TriangleIndices tri = mesh.TriangleIndicesAt( i );
-            if( tri[0] != vertexIndex && tri[1] != vertexIndex && tri[2] != vertexIndex )
+            const TriangleMesh::TriangleIndices tri = mesh.TriangleIndicesAt(i);
+            if (tri[0] != vertexIndex && tri[1] != vertexIndex && tri[2] != vertexIndex)
             {
                 continue;
             }
 
-            accumulated = accumulated + mesh.TriangleAt( i ).Normal();
+            accumulated = accumulated + mesh.TriangleAt(i).Normal();
         }
 
         const double length = accumulated.Length();
-        if( length <= eps )
+        if (length <= eps)
         {
             return {};
         }
@@ -144,30 +141,30 @@ namespace Geometry
         return accumulated / length;
     }
 
-    std::vector<Vector3d> ComputeVertexNormals( const TriangleMesh &mesh, double eps )
+    std::vector<SCVector3d> ComputeVertexNormals(const TriangleMesh& mesh, double eps)
     {
-        std::vector<Vector3d> normals;
-        normals.reserve( mesh.VertexCount() );
-        for( std::size_t i = 0; i < mesh.VertexCount(); ++i )
+        std::vector<SCVector3d> normals;
+        normals.reserve(mesh.VertexCount());
+        for (std::size_t i = 0; i < mesh.VertexCount(); ++i)
         {
-            normals.push_back( VertexNormal( mesh, i, eps ) );
+            normals.push_back(VertexNormal(mesh, i, eps));
         }
         return normals;
     }
 
-    std::vector<MeshTriangleAdjacency3d> ComputeTriangleAdjacency( const TriangleMesh &mesh )
+    std::vector<MeshTriangleAdjacency3d> ComputeTriangleAdjacency(const TriangleMesh& mesh)
     {
-        std::vector<MeshTriangleAdjacency3d> adjacency( mesh.TriangleCount() );
-        if( !mesh.IsValid() )
+        std::vector<MeshTriangleAdjacency3d> adjacency(mesh.TriangleCount());
+        if (!mesh.IsValid())
         {
             return adjacency;
         }
 
-        const auto edgeRecords = BuildEdgeRecords( mesh );
-        for( const auto &[key, record] : edgeRecords )
+        const auto edgeRecords = BuildEdgeRecords(mesh);
+        for (const auto& [key, record] : edgeRecords)
         {
             (void)key;
-            if( record.triangleIndices.size() != 2 )
+            if (record.triangleIndices.size() != 2)
             {
                 continue;
             }
@@ -183,80 +180,80 @@ namespace Geometry
         return adjacency;
     }
 
-    MeshTriangleAdjacency3d TriangleAdjacency( const TriangleMesh &mesh, std::size_t triangleIndex )
+    MeshTriangleAdjacency3d TriangleAdjacency(const TriangleMesh& mesh, std::size_t triangleIndex)
     {
-        if( triangleIndex >= mesh.TriangleCount() )
+        if (triangleIndex >= mesh.TriangleCount())
         {
             return {};
         }
 
-        return ComputeTriangleAdjacency( mesh ).at( triangleIndex );
+        return ComputeTriangleAdjacency(mesh).at(triangleIndex);
     }
 
-    std::vector<MeshBoundaryEdge3d> ExtractBoundaryEdges( const TriangleMesh &mesh )
+    std::vector<MeshBoundaryEdge3d> ExtractBoundaryEdges(const TriangleMesh& mesh)
     {
         std::vector<MeshBoundaryEdge3d> boundaryEdges;
-        if( !mesh.IsValid() )
+        if (!mesh.IsValid())
         {
             return boundaryEdges;
         }
 
-        const auto edgeRecords = BuildEdgeRecords( mesh );
-        boundaryEdges.reserve( mesh.TriangleCount() );
-        for( const auto &[key, record] : edgeRecords )
+        const auto edgeRecords = BuildEdgeRecords(mesh);
+        boundaryEdges.reserve(mesh.TriangleCount());
+        for (const auto& [key, record] : edgeRecords)
         {
             (void)key;
-            if( record.triangleIndices.size() != 1 || record.edgeIndices.size() != 1 )
+            if (record.triangleIndices.size() != 1 || record.edgeIndices.size() != 1)
             {
                 continue;
             }
 
             const std::size_t triangleIndex = record.triangleIndices[0];
             const std::size_t edgeIndex = record.edgeIndices[0];
-            const auto edges = TriangleEdges( mesh.TriangleIndicesAt( triangleIndex ) );
-            boundaryEdges.push_back( MeshBoundaryEdge3d{ triangleIndex, edgeIndex, edges[edgeIndex] } );
+            const auto edges = TriangleEdges(mesh.TriangleIndicesAt(triangleIndex));
+            boundaryEdges.push_back(MeshBoundaryEdge3d{triangleIndex, edgeIndex, edges[edgeIndex]});
         }
 
         return boundaryEdges;
     }
 
-    bool IsClosedTriangleMesh( const TriangleMesh &mesh )
+    bool IsClosedTriangleMesh(const TriangleMesh& mesh)
     {
-        return mesh.IsValid() && ExtractBoundaryEdges( mesh ).empty();
+        return mesh.IsValid() && ExtractBoundaryEdges(mesh).empty();
     }
 
-    std::vector<MeshBoundaryLoop3d> ExtractBoundaryLoops( const TriangleMesh &mesh )
+    std::vector<MeshBoundaryLoop3d> ExtractBoundaryLoops(const TriangleMesh& mesh)
     {
         std::vector<MeshBoundaryLoop3d> loops;
-        const auto boundaryEdges = ExtractBoundaryEdges( mesh );
-        if( boundaryEdges.empty() )
+        const auto boundaryEdges = ExtractBoundaryEdges(mesh);
+        if (boundaryEdges.empty())
         {
             return loops;
         }
 
         std::unordered_map<std::size_t, std::vector<std::size_t>> outgoingEdges;
-        outgoingEdges.reserve( boundaryEdges.size() );
+        outgoingEdges.reserve(boundaryEdges.size());
         std::unordered_map<std::size_t, std::size_t> incomingCount;
-        incomingCount.reserve( boundaryEdges.size() );
-        for( std::size_t i = 0; i < boundaryEdges.size(); ++i )
+        incomingCount.reserve(boundaryEdges.size());
+        for (std::size_t i = 0; i < boundaryEdges.size(); ++i)
         {
-            outgoingEdges[boundaryEdges[i].vertexIndices[0]].push_back( i );
+            outgoingEdges[boundaryEdges[i].vertexIndices[0]].push_back(i);
             ++incomingCount[boundaryEdges[i].vertexIndices[1]];
-            incomingCount.try_emplace( boundaryEdges[i].vertexIndices[0], 0 );
+            incomingCount.try_emplace(boundaryEdges[i].vertexIndices[0], 0);
         }
 
-        std::vector<bool> visited( boundaryEdges.size(), false );
+        std::vector<bool> visited(boundaryEdges.size(), false);
         std::size_t visitedCount = 0;
-        auto nextUnusedOutgoing = [&]( std::size_t vertex ) -> std::size_t {
-            const auto it = outgoingEdges.find( vertex );
-            if( it == outgoingEdges.end() )
+        auto nextUnusedOutgoing = [&](std::size_t vertex) -> std::size_t {
+            const auto it = outgoingEdges.find(vertex);
+            if (it == outgoingEdges.end())
             {
                 return kNoTriangle;
             }
 
-            for( std::size_t edgeIndex : it->second )
+            for (std::size_t edgeIndex : it->second)
             {
-                if( !visited[edgeIndex] )
+                if (!visited[edgeIndex])
                 {
                     return edgeIndex;
                 }
@@ -265,29 +262,29 @@ namespace Geometry
             return kNoTriangle;
         };
 
-        while( visitedCount < boundaryEdges.size() )
+        while (visitedCount < boundaryEdges.size())
         {
             std::size_t seedEdge = kNoTriangle;
-            for( std::size_t i = 0; i < boundaryEdges.size(); ++i )
+            for (std::size_t i = 0; i < boundaryEdges.size(); ++i)
             {
-                if( visited[i] )
+                if (visited[i])
                 {
                     continue;
                 }
 
-                if( incomingCount[boundaryEdges[i].vertexIndices[0]] == 0 )
+                if (incomingCount[boundaryEdges[i].vertexIndices[0]] == 0)
                 {
                     seedEdge = i;
                     break;
                 }
 
-                if( seedEdge == kNoTriangle )
+                if (seedEdge == kNoTriangle)
                 {
                     seedEdge = i;
                 }
             }
 
-            if( seedEdge == kNoTriangle )
+            if (seedEdge == kNoTriangle)
             {
                 break;
             }
@@ -295,27 +292,27 @@ namespace Geometry
             MeshBoundaryLoop3d loop;
             std::size_t currentEdge = seedEdge;
             const std::size_t startVertex = boundaryEdges[currentEdge].vertexIndices[0];
-            loop.vertexIndices.push_back( startVertex );
-            while( currentEdge != kNoTriangle && !visited[currentEdge] )
+            loop.vertexIndices.push_back(startVertex);
+            while (currentEdge != kNoTriangle && !visited[currentEdge])
             {
                 visited[currentEdge] = true;
                 ++visitedCount;
 
-                const auto &edge = boundaryEdges[currentEdge];
+                const auto& edge = boundaryEdges[currentEdge];
                 const std::size_t nextVertex = edge.vertexIndices[1];
-                if( loop.vertexIndices.empty() || loop.vertexIndices.back() != nextVertex )
+                if (loop.vertexIndices.empty() || loop.vertexIndices.back() != nextVertex)
                 {
-                    loop.vertexIndices.push_back( nextVertex );
+                    loop.vertexIndices.push_back(nextVertex);
                 }
 
-                const std::size_t candidate = nextUnusedOutgoing( nextVertex );
-                if( candidate == kNoTriangle )
+                const std::size_t candidate = nextUnusedOutgoing(nextVertex);
+                if (candidate == kNoTriangle)
                 {
                     currentEdge = kNoTriangle;
                     break;
                 }
 
-                if( boundaryEdges[candidate].vertexIndices[1] == startVertex )
+                if (boundaryEdges[candidate].vertexIndices[1] == startVertex)
                 {
                     visited[candidate] = true;
                     ++visitedCount;
@@ -327,123 +324,122 @@ namespace Geometry
                 currentEdge = candidate;
             }
 
-            if( loop.closed && !loop.vertexIndices.empty() && loop.vertexIndices.back() == startVertex )
+            if (loop.closed && !loop.vertexIndices.empty() && loop.vertexIndices.back() == startVertex)
             {
                 loop.vertexIndices.pop_back();
             }
 
-            if( loop.IsValid() )
+            if (loop.IsValid())
             {
-                loops.push_back( std::move( loop ) );
+                loops.push_back(std::move(loop));
             }
         }
 
         return loops;
     }
 
-    std::vector<MeshNonManifoldEdge3d> ExtractNonManifoldEdges( const TriangleMesh &mesh )
+    std::vector<MeshNonManifoldEdge3d> ExtractNonManifoldEdges(const TriangleMesh& mesh)
     {
         std::vector<MeshNonManifoldEdge3d> nonManifoldEdges;
-        if( !mesh.IsValid() )
+        if (!mesh.IsValid())
         {
             return nonManifoldEdges;
         }
 
-        const auto edgeRecords = BuildEdgeRecords( mesh );
-        for( const auto &[key, record] : edgeRecords )
+        const auto edgeRecords = BuildEdgeRecords(mesh);
+        for (const auto& [key, record] : edgeRecords)
         {
-            if( record.triangleIndices.size() <= 2 )
+            if (record.triangleIndices.size() <= 2)
             {
                 continue;
             }
 
-            nonManifoldEdges.push_back(
-                MeshNonManifoldEdge3d{ { key.first, key.second }, record.triangleIndices } );
+            nonManifoldEdges.push_back(MeshNonManifoldEdge3d{{key.first, key.second}, record.triangleIndices});
         }
 
         return nonManifoldEdges;
     }
 
-    bool IsManifoldTriangleMesh( const TriangleMesh &mesh )
+    bool IsManifoldTriangleMesh(const TriangleMesh& mesh)
     {
-        return mesh.IsValid() && ExtractNonManifoldEdges( mesh ).empty();
+        return mesh.IsValid() && ExtractNonManifoldEdges(mesh).empty();
     }
 
-    std::vector<std::vector<std::size_t>> ComputeTriangleConnectedComponents( const TriangleMesh &mesh )
+    std::vector<std::vector<std::size_t>> ComputeTriangleConnectedComponents(const TriangleMesh& mesh)
     {
         std::vector<std::vector<std::size_t>> components;
-        if( !mesh.IsValid() )
+        if (!mesh.IsValid())
         {
             return components;
         }
 
-        const auto edgeRecords = BuildEdgeRecords( mesh );
-        std::vector<std::vector<std::size_t>> neighbors( mesh.TriangleCount() );
-        for( const auto &[key, record] : edgeRecords )
+        const auto edgeRecords = BuildEdgeRecords(mesh);
+        std::vector<std::vector<std::size_t>> neighbors(mesh.TriangleCount());
+        for (const auto& [key, record] : edgeRecords)
         {
             (void)key;
-            for( std::size_t i = 0; i < record.triangleIndices.size(); ++i )
+            for (std::size_t i = 0; i < record.triangleIndices.size(); ++i)
             {
-                for( std::size_t j = i + 1; j < record.triangleIndices.size(); ++j )
+                for (std::size_t j = i + 1; j < record.triangleIndices.size(); ++j)
                 {
-                    neighbors[record.triangleIndices[i]].push_back( record.triangleIndices[j] );
-                    neighbors[record.triangleIndices[j]].push_back( record.triangleIndices[i] );
+                    neighbors[record.triangleIndices[i]].push_back(record.triangleIndices[j]);
+                    neighbors[record.triangleIndices[j]].push_back(record.triangleIndices[i]);
                 }
             }
         }
 
-        std::vector<bool> visited( mesh.TriangleCount(), false );
-        for( std::size_t seed = 0; seed < mesh.TriangleCount(); ++seed )
+        std::vector<bool> visited(mesh.TriangleCount(), false);
+        for (std::size_t seed = 0; seed < mesh.TriangleCount(); ++seed)
         {
-            if( visited[seed] )
+            if (visited[seed])
             {
                 continue;
             }
 
             std::vector<std::size_t> component;
-            std::deque<std::size_t> queue{ seed };
+            std::deque<std::size_t> queue{seed};
             visited[seed] = true;
-            while( !queue.empty() )
+            while (!queue.empty())
             {
                 const std::size_t triangleIndex = queue.front();
                 queue.pop_front();
-                component.push_back( triangleIndex );
+                component.push_back(triangleIndex);
 
-                for( std::size_t neighbor : neighbors[triangleIndex] )
+                for (std::size_t neighbor : neighbors[triangleIndex])
                 {
-                    if( visited[neighbor] )
+                    if (visited[neighbor])
                     {
                         continue;
                     }
 
                     visited[neighbor] = true;
-                    queue.push_back( neighbor );
+                    queue.push_back(neighbor);
                 }
             }
 
-            components.push_back( std::move( component ) );
+            components.push_back(std::move(component));
         }
 
         return components;
     }
 
-    bool IsConsistentlyOrientedTriangleMesh( const TriangleMesh &mesh )
+    bool IsConsistentlyOrientedTriangleMesh(const TriangleMesh& mesh)
     {
-        if( !mesh.IsValid() )
+        if (!mesh.IsValid())
         {
             return false;
         }
 
-        const auto edgeRecords = BuildEdgeRecords( mesh );
-        for( const auto &[key, record] : edgeRecords )
+        const auto edgeRecords = BuildEdgeRecords(mesh);
+        for (const auto& [key, record] : edgeRecords)
         {
             (void)key;
-            if( record.triangleIndices.size() <= 1 )
+            if (record.triangleIndices.size() <= 1)
             {
                 continue;
             }
 
-            if( record.triangleIndices.size() != 2 || !HasOppositeOrientation( record ) )
+            if (record.triangleIndices.size() != 2 || !HasOppositeOrientation(record))
             {
                 return false;
             }
@@ -452,61 +448,61 @@ namespace Geometry
         return true;
     }
 
-    std::vector<MeshShell3d> ComputeMeshShells( const TriangleMesh &mesh )
+    std::vector<MeshShell3d> ComputeMeshShells(const TriangleMesh& mesh)
     {
         std::vector<MeshShell3d> shells;
-        if( !mesh.IsValid() )
+        if (!mesh.IsValid())
         {
             return shells;
         }
 
-        const auto components = ComputeTriangleConnectedComponents( mesh );
-        if( components.empty() )
+        const auto components = ComputeTriangleConnectedComponents(mesh);
+        if (components.empty())
         {
             return shells;
         }
 
-        std::vector<std::size_t> componentByTriangle( mesh.TriangleCount(), kNoTriangle );
-        shells.reserve( components.size() );
-        for( std::size_t componentIndex = 0; componentIndex < components.size(); ++componentIndex )
+        std::vector<std::size_t> componentByTriangle(mesh.TriangleCount(), kNoTriangle);
+        shells.reserve(components.size());
+        for (std::size_t componentIndex = 0; componentIndex < components.size(); ++componentIndex)
         {
             MeshShell3d shell;
             shell.triangleIndices = components[componentIndex];
             shell.closed = true;
             shell.manifold = true;
             shell.consistentlyOriented = true;
-            for( std::size_t triangleIndex : components[componentIndex] )
+            for (std::size_t triangleIndex : components[componentIndex])
             {
                 componentByTriangle[triangleIndex] = componentIndex;
             }
-            shells.push_back( std::move( shell ) );
+            shells.push_back(std::move(shell));
         }
 
-        const auto edgeRecords = BuildEdgeRecords( mesh );
-        for( const auto &[key, record] : edgeRecords )
+        const auto edgeRecords = BuildEdgeRecords(mesh);
+        for (const auto& [key, record] : edgeRecords)
         {
             (void)key;
-            if( record.triangleIndices.empty() )
+            if (record.triangleIndices.empty())
             {
                 continue;
             }
 
             const std::size_t shellIndex = componentByTriangle[record.triangleIndices.front()];
-            MeshShell3d &shell = shells[shellIndex];
-            if( record.triangleIndices.size() == 1 )
+            MeshShell3d& shell = shells[shellIndex];
+            if (record.triangleIndices.size() == 1)
             {
                 shell.closed = false;
                 continue;
             }
 
-            if( record.triangleIndices.size() != 2 )
+            if (record.triangleIndices.size() != 2)
             {
                 shell.manifold = false;
                 shell.consistentlyOriented = false;
                 continue;
             }
 
-            if( !HasOppositeOrientation( record ) )
+            if (!HasOppositeOrientation(record))
             {
                 shell.consistentlyOriented = false;
             }

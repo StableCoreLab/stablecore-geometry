@@ -1,4 +1,4 @@
-﻿#include "Core/Projection.h"
+#include "Core/Projection.h"
 
 #include <algorithm>
 #include <cmath>
@@ -12,170 +12,173 @@ namespace Geometry
 {
     namespace
     {
-        [[nodiscard]] double Clamp01( double value ) { return std::max( 0.0, std::min( 1.0, value ) ); }
+        [[nodiscard]] double Clamp01(double value)
+        {
+            return std::max(0.0, std::min(1.0, value));
+        }
 
-        [[nodiscard]] double NormalizeAngle( double angle )
+        [[nodiscard]] double NormalizeAngle(double angle)
         {
             constexpr double kTwoPi = 2.0 * std::numbers::pi_v<double>;
-            angle = std::fmod( angle, kTwoPi );
-            if( angle < 0.0 )
+            angle = std::fmod(angle, kTwoPi);
+            if (angle < 0.0)
             {
                 angle += kTwoPi;
             }
             return angle;
         }
 
-        [[nodiscard]] double SignedAngleDelta( double startAngle, double endAngle )
+        [[nodiscard]] double SignedAngleDelta(double startAngle, double endAngle)
         {
-            return NormalizeAngle( endAngle - startAngle );
+            return NormalizeAngle(endAngle - startAngle);
         }
 
-        [[nodiscard]] double ParameterOnArc( const ArcSegment2d &segment, double angle )
+        [[nodiscard]] double ParameterOnArc(const SCArcSegment2d& segment, double angle)
         {
-            if( segment.sweepAngle >= 0.0 )
+            if (segment.sweepAngle >= 0.0)
             {
-                return SignedAngleDelta( segment.startAngle, angle ) / segment.sweepAngle;
+                return SignedAngleDelta(segment.startAngle, angle) / segment.sweepAngle;
             }
 
-            return -SignedAngleDelta( angle, segment.startAngle ) / segment.sweepAngle;
+            return -SignedAngleDelta(angle, segment.startAngle) / segment.sweepAngle;
         }
 
-        [[nodiscard]] Vector2d LeftNormal( const Vector2d &tangent )
+        [[nodiscard]] SCVector2d LeftNormal(const SCVector2d& tangent)
         {
-            return Vector2d{ -tangent.y, tangent.x };
+            return SCVector2d{-tangent.y, tangent.x};
         }
     }  // namespace
 
-    SegmentProjection2d ProjectPointToLineSegment( const Point2d &point, const LineSegment2d &segment,
-                                                   bool clampToSegment )
+    SCSegmentProjection2d ProjectPointToLineSegment(const SCPoint2d& point,
+                                                  const SCLineSegment2d& segment,
+                                                  bool clampToSegment)
     {
-        if( !segment.IsValid() )
+        if (!segment.IsValid())
         {
-            return SegmentProjection2d{ segment.startPoint, 0.0,
-                                        DistanceSquared( point, segment.startPoint ), true };
+            return SCSegmentProjection2d{segment.startPoint, 0.0, DistanceSquared(point, segment.startPoint), true};
         }
 
-        const Vector2d direction = segment.endPoint - segment.startPoint;
+        const SCVector2d direction = segment.endPoint - segment.startPoint;
         const double lengthSquared = direction.LengthSquared();
-        const double rawParameter =
-            Geometry::Dot( point - segment.startPoint, direction ) / lengthSquared;
-        const double parameter = clampToSegment ? Clamp01( rawParameter ) : rawParameter;
-        const Point2d projectedPoint = segment.PointAt( parameter );
+        const double rawParameter = Geometry::Dot(point - segment.startPoint, direction) / lengthSquared;
+        const double parameter = clampToSegment ? Clamp01(rawParameter) : rawParameter;
+        const SCPoint2d projectedPoint = segment.PointAt(parameter);
 
-        return SegmentProjection2d{ projectedPoint, parameter, DistanceSquared( point, projectedPoint ),
-                                    rawParameter >= -Geometry::kProjectionDefaultEpsilon &&
-                                        rawParameter <= 1.0 + Geometry::kProjectionDefaultEpsilon };
+        return SCSegmentProjection2d{projectedPoint,
+                                   parameter,
+                                   DistanceSquared(point, projectedPoint),
+                                   rawParameter >= -Geometry::kProjectionDefaultEpsilon &&
+                                       rawParameter <= 1.0 + Geometry::kProjectionDefaultEpsilon};
     }
 
-    SegmentProjection2d ProjectPointToArcSegment( const Point2d &point, const ArcSegment2d &segment,
-                                                  bool clampToSegment )
+    SCSegmentProjection2d ProjectPointToArcSegment(const SCPoint2d& point, const SCArcSegment2d& segment, bool clampToSegment)
     {
-        if( !segment.IsValid() )
+        if (!segment.IsValid())
         {
-            return SegmentProjection2d{};
+            return SCSegmentProjection2d{};
         }
 
-        const Vector2d radial = point - segment.center;
-        double angle = std::atan2( radial.y, radial.x );
-        const double rawParameter = ParameterOnArc( segment, angle );
-        const double parameter = clampToSegment ? Clamp01( rawParameter ) : rawParameter;
-        const Point2d projectedPoint = segment.PointAt( parameter );
+        const SCVector2d radial = point - segment.center;
+        double angle = std::atan2(radial.y, radial.x);
+        const double rawParameter = ParameterOnArc(segment, angle);
+        const double parameter = clampToSegment ? Clamp01(rawParameter) : rawParameter;
+        const SCPoint2d projectedPoint = segment.PointAt(parameter);
 
-        return SegmentProjection2d{ projectedPoint, parameter, DistanceSquared( point, projectedPoint ),
-                                    rawParameter >= -Geometry::kProjectionDefaultEpsilon &&
-                                        rawParameter <= 1.0 + Geometry::kProjectionDefaultEpsilon };
+        return SCSegmentProjection2d{projectedPoint,
+                                   parameter,
+                                   DistanceSquared(point, projectedPoint),
+                                   rawParameter >= -Geometry::kProjectionDefaultEpsilon &&
+                                       rawParameter <= 1.0 + Geometry::kProjectionDefaultEpsilon};
     }
 
-    SegmentProjection2d ProjectPointToSegment( const Point2d &point, const Segment2d &segment,
-                                               bool clampToSegment )
+    SCSegmentProjection2d ProjectPointToSegment(const SCPoint2d& point, const ISCSegment2d& segment, bool clampToSegment)
     {
-        if( segment.Kind() == SegmentKind2::Line )
+        if (segment.Kind() == SCSegmentKind2::Line)
         {
-            return ProjectPointToLineSegment( point, static_cast<const LineSegment2d &>( segment ),
-                                              clampToSegment );
+            return ProjectPointToLineSegment(point, static_cast<const SCLineSegment2d&>(segment), clampToSegment);
         }
 
-        return ProjectPointToArcSegment( point, static_cast<const ArcSegment2d &>( segment ),
-                                         clampToSegment );
+        return ProjectPointToArcSegment(point, static_cast<const SCArcSegment2d&>(segment), clampToSegment);
     }
 
-    double ParameterAtLength( const LineSegment2d &segment, double length, bool clampToSegment )
+    double ParameterAtLength(const SCLineSegment2d& segment, double length, bool clampToSegment)
     {
         const double totalLength = segment.Length();
-        if( totalLength <= Geometry::kProjectionDefaultEpsilon )
+        if (totalLength <= Geometry::kProjectionDefaultEpsilon)
         {
             return 0.0;
         }
 
-        if( clampToSegment )
+        if (clampToSegment)
         {
-            length = std::max( 0.0, std::min( length, totalLength ) );
+            length = std::max(0.0, std::min(length, totalLength));
         }
         return length / totalLength;
     }
 
-    double ParameterAtLength( const ArcSegment2d &segment, double length, bool clampToSegment )
+    double ParameterAtLength(const SCArcSegment2d& segment, double length, bool clampToSegment)
     {
         const double totalLength = segment.Length();
-        if( totalLength <= Geometry::kProjectionDefaultEpsilon )
+        if (totalLength <= Geometry::kProjectionDefaultEpsilon)
         {
             return 0.0;
         }
 
-        if( clampToSegment )
+        if (clampToSegment)
         {
-            length = std::max( 0.0, std::min( length, totalLength ) );
+            length = std::max(0.0, std::min(length, totalLength));
         }
         return length / totalLength;
     }
 
-    Vector2d TangentAt( const LineSegment2d &segment, double )
+    SCVector2d TangentAt(const SCLineSegment2d& segment, double)
     {
-        const Vector2d direction = segment.endPoint - segment.startPoint;
+        const SCVector2d direction = segment.endPoint - segment.startPoint;
         const double length = direction.Length();
-        if( length <= Geometry::kProjectionDefaultEpsilon )
+        if (length <= Geometry::kProjectionDefaultEpsilon)
         {
-            return Vector2d{};
+            return SCVector2d{};
         }
         return direction / length;
     }
 
-    Vector2d TangentAt( const ArcSegment2d &segment, double parameter )
+    SCVector2d TangentAt(const SCArcSegment2d& segment, double parameter)
     {
-        const Point2d point = segment.PointAt( parameter );
-        Vector2d radial = point - segment.center;
+        const SCPoint2d point = segment.PointAt(parameter);
+        SCVector2d radial = point - segment.center;
         const double radialLength = radial.Length();
-        if( radialLength <= Geometry::kProjectionDefaultEpsilon )
+        if (radialLength <= Geometry::kProjectionDefaultEpsilon)
         {
-            return Vector2d{};
+            return SCVector2d{};
         }
         radial = radial / radialLength;
-        return segment.Direction() == ArcDirection::CounterClockwise ? Vector2d{ -radial.y, radial.x }
-                                                                     : Vector2d{ radial.y, -radial.x };
+        return segment.Direction() == SCArcDirection::CounterClockwise ? SCVector2d{-radial.y, radial.x}
+                                                                     : SCVector2d{radial.y, -radial.x};
     }
 
-    Vector2d TangentAt( const Segment2d &segment, double parameter )
+    SCVector2d TangentAt(const ISCSegment2d& segment, double parameter)
     {
-        if( segment.Kind() == SegmentKind2::Line )
+        if (segment.Kind() == SCSegmentKind2::Line)
         {
-            return TangentAt( static_cast<const LineSegment2d &>( segment ), parameter );
+            return TangentAt(static_cast<const SCLineSegment2d&>(segment), parameter);
         }
 
-        return TangentAt( static_cast<const ArcSegment2d &>( segment ), parameter );
+        return TangentAt(static_cast<const SCArcSegment2d&>(segment), parameter);
     }
 
-    Vector2d NormalAt( const LineSegment2d &segment, double parameter )
+    SCVector2d NormalAt(const SCLineSegment2d& segment, double parameter)
     {
-        return LeftNormal( TangentAt( segment, parameter ) );
+        return LeftNormal(TangentAt(segment, parameter));
     }
 
-    Vector2d NormalAt( const ArcSegment2d &segment, double parameter )
+    SCVector2d NormalAt(const SCArcSegment2d& segment, double parameter)
     {
-        return LeftNormal( TangentAt( segment, parameter ) );
+        return LeftNormal(TangentAt(segment, parameter));
     }
 
-    Vector2d NormalAt( const Segment2d &segment, double parameter )
+    SCVector2d NormalAt(const ISCSegment2d& segment, double parameter)
     {
-        return LeftNormal( TangentAt( segment, parameter ) );
+        return LeftNormal(TangentAt(segment, parameter));
     }
 }  // namespace Geometry
+

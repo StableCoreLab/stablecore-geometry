@@ -35,7 +35,7 @@ namespace Geometry
 ```cpp
 struct Point2d;
 struct Vector2d;
-struct Segment2d;
+struct ISCSegment2d;
 struct Box2d;
 struct ProjectionResult;
 ```
@@ -102,7 +102,7 @@ intersectionPoint
 ### 4.2 成员变量统一使用 `m_` 前缀
 
 ```cpp
-class Segment2d
+class ISCSegment2d
 {
 public:
     Point2d m_start;
@@ -196,7 +196,7 @@ struct SegmentIntersectionResult
 ```text
 Point2d.h
 Vector2d.h
-Segment2d.h
+ISCSegment2d.h
 Distance2d.h
 Distance2d.cpp
 Intersect2d.h

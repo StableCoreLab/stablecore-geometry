@@ -1,4 +1,4 @@
-﻿#include "Core/Relation.h"
+#include "Core/Relation.h"
 
 #include <cmath>
 
@@ -7,244 +7,235 @@
 
 namespace Geometry
 {
-    PointPlaneSide3d LocatePoint( const Point3d &point, const Plane &plane,
-                                  const GeometryTolerance3d &tolerance )
+    SCPointPlaneSide3d LocatePoint(const SCPoint3d& point, const SCPlane& plane, const SCGeometryTolerance3d& tolerance)
     {
-        if( !plane.IsValid( tolerance.distanceEpsilon ) )
+        if (!plane.IsValid(tolerance.distanceEpsilon))
         {
-            return PointPlaneSide3d::OnPlane;
+            return SCPointPlaneSide3d::OnPlane;
         }
 
-        const double signedDistance = plane.SignedDistanceTo( point, tolerance.distanceEpsilon );
-        if( signedDistance > tolerance.distanceEpsilon )
+        const double signedDistance = plane.SignedDistanceTo(point, tolerance.distanceEpsilon);
+        if (signedDistance > tolerance.distanceEpsilon)
         {
-            return PointPlaneSide3d::Above;
+            return SCPointPlaneSide3d::Above;
         }
-        if( signedDistance < -tolerance.distanceEpsilon )
+        if (signedDistance < -tolerance.distanceEpsilon)
         {
-            return PointPlaneSide3d::Below;
+            return SCPointPlaneSide3d::Below;
         }
-        return PointPlaneSide3d::OnPlane;
+        return SCPointPlaneSide3d::OnPlane;
     }
 
-    PointContainment2d LocatePoint( const Point3d &point, const Curve3d &curve,
-                                    const GeometryTolerance3d &tolerance )
+    SCPointContainment2d LocatePoint(const SCPoint3d& point, const ISCCurve3d& curve, const SCGeometryTolerance3d& tolerance)
     {
-        if( !curve.IsValid( tolerance ) )
+        if (!curve.IsValid(tolerance))
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
-        const CurveProjection3d projection = ProjectPointToCurve( point, curve, tolerance );
-        if( !projection.success )
+        const SCCurveProjection3d projection = ProjectPointToCurve(point, curve, tolerance);
+        if (!projection.success)
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
         return projection.distanceSquared <= tolerance.distanceEpsilon * tolerance.distanceEpsilon
-                   ? PointContainment2d::OnBoundary
-                   : PointContainment2d::Outside;
+                   ? SCPointContainment2d::OnBoundary
+                   : SCPointContainment2d::Outside;
     }
 
-    PointContainment2d LocatePoint( const Point3d &point, const CurveOnSurface &curveOnSurface,
-                                    const GeometryTolerance3d &tolerance )
+    SCPointContainment2d LocatePoint(const SCPoint3d& point,
+                                   const SCCurveOnSurface& curveOnSurface,
+                                   const SCGeometryTolerance3d& tolerance)
     {
-        if( !curveOnSurface.IsValid( tolerance ) )
+        if (!curveOnSurface.IsValid(tolerance))
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
-        const CurveOnSurfaceProjection3d projection =
-            ProjectPointToCurveOnSurface( point, curveOnSurface, tolerance );
-        if( !projection.success )
+        const SCCurveOnSurfaceProjection3d projection = ProjectPointToCurveOnSurface(point, curveOnSurface, tolerance);
+        if (!projection.success)
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
         return projection.distanceSquared <= tolerance.distanceEpsilon * tolerance.distanceEpsilon
-                   ? PointContainment2d::OnBoundary
-                   : PointContainment2d::Outside;
+                   ? SCPointContainment2d::OnBoundary
+                   : SCPointContainment2d::Outside;
     }
 
-    PointContainment2d LocatePoint( const Point3d &point, const PolyhedronFace3d &face,
-                                    const GeometryTolerance3d &tolerance )
+    SCPointContainment2d LocatePoint(const SCPoint3d& point,
+                                   const PolyhedronFace3d& face,
+                                   const SCGeometryTolerance3d& tolerance)
     {
-        if( !face.IsValid( tolerance.distanceEpsilon ) )
+        if (!face.IsValid(tolerance.distanceEpsilon))
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
-        if( LocatePoint( point, face.SupportPlane(), tolerance ) != PointPlaneSide3d::OnPlane )
+        if (LocatePoint(point, face.SupportPlane(), tolerance) != SCPointPlaneSide3d::OnPlane)
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
-        const FaceProjection3d projection = ProjectFaceToPolygon2d( face, tolerance );
-        if( !projection.success )
+        const SCFaceProjection3d projection = ProjectFaceToPolygon2d(face, tolerance);
+        if (!projection.success)
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
-        const Vector3d delta = point - projection.origin;
-        return LocatePoint( Point2d{ Dot( delta, projection.uAxis ), Dot( delta, projection.vAxis ) },
-                            projection.polygon, tolerance.distanceEpsilon );
+        const SCVector3d delta = point - projection.origin;
+        return LocatePoint(SCPoint2d{Dot(delta, projection.uAxis), Dot(delta, projection.vAxis)},
+                           projection.polygon,
+                           tolerance.distanceEpsilon);
     }
 
-    PointContainment2d LocatePoint( const Point3d &point, const PolyhedronBody &body,
-                                    const GeometryTolerance3d &tolerance )
+    SCPointContainment2d LocatePoint(const SCPoint3d& point,
+                                   const PolyhedronBody& body,
+                                   const SCGeometryTolerance3d& tolerance)
     {
-        if( !body.IsValid( tolerance.distanceEpsilon ) )
+        if (!body.IsValid(tolerance.distanceEpsilon))
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
-        const PolyhedronBodyProjection3d projection =
-            ProjectPointToPolyhedronBody( point, body, tolerance );
-        if( projection.success && projection.projection.distanceSquared <=
-                                      tolerance.distanceEpsilon * tolerance.distanceEpsilon )
+        const SCPolyhedronBodyProjection3d projection = ProjectPointToPolyhedronBody(point, body, tolerance);
+        if (projection.success &&
+            projection.projection.distanceSquared <= tolerance.distanceEpsilon * tolerance.distanceEpsilon)
         {
-            return PointContainment2d::OnBoundary;
+            return SCPointContainment2d::OnBoundary;
         }
 
-        const Line3d probe = Line3d::FromOriginAndDirection(
-            point, Vector3d{ 1.0, 0.3713906763541037, 0.52999894000318 } );
-        const LinePolyhedronBodyIntersection3d intersections = Intersect( probe, body, tolerance );
-        if( !intersections.intersects )
+        const SCLine3d probe = SCLine3d::FromOriginAndDirection(point, SCVector3d{1.0, 0.3713906763541037, 0.52999894000318});
+        const SCLinePolyhedronBodyIntersection3d intersections = Intersect(probe, body, tolerance);
+        if (!intersections.intersects)
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
         std::size_t crossingCount = 0;
-        for( const LinePolyhedronFaceIntersection3d &hit : intersections.hits )
+        for (const SCLinePolyhedronFaceIntersection3d& hit : intersections.hits)
         {
-            if( hit.lineParameter > tolerance.parameterEpsilon )
+            if (hit.lineParameter > tolerance.parameterEpsilon)
             {
                 ++crossingCount;
             }
         }
 
-        return ( crossingCount % 2 == 1 ) ? PointContainment2d::Inside : PointContainment2d::Outside;
+        return (crossingCount % 2 == 1) ? SCPointContainment2d::Inside : SCPointContainment2d::Outside;
     }
 
-    PointContainment2d LocatePoint( const Point3d &point, const BrepFace &face,
-                                    const GeometryTolerance3d &tolerance )
+    SCPointContainment2d LocatePoint(const SCPoint3d& point, const SCBrepFace& face, const SCGeometryTolerance3d& tolerance)
     {
-        if( !face.IsValid( tolerance ) || face.SupportSurface() == nullptr )
+        if (!face.IsValid(tolerance) || face.SupportSurface() == nullptr)
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
-        const BrepFaceProjection3d projection = ProjectPointToBrepFace( point, face, tolerance );
-        if( !projection.success ||
-            projection.distanceSquared > tolerance.distanceEpsilon * tolerance.distanceEpsilon )
+        const SCBrepFaceProjection3d projection = ProjectPointToBrepFace(point, face, tolerance);
+        if (!projection.success || projection.distanceSquared > tolerance.distanceEpsilon * tolerance.distanceEpsilon)
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
-        if( projection.onBoundary )
+        if (projection.onBoundary)
         {
-            return PointContainment2d::OnBoundary;
+            return SCPointContainment2d::OnBoundary;
         }
 
-        return projection.onTrimmedFace ? PointContainment2d::Inside : PointContainment2d::Outside;
+        return projection.onTrimmedFace ? SCPointContainment2d::Inside : SCPointContainment2d::Outside;
     }
 
-    PointContainment2d LocatePoint( const Point3d &point, const BrepBody &body,
-                                    const GeometryTolerance3d &tolerance )
+    SCPointContainment2d LocatePoint(const SCPoint3d& point, const SCBrepBody& body, const SCGeometryTolerance3d& tolerance)
     {
-        if( !body.IsValid( tolerance ) )
+        if (!body.IsValid(tolerance))
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
-        const BrepBodyProjection3d projection = ProjectPointToBrepBody( point, body, tolerance );
-        if( projection.success && projection.projection.distanceSquared <=
-                                      tolerance.distanceEpsilon * tolerance.distanceEpsilon )
+        const SCBrepBodyProjection3d projection = ProjectPointToBrepBody(point, body, tolerance);
+        if (projection.success &&
+            projection.projection.distanceSquared <= tolerance.distanceEpsilon * tolerance.distanceEpsilon)
         {
-            return PointContainment2d::OnBoundary;
+            return SCPointContainment2d::OnBoundary;
         }
 
-        const Line3d probe = Line3d::FromOriginAndDirection(
-            point, Vector3d{ 1.0, 0.3713906763541037, 0.52999894000318 } );
-        const LineBrepBodyIntersection3d intersections = Intersect( probe, body, tolerance );
-        if( !intersections.intersects )
+        const SCLine3d probe = SCLine3d::FromOriginAndDirection(point, SCVector3d{1.0, 0.3713906763541037, 0.52999894000318});
+        const SCLineBrepBodyIntersection3d intersections = Intersect(probe, body, tolerance);
+        if (!intersections.intersects)
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
         std::size_t crossingCount = 0;
-        for( const LineBrepFaceIntersection3d &hit : intersections.hits )
+        for (const SCLineBrepFaceIntersection3d& hit : intersections.hits)
         {
-            if( hit.lineParameter > tolerance.parameterEpsilon )
+            if (hit.lineParameter > tolerance.parameterEpsilon)
             {
                 ++crossingCount;
             }
         }
 
-        return ( crossingCount % 2 == 1 ) ? PointContainment2d::Inside : PointContainment2d::Outside;
+        return (crossingCount % 2 == 1) ? SCPointContainment2d::Inside : SCPointContainment2d::Outside;
     }
 
-    PointContainment2d LocatePoint( const Point3d &point, const TriangleMesh &mesh,
-                                    const GeometryTolerance3d &tolerance )
+    SCPointContainment2d LocatePoint(const SCPoint3d& point, const TriangleMesh& mesh, const SCGeometryTolerance3d& tolerance)
     {
-        if( !mesh.IsValid( tolerance.distanceEpsilon ) )
+        if (!mesh.IsValid(tolerance.distanceEpsilon))
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
-        const TriangleMeshProjection3d projection = ProjectPointToTriangleMesh( point, mesh, tolerance );
-        if( projection.success &&
-            projection.distanceSquared <= tolerance.distanceEpsilon * tolerance.distanceEpsilon )
+        const SCTriangleMeshProjection3d projection = ProjectPointToTriangleMesh(point, mesh, tolerance);
+        if (projection.success && projection.distanceSquared <= tolerance.distanceEpsilon * tolerance.distanceEpsilon)
         {
-            return PointContainment2d::OnBoundary;
+            return SCPointContainment2d::OnBoundary;
         }
 
-        const Line3d probe = Line3d::FromOriginAndDirection(
-            point, Vector3d{ 1.0, 0.3713906763541037, 0.52999894000318 } );
-        const LineTriangleMeshIntersection3d intersections = Intersect( probe, mesh, tolerance );
-        if( !intersections.intersects )
+        const SCLine3d probe = SCLine3d::FromOriginAndDirection(point, SCVector3d{1.0, 0.3713906763541037, 0.52999894000318});
+        const SCLineTriangleMeshIntersection3d intersections = Intersect(probe, mesh, tolerance);
+        if (!intersections.intersects)
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
         std::size_t crossingCount = 0;
-        for( double parameter : intersections.lineParameters )
+        for (double parameter : intersections.lineParameters)
         {
-            if( parameter > tolerance.parameterEpsilon )
+            if (parameter > tolerance.parameterEpsilon)
             {
                 ++crossingCount;
             }
         }
 
-        return ( crossingCount % 2 == 1 ) ? PointContainment2d::Inside : PointContainment2d::Outside;
+        return (crossingCount % 2 == 1) ? SCPointContainment2d::Inside : SCPointContainment2d::Outside;
     }
 
-    bool IsParallel( const Vector3d &first, const Vector3d &second,
-                     const GeometryTolerance3d &tolerance )
+    bool IsParallel(const SCVector3d& first, const SCVector3d& second, const SCGeometryTolerance3d& tolerance)
     {
         const double firstLength = first.Length();
         const double secondLength = second.Length();
-        if( firstLength <= tolerance.distanceEpsilon || secondLength <= tolerance.distanceEpsilon )
+        if (firstLength <= tolerance.distanceEpsilon || secondLength <= tolerance.distanceEpsilon)
         {
             return false;
         }
 
-        const Vector3d cross = Cross( first, second );
-        return cross.Length() <=
-               tolerance.angleEpsilon * firstLength * secondLength + tolerance.distanceEpsilon;
+        const SCVector3d cross = Cross(first, second);
+        return cross.Length() <= tolerance.angleEpsilon * firstLength * secondLength + tolerance.distanceEpsilon;
     }
 
-    bool IsPerpendicular( const Vector3d &first, const Vector3d &second,
-                          const GeometryTolerance3d &tolerance )
+    bool IsPerpendicular(const SCVector3d& first, const SCVector3d& second, const SCGeometryTolerance3d& tolerance)
     {
         const double firstLength = first.Length();
         const double secondLength = second.Length();
-        if( firstLength <= tolerance.distanceEpsilon || secondLength <= tolerance.distanceEpsilon )
+        if (firstLength <= tolerance.distanceEpsilon || secondLength <= tolerance.distanceEpsilon)
         {
             return false;
         }
 
-        return std::abs( Dot( first, second ) ) <=
+        return std::abs(Dot(first, second)) <=
                tolerance.angleEpsilon * firstLength * secondLength + tolerance.distanceEpsilon;
     }
 }  // namespace Geometry
+
+

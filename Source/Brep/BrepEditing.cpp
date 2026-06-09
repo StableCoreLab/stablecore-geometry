@@ -1,151 +1,161 @@
-﻿#include "Brep/BrepEditing.h"
+#include "Brep/BrepEditing.h"
 
 #include <vector>
 
 namespace Geometry
 {
-    BrepLoopEdit3d InsertCoedge( const BrepLoop &loop, std::size_t index, const BrepCoedge &coedge )
+    BrepLoopEdit3d InsertCoedge(const SCBrepLoop& loop, std::size_t index, const SCBrepCoedge& coedge)
     {
-        if( !loop.IsValid() || !coedge.IsValid() )
+        if (!loop.IsValid() || !coedge.IsValid())
         {
-            return { false, BrepLoopEditIssue3d::InvalidLoop, {} };
+            return {false, BrepLoopEditIssue3d::InvalidLoop, {}};
         }
 
-        if( index > loop.CoedgeCount() )
+        if (index > loop.CoedgeCount())
         {
-            return { false, BrepLoopEditIssue3d::InvalidIndex, {} };
+            return {false, BrepLoopEditIssue3d::InvalidIndex, {}};
         }
 
-        std::vector<BrepCoedge> coedges = loop.Coedges();
-        coedges.insert( coedges.begin() + static_cast<std::ptrdiff_t>( index ), coedge );
+        std::vector<SCBrepCoedge> coedges = loop.Coedges();
+        coedges.insert(coedges.begin() + static_cast<std::ptrdiff_t>(index), coedge);
 
-        BrepLoop edited( std::move( coedges ) );
-        if( !edited.IsValid() )
+        SCBrepLoop edited(std::move(coedges));
+        if (!edited.IsValid())
         {
-            return { false, BrepLoopEditIssue3d::InvalidResult, {} };
+            return {false, BrepLoopEditIssue3d::InvalidResult, {}};
         }
 
-        return { true, BrepLoopEditIssue3d::None, std::move( edited ) };
+        return {true, BrepLoopEditIssue3d::None, std::move(edited)};
     }
 
-    BrepLoopEdit3d RemoveCoedge( const BrepLoop &loop, std::size_t index )
+    BrepLoopEdit3d RemoveCoedge(const SCBrepLoop& loop, std::size_t index)
     {
-        if( !loop.IsValid() )
+        if (!loop.IsValid())
         {
-            return { false, BrepLoopEditIssue3d::InvalidLoop, {} };
+            return {false, BrepLoopEditIssue3d::InvalidLoop, {}};
         }
 
-        if( index >= loop.CoedgeCount() )
+        if (index >= loop.CoedgeCount())
         {
-            return { false, BrepLoopEditIssue3d::InvalidIndex, {} };
+            return {false, BrepLoopEditIssue3d::InvalidIndex, {}};
         }
 
-        std::vector<BrepCoedge> coedges = loop.Coedges();
-        coedges.erase( coedges.begin() + static_cast<std::ptrdiff_t>( index ) );
+        std::vector<SCBrepCoedge> coedges = loop.Coedges();
+        coedges.erase(coedges.begin() + static_cast<std::ptrdiff_t>(index));
 
-        BrepLoop edited( std::move( coedges ) );
-        if( !edited.IsValid() )
+        SCBrepLoop edited(std::move(coedges));
+        if (!edited.IsValid())
         {
-            return { false, BrepLoopEditIssue3d::InvalidResult, {} };
+            return {false, BrepLoopEditIssue3d::InvalidResult, {}};
         }
 
-        return { true, BrepLoopEditIssue3d::None, std::move( edited ) };
+        return {true, BrepLoopEditIssue3d::None, std::move(edited)};
     }
 
-    BrepLoopEdit3d FlipCoedgeDirection( const BrepLoop &loop, std::size_t index )
+    BrepLoopEdit3d FlipCoedgeDirection(const SCBrepLoop& loop, std::size_t index)
     {
-        if( !loop.IsValid() )
+        if (!loop.IsValid())
         {
-            return { false, BrepLoopEditIssue3d::InvalidLoop, {} };
+            return {false, BrepLoopEditIssue3d::InvalidLoop, {}};
         }
 
-        if( index >= loop.CoedgeCount() )
+        if (index >= loop.CoedgeCount())
         {
-            return { false, BrepLoopEditIssue3d::InvalidIndex, {} };
+            return {false, BrepLoopEditIssue3d::InvalidIndex, {}};
         }
 
-        std::vector<BrepCoedge> coedges = loop.Coedges();
-        const BrepCoedge target = coedges[index];
-        coedges[index] = BrepCoedge( target.EdgeIndex(), !target.Reversed() );
+        std::vector<SCBrepCoedge> coedges = loop.Coedges();
+        const SCBrepCoedge target = coedges[index];
+        coedges[index] = SCBrepCoedge(target.EdgeIndex(), !target.Reversed());
 
-        BrepLoop edited( std::move( coedges ) );
-        if( !edited.IsValid() )
+        SCBrepLoop edited(std::move(coedges));
+        if (!edited.IsValid())
         {
-            return { false, BrepLoopEditIssue3d::InvalidResult, {} };
+            return {false, BrepLoopEditIssue3d::InvalidResult, {}};
         }
 
-        return { true, BrepLoopEditIssue3d::None, std::move( edited ) };
+        return {true, BrepLoopEditIssue3d::None, std::move(edited)};
     }
 
-    BrepFaceEdit3d ReplaceOuterLoop( const BrepFace &face, const BrepLoop &outerLoop,
-                                     CurveOnSurface outerTrim, const GeometryTolerance3d &tolerance )
+    BrepFaceEdit3d ReplaceOuterLoop(const SCBrepFace& face,
+                                    const SCBrepLoop& outerLoop,
+                                    SCCurveOnSurface outerTrim,
+                                    const SCGeometryTolerance3d& tolerance)
     {
-        if( !face.IsValid( tolerance ) || !outerLoop.IsValid() )
+        if (!face.IsValid(tolerance) || !outerLoop.IsValid())
         {
-            return { false, BrepTopologyEditIssue3d::InvalidFace, {} };
+            return {false, BrepTopologyEditIssue3d::InvalidFace, {}};
         }
 
-        if( outerTrim.SupportSurface() == nullptr )
+        if (outerTrim.SupportSurface() == nullptr)
         {
             outerTrim = face.OuterTrim();
         }
 
-        BrepFace edited( std::shared_ptr<Surface>( face.SupportSurface()->Clone().release() ), outerLoop,
-                         std::vector<BrepLoop>( face.HoleLoops().begin(), face.HoleLoops().end() ),
-                         std::move( outerTrim ), face.HoleTrims() );
-        if( !edited.IsValid( tolerance ) )
+        SCBrepFace edited(std::shared_ptr<ISCSurface>(face.SupportSurface()->Clone().release()),
+                        outerLoop,
+                        std::vector<SCBrepLoop>(face.HoleLoops().begin(), face.HoleLoops().end()),
+                        std::move(outerTrim),
+                        face.HoleTrims());
+        if (!edited.IsValid(tolerance))
         {
-            return { false, BrepTopologyEditIssue3d::InvalidResult, {} };
+            return {false, BrepTopologyEditIssue3d::InvalidResult, {}};
         }
 
-        return { true, BrepTopologyEditIssue3d::None, std::move( edited ) };
+        return {true, BrepTopologyEditIssue3d::None, std::move(edited)};
     }
 
-    BrepShellEdit3d ReplaceFace( const BrepShell &shell, std::size_t faceIndex, const BrepFace &face,
-                                 const GeometryTolerance3d &tolerance )
+    BrepShellEdit3d ReplaceFace(const SCBrepShell& shell,
+                                std::size_t faceIndex,
+                                const SCBrepFace& face,
+                                const SCGeometryTolerance3d& tolerance)
     {
-        if( !shell.IsValid( tolerance ) || !face.IsValid( tolerance ) )
+        if (!shell.IsValid(tolerance) || !face.IsValid(tolerance))
         {
-            return { false, BrepTopologyEditIssue3d::InvalidShell, {} };
+            return {false, BrepTopologyEditIssue3d::InvalidShell, {}};
         }
 
-        if( faceIndex >= shell.FaceCount() )
+        if (faceIndex >= shell.FaceCount())
         {
-            return { false, BrepTopologyEditIssue3d::InvalidIndex, {} };
+            return {false, BrepTopologyEditIssue3d::InvalidIndex, {}};
         }
 
-        std::vector<BrepFace> faces = shell.Faces();
+        std::vector<SCBrepFace> faces = shell.Faces();
         faces[faceIndex] = face;
-        BrepShell edited( std::move( faces ), shell.IsClosed() );
-        if( !edited.IsValid( tolerance ) )
+        SCBrepShell edited(std::move(faces), shell.IsClosed());
+        if (!edited.IsValid(tolerance))
         {
-            return { false, BrepTopologyEditIssue3d::InvalidResult, {} };
+            return {false, BrepTopologyEditIssue3d::InvalidResult, {}};
         }
 
-        return { true, BrepTopologyEditIssue3d::None, std::move( edited ) };
+        return {true, BrepTopologyEditIssue3d::None, std::move(edited)};
     }
 
-    BrepBodyEdit3d ReplaceShell( const BrepBody &body, std::size_t shellIndex, const BrepShell &shell,
-                                 const GeometryTolerance3d &tolerance )
+    BrepBodyEdit3d ReplaceShell(const SCBrepBody& body,
+                                std::size_t shellIndex,
+                                const SCBrepShell& shell,
+                                const SCGeometryTolerance3d& tolerance)
     {
-        if( !body.IsValid( tolerance ) || !shell.IsValid( tolerance ) )
+        if (!body.IsValid(tolerance) || !shell.IsValid(tolerance))
         {
-            return { false, BrepTopologyEditIssue3d::InvalidBody, {} };
+            return {false, BrepTopologyEditIssue3d::InvalidBody, {}};
         }
 
-        if( shellIndex >= body.ShellCount() )
+        if (shellIndex >= body.ShellCount())
         {
-            return { false, BrepTopologyEditIssue3d::InvalidIndex, {} };
+            return {false, BrepTopologyEditIssue3d::InvalidIndex, {}};
         }
 
-        std::vector<BrepShell> shells = body.Shells();
+        std::vector<SCBrepShell> shells = body.Shells();
         shells[shellIndex] = shell;
-        BrepBody edited( body.Vertices(), body.Edges(), std::move( shells ) );
-        if( !edited.IsValid( tolerance ) )
+        SCBrepBody edited(body.Vertices(), body.Edges(), std::move(shells));
+        if (!edited.IsValid(tolerance))
         {
-            return { false, BrepTopologyEditIssue3d::InvalidResult, {} };
+            return {false, BrepTopologyEditIssue3d::InvalidResult, {}};
         }
 
-        return { true, BrepTopologyEditIssue3d::None, std::move( edited ) };
+        return {true, BrepTopologyEditIssue3d::None, std::move(edited)};
     }
 }  // namespace Geometry
+
+

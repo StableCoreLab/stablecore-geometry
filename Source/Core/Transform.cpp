@@ -1,4 +1,4 @@
-﻿#include "Core/Transform.h"
+#include "Core/Transform.h"
 
 #include <cmath>
 #include <memory>
@@ -13,233 +13,238 @@ namespace Geometry
 {
     namespace
     {
-        [[nodiscard]] Point2d RotatePoint( const Point2d &point, const Point2d &origin, double angle )
+        [[nodiscard]] SCPoint2d RotatePoint(const SCPoint2d& point, const SCPoint2d& origin, double angle)
         {
-            const double c = std::cos( angle );
-            const double s = std::sin( angle );
-            const Vector2d delta = point - origin;
-            return Point2d{ origin.x + delta.x * c - delta.y * s, origin.y + delta.x * s + delta.y * c };
+            const double c = std::cos(angle);
+            const double s = std::sin(angle);
+            const SCVector2d delta = point - origin;
+            return SCPoint2d{origin.x + delta.x * c - delta.y * s, origin.y + delta.x * s + delta.y * c};
         }
 
-        [[nodiscard]] Point2d MirrorPoint( const Point2d &point, const Point2d &linePoint,
-                                           const Vector2d &lineDir )
+        [[nodiscard]] SCPoint2d MirrorPoint(const SCPoint2d& point, const SCPoint2d& linePoint, const SCVector2d& lineDir)
         {
             const double lengthSquared = lineDir.LengthSquared();
-            if( lengthSquared <= Geometry::kTransformDefaultEpsilon )
+            if (lengthSquared <= Geometry::kTransformDefaultEpsilon)
             {
                 return point;
             }
-            const Vector2d local = point - linePoint;
-            const Vector2d unit = lineDir / std::sqrt( lengthSquared );
-            const double along = Dot( local, unit );
-            const Point2d projected = linePoint + unit * along;
-            return projected + ( projected - point );
+            const SCVector2d local = point - linePoint;
+            const SCVector2d unit = lineDir / std::sqrt(lengthSquared);
+            const double along = Dot(local, unit);
+            const SCPoint2d projected = linePoint + unit * along;
+            return projected + (projected - point);
         }
 
-        template<typename LineTransform, typename ArcTransform>
-        [[nodiscard]] Polyline2d TransformPolylineSegments( const Polyline2d &polyline,
-                                                            LineTransform &&lineTransform,
-                                                            ArcTransform &&arcTransform )
+        template <typename LineTransform, typename ArcTransform>
+        [[nodiscard]] SCPolyline2d TransformPolylineSegments(const SCPolyline2d& polyline,
+                                                           LineTransform&& lineTransform,
+                                                           ArcTransform&& arcTransform)
         {
-            std::vector<std::shared_ptr<Segment2d>> segments;
-            segments.reserve( polyline.SegmentCount() );
-            for( std::size_t i = 0; i < polyline.SegmentCount(); ++i )
+            std::vector<std::shared_ptr<ISCSegment2d>> segments;
+            segments.reserve(polyline.SegmentCount());
+            for (std::size_t i = 0; i < polyline.SegmentCount(); ++i)
             {
-                std::unique_ptr<Segment2d> segment = polyline.SegmentAt( i );
-                if( segment == nullptr )
+                std::unique_ptr<ISCSegment2d> segment = polyline.SegmentAt(i);
+                if (segment == nullptr)
                 {
-                    segments.push_back( nullptr );
+                    segments.push_back(nullptr);
                     continue;
                 }
 
-                switch( segment->Kind() )
+                switch (segment->Kind())
                 {
-                case SegmentKind2::Line:
-                    segments.push_back( std::make_shared<LineSegment2d>(
-                        lineTransform( static_cast<const LineSegment2d &>( *segment ) ) ) );
-                    break;
-                case SegmentKind2::Arc:
-                    segments.push_back( std::make_shared<ArcSegment2d>(
-                        arcTransform( static_cast<const ArcSegment2d &>( *segment ) ) ) );
-                    break;
-                default:
-                    segments.push_back( std::shared_ptr<Segment2d>( segment->Clone().release() ) );
-                    break;
+                    case SCSegmentKind2::Line:
+                        segments.push_back(std::make_shared<SCLineSegment2d>(
+                            lineTransform(static_cast<const SCLineSegment2d&>(*segment))));
+                        break;
+                    case SCSegmentKind2::Arc:
+                        segments.push_back(
+                            std::make_shared<SCArcSegment2d>(arcTransform(static_cast<const SCArcSegment2d&>(*segment))));
+                        break;
+                    default:
+                        segments.push_back(std::shared_ptr<ISCSegment2d>(segment->Clone().release()));
+                        break;
                 }
             }
 
-            return Polyline2d( std::move( segments ),
-                               polyline.IsClosed() ? PolylineClosure::Closed : PolylineClosure::Open );
+            return SCPolyline2d(std::move(segments),
+                              polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
         }
     }  // namespace
 
-    Point2d Translate( const Point2d &point, const Vector2d &offset ) { return point + offset; }
-
-    LineSegment2d Translate( const LineSegment2d &segment, const Vector2d &offset )
+    SCPoint2d Translate(const SCPoint2d& point, const SCVector2d& offset)
     {
-        return LineSegment2d( segment.startPoint + offset, segment.endPoint + offset );
+        return point + offset;
     }
 
-    ArcSegment2d Translate( const ArcSegment2d &segment, const Vector2d &offset )
+    SCLineSegment2d Translate(const SCLineSegment2d& segment, const SCVector2d& offset)
     {
-        return ArcSegment2d( segment.center + offset, segment.radius, segment.startAngle,
-                             segment.sweepAngle );
+        return SCLineSegment2d(segment.startPoint + offset, segment.endPoint + offset);
     }
 
-    Polyline2d Translate( const Polyline2d &polyline, const Vector2d &offset )
+    SCArcSegment2d Translate(const SCArcSegment2d& segment, const SCVector2d& offset)
     {
-        return TransformPolylineSegments(
-            polyline, [&]( const LineSegment2d &segment ) { return Translate( segment, offset ); },
-            [&]( const ArcSegment2d &segment ) { return Translate( segment, offset ); } );
+        return SCArcSegment2d(segment.center + offset, segment.radius, segment.startAngle, segment.sweepAngle);
     }
 
-    Polygon2d Translate( const Polygon2d &polygon, const Vector2d &offset )
-    {
-        std::vector<Polyline2d> holes;
-        holes.reserve( polygon.HoleCount() );
-        for( std::size_t i = 0; i < polygon.HoleCount(); ++i )
-        {
-            holes.push_back( Translate( polygon.HoleAt( i ), offset ) );
-        }
-        return Polygon2d( Translate( polygon.OuterRing(), offset ), std::move( holes ) );
-    }
-
-    MultiPolyline2d Translate( const MultiPolyline2d &polylines, const Vector2d &offset )
-    {
-        std::vector<Polyline2d> result;
-        result.reserve( polylines.Count() );
-        for( std::size_t i = 0; i < polylines.Count(); ++i )
-        {
-            result.push_back( Translate( polylines[i], offset ) );
-        }
-        return MultiPolyline2d( std::move( result ) );
-    }
-
-    MultiPolygon2d Translate( const MultiPolygon2d &polygons, const Vector2d &offset )
-    {
-        std::vector<Polygon2d> result;
-        result.reserve( polygons.Count() );
-        for( std::size_t i = 0; i < polygons.Count(); ++i )
-        {
-            result.push_back( Translate( polygons[i], offset ) );
-        }
-        return MultiPolygon2d( std::move( result ) );
-    }
-
-    Point2d Rotate( const Point2d &point, const Point2d &origin, double angleRadians )
-    {
-        return RotatePoint( point, origin, angleRadians );
-    }
-
-    LineSegment2d Rotate( const LineSegment2d &segment, const Point2d &origin, double angleRadians )
-    {
-        return LineSegment2d( RotatePoint( segment.startPoint, origin, angleRadians ),
-                              RotatePoint( segment.endPoint, origin, angleRadians ) );
-    }
-
-    ArcSegment2d Rotate( const ArcSegment2d &segment, const Point2d &origin, double angleRadians )
-    {
-        return ArcSegment2d( RotatePoint( segment.center, origin, angleRadians ), segment.radius,
-                             segment.startAngle + angleRadians, segment.sweepAngle );
-    }
-
-    Polyline2d Rotate( const Polyline2d &polyline, const Point2d &origin, double angleRadians )
-    {
-        return TransformPolylineSegments(
-            polyline, [&]( const LineSegment2d &segment ) { return Rotate( segment, origin, angleRadians ); },
-            [&]( const ArcSegment2d &segment ) { return Rotate( segment, origin, angleRadians ); } );
-    }
-
-    Polygon2d Rotate( const Polygon2d &polygon, const Point2d &origin, double angleRadians )
-    {
-        std::vector<Polyline2d> holes;
-        holes.reserve( polygon.HoleCount() );
-        for( std::size_t i = 0; i < polygon.HoleCount(); ++i )
-        {
-            holes.push_back( Rotate( polygon.HoleAt( i ), origin, angleRadians ) );
-        }
-        return Polygon2d( Rotate( polygon.OuterRing(), origin, angleRadians ), std::move( holes ) );
-    }
-
-    Point2d Mirror( const Point2d &point, const Point2d &linePoint, const Vector2d &lineDir )
-    {
-        return MirrorPoint( point, linePoint, lineDir );
-    }
-
-    LineSegment2d Mirror( const LineSegment2d &segment, const Point2d &linePoint,
-                          const Vector2d &lineDir )
-    {
-        return LineSegment2d( MirrorPoint( segment.startPoint, linePoint, lineDir ),
-                              MirrorPoint( segment.endPoint, linePoint, lineDir ) );
-    }
-
-    ArcSegment2d Mirror( const ArcSegment2d &segment, const Point2d &linePoint, const Vector2d &lineDir )
-    {
-        const Point2d newCenter = MirrorPoint( segment.center, linePoint, lineDir );
-        return ArcSegment2d( newCenter, segment.radius,
-                             2.0 * std::atan2( lineDir.y, lineDir.x ) - segment.startAngle,
-                             -segment.sweepAngle );
-    }
-
-    Polyline2d Mirror( const Polyline2d &polyline, const Point2d &linePoint, const Vector2d &lineDir )
+    SCPolyline2d Translate(const SCPolyline2d& polyline, const SCVector2d& offset)
     {
         return TransformPolylineSegments(
             polyline,
-            [&]( const LineSegment2d &segment ) { return Mirror( segment, linePoint, lineDir ); },
-            [&]( const ArcSegment2d &segment ) { return Mirror( segment, linePoint, lineDir ); } );
+            [&](const SCLineSegment2d& segment) { return Translate(segment, offset); },
+            [&](const SCArcSegment2d& segment) { return Translate(segment, offset); });
     }
 
-    Polygon2d Mirror( const Polygon2d &polygon, const Point2d &linePoint, const Vector2d &lineDir )
+    SCPolygon2d Translate(const SCPolygon2d& polygon, const SCVector2d& offset)
     {
-        std::vector<Polyline2d> holes;
-        holes.reserve( polygon.HoleCount() );
-        for( std::size_t i = 0; i < polygon.HoleCount(); ++i )
+        std::vector<SCPolyline2d> holes;
+        holes.reserve(polygon.HoleCount());
+        for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
         {
-            holes.push_back( Reverse( Mirror( polygon.HoleAt( i ), linePoint, lineDir ) ) );
+            holes.push_back(Translate(polygon.HoleAt(i), offset));
         }
-        return Polygon2d( Reverse( Mirror( polygon.OuterRing(), linePoint, lineDir ) ),
-                          std::move( holes ) );
+        return SCPolygon2d(Translate(polygon.OuterRing(), offset), std::move(holes));
     }
 
-    Point2d Stretch( const Point2d &point, const Box2d &region, const Vector2d &offset )
+    SCMultiPolyline2d Translate(const SCMultiPolyline2d& polylines, const SCVector2d& offset)
     {
-        return Contains( region, point ) ? point + offset : point;
+        std::vector<SCPolyline2d> result;
+        result.reserve(polylines.Count());
+        for (std::size_t i = 0; i < polylines.Count(); ++i)
+        {
+            result.push_back(Translate(polylines[i], offset));
+        }
+        return SCMultiPolyline2d(std::move(result));
     }
 
-    LineSegment2d Stretch( const LineSegment2d &segment, const Box2d &region, const Vector2d &offset )
+    SCMultiPolygon2d Translate(const SCMultiPolygon2d& polygons, const SCVector2d& offset)
     {
-        return LineSegment2d( Stretch( segment.startPoint, region, offset ),
-                              Stretch( segment.endPoint, region, offset ) );
+        std::vector<SCPolygon2d> result;
+        result.reserve(polygons.Count());
+        for (std::size_t i = 0; i < polygons.Count(); ++i)
+        {
+            result.push_back(Translate(polygons[i], offset));
+        }
+        return SCMultiPolygon2d(std::move(result));
     }
 
-    ArcSegment2d Stretch( const ArcSegment2d &segment, const Box2d &region, const Vector2d &offset )
+    SCPoint2d Rotate(const SCPoint2d& point, const SCPoint2d& origin, double angleRadians)
     {
-        const Point2d start = Stretch( segment.StartPoint(), region, offset );
-        const Point2d end = Stretch( segment.EndPoint(), region, offset );
-        if( start.AlmostEquals( segment.StartPoint() ) && end.AlmostEquals( segment.EndPoint() ) )
+        return RotatePoint(point, origin, angleRadians);
+    }
+
+    SCLineSegment2d Rotate(const SCLineSegment2d& segment, const SCPoint2d& origin, double angleRadians)
+    {
+        return SCLineSegment2d(RotatePoint(segment.startPoint, origin, angleRadians),
+                             RotatePoint(segment.endPoint, origin, angleRadians));
+    }
+
+    SCArcSegment2d Rotate(const SCArcSegment2d& segment, const SCPoint2d& origin, double angleRadians)
+    {
+        return SCArcSegment2d(RotatePoint(segment.center, origin, angleRadians),
+                            segment.radius,
+                            segment.startAngle + angleRadians,
+                            segment.sweepAngle);
+    }
+
+    SCPolyline2d Rotate(const SCPolyline2d& polyline, const SCPoint2d& origin, double angleRadians)
+    {
+        return TransformPolylineSegments(
+            polyline,
+            [&](const SCLineSegment2d& segment) { return Rotate(segment, origin, angleRadians); },
+            [&](const SCArcSegment2d& segment) { return Rotate(segment, origin, angleRadians); });
+    }
+
+    SCPolygon2d Rotate(const SCPolygon2d& polygon, const SCPoint2d& origin, double angleRadians)
+    {
+        std::vector<SCPolyline2d> holes;
+        holes.reserve(polygon.HoleCount());
+        for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
+        {
+            holes.push_back(Rotate(polygon.HoleAt(i), origin, angleRadians));
+        }
+        return SCPolygon2d(Rotate(polygon.OuterRing(), origin, angleRadians), std::move(holes));
+    }
+
+    SCPoint2d Mirror(const SCPoint2d& point, const SCPoint2d& linePoint, const SCVector2d& lineDir)
+    {
+        return MirrorPoint(point, linePoint, lineDir);
+    }
+
+    SCLineSegment2d Mirror(const SCLineSegment2d& segment, const SCPoint2d& linePoint, const SCVector2d& lineDir)
+    {
+        return SCLineSegment2d(MirrorPoint(segment.startPoint, linePoint, lineDir),
+                             MirrorPoint(segment.endPoint, linePoint, lineDir));
+    }
+
+    SCArcSegment2d Mirror(const SCArcSegment2d& segment, const SCPoint2d& linePoint, const SCVector2d& lineDir)
+    {
+        const SCPoint2d newCenter = MirrorPoint(segment.center, linePoint, lineDir);
+        return SCArcSegment2d(newCenter,
+                            segment.radius,
+                            2.0 * std::atan2(lineDir.y, lineDir.x) - segment.startAngle,
+                            -segment.sweepAngle);
+    }
+
+    SCPolyline2d Mirror(const SCPolyline2d& polyline, const SCPoint2d& linePoint, const SCVector2d& lineDir)
+    {
+        return TransformPolylineSegments(
+            polyline,
+            [&](const SCLineSegment2d& segment) { return Mirror(segment, linePoint, lineDir); },
+            [&](const SCArcSegment2d& segment) { return Mirror(segment, linePoint, lineDir); });
+    }
+
+    SCPolygon2d Mirror(const SCPolygon2d& polygon, const SCPoint2d& linePoint, const SCVector2d& lineDir)
+    {
+        std::vector<SCPolyline2d> holes;
+        holes.reserve(polygon.HoleCount());
+        for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
+        {
+            holes.push_back(Reverse(Mirror(polygon.HoleAt(i), linePoint, lineDir)));
+        }
+        return SCPolygon2d(Reverse(Mirror(polygon.OuterRing(), linePoint, lineDir)), std::move(holes));
+    }
+
+    SCPoint2d Stretch(const SCPoint2d& point, const SCBox2d& region, const SCVector2d& offset)
+    {
+        return Contains(region, point) ? point + offset : point;
+    }
+
+    SCLineSegment2d Stretch(const SCLineSegment2d& segment, const SCBox2d& region, const SCVector2d& offset)
+    {
+        return SCLineSegment2d(Stretch(segment.startPoint, region, offset), Stretch(segment.endPoint, region, offset));
+    }
+
+    SCArcSegment2d Stretch(const SCArcSegment2d& segment, const SCBox2d& region, const SCVector2d& offset)
+    {
+        const SCPoint2d start = Stretch(segment.StartPoint(), region, offset);
+        const SCPoint2d end = Stretch(segment.EndPoint(), region, offset);
+        if (start.AlmostEquals(segment.StartPoint()) && end.AlmostEquals(segment.EndPoint()))
         {
             return segment;
         }
-        return ArcSegment2d( segment.center, segment.radius,
-                             std::atan2( start.y - segment.center.y, start.x - segment.center.x ),
-                             segment.sweepAngle );
+        return SCArcSegment2d(segment.center,
+                            segment.radius,
+                            std::atan2(start.y - segment.center.y, start.x - segment.center.x),
+                            segment.sweepAngle);
     }
 
-    Polyline2d Stretch( const Polyline2d &polyline, const Box2d &region, const Vector2d &offset )
+    SCPolyline2d Stretch(const SCPolyline2d& polyline, const SCBox2d& region, const SCVector2d& offset)
     {
         return TransformPolylineSegments(
-            polyline, [&]( const LineSegment2d &segment ) { return Stretch( segment, region, offset ); },
-            [&]( const ArcSegment2d &segment ) { return Stretch( segment, region, offset ); } );
+            polyline,
+            [&](const SCLineSegment2d& segment) { return Stretch(segment, region, offset); },
+            [&](const SCArcSegment2d& segment) { return Stretch(segment, region, offset); });
     }
 
-    Polygon2d Stretch( const Polygon2d &polygon, const Box2d &region, const Vector2d &offset )
+    SCPolygon2d Stretch(const SCPolygon2d& polygon, const SCBox2d& region, const SCVector2d& offset)
     {
-        std::vector<Polyline2d> holes;
-        holes.reserve( polygon.HoleCount() );
-        for( std::size_t i = 0; i < polygon.HoleCount(); ++i )
+        std::vector<SCPolyline2d> holes;
+        holes.reserve(polygon.HoleCount());
+        for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
         {
-            holes.push_back( Stretch( polygon.HoleAt( i ), region, offset ) );
+            holes.push_back(Stretch(polygon.HoleAt(i), region, offset));
         }
-        return Polygon2d( Stretch( polygon.OuterRing(), region, offset ), std::move( holes ) );
+        return SCPolygon2d(Stretch(polygon.OuterRing(), region, offset), std::move(holes));
     }
 }  // namespace Geometry

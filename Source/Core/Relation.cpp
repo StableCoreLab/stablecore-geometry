@@ -1,4 +1,4 @@
-﻿#include "Core/Relation.h"
+#include "Core/Relation.h"
 
 #include <cmath>
 #include <memory>
@@ -14,71 +14,69 @@ namespace Geometry
 {
     namespace
     {
-        [[nodiscard]] bool IsPointOnLineSegment( const Point2d &point, const LineSegment2d &segment,
-                                                 double eps )
+        [[nodiscard]] bool IsPointOnLineSegment(const SCPoint2d& point, const SCLineSegment2d& segment, double eps)
         {
-            const auto projection = ProjectPointToLineSegment( point, segment, true );
+            const auto projection = ProjectPointToLineSegment(point, segment, true);
             return projection.distanceSquared <= eps * eps;
         }
 
-        [[nodiscard]] bool IsPointOnArcSegment( const Point2d &point, const ArcSegment2d &segment,
-                                                double eps )
+        [[nodiscard]] bool IsPointOnArcSegment(const SCPoint2d& point, const SCArcSegment2d& segment, double eps)
         {
-            const auto projection = ProjectPointToArcSegment( point, segment, true );
+            const auto projection = ProjectPointToArcSegment(point, segment, true);
             return projection.distanceSquared <= eps * eps;
         }
 
-        [[nodiscard]] std::size_t CountLineSegmentRayCrossings( const LineSegment2d &segment,
-                                                                const Point2d &point, double eps )
+        [[nodiscard]] std::size_t CountLineSegmentRayCrossings(const SCLineSegment2d& segment,
+                                                               const SCPoint2d& point,
+                                                               double eps)
         {
             const double startY = segment.startPoint.y;
             const double endY = segment.endPoint.y;
-            const bool straddles = ( startY <= point.y && endY > point.y ) ||
-                                   ( endY <= point.y && startY > point.y );
-            if( !straddles )
+            const bool straddles = (startY <= point.y && endY > point.y) || (endY <= point.y && startY > point.y);
+            if (!straddles)
             {
                 return 0;
             }
 
-            const double x =
-                segment.startPoint.x +
-                ( segment.endPoint.x - segment.startPoint.x ) * ( point.y - startY ) / ( endY - startY );
+            const double x = segment.startPoint.x +
+                             (segment.endPoint.x - segment.startPoint.x) * (point.y - startY) / (endY - startY);
             return x > point.x + eps ? 1U : 0U;
         }
 
-        [[nodiscard]] std::size_t CountArcSegmentRayCrossings( const ArcSegment2d &segment,
-                                                               const Point2d &point, double eps )
+        [[nodiscard]] std::size_t CountArcSegmentRayCrossings(const SCArcSegment2d& segment,
+                                                              const SCPoint2d& point,
+                                                              double eps)
         {
             const double dy = point.y - segment.center.y;
-            if( std::abs( dy ) >= segment.radius - eps )
+            if (std::abs(dy) >= segment.radius - eps)
             {
                 return 0;
             }
 
             const double radialSquared = segment.radius * segment.radius - dy * dy;
-            if( radialSquared <= 0.0 )
+            if (radialSquared <= 0.0)
             {
                 return 0;
             }
 
-            const double dx = std::sqrt( radialSquared );
-            const double candidateX[2] = { segment.center.x - dx, segment.center.x + dx };
+            const double dx = std::sqrt(radialSquared);
+            const double candidateX[2] = {segment.center.x - dx, segment.center.x + dx};
             std::size_t count = 0;
-            for( const double x : candidateX )
+            for (const double x : candidateX)
             {
-                if( x <= point.x + eps )
+                if (x <= point.x + eps)
                 {
                     continue;
                 }
 
-                const Point2d candidate{ x, point.y };
-                const SegmentProjection2d projection = ProjectPointToArcSegment( candidate, segment, false );
-                if( projection.distanceSquared > eps * eps || !projection.isOnSegment )
+                const SCPoint2d candidate{x, point.y};
+                const SCSegmentProjection2d projection = ProjectPointToArcSegment(candidate, segment, false);
+                if (projection.distanceSquared > eps * eps || !projection.isOnSegment)
                 {
                     continue;
                 }
 
-                if( projection.parameter < -eps || projection.parameter >= 1.0 - eps )
+                if (projection.parameter < -eps || projection.parameter >= 1.0 - eps)
                 {
                     continue;
                 }
@@ -89,188 +87,182 @@ namespace Geometry
             return count;
         }
 
-        [[nodiscard]] std::size_t CountSegmentRayCrossings( const Segment2d &segment,
-                                                            const Point2d &point, double eps )
+        [[nodiscard]] std::size_t CountSegmentRayCrossings(const ISCSegment2d& segment, const SCPoint2d& point, double eps)
         {
-            if( segment.Kind() == SegmentKind2::Line )
+            if (segment.Kind() == SCSegmentKind2::Line)
             {
-                return CountLineSegmentRayCrossings( static_cast<const LineSegment2d &>( segment ), point,
-                                                     eps );
+                return CountLineSegmentRayCrossings(static_cast<const SCLineSegment2d&>(segment), point, eps);
             }
 
-            return CountArcSegmentRayCrossings( static_cast<const ArcSegment2d &>( segment ), point, eps );
+            return CountArcSegmentRayCrossings(static_cast<const SCArcSegment2d&>(segment), point, eps);
         }
 
-        [[nodiscard]] PointContainment2d LocatePointInRing( const Point2d &point, const Polyline2d &ring,
-                                                            double eps )
+        [[nodiscard]] SCPointContainment2d LocatePointInRing(const SCPoint2d& point, const SCPolyline2d& ring, double eps)
         {
-            if( !ring.IsClosed() || !ring.IsValid() || ring.SegmentCount() == 0 )
+            if (!ring.IsClosed() || !ring.IsValid() || ring.SegmentCount() == 0)
             {
-                return PointContainment2d::Outside;
+                return SCPointContainment2d::Outside;
             }
 
             std::size_t crossingCount = 0;
-            for( std::size_t i = 0; i < ring.SegmentCount(); ++i )
+            for (std::size_t i = 0; i < ring.SegmentCount(); ++i)
             {
-                std::unique_ptr<Segment2d> segment = ring.SegmentAt( i );
-                if( segment == nullptr )
+                std::unique_ptr<ISCSegment2d> segment = ring.SegmentAt(i);
+                if (segment == nullptr)
                 {
                     continue;
                 }
 
-                if( LocatePoint( point, *segment, eps ) == PointContainment2d::OnBoundary )
+                if (LocatePoint(point, *segment, eps) == SCPointContainment2d::OnBoundary)
                 {
-                    return PointContainment2d::OnBoundary;
+                    return SCPointContainment2d::OnBoundary;
                 }
 
-                crossingCount += CountSegmentRayCrossings( *segment, point, eps );
+                crossingCount += CountSegmentRayCrossings(*segment, point, eps);
             }
 
-            return ( crossingCount % 2U ) == 1U ? PointContainment2d::Inside
-                                                : PointContainment2d::Outside;
+            return (crossingCount % 2U) == 1U ? SCPointContainment2d::Inside : SCPointContainment2d::Outside;
         }
     }  // namespace
 
-    PointContainment2d LocatePoint( const Point2d &point, const LineSegment2d &segment, double eps )
+    SCPointContainment2d LocatePoint(const SCPoint2d& point, const SCLineSegment2d& segment, double eps)
     {
-        if( !segment.IsValid() )
+        if (!segment.IsValid())
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
-        if( IsPointOnLineSegment( point, segment, eps ) )
+        if (IsPointOnLineSegment(point, segment, eps))
         {
-            return PointContainment2d::OnBoundary;
+            return SCPointContainment2d::OnBoundary;
         }
 
-        return PointContainment2d::Outside;
+        return SCPointContainment2d::Outside;
     }
 
-    PointContainment2d LocatePoint( const Point2d &point, const ArcSegment2d &segment, double eps )
+    SCPointContainment2d LocatePoint(const SCPoint2d& point, const SCArcSegment2d& segment, double eps)
     {
-        if( !segment.IsValid() )
+        if (!segment.IsValid())
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
-        if( IsPointOnArcSegment( point, segment, eps ) )
+        if (IsPointOnArcSegment(point, segment, eps))
         {
-            return PointContainment2d::OnBoundary;
+            return SCPointContainment2d::OnBoundary;
         }
 
-        return PointContainment2d::Outside;
+        return SCPointContainment2d::Outside;
     }
 
-    PointContainment2d LocatePoint( const Point2d &point, const Segment2d &segment, double eps )
+    SCPointContainment2d LocatePoint(const SCPoint2d& point, const ISCSegment2d& segment, double eps)
     {
-        if( segment.Kind() == Geometry::SegmentKind2::Line )
+        if (segment.Kind() == Geometry::SCSegmentKind2::Line)
         {
-            return LocatePoint( point, static_cast<const LineSegment2d &>( segment ), eps );
+            return LocatePoint(point, static_cast<const SCLineSegment2d&>(segment), eps);
         }
-        if( segment.Kind() == Geometry::SegmentKind2::Arc )
+        if (segment.Kind() == Geometry::SCSegmentKind2::Arc)
         {
-            return LocatePoint( point, static_cast<const ArcSegment2d &>( segment ), eps );
+            return LocatePoint(point, static_cast<const SCArcSegment2d&>(segment), eps);
         }
-        return PointContainment2d::Outside;
+        return SCPointContainment2d::Outside;
     }
 
-    PointContainment2d LocatePoint( const Point2d &point, const Polyline2d &polyline, double eps )
+    SCPointContainment2d LocatePoint(const SCPoint2d& point, const SCPolyline2d& polyline, double eps)
     {
-        if( !polyline.IsValid() )
+        if (!polyline.IsValid())
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
-        if( !polyline.IsClosed() )
+        if (!polyline.IsClosed())
         {
-            for( std::size_t i = 0; i < polyline.SegmentCount(); ++i )
+            for (std::size_t i = 0; i < polyline.SegmentCount(); ++i)
             {
-                std::unique_ptr<Segment2d> segment = polyline.SegmentAt( i );
-                if( segment != nullptr && LocatePoint( point, *segment, eps ) == PointContainment2d::OnBoundary )
+                std::unique_ptr<ISCSegment2d> segment = polyline.SegmentAt(i);
+                if (segment != nullptr && LocatePoint(point, *segment, eps) == SCPointContainment2d::OnBoundary)
                 {
-                    return PointContainment2d::OnBoundary;
+                    return SCPointContainment2d::OnBoundary;
                 }
             }
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
-        return LocatePointInRing( point, polyline, eps );
+        return LocatePointInRing(point, polyline, eps);
     }
 
-    PointContainment2d LocatePoint( const Point2d &point, const Polygon2d &polygon, double eps )
+    SCPointContainment2d LocatePoint(const SCPoint2d& point, const SCPolygon2d& polygon, double eps)
     {
-        if( !polygon.IsValid() )
+        if (!polygon.IsValid())
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
 
-        const PointContainment2d outer = LocatePointInRing( point, polygon.OuterRing(), eps );
-        if( outer == PointContainment2d::Outside )
+        const SCPointContainment2d outer = LocatePointInRing(point, polygon.OuterRing(), eps);
+        if (outer == SCPointContainment2d::Outside)
         {
-            return PointContainment2d::Outside;
+            return SCPointContainment2d::Outside;
         }
-        if( outer == PointContainment2d::OnBoundary )
+        if (outer == SCPointContainment2d::OnBoundary)
         {
-            return PointContainment2d::OnBoundary;
+            return SCPointContainment2d::OnBoundary;
         }
 
-        for( std::size_t i = 0; i < polygon.HoleCount(); ++i )
+        for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
         {
-            const PointContainment2d hole = LocatePointInRing( point, polygon.HoleAt( i ), eps );
-            if( hole == PointContainment2d::OnBoundary )
+            const SCPointContainment2d hole = LocatePointInRing(point, polygon.HoleAt(i), eps);
+            if (hole == SCPointContainment2d::OnBoundary)
             {
-                return PointContainment2d::OnBoundary;
+                return SCPointContainment2d::OnBoundary;
             }
-            if( hole == PointContainment2d::Inside )
+            if (hole == SCPointContainment2d::Inside)
             {
-                return PointContainment2d::Outside;
+                return SCPointContainment2d::Outside;
             }
         }
 
-        return PointContainment2d::Inside;
+        return SCPointContainment2d::Inside;
     }
 
-    bool IsParallel( const LineSegment2d &first, const LineSegment2d &second, double eps )
+    bool IsParallel(const SCLineSegment2d& first, const SCLineSegment2d& second, double eps)
     {
-        if( !first.IsValid() || !second.IsValid() )
+        if (!first.IsValid() || !second.IsValid())
         {
             return false;
         }
 
-        return std::abs( Cross( first.endPoint - first.startPoint,
-                                second.endPoint - second.startPoint ) ) <= eps;
+        return std::abs(Cross(first.endPoint - first.startPoint, second.endPoint - second.startPoint)) <= eps;
     }
 
-    bool IsAntiParallel( const LineSegment2d &first, const LineSegment2d &second, double eps )
+    bool IsAntiParallel(const SCLineSegment2d& first, const SCLineSegment2d& second, double eps)
     {
-        if( !IsParallel( first, second, eps ) )
+        if (!IsParallel(first, second, eps))
         {
             return false;
         }
 
-        return Dot( first.endPoint - first.startPoint, second.endPoint - second.startPoint ) < 0.0;
+        return Dot(first.endPoint - first.startPoint, second.endPoint - second.startPoint) < 0.0;
     }
 
-    bool IsSameDirection( const LineSegment2d &first, const LineSegment2d &second, double eps )
+    bool IsSameDirection(const SCLineSegment2d& first, const SCLineSegment2d& second, double eps)
     {
-        if( !IsParallel( first, second, eps ) )
+        if (!IsParallel(first, second, eps))
         {
             return false;
         }
 
-        return Dot( first.endPoint - first.startPoint, second.endPoint - second.startPoint ) > 0.0;
+        return Dot(first.endPoint - first.startPoint, second.endPoint - second.startPoint) > 0.0;
     }
 
-    bool IsEqual( const LineSegment2d &first, const LineSegment2d &second, bool ignoreDirection,
-                  double eps )
+    bool IsEqual(const SCLineSegment2d& first, const SCLineSegment2d& second, bool ignoreDirection, double eps)
     {
-        if( first.startPoint.AlmostEquals( second.startPoint, eps ) &&
-            first.endPoint.AlmostEquals( second.endPoint, eps ) )
+        if (first.startPoint.AlmostEquals(second.startPoint, eps) && first.endPoint.AlmostEquals(second.endPoint, eps))
         {
             return true;
         }
 
-        return ignoreDirection && first.startPoint.AlmostEquals( second.endPoint, eps ) &&
-               first.endPoint.AlmostEquals( second.startPoint, eps );
+        return ignoreDirection && first.startPoint.AlmostEquals(second.endPoint, eps) &&
+               first.endPoint.AlmostEquals(second.startPoint, eps);
     }
 }  // namespace Geometry
+

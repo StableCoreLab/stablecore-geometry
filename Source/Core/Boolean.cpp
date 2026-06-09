@@ -1,4 +1,4 @@
-﻿#include "Core/Boolean.h"
+#include "Core/Boolean.h"
 
 #include <algorithm>
 #include <cmath>
@@ -14,7 +14,7 @@
 #include "Core/Relation.h"
 #include "Core/ShapeOps.h"
 #include "Core/Validation.h"
-#include "Geometry2d/PathOps.h"
+#include "Geometry2d/SCPathOps.h"
 #include "Support/Epsilon.h"
 #include "Support/Geometry2d/Predicate2.h"
 
@@ -31,106 +31,105 @@ namespace Geometry
 
         struct DirectedEdge
         {
-            std::size_t from{ 0 };
-            std::size_t to{ 0 };
-            std::size_t twin{ 0 };
-            double angle{ 0.0 };
-            bool visited{ false };
+            std::size_t from{0};
+            std::size_t to{0};
+            std::size_t twin{0};
+            double angle{0.0};
+            bool visited{false};
         };
 
         struct RawSegment
         {
-            Point2d start{};
-            Point2d end{};
+            SCPoint2d start{};
+            SCPoint2d end{};
         };
 
         struct BooleanFastPathResult
         {
-            MultiPolygon2d polygons{};
-            bool handled{ false };
+            SCMultiPolygon2d polygons{};
+            bool handled{false};
         };
 
         struct AxisAlignedBox
         {
-            double minX{ 0.0 };
-            double minY{ 0.0 };
-            double maxX{ 0.0 };
-            double maxY{ 0.0 };
+            double minX{0.0};
+            double minY{0.0};
+            double maxX{0.0};
+            double maxY{0.0};
         };
 
-        [[nodiscard]] bool IsNearlyCollinearVertex( const Point2d &previous, const Point2d &current,
-                                                    const Point2d &next, double eps );
+        [[nodiscard]] bool IsNearlyCollinearVertex(const SCPoint2d& previous,
+                                                   const SCPoint2d& current,
+                                                   const SCPoint2d& next,
+                                                   double eps);
 
-        [[nodiscard]] double ComputeVertexMergeTolerance( const std::vector<RawSegment> &segments,
-                                                          double eps );
+        [[nodiscard]] double ComputeVertexMergeTolerance(const std::vector<RawSegment>& segments, double eps);
 
-        [[nodiscard]] std::vector<Point2d> SimplifyRingVertices( std::vector<Point2d> points,
-                                                                 double eps );
+        [[nodiscard]] std::vector<SCPoint2d> SimplifyRingVertices(std::vector<SCPoint2d> points, double eps);
 
-        [[nodiscard]] bool Evaluate( BooleanOp op, bool inFirst, bool inSecond )
+        [[nodiscard]] bool Evaluate(BooleanOp op, bool inFirst, bool inSecond)
         {
-            switch( op )
+            switch (op)
             {
-            case BooleanOp::Intersection:
-                return inFirst && inSecond;
-            case BooleanOp::Union:
-                return inFirst || inSecond;
-            case BooleanOp::Difference:
-                return inFirst && !inSecond;
+                case BooleanOp::Intersection:
+                    return inFirst && inSecond;
+                case BooleanOp::Union:
+                    return inFirst || inSecond;
+                case BooleanOp::Difference:
+                    return inFirst && !inSecond;
             }
             return false;
         }
 
-        [[nodiscard]] Polygon2d MakeAxisAlignedBoxPolygon( const AxisAlignedBox &box )
+        [[nodiscard]] SCPolygon2d MakeAxisAlignedBoxPolygon(const AxisAlignedBox& box)
         {
-            return Polygon2d( Polyline2d(
+            return SCPolygon2d(SCPolyline2d(
                 {
-                    Point2d{ box.minX, box.minY },
-                    Point2d{ box.maxX, box.minY },
-                    Point2d{ box.maxX, box.maxY },
-                    Point2d{ box.minX, box.maxY },
+                    SCPoint2d{box.minX, box.minY},
+                    SCPoint2d{box.maxX, box.minY},
+                    SCPoint2d{box.maxX, box.maxY},
+                    SCPoint2d{box.minX, box.maxY},
                 },
-                PolylineClosure::Closed ) );
+                SCPolylineClosure::Closed));
         }
 
-        [[nodiscard]] bool TryBuildAxisAlignedBox( const Polygon2d &polygon, AxisAlignedBox &box,
-                                                   double eps )
+        [[nodiscard]] bool TryBuildAxisAlignedBox(const SCPolygon2d& polygon, AxisAlignedBox& box, double eps)
         {
-            if( !polygon.IsValid() || polygon.HoleCount() != 0 || polygon.OuterRing().PointCount() < 4 )
+            if (!polygon.IsValid() || polygon.HoleCount() != 0 || polygon.OuterRing().PointCount() < 4)
             {
                 return false;
             }
 
-            const Polyline2d outer = polygon.OuterRing();
-            box.minX = outer.PointAt( 0 ).x;
-            box.minY = outer.PointAt( 0 ).y;
+            const SCPolyline2d outer = polygon.OuterRing();
+            box.minX = outer.PointAt(0).x;
+            box.minY = outer.PointAt(0).y;
             box.maxX = box.minX;
             box.maxY = box.minY;
-            for( std::size_t i = 1; i < outer.PointCount(); ++i )
+            for (std::size_t i = 1; i < outer.PointCount(); ++i)
             {
-                const Point2d point = outer.PointAt( i );
-                box.minX = std::min( box.minX, point.x );
-                box.minY = std::min( box.minY, point.y );
-                box.maxX = std::max( box.maxX, point.x );
-                box.maxY = std::max( box.maxY, point.y );
+                const SCPoint2d point = outer.PointAt(i);
+                box.minX = std::min(box.minX, point.x);
+                box.minY = std::min(box.minY, point.y);
+                box.maxX = std::max(box.maxX, point.x);
+                box.maxY = std::max(box.maxY, point.y);
             }
 
-            const double tol = std::max( Geometry::kBooleanComparisonEpsilon, 0.05 * eps );
-            for( std::size_t i = 0; i < outer.PointCount(); ++i )
+            const double tol = std::max(Geometry::kBooleanComparisonEpsilon, 0.05 * eps);
+            for (std::size_t i = 0; i < outer.PointCount(); ++i)
             {
-                const Point2d current = outer.PointAt( i );
-                const Point2d next = outer.PointAt( ( i + 1 ) % outer.PointCount() );
-                const double dx = std::abs( next.x - current.x );
-                const double dy = std::abs( next.y - current.y );
-                if( dx > tol && dy > tol )
+                const SCPoint2d current = outer.PointAt(i);
+                const SCPoint2d next = outer.PointAt((i + 1) % outer.PointCount());
+                const double dx = std::abs(next.x - current.x);
+                const double dy = std::abs(next.y - current.y);
+                if (dx > tol && dy > tol)
                 {
                     return false;
                 }
 
-                const bool onBoundary =
-                    std::abs( current.x - box.minX ) <= tol || std::abs( current.x - box.maxX ) <= tol ||
-                    std::abs( current.y - box.minY ) <= tol || std::abs( current.y - box.maxY ) <= tol;
-                if( !onBoundary )
+                const bool onBoundary = std::abs(current.x - box.minX) <= tol ||
+                                        std::abs(current.x - box.maxX) <= tol ||
+                                        std::abs(current.y - box.minY) <= tol || std::abs(current.y - box.maxY) <= tol;
+                if (!onBoundary)
                 {
                     return false;
                 }
@@ -139,49 +138,49 @@ namespace Geometry
             return true;
         }
 
-        [[nodiscard]] std::vector<Point2d> ClipPointsToAxisAlignedBox(
-            const std::vector<Point2d> &points, const AxisAlignedBox &box, double eps )
+        [[nodiscard]] std::vector<SCPoint2d> ClipPointsToAxisAlignedBox(const std::vector<SCPoint2d>& points,
+                                                                      const AxisAlignedBox& box,
+                                                                      double eps)
         {
-            auto clipHalfPlane = [eps]( const std::vector<Point2d> &input, const auto &inside,
-                                        const auto &intersection ) {
-                std::vector<Point2d> output;
-                if( input.empty() )
+            auto clipHalfPlane = [eps](
+                                     const std::vector<SCPoint2d>& input, const auto& inside, const auto& intersection) {
+                std::vector<SCPoint2d> output;
+                if (input.empty())
                 {
                     return output;
                 }
 
-                Point2d previous = input.back();
-                bool previousInside = inside( previous );
-                for( const Point2d &current : input )
+                SCPoint2d previous = input.back();
+                bool previousInside = inside(previous);
+                for (const SCPoint2d& current : input)
                 {
-                    const bool currentInside = inside( current );
-                    if( currentInside )
+                    const bool currentInside = inside(current);
+                    if (currentInside)
                     {
-                        if( !previousInside )
+                        if (!previousInside)
                         {
-                            output.push_back( intersection( previous, current ) );
+                            output.push_back(intersection(previous, current));
                         }
-                        output.push_back( current );
-                    }
-                    else if( previousInside )
+                        output.push_back(current);
+                    } else if (previousInside)
                     {
-                        output.push_back( intersection( previous, current ) );
+                        output.push_back(intersection(previous, current));
                     }
 
                     previous = current;
                     previousInside = currentInside;
                 }
 
-                std::vector<Point2d> deduped;
-                deduped.reserve( output.size() );
-                for( const Point2d &point : output )
+                std::vector<SCPoint2d> deduped;
+                deduped.reserve(output.size());
+                for (const SCPoint2d& point : output)
                 {
-                    if( deduped.empty() || !deduped.back().AlmostEquals( point, eps ) )
+                    if (deduped.empty() || !deduped.back().AlmostEquals(point, eps))
                     {
-                        deduped.push_back( point );
+                        deduped.push_back(point);
                     }
                 }
-                while( deduped.size() >= 2 && deduped.front().AlmostEquals( deduped.back(), eps ) )
+                while (deduped.size() >= 2 && deduped.front().AlmostEquals(deduped.back(), eps))
                 {
                     deduped.pop_back();
                 }
@@ -189,294 +188,295 @@ namespace Geometry
                 return deduped;
             };
 
-            std::vector<Point2d> output = points;
+            std::vector<SCPoint2d> output = points;
             output = clipHalfPlane(
-                output, [&box, eps]( const Point2d &p ) { return p.x >= box.minX - eps; },
-                [&box]( const Point2d &a, const Point2d &b ) {
+                output,
+                [&box, eps](const SCPoint2d& p) { return p.x >= box.minX - eps; },
+                [&box](const SCPoint2d& a, const SCPoint2d& b) {
                     const double dx = b.x - a.x;
-                    const double t = std::abs( dx ) <= 1e-15 ? 0.0 : ( box.minX - a.x ) / dx;
-                    return Point2d{ box.minX, a.y + t * ( b.y - a.y ) };
-                } );
+                    const double t = std::abs(dx) <= 1e-15 ? 0.0 : (box.minX - a.x) / dx;
+                    return SCPoint2d{box.minX, a.y + t * (b.y - a.y)};
+                });
             output = clipHalfPlane(
-                output, [&box, eps]( const Point2d &p ) { return p.x <= box.maxX + eps; },
-                [&box]( const Point2d &a, const Point2d &b ) {
+                output,
+                [&box, eps](const SCPoint2d& p) { return p.x <= box.maxX + eps; },
+                [&box](const SCPoint2d& a, const SCPoint2d& b) {
                     const double dx = b.x - a.x;
-                    const double t = std::abs( dx ) <= 1e-15 ? 0.0 : ( box.maxX - a.x ) / dx;
-                    return Point2d{ box.maxX, a.y + t * ( b.y - a.y ) };
-                } );
+                    const double t = std::abs(dx) <= 1e-15 ? 0.0 : (box.maxX - a.x) / dx;
+                    return SCPoint2d{box.maxX, a.y + t * (b.y - a.y)};
+                });
             output = clipHalfPlane(
-                output, [&box, eps]( const Point2d &p ) { return p.y >= box.minY - eps; },
-                [&box]( const Point2d &a, const Point2d &b ) {
+                output,
+                [&box, eps](const SCPoint2d& p) { return p.y >= box.minY - eps; },
+                [&box](const SCPoint2d& a, const SCPoint2d& b) {
                     const double dy = b.y - a.y;
-                    const double t = std::abs( dy ) <= 1e-15 ? 0.0 : ( box.minY - a.y ) / dy;
-                    return Point2d{ a.x + t * ( b.x - a.x ), box.minY };
-                } );
+                    const double t = std::abs(dy) <= 1e-15 ? 0.0 : (box.minY - a.y) / dy;
+                    return SCPoint2d{a.x + t * (b.x - a.x), box.minY};
+                });
             output = clipHalfPlane(
-                output, [&box, eps]( const Point2d &p ) { return p.y <= box.maxY + eps; },
-                [&box]( const Point2d &a, const Point2d &b ) {
+                output,
+                [&box, eps](const SCPoint2d& p) { return p.y <= box.maxY + eps; },
+                [&box](const SCPoint2d& a, const SCPoint2d& b) {
                     const double dy = b.y - a.y;
-                    const double t = std::abs( dy ) <= 1e-15 ? 0.0 : ( box.maxY - a.y ) / dy;
-                    return Point2d{ a.x + t * ( b.x - a.x ), box.maxY };
-                } );
+                    const double t = std::abs(dy) <= 1e-15 ? 0.0 : (box.maxY - a.y) / dy;
+                    return SCPoint2d{a.x + t * (b.x - a.x), box.maxY};
+                });
 
             return output;
         }
 
-        [[nodiscard]] MultiPolygon2d TryAxisAlignedBoxIntersectionFallback( const Polygon2d &subject,
-                                                                            const Polygon2d &clipper,
-                                                                            double eps )
+        [[nodiscard]] SCMultiPolygon2d TryAxisAlignedBoxIntersectionFallback(const SCPolygon2d& subject,
+                                                                           const SCPolygon2d& clipper,
+                                                                           double eps)
         {
-            MultiPolygon2d fallback;
-            if( subject.HoleCount() != 0 )
+            SCMultiPolygon2d fallback;
+            if (subject.HoleCount() != 0)
             {
                 return fallback;
             }
 
             AxisAlignedBox box;
-            if( !TryBuildAxisAlignedBox( clipper, box, eps ) )
+            if (!TryBuildAxisAlignedBox(clipper, box, eps))
             {
                 return fallback;
             }
 
-            const Polyline2d normalizedOuter = Normalize(
-                subject.OuterRing(), std::max( eps, Geometry::kBooleanRebuildFallbackEpsilon ) );
-            if( !normalizedOuter.IsValid() || normalizedOuter.PointCount() < 3 )
+            const SCPolyline2d normalizedOuter =
+                Normalize(subject.OuterRing(), std::max(eps, Geometry::kBooleanRebuildFallbackEpsilon));
+            if (!normalizedOuter.IsValid() || normalizedOuter.PointCount() < 3)
             {
                 return fallback;
             }
 
-            std::vector<Point2d> subjectPoints;
-            const Polyline2d outer = normalizedOuter;
-            subjectPoints.reserve( outer.PointCount() );
-            for( std::size_t i = 0; i < outer.PointCount(); ++i )
+            std::vector<SCPoint2d> subjectPoints;
+            const SCPolyline2d outer = normalizedOuter;
+            subjectPoints.reserve(outer.PointCount());
+            for (std::size_t i = 0; i < outer.PointCount(); ++i)
             {
-                subjectPoints.push_back( outer.PointAt( i ) );
+                subjectPoints.push_back(outer.PointAt(i));
             }
 
-            std::vector<Point2d> clipped = ClipPointsToAxisAlignedBox( subjectPoints, box, eps );
-            clipped = SimplifyRingVertices( std::move( clipped ),
-                                            std::max( eps, Geometry::kBooleanRebuildFallbackEpsilon ) );
-            if( clipped.size() < 3 )
+            std::vector<SCPoint2d> clipped = ClipPointsToAxisAlignedBox(subjectPoints, box, eps);
+            clipped = SimplifyRingVertices(std::move(clipped), std::max(eps, Geometry::kBooleanRebuildFallbackEpsilon));
+            if (clipped.size() < 3)
             {
                 return fallback;
             }
 
-            Polyline2d clippedRing( std::move( clipped ), PolylineClosure::Closed );
-            if( Orientation( clippedRing ) != RingOrientation2d::CounterClockwise )
+            SCPolyline2d clippedRing(std::move(clipped), SCPolylineClosure::Closed);
+            if (Orientation(clippedRing) != SCRingOrientation2d::CounterClockwise)
             {
-                clippedRing = Reverse( clippedRing );
+                clippedRing = Reverse(clippedRing);
             }
 
-            Polygon2d clippedPolygon( std::move( clippedRing ) );
-            if( !clippedPolygon.IsValid() || !Validate( clippedPolygon, eps ).valid )
+            SCPolygon2d clippedPolygon(std::move(clippedRing));
+            if (!clippedPolygon.IsValid() || !Validate(clippedPolygon, eps).valid)
             {
-                MultiPolyline2d boundaries;
-                boundaries.Add( clippedPolygon.OuterRing() );
-                const MultiPolygon2d rebuilt = BuildMultiPolygonByLines(
-                    boundaries, std::max( eps, Geometry::kBooleanRebuildFallbackEpsilon ) );
-                Polygon2d best;
+                SCMultiPolyline2d boundaries;
+                boundaries.Add(clippedPolygon.OuterRing());
+                const SCMultiPolygon2d rebuilt =
+                    BuildMultiPolygonByLines(boundaries, std::max(eps, Geometry::kBooleanRebuildFallbackEpsilon));
+                SCPolygon2d best;
                 double bestArea = 0.0;
-                for( std::size_t i = 0; i < rebuilt.Count(); ++i )
+                for (std::size_t i = 0; i < rebuilt.Count(); ++i)
                 {
-                    if( !rebuilt[i].IsValid() )
+                    if (!rebuilt[i].IsValid())
                     {
                         continue;
                     }
 
-                    const double candidateArea = std::abs( rebuilt[i].Area() );
-                    if( candidateArea > bestArea )
+                    const double candidateArea = std::abs(rebuilt[i].Area());
+                    if (candidateArea > bestArea)
                     {
                         best = rebuilt[i];
                         bestArea = candidateArea;
                     }
                 }
 
-                if( !best.IsValid() )
+                if (!best.IsValid())
                 {
                     return fallback;
                 }
                 clippedPolygon = best;
             }
-            if( std::abs( clippedPolygon.Area() ) <= std::max( 64.0 * eps * eps, 1e-14 ) )
+            if (std::abs(clippedPolygon.Area()) <= std::max(64.0 * eps * eps, 1e-14))
             {
                 return fallback;
             }
 
-            fallback.Add( std::move( clippedPolygon ) );
+            fallback.Add(std::move(clippedPolygon));
             return fallback;
         }
 
-        [[nodiscard]] MultiPolygon2d TryAxisAlignedBoxDifferenceFallback( const Polygon2d &subject,
-                                                                          const Polygon2d &clipper,
-                                                                          double eps )
+        [[nodiscard]] SCMultiPolygon2d TryAxisAlignedBoxDifferenceFallback(const SCPolygon2d& subject,
+                                                                         const SCPolygon2d& clipper,
+                                                                         double eps)
         {
-            MultiPolygon2d fallback;
-            if( subject.HoleCount() != 0 || subject.OuterRing().PointCount() != 4 )
+            SCMultiPolygon2d fallback;
+            if (subject.HoleCount() != 0 || subject.OuterRing().PointCount() != 4)
             {
                 return fallback;
             }
 
             AxisAlignedBox subjectBox;
-            if( !TryBuildAxisAlignedBox( subject, subjectBox, eps ) )
+            if (!TryBuildAxisAlignedBox(subject, subjectBox, eps))
             {
                 return fallback;
             }
 
-            const MultiPolygon2d overlap =
-                TryAxisAlignedBoxIntersectionFallback( clipper, subject, eps );
-            if( overlap.IsEmpty() )
+            const SCMultiPolygon2d overlap = TryAxisAlignedBoxIntersectionFallback(clipper, subject, eps);
+            if (overlap.IsEmpty())
             {
-                fallback.Add( MakeAxisAlignedBoxPolygon( subjectBox ) );
+                fallback.Add(MakeAxisAlignedBoxPolygon(subjectBox));
                 return fallback;
             }
-            if( overlap.Count() != 1 )
+            if (overlap.Count() != 1)
             {
                 return {};
             }
 
             AxisAlignedBox overlapBox;
-            if( !TryBuildAxisAlignedBox( overlap[0], overlapBox, eps ) )
+            if (!TryBuildAxisAlignedBox(overlap[0], overlapBox, eps))
             {
                 return {};
             }
 
-            const double areaTol = std::max( Geometry::kBooleanAreaEpsilon, 64.0 * eps * eps );
-            auto addStrip = [&]( double minX, double minY, double maxX, double maxY ) {
-                if( maxX - minX <= eps || maxY - minY <= eps )
+            const double areaTol = std::max(Geometry::kBooleanAreaEpsilon, 64.0 * eps * eps);
+            auto addStrip = [&](double minX, double minY, double maxX, double maxY) {
+                if (maxX - minX <= eps || maxY - minY <= eps)
                 {
                     return;
                 }
 
-                AxisAlignedBox strip{ minX, minY, maxX, maxY };
-                Polygon2d polygon = MakeAxisAlignedBoxPolygon( strip );
-                if( polygon.IsValid() && std::abs( polygon.Area() ) > areaTol )
+                AxisAlignedBox strip{minX, minY, maxX, maxY};
+                SCPolygon2d polygon = MakeAxisAlignedBoxPolygon(strip);
+                if (polygon.IsValid() && std::abs(polygon.Area()) > areaTol)
                 {
-                    fallback.Add( std::move( polygon ) );
+                    fallback.Add(std::move(polygon));
                 }
             };
 
-            addStrip( subjectBox.minX, subjectBox.minY, overlapBox.minX, subjectBox.maxY );
-            addStrip( overlapBox.maxX, subjectBox.minY, subjectBox.maxX, subjectBox.maxY );
-            addStrip( overlapBox.minX, subjectBox.minY, overlapBox.maxX, overlapBox.minY );
-            addStrip( overlapBox.minX, overlapBox.maxY, overlapBox.maxX, subjectBox.maxY );
+            addStrip(subjectBox.minX, subjectBox.minY, overlapBox.minX, subjectBox.maxY);
+            addStrip(overlapBox.maxX, subjectBox.minY, subjectBox.maxX, subjectBox.maxY);
+            addStrip(overlapBox.minX, subjectBox.minY, overlapBox.maxX, overlapBox.minY);
+            addStrip(overlapBox.minX, overlapBox.maxY, overlapBox.maxX, subjectBox.maxY);
             return fallback;
         }
 
-        void CollectRawSegments( const Polyline2d &polyline, std::vector<RawSegment> &segments,
-                                 double eps )
+        void CollectRawSegments(const SCPolyline2d& polyline, std::vector<RawSegment>& segments, double eps)
         {
-            const Polyline2d normalized = Normalize( polyline, eps );
-            if( !normalized.IsValid() || normalized.PointCount() < 2 )
+            const SCPolyline2d normalized = Normalize(polyline, eps);
+            if (!normalized.IsValid() || normalized.PointCount() < 2)
             {
                 return;
             }
 
             const std::size_t segmentCount =
                 normalized.IsClosed() ? normalized.PointCount() : normalized.PointCount() - 1;
-            for( std::size_t i = 0; i < segmentCount; ++i )
+            for (std::size_t i = 0; i < segmentCount; ++i)
             {
-                const Point2d start = normalized.PointAt( i );
-                const Point2d end = normalized.PointAt( ( i + 1 ) % normalized.PointCount() );
-                if( !start.AlmostEquals( end, eps ) )
+                const SCPoint2d start = normalized.PointAt(i);
+                const SCPoint2d end = normalized.PointAt((i + 1) % normalized.PointCount());
+                if (!start.AlmostEquals(end, eps))
                 {
-                    segments.push_back( RawSegment{ start, end } );
+                    segments.push_back(RawSegment{start, end});
                 }
             }
         }
 
-        [[nodiscard]] std::vector<RawSegment> CollectBoundarySegments( const Polygon2d &first,
-                                                                       const Polygon2d &second,
-                                                                       double eps )
+        [[nodiscard]] std::vector<RawSegment> CollectBoundarySegments(const SCPolygon2d& first,
+                                                                      const SCPolygon2d& second,
+                                                                      double eps)
         {
             std::vector<RawSegment> segments;
-            CollectRawSegments( first.OuterRing(), segments, eps );
-            for( std::size_t i = 0; i < first.HoleCount(); ++i )
+            CollectRawSegments(first.OuterRing(), segments, eps);
+            for (std::size_t i = 0; i < first.HoleCount(); ++i)
             {
-                CollectRawSegments( first.HoleAt( i ), segments, eps );
+                CollectRawSegments(first.HoleAt(i), segments, eps);
             }
 
-            CollectRawSegments( second.OuterRing(), segments, eps );
-            for( std::size_t i = 0; i < second.HoleCount(); ++i )
+            CollectRawSegments(second.OuterRing(), segments, eps);
+            for (std::size_t i = 0; i < second.HoleCount(); ++i)
             {
-                CollectRawSegments( second.HoleAt( i ), segments, eps );
+                CollectRawSegments(second.HoleAt(i), segments, eps);
             }
 
             return segments;
         }
 
-        void AppendPolygonBoundaries( const Polygon2d &polygon, MultiPolyline2d &boundaries )
+        void AppendPolygonBoundaries(const SCPolygon2d& polygon, SCMultiPolyline2d& boundaries)
         {
-            boundaries.Add( polygon.OuterRing() );
-            for( std::size_t holeIndex = 0; holeIndex < polygon.HoleCount(); ++holeIndex )
+            boundaries.Add(polygon.OuterRing());
+            for (std::size_t holeIndex = 0; holeIndex < polygon.HoleCount(); ++holeIndex)
             {
-                boundaries.Add( polygon.HoleAt( holeIndex ) );
+                boundaries.Add(polygon.HoleAt(holeIndex));
             }
         }
 
-        void AppendMultiPolygonBoundaries( const MultiPolygon2d &polygons, MultiPolyline2d &boundaries )
+        void AppendMultiPolygonBoundaries(const SCMultiPolygon2d& polygons, SCMultiPolyline2d& boundaries)
         {
-            for( std::size_t polygonIndex = 0; polygonIndex < polygons.Count(); ++polygonIndex )
+            for (std::size_t polygonIndex = 0; polygonIndex < polygons.Count(); ++polygonIndex)
             {
-                AppendPolygonBoundaries( polygons[polygonIndex], boundaries );
+                AppendPolygonBoundaries(polygons[polygonIndex], boundaries);
             }
         }
 
-        void AppendPolygons( const MultiPolygon2d &source, MultiPolygon2d &destination )
+        void AppendPolygons(const SCMultiPolygon2d& source, SCMultiPolygon2d& destination)
         {
-            for( std::size_t polygonIndex = 0; polygonIndex < source.Count(); ++polygonIndex )
+            for (std::size_t polygonIndex = 0; polygonIndex < source.Count(); ++polygonIndex)
             {
-                destination.Add( Polygon2d( source[polygonIndex] ) );
+                destination.Add(SCPolygon2d(source[polygonIndex]));
             }
         }
 
-        [[nodiscard]] double TotalArea( const MultiPolygon2d &polygons )
+        [[nodiscard]] double TotalArea(const SCMultiPolygon2d& polygons)
         {
             double total = 0.0;
-            for( std::size_t polygonIndex = 0; polygonIndex < polygons.Count(); ++polygonIndex )
+            for (std::size_t polygonIndex = 0; polygonIndex < polygons.Count(); ++polygonIndex)
             {
-                total += std::abs( polygons[polygonIndex].Area() );
+                total += std::abs(polygons[polygonIndex].Area());
             }
             return total;
         }
 
-        [[nodiscard]] Polygon2d NormalizeBooleanOperand( const Polygon2d &polygon, double eps )
+        [[nodiscard]] SCPolygon2d NormalizeBooleanOperand(const SCPolygon2d& polygon, double eps)
         {
-            const Polygon2d rebuilt = NormalizePolygonByLines( polygon, eps );
-            if( rebuilt.IsValid() )
+            const SCPolygon2d rebuilt = NormalizePolygonByLines(polygon, eps);
+            if (rebuilt.IsValid())
             {
                 return rebuilt;
             }
 
             const bool inputValid = polygon.IsValid();
 
-            if( inputValid )
+            if (inputValid)
             {
                 return polygon;
             }
 
-            // Near-degenerate duplicate-edge families can fail direct rebuild; simplify
-            // ring vertices and retry with a conservative tolerance before giving up.
-            const Polyline2d outer = polygon.OuterRing();
-            std::vector<Point2d> outerPoints;
-            outerPoints.reserve( outer.PointCount() );
-            for( std::size_t i = 0; i < outer.PointCount(); ++i )
+            // Near-degenerate duplicate-edge families can fail direct rebuild;
+            // simplify ring vertices and retry with a conservative tolerance
+            // before giving up.
+            const SCPolyline2d outer = polygon.OuterRing();
+            std::vector<SCPoint2d> outerPoints;
+            outerPoints.reserve(outer.PointCount());
+            for (std::size_t i = 0; i < outer.PointCount(); ++i)
             {
-                outerPoints.push_back( outer.PointAt( i ) );
+                outerPoints.push_back(outer.PointAt(i));
             }
 
-            const double simplifyEps = std::max( Geometry::kBooleanComparisonEpsilon, 8.0 * eps );
-            std::vector<Point2d> simplifiedOuter =
-                SimplifyRingVertices( std::move( outerPoints ), simplifyEps );
-            if( simplifiedOuter.size() >= 3 )
+            const double simplifyEps = std::max(Geometry::kBooleanComparisonEpsilon, 8.0 * eps);
+            std::vector<SCPoint2d> simplifiedOuter = SimplifyRingVertices(std::move(outerPoints), simplifyEps);
+            if (simplifiedOuter.size() >= 3)
             {
-                Polyline2d simplifiedRing( std::move( simplifiedOuter ), PolylineClosure::Closed );
-                if( Orientation( simplifiedRing ) != RingOrientation2d::CounterClockwise )
+                SCPolyline2d simplifiedRing(std::move(simplifiedOuter), SCPolylineClosure::Closed);
+                if (Orientation(simplifiedRing) != SCRingOrientation2d::CounterClockwise)
                 {
-                    simplifiedRing = Reverse( simplifiedRing );
+                    simplifiedRing = Reverse(simplifiedRing);
                 }
 
-                Polygon2d simplifiedPolygon( std::move( simplifiedRing ) );
-                if( simplifiedPolygon.IsValid() && Validate( simplifiedPolygon, eps ).valid )
+                SCPolygon2d simplifiedPolygon(std::move(simplifiedRing));
+                if (simplifiedPolygon.IsValid() && Validate(simplifiedPolygon, eps).valid)
                 {
                     return simplifiedPolygon;
                 }
@@ -485,76 +485,72 @@ namespace Geometry
             return {};
         }
 
-        void AddParameter( std::vector<double> &parameters, double value, double eps )
+        void AddParameter(std::vector<double>& parameters, double value, double eps)
         {
-            value = std::clamp( value, 0.0, 1.0 );
-            for( double existing : parameters )
+            value = std::clamp(value, 0.0, 1.0);
+            for (double existing : parameters)
             {
-                if( std::abs( existing - value ) <= eps )
+                if (std::abs(existing - value) <= eps)
                 {
                     return;
                 }
             }
-            parameters.push_back( value );
+            parameters.push_back(value);
         }
 
-        [[nodiscard]] double ComputeParameterTolerance( const LineSegment2d &segment, double eps )
+        [[nodiscard]] double ComputeParameterTolerance(const SCLineSegment2d& segment, double eps)
         {
             const double length = segment.Length();
-            if( length <= eps )
+            if (length <= eps)
             {
                 return Geometry::kBooleanComparisonEpsilon;
             }
 
             // Convert world-space tolerance into param-space tolerance so that
             // near-degenerate intersection clusters collapse consistently.
-            return std::min( 1e-4, std::max( Geometry::kBooleanComparisonEpsilon, 8.0 * eps / length ) );
+            return std::min(1e-4, std::max(Geometry::kBooleanComparisonEpsilon, 8.0 * eps / length));
         }
 
-        [[nodiscard]] std::vector<double> CompactSortedParameters( std::vector<double> parameters,
-                                                                   double parameterTol )
+        [[nodiscard]] std::vector<double> CompactSortedParameters(std::vector<double> parameters, double parameterTol)
         {
-            if( parameters.empty() )
+            if (parameters.empty())
             {
                 return parameters;
             }
 
-            std::sort( parameters.begin(), parameters.end() );
+            std::sort(parameters.begin(), parameters.end());
             std::vector<double> compacted;
-            compacted.reserve( parameters.size() );
+            compacted.reserve(parameters.size());
 
             std::size_t clusterStart = 0;
-            while( clusterStart < parameters.size() )
+            while (clusterStart < parameters.size())
             {
                 std::size_t clusterEnd = clusterStart + 1;
                 double weighted = parameters[clusterStart];
-                while( clusterEnd < parameters.size() &&
-                       parameters[clusterEnd] <= parameters[clusterEnd - 1] + parameterTol )
+                while (clusterEnd < parameters.size() &&
+                       parameters[clusterEnd] <= parameters[clusterEnd - 1] + parameterTol)
                 {
                     weighted += parameters[clusterEnd];
                     ++clusterEnd;
                 }
 
-                const double representative =
-                    weighted / static_cast<double>( clusterEnd - clusterStart );
-                compacted.push_back( std::clamp( representative, 0.0, 1.0 ) );
+                const double representative = weighted / static_cast<double>(clusterEnd - clusterStart);
+                compacted.push_back(std::clamp(representative, 0.0, 1.0));
                 clusterStart = clusterEnd;
             }
 
-            if( compacted.front() > parameterTol )
+            if (compacted.front() > parameterTol)
             {
-                compacted.insert( compacted.begin(), 0.0 );
-            }
-            else
+                compacted.insert(compacted.begin(), 0.0);
+            } else
             {
                 compacted.front() = 0.0;
             }
 
-            if( compacted.back() < 1.0 - parameterTol )
+            if (compacted.back() < 1.0 - parameterTol)
             {
-                compacted.push_back( 1.0 );
-            }
-            else
+                compacted.push_back(1.0);
+            } else
             {
                 compacted.back() = 1.0;
             }
@@ -562,68 +558,65 @@ namespace Geometry
             return compacted;
         }
 
-        [[nodiscard]] std::vector<RawSegment> SubdivideRawSegments(
-            const std::vector<RawSegment> &rawSegments, double eps )
+        [[nodiscard]] std::vector<RawSegment> SubdivideRawSegments(const std::vector<RawSegment>& rawSegments,
+                                                                   double eps)
         {
-            std::vector<std::vector<double>> parameters( rawSegments.size(),
-                                                         std::vector<double>{ 0.0, 1.0 } );
-            for( std::size_t i = 0; i < rawSegments.size(); ++i )
+            std::vector<std::vector<double>> parameters(rawSegments.size(), std::vector<double>{0.0, 1.0});
+            for (std::size_t i = 0; i < rawSegments.size(); ++i)
             {
-                const LineSegment2d first( rawSegments[i].start, rawSegments[i].end );
-                for( std::size_t j = i + 1; j < rawSegments.size(); ++j )
+                const SCLineSegment2d first(rawSegments[i].start, rawSegments[i].end);
+                for (std::size_t j = i + 1; j < rawSegments.size(); ++j)
                 {
-                    const LineSegment2d second( rawSegments[j].start, rawSegments[j].end );
-                    const SegmentIntersection2d intersection = Intersect( first, second, eps );
-                    if( !intersection.HasIntersection() )
+                    const SCLineSegment2d second(rawSegments[j].start, rawSegments[j].end);
+                    const SCSegmentIntersection2d intersection = Intersect(first, second, eps);
+                    if (!intersection.HasIntersection())
                     {
                         continue;
                     }
 
-                    for( std::size_t k = 0; k < intersection.pointCount; ++k )
+                    for (std::size_t k = 0; k < intersection.pointCount; ++k)
                     {
-                        AddParameter( parameters[i], intersection.points[k].parameterOnFirst, eps );
-                        AddParameter( parameters[j], intersection.points[k].parameterOnSecond, eps );
+                        AddParameter(parameters[i], intersection.points[k].parameterOnFirst, eps);
+                        AddParameter(parameters[j], intersection.points[k].parameterOnSecond, eps);
                     }
                 }
             }
 
             std::vector<RawSegment> splitSegments;
-            for( std::size_t i = 0; i < rawSegments.size(); ++i )
+            for (std::size_t i = 0; i < rawSegments.size(); ++i)
             {
-                LineSegment2d segment( rawSegments[i].start, rawSegments[i].end );
-                const double parameterTol = ComputeParameterTolerance( segment, eps );
-                std::vector<double> params = CompactSortedParameters( parameters[i], parameterTol );
+                SCLineSegment2d segment(rawSegments[i].start, rawSegments[i].end);
+                const double parameterTol = ComputeParameterTolerance(segment, eps);
+                std::vector<double> params = CompactSortedParameters(parameters[i], parameterTol);
 
-                for( std::size_t k = 0; k + 1 < params.size(); ++k )
+                for (std::size_t k = 0; k + 1 < params.size(); ++k)
                 {
-                    if( params[k + 1] <= params[k] + parameterTol )
+                    if (params[k + 1] <= params[k] + parameterTol)
                     {
                         continue;
                     }
 
-                    Point2d start = segment.PointAt( params[k] );
-                    Point2d end = segment.PointAt( params[k + 1] );
-                    if( params[k] <= parameterTol )
+                    SCPoint2d start = segment.PointAt(params[k]);
+                    SCPoint2d end = segment.PointAt(params[k + 1]);
+                    if (params[k] <= parameterTol)
                     {
                         start = segment.startPoint;
-                    }
-                    else if( params[k] >= 1.0 - parameterTol )
+                    } else if (params[k] >= 1.0 - parameterTol)
                     {
                         start = segment.endPoint;
                     }
 
-                    if( params[k + 1] <= parameterTol )
+                    if (params[k + 1] <= parameterTol)
                     {
                         end = segment.startPoint;
-                    }
-                    else if( params[k + 1] >= 1.0 - parameterTol )
+                    } else if (params[k + 1] >= 1.0 - parameterTol)
                     {
                         end = segment.endPoint;
                     }
 
-                    if( !start.AlmostEquals( end, eps ) )
+                    if (!start.AlmostEquals(end, eps))
                     {
-                        splitSegments.push_back( RawSegment{ start, end } );
+                        splitSegments.push_back(RawSegment{start, end});
                     }
                 }
             }
@@ -631,199 +624,194 @@ namespace Geometry
             return splitSegments;
         }
 
-        [[nodiscard]] std::size_t FindOrAddVertex( std::vector<Point2d> &vertices, const Point2d &point,
-                                                   double eps )
+        [[nodiscard]] std::size_t FindOrAddVertex(std::vector<SCPoint2d>& vertices, const SCPoint2d& point, double eps)
         {
-            for( std::size_t i = 0; i < vertices.size(); ++i )
+            for (std::size_t i = 0; i < vertices.size(); ++i)
             {
-                if( vertices[i].AlmostEquals( point, eps ) )
+                if (vertices[i].AlmostEquals(point, eps))
                 {
                     return i;
                 }
             }
 
-            vertices.push_back( point );
+            vertices.push_back(point);
             return vertices.size() - 1;
         }
 
-        [[nodiscard]] std::uint64_t MakeUndirectedEdgeKey( std::size_t first, std::size_t second )
+        [[nodiscard]] std::uint64_t MakeUndirectedEdgeKey(std::size_t first, std::size_t second)
         {
-            const std::uint64_t a = static_cast<std::uint64_t>( std::min( first, second ) );
-            const std::uint64_t b = static_cast<std::uint64_t>( std::max( first, second ) );
-            return ( a << 32U ) | b;
+            const std::uint64_t a = static_cast<std::uint64_t>(std::min(first, second));
+            const std::uint64_t b = static_cast<std::uint64_t>(std::max(first, second));
+            return (a << 32U) | b;
         }
 
-        [[nodiscard]] std::vector<RawSegment> RemoveDuplicateSegments(
-            const std::vector<RawSegment> &segments, double eps )
+        [[nodiscard]] std::vector<RawSegment> RemoveDuplicateSegments(const std::vector<RawSegment>& segments,
+                                                                      double eps)
         {
             std::vector<RawSegment> unique;
-            std::vector<Point2d> vertices;
+            std::vector<SCPoint2d> vertices;
             std::unordered_map<std::uint64_t, std::size_t> edgeKeys;
-            const double vertexTol = ComputeVertexMergeTolerance( segments, eps );
-            unique.reserve( segments.size() );
-            for( const RawSegment &segment : segments )
+            const double vertexTol = ComputeVertexMergeTolerance(segments, eps);
+            unique.reserve(segments.size());
+            for (const RawSegment& segment : segments)
             {
-                if( segment.start.AlmostEquals( segment.end, eps ) )
+                if (segment.start.AlmostEquals(segment.end, eps))
                 {
                     continue;
                 }
 
-                const std::size_t from = FindOrAddVertex( vertices, segment.start, vertexTol );
-                const std::size_t to = FindOrAddVertex( vertices, segment.end, vertexTol );
-                if( from == to )
+                const std::size_t from = FindOrAddVertex(vertices, segment.start, vertexTol);
+                const std::size_t to = FindOrAddVertex(vertices, segment.end, vertexTol);
+                if (from == to)
                 {
                     continue;
                 }
 
-                const std::uint64_t key = MakeUndirectedEdgeKey( from, to );
-                if( edgeKeys.emplace( key, unique.size() ).second )
+                const std::uint64_t key = MakeUndirectedEdgeKey(from, to);
+                if (edgeKeys.emplace(key, unique.size()).second)
                 {
-                    unique.push_back( segment );
+                    unique.push_back(segment);
                 }
             }
             return unique;
         }
 
-        [[nodiscard]] double ComputeSegmentLengthTolerance( const std::vector<RawSegment> &segments,
-                                                            double eps )
+        [[nodiscard]] double ComputeSegmentLengthTolerance(const std::vector<RawSegment>& segments, double eps)
         {
             (void)segments;
-            // Only remove clearly negligible fragments. Using a larger threshold can
-            // break ring connectivity when near-duplicate vertices encode valid edges.
-            return std::max( Geometry::kBooleanComparisonEpsilon, 0.25 * eps );
+            // Only remove clearly negligible fragments. Using a larger
+            // threshold can break ring connectivity when near-duplicate
+            // vertices encode valid edges.
+            return std::max(Geometry::kBooleanComparisonEpsilon, 0.25 * eps);
         }
 
-        [[nodiscard]] double ComputeVertexMergeTolerance( const std::vector<RawSegment> &segments,
-                                                          double eps )
+        [[nodiscard]] double ComputeVertexMergeTolerance(const std::vector<RawSegment>& segments, double eps)
         {
             double minLength = std::numeric_limits<double>::infinity();
-            for( const RawSegment &segment : segments )
+            for (const RawSegment& segment : segments)
             {
-                const double length = ( segment.end - segment.start ).Length();
-                if( length > 0.0 )
+                const double length = (segment.end - segment.start).Length();
+                if (length > 0.0)
                 {
-                    minLength = std::min( minLength, length );
+                    minLength = std::min(minLength, length);
                 }
             }
 
-            if( !std::isfinite( minLength ) )
+            if (!std::isfinite(minLength))
             {
                 return eps;
             }
 
-            const double floorTol = std::max( Geometry::kBooleanComparisonEpsilon, eps * 1e-3 );
-            return std::max( floorTol, std::min( eps, 0.25 * minLength ) );
+            const double floorTol = std::max(Geometry::kBooleanComparisonEpsilon, eps * 1e-3);
+            return std::max(floorTol, std::min(eps, 0.25 * minLength));
         }
 
-        [[nodiscard]] std::vector<RawSegment> FilterTinySegments(
-            const std::vector<RawSegment> &segments, double eps )
+        [[nodiscard]] std::vector<RawSegment> FilterTinySegments(const std::vector<RawSegment>& segments, double eps)
         {
-            const double lengthTol = ComputeSegmentLengthTolerance( segments, eps );
+            const double lengthTol = ComputeSegmentLengthTolerance(segments, eps);
             std::vector<RawSegment> filtered;
-            filtered.reserve( segments.size() );
-            for( const RawSegment &segment : segments )
+            filtered.reserve(segments.size());
+            for (const RawSegment& segment : segments)
             {
-                if( ( segment.end - segment.start ).Length() <= lengthTol )
+                if ((segment.end - segment.start).Length() <= lengthTol)
                 {
                     continue;
                 }
-                filtered.push_back( segment );
+                filtered.push_back(segment);
             }
             return filtered;
         }
 
-        [[nodiscard]] std::vector<RawSegment> MergeCollinearChainSegments(
-            const std::vector<RawSegment> &segments, double eps )
+        [[nodiscard]] std::vector<RawSegment> MergeCollinearChainSegments(const std::vector<RawSegment>& segments,
+                                                                          double eps)
         {
             std::vector<RawSegment> working = segments;
             bool changed = true;
-            while( changed )
+            while (changed)
             {
                 changed = false;
 
-                std::vector<Point2d> vertices;
+                std::vector<SCPoint2d> vertices;
                 std::vector<std::size_t> degree;
                 std::vector<std::vector<std::size_t>> incident;
                 struct IndexedSegment
                 {
-                    std::size_t from{ 0 };
-                    std::size_t to{ 0 };
+                    std::size_t from{0};
+                    std::size_t to{0};
                 };
                 std::vector<IndexedSegment> indexed;
-                indexed.reserve( working.size() );
-                const double vertexTol = ComputeVertexMergeTolerance( working, eps );
+                indexed.reserve(working.size());
+                const double vertexTol = ComputeVertexMergeTolerance(working, eps);
 
-                for( const RawSegment &segment : working )
+                for (const RawSegment& segment : working)
                 {
-                    const std::size_t from = FindOrAddVertex( vertices, segment.start, vertexTol );
-                    const std::size_t to = FindOrAddVertex( vertices, segment.end, vertexTol );
-                    if( degree.size() < vertices.size() )
+                    const std::size_t from = FindOrAddVertex(vertices, segment.start, vertexTol);
+                    const std::size_t to = FindOrAddVertex(vertices, segment.end, vertexTol);
+                    if (degree.size() < vertices.size())
                     {
-                        degree.resize( vertices.size(), 0 );
-                        incident.resize( vertices.size() );
+                        degree.resize(vertices.size(), 0);
+                        incident.resize(vertices.size());
                     }
 
                     const std::size_t segmentIndex = indexed.size();
-                    indexed.push_back( IndexedSegment{ from, to } );
-                    if( from != to )
+                    indexed.push_back(IndexedSegment{from, to});
+                    if (from != to)
                     {
                         ++degree[from];
                         ++degree[to];
-                        incident[from].push_back( segmentIndex );
-                        incident[to].push_back( segmentIndex );
+                        incident[from].push_back(segmentIndex);
+                        incident[to].push_back(segmentIndex);
                     }
                 }
 
-                for( std::size_t vertexIndex = 0; vertexIndex < vertices.size(); ++vertexIndex )
+                for (std::size_t vertexIndex = 0; vertexIndex < vertices.size(); ++vertexIndex)
                 {
-                    if( vertexIndex >= degree.size() || degree[vertexIndex] != 2 ||
-                        incident[vertexIndex].size() != 2 )
+                    if (vertexIndex >= degree.size() || degree[vertexIndex] != 2 || incident[vertexIndex].size() != 2)
                     {
                         continue;
                     }
 
                     const std::size_t firstIndex = incident[vertexIndex][0];
                     const std::size_t secondIndex = incident[vertexIndex][1];
-                    if( firstIndex >= indexed.size() || secondIndex >= indexed.size() ||
-                        firstIndex == secondIndex )
+                    if (firstIndex >= indexed.size() || secondIndex >= indexed.size() || firstIndex == secondIndex)
                     {
                         continue;
                     }
 
-                    const IndexedSegment &first = indexed[firstIndex];
-                    const IndexedSegment &second = indexed[secondIndex];
+                    const IndexedSegment& first = indexed[firstIndex];
+                    const IndexedSegment& second = indexed[secondIndex];
                     const std::size_t firstOther = first.from == vertexIndex ? first.to : first.from;
                     const std::size_t secondOther = second.from == vertexIndex ? second.to : second.from;
-                    if( firstOther == secondOther )
+                    if (firstOther == secondOther)
                     {
                         continue;
                     }
 
-                    if( !IsNearlyCollinearVertex( vertices[firstOther], vertices[vertexIndex],
-                                                  vertices[secondOther], eps ) )
+                    if (!IsNearlyCollinearVertex(
+                            vertices[firstOther], vertices[vertexIndex], vertices[secondOther], eps))
                     {
                         continue;
                     }
 
                     std::vector<RawSegment> merged;
-                    merged.reserve( working.size() - 1 );
-                    for( std::size_t i = 0; i < working.size(); ++i )
+                    merged.reserve(working.size() - 1);
+                    for (std::size_t i = 0; i < working.size(); ++i)
                     {
-                        if( i == firstIndex || i == secondIndex )
+                        if (i == firstIndex || i == secondIndex)
                         {
                             continue;
                         }
-                        merged.push_back( working[i] );
+                        merged.push_back(working[i]);
                     }
 
-                    const Point2d mergedStart = vertices[firstOther];
-                    const Point2d mergedEnd = vertices[secondOther];
-                    if( !mergedStart.AlmostEquals( mergedEnd, eps ) )
+                    const SCPoint2d mergedStart = vertices[firstOther];
+                    const SCPoint2d mergedEnd = vertices[secondOther];
+                    if (!mergedStart.AlmostEquals(mergedEnd, eps))
                     {
-                        merged.push_back( RawSegment{ mergedStart, mergedEnd } );
+                        merged.push_back(RawSegment{mergedStart, mergedEnd});
                     }
 
-                    working = RemoveDuplicateSegments( merged, eps );
+                    working = RemoveDuplicateSegments(merged, eps);
                     changed = true;
                     break;
                 }
@@ -832,200 +820,200 @@ namespace Geometry
             return working;
         }
 
-        [[nodiscard]] bool LiesOnSupportLine( const Point2d &point, const Point2d &lineOrigin,
-                                              const Vector2d &lineDirection, double eps )
+        [[nodiscard]] bool LiesOnSupportLine(const SCPoint2d& point,
+                                             const SCPoint2d& lineOrigin,
+                                             const SCVector2d& lineDirection,
+                                             double eps)
         {
             const double lineLength = lineDirection.Length();
-            if( lineLength <= eps )
+            if (lineLength <= eps)
             {
                 return false;
             }
 
-            return std::abs( Cross( lineDirection, point - lineOrigin ) ) <= eps * lineLength;
+            return std::abs(Cross(lineDirection, point - lineOrigin)) <= eps * lineLength;
         }
 
-        [[nodiscard]] bool SegmentLiesOnSupportLine( const RawSegment &segment,
-                                                     const Point2d &lineOrigin,
-                                                     const Vector2d &lineDirection, double eps )
+        [[nodiscard]] bool SegmentLiesOnSupportLine(const RawSegment& segment,
+                                                    const SCPoint2d& lineOrigin,
+                                                    const SCVector2d& lineDirection,
+                                                    double eps)
         {
-            return LiesOnSupportLine( segment.start, lineOrigin, lineDirection, eps ) &&
-                   LiesOnSupportLine( segment.end, lineOrigin, lineDirection, eps );
+            return LiesOnSupportLine(segment.start, lineOrigin, lineDirection, eps) &&
+                   LiesOnSupportLine(segment.end, lineOrigin, lineDirection, eps);
         }
 
-        [[nodiscard]] std::vector<RawSegment> CollapseCollinearSegmentFamilies(
-            const std::vector<RawSegment> &segments, double eps )
+        [[nodiscard]] std::vector<RawSegment> CollapseCollinearSegmentFamilies(const std::vector<RawSegment>& segments,
+                                                                               double eps)
         {
-            if( segments.size() <= 1 )
+            if (segments.size() <= 1)
             {
                 return segments;
             }
 
             struct IndexedSegment
             {
-                std::size_t from{ 0 };
-                std::size_t to{ 0 };
+                std::size_t from{0};
+                std::size_t to{0};
             };
 
-            const double vertexTol = ComputeVertexMergeTolerance( segments, eps );
-            std::vector<Point2d> vertices;
+            const double vertexTol = ComputeVertexMergeTolerance(segments, eps);
+            std::vector<SCPoint2d> vertices;
             std::vector<IndexedSegment> indexed;
             std::vector<std::vector<std::size_t>> incident;
-            indexed.reserve( segments.size() );
+            indexed.reserve(segments.size());
 
-            for( const RawSegment &segment : segments )
+            for (const RawSegment& segment : segments)
             {
-                const std::size_t from = FindOrAddVertex( vertices, segment.start, vertexTol );
-                const std::size_t to = FindOrAddVertex( vertices, segment.end, vertexTol );
-                indexed.push_back( IndexedSegment{ from, to } );
+                const std::size_t from = FindOrAddVertex(vertices, segment.start, vertexTol);
+                const std::size_t to = FindOrAddVertex(vertices, segment.end, vertexTol);
+                indexed.push_back(IndexedSegment{from, to});
 
-                const std::size_t required = std::max( from, to ) + 1;
-                if( incident.size() < required )
+                const std::size_t required = std::max(from, to) + 1;
+                if (incident.size() < required)
                 {
-                    incident.resize( required );
+                    incident.resize(required);
                 }
 
-                incident[from].push_back( indexed.size() - 1 );
-                incident[to].push_back( indexed.size() - 1 );
+                incident[from].push_back(indexed.size() - 1);
+                incident[to].push_back(indexed.size() - 1);
             }
 
-            std::vector<bool> visited( segments.size(), false );
-            std::vector<bool> componentMask( segments.size(), false );
+            std::vector<bool> visited(segments.size(), false);
+            std::vector<bool> componentMask(segments.size(), false);
             std::vector<RawSegment> collapsed;
-            collapsed.reserve( segments.size() );
+            collapsed.reserve(segments.size());
 
-            for( std::size_t segmentIndex = 0; segmentIndex < segments.size(); ++segmentIndex )
+            for (std::size_t segmentIndex = 0; segmentIndex < segments.size(); ++segmentIndex)
             {
-                if( visited[segmentIndex] )
+                if (visited[segmentIndex])
                 {
                     continue;
                 }
 
-                const IndexedSegment &seed = indexed[segmentIndex];
-                const Point2d lineOrigin = vertices[seed.from];
-                const Vector2d lineDirection = vertices[seed.to] - vertices[seed.from];
-                if( lineDirection.Length() <= eps )
+                const IndexedSegment& seed = indexed[segmentIndex];
+                const SCPoint2d lineOrigin = vertices[seed.from];
+                const SCVector2d lineDirection = vertices[seed.to] - vertices[seed.from];
+                if (lineDirection.Length() <= eps)
                 {
                     visited[segmentIndex] = true;
                     continue;
                 }
 
-                std::vector<std::size_t> stack{ segmentIndex };
+                std::vector<std::size_t> stack{segmentIndex};
                 std::vector<std::size_t> component;
                 visited[segmentIndex] = true;
                 componentMask[segmentIndex] = true;
-                while( !stack.empty() )
+                while (!stack.empty())
                 {
                     const std::size_t currentIndex = stack.back();
                     stack.pop_back();
-                    component.push_back( currentIndex );
+                    component.push_back(currentIndex);
 
-                    const IndexedSegment &current = indexed[currentIndex];
-                    const std::size_t endpoints[] = { current.from, current.to };
-                    for( const std::size_t vertexIndex : endpoints )
+                    const IndexedSegment& current = indexed[currentIndex];
+                    const std::size_t endpoints[] = {current.from, current.to};
+                    for (const std::size_t vertexIndex : endpoints)
                     {
-                        for( const std::size_t neighbourIndex : incident[vertexIndex] )
+                        for (const std::size_t neighbourIndex : incident[vertexIndex])
                         {
-                            if( visited[neighbourIndex] )
+                            if (visited[neighbourIndex])
                             {
                                 continue;
                             }
-                            if( !SegmentLiesOnSupportLine( segments[neighbourIndex], lineOrigin,
-                                                           lineDirection, std::max( vertexTol, eps ) ) )
+                            if (!SegmentLiesOnSupportLine(
+                                    segments[neighbourIndex], lineOrigin, lineDirection, std::max(vertexTol, eps)))
                             {
                                 continue;
                             }
 
                             visited[neighbourIndex] = true;
                             componentMask[neighbourIndex] = true;
-                            stack.push_back( neighbourIndex );
+                            stack.push_back(neighbourIndex);
                         }
                     }
                 }
 
-                if( component.size() == 1 )
+                if (component.size() == 1)
                 {
-                    collapsed.push_back( segments[segmentIndex] );
+                    collapsed.push_back(segments[segmentIndex]);
                     componentMask[segmentIndex] = false;
                     continue;
                 }
 
                 std::vector<std::size_t> componentVertices;
-                componentVertices.reserve( component.size() * 2 );
-                for( const std::size_t index : component )
+                componentVertices.reserve(component.size() * 2);
+                for (const std::size_t index : component)
                 {
-                    componentVertices.push_back( indexed[index].from );
-                    componentVertices.push_back( indexed[index].to );
+                    componentVertices.push_back(indexed[index].from);
+                    componentVertices.push_back(indexed[index].to);
                 }
-                std::sort( componentVertices.begin(), componentVertices.end() );
-                componentVertices.erase(
-                    std::unique( componentVertices.begin(), componentVertices.end() ),
-                    componentVertices.end() );
+                std::sort(componentVertices.begin(), componentVertices.end());
+                componentVertices.erase(std::unique(componentVertices.begin(), componentVertices.end()),
+                                        componentVertices.end());
 
-                const Vector2d directionUnit = lineDirection / lineDirection.Length();
+                const SCVector2d directionUnit = lineDirection / lineDirection.Length();
                 struct OrderedVertex
                 {
-                    std::size_t index{ 0 };
-                    double parameter{ 0.0 };
+                    std::size_t index{0};
+                    double parameter{0.0};
                 };
 
                 std::vector<OrderedVertex> orderedVertices;
-                orderedVertices.reserve( componentVertices.size() );
-                for( const std::size_t vertexIndex : componentVertices )
+                orderedVertices.reserve(componentVertices.size());
+                for (const std::size_t vertexIndex : componentVertices)
                 {
-                    orderedVertices.push_back( OrderedVertex{
-                        vertexIndex, Dot( vertices[vertexIndex] - lineOrigin, directionUnit ) } );
+                    orderedVertices.push_back(
+                        OrderedVertex{vertexIndex, Dot(vertices[vertexIndex] - lineOrigin, directionUnit)});
                 }
 
-                std::sort( orderedVertices.begin(), orderedVertices.end(),
-                           []( const OrderedVertex &lhs, const OrderedVertex &rhs ) {
-                               return lhs.parameter < rhs.parameter;
-                           } );
+                std::sort(
+                    orderedVertices.begin(),
+                    orderedVertices.end(),
+                    [](const OrderedVertex& lhs, const OrderedVertex& rhs) { return lhs.parameter < rhs.parameter; });
 
-                if( orderedVertices.size() < 2 )
+                if (orderedVertices.size() < 2)
                 {
-                    for( const std::size_t index : component )
+                    for (const std::size_t index : component)
                     {
-                        collapsed.push_back( segments[index] );
+                        collapsed.push_back(segments[index]);
                         componentMask[index] = false;
                     }
                     continue;
                 }
 
                 std::unordered_map<std::size_t, bool> branchVertices;
-                for( const OrderedVertex &vertex : orderedVertices )
+                for (const OrderedVertex& vertex : orderedVertices)
                 {
                     bool branch = false;
-                    for( const std::size_t incidentIndex : incident[vertex.index] )
+                    for (const std::size_t incidentIndex : incident[vertex.index])
                     {
-                        if( componentMask[incidentIndex] )
+                        if (componentMask[incidentIndex])
                         {
                             continue;
                         }
-                        if( !SegmentLiesOnSupportLine( segments[incidentIndex], lineOrigin,
-                                                       lineDirection, std::max( vertexTol, eps ) ) )
+                        if (!SegmentLiesOnSupportLine(
+                                segments[incidentIndex], lineOrigin, lineDirection, std::max(vertexTol, eps)))
                         {
                             branch = true;
                             break;
                         }
                     }
-                    branchVertices.emplace( vertex.index, branch );
+                    branchVertices.emplace(vertex.index, branch);
                 }
 
-                std::vector<bool> covered( orderedVertices.size() - 1, false );
-                for( const std::size_t index : component )
+                std::vector<bool> covered(orderedVertices.size() - 1, false);
+                for (const std::size_t index : component)
                 {
-                    const IndexedSegment &current = indexed[index];
-                    const double minParameter =
-                        std::min( Dot( vertices[current.from] - lineOrigin, directionUnit ),
-                                  Dot( vertices[current.to] - lineOrigin, directionUnit ) );
-                    const double maxParameter =
-                        std::max( Dot( vertices[current.from] - lineOrigin, directionUnit ),
-                                  Dot( vertices[current.to] - lineOrigin, directionUnit ) );
+                    const IndexedSegment& current = indexed[index];
+                    const double minParameter = std::min(Dot(vertices[current.from] - lineOrigin, directionUnit),
+                                                         Dot(vertices[current.to] - lineOrigin, directionUnit));
+                    const double maxParameter = std::max(Dot(vertices[current.from] - lineOrigin, directionUnit),
+                                                         Dot(vertices[current.to] - lineOrigin, directionUnit));
 
-                    for( std::size_t i = 0; i + 1 < orderedVertices.size(); ++i )
+                    for (std::size_t i = 0; i + 1 < orderedVertices.size(); ++i)
                     {
-                        if( orderedVertices[i].parameter + vertexTol < minParameter ||
-                            orderedVertices[i + 1].parameter > maxParameter + vertexTol )
+                        if (orderedVertices[i].parameter + vertexTol < minParameter ||
+                            orderedVertices[i + 1].parameter > maxParameter + vertexTol)
                         {
                             continue;
                         }
@@ -1033,53 +1021,52 @@ namespace Geometry
                     }
                 }
 
-                std::size_t mergedStart = static_cast<std::size_t>( -1 );
-                for( std::size_t i = 0; i < covered.size(); ++i )
+                std::size_t mergedStart = static_cast<std::size_t>(-1);
+                for (std::size_t i = 0; i < covered.size(); ++i)
                 {
-                    if( !covered[i] )
+                    if (!covered[i])
                     {
-                        if( mergedStart != static_cast<std::size_t>( -1 ) )
+                        if (mergedStart != static_cast<std::size_t>(-1))
                         {
-                            collapsed.push_back(
-                                RawSegment{ vertices[orderedVertices[mergedStart].index],
-                                            vertices[orderedVertices[i].index] } );
-                            mergedStart = static_cast<std::size_t>( -1 );
+                            collapsed.push_back(RawSegment{vertices[orderedVertices[mergedStart].index],
+                                                           vertices[orderedVertices[i].index]});
+                            mergedStart = static_cast<std::size_t>(-1);
                         }
                         continue;
                     }
 
-                    if( mergedStart == static_cast<std::size_t>( -1 ) )
+                    if (mergedStart == static_cast<std::size_t>(-1))
                     {
                         mergedStart = i;
                         continue;
                     }
 
-                    if( branchVertices[orderedVertices[i].index] )
+                    if (branchVertices[orderedVertices[i].index])
                     {
-                        collapsed.push_back( RawSegment{ vertices[orderedVertices[mergedStart].index],
-                                                         vertices[orderedVertices[i].index] } );
+                        collapsed.push_back(RawSegment{vertices[orderedVertices[mergedStart].index],
+                                                       vertices[orderedVertices[i].index]});
                         mergedStart = i;
                     }
                 }
 
-                if( mergedStart != static_cast<std::size_t>( -1 ) )
+                if (mergedStart != static_cast<std::size_t>(-1))
                 {
-                    collapsed.push_back( RawSegment{ vertices[orderedVertices[mergedStart].index],
-                                                     vertices[orderedVertices.back().index] } );
+                    collapsed.push_back(RawSegment{vertices[orderedVertices[mergedStart].index],
+                                                   vertices[orderedVertices.back().index]});
                 }
 
-                for( const std::size_t index : component )
+                for (const std::size_t index : component)
                 {
                     componentMask[index] = false;
                 }
             }
 
-            return RemoveDuplicateSegments( collapsed, eps );
+            return RemoveDuplicateSegments(collapsed, eps);
         }
 
-        [[nodiscard]] double ComputeAreaTolerance( const std::vector<RawSegment> &segments, double eps )
+        [[nodiscard]] double ComputeAreaTolerance(const std::vector<RawSegment>& segments, double eps)
         {
-            if( segments.empty() )
+            if (segments.empty())
             {
                 return 64.0 * eps * eps;
             }
@@ -1088,314 +1075,310 @@ namespace Geometry
             double minY = segments.front().start.y;
             double maxX = minX;
             double maxY = minY;
-            for( const RawSegment &segment : segments )
+            for (const RawSegment& segment : segments)
             {
-                minX = std::min( { minX, segment.start.x, segment.end.x } );
-                minY = std::min( { minY, segment.start.y, segment.end.y } );
-                maxX = std::max( { maxX, segment.start.x, segment.end.x } );
-                maxY = std::max( { maxY, segment.start.y, segment.end.y } );
+                minX = std::min({minX, segment.start.x, segment.end.x});
+                minY = std::min({minY, segment.start.y, segment.end.y});
+                maxX = std::max({maxX, segment.start.x, segment.end.x});
+                maxY = std::max({maxY, segment.start.y, segment.end.y});
             }
 
             const double dx = maxX - minX;
             const double dy = maxY - minY;
-            const double diagonal = std::sqrt( dx * dx + dy * dy );
-            // Keep the tiny-face filter conservative enough to suppress numerical slivers,
-            // but not so aggressive that ultra-thin repeated-overlap bands are erased.
-            return std::max( 64.0 * eps * eps, 2.0 * diagonal * eps );
+            const double diagonal = std::sqrt(dx * dx + dy * dy);
+            // Keep the tiny-face filter conservative enough to suppress
+            // numerical slivers, but not so aggressive that ultra-thin
+            // repeated-overlap bands are erased.
+            return std::max(64.0 * eps * eps, 2.0 * diagonal * eps);
         }
 
-        [[nodiscard]] bool IsNearlyCollinearVertex( const Point2d &previous, const Point2d &current,
-                                                    const Point2d &next, double eps )
+        [[nodiscard]] bool IsNearlyCollinearVertex(const SCPoint2d& previous,
+                                                   const SCPoint2d& current,
+                                                   const SCPoint2d& next,
+                                                   double eps)
         {
-            const Vector2d incoming = current - previous;
-            const Vector2d outgoing = next - current;
+            const SCVector2d incoming = current - previous;
+            const SCVector2d outgoing = next - current;
             const double incomingLength = incoming.Length();
             const double outgoingLength = outgoing.Length();
-            if( incomingLength <= eps || outgoingLength <= eps )
+            if (incomingLength <= eps || outgoingLength <= eps)
             {
                 return true;
             }
 
-            const double crossMagnitude = std::abs( Cross( incoming, outgoing ) );
-            if( crossMagnitude > eps * ( incomingLength + outgoingLength ) )
+            const double crossMagnitude = std::abs(Cross(incoming, outgoing));
+            if (crossMagnitude > eps * (incomingLength + outgoingLength))
             {
                 return false;
             }
 
-            return LocatePoint( current, LineSegment2d( previous, next ), eps ) ==
-                   PointContainment2d::OnBoundary;
+            return LocatePoint(current, SCLineSegment2d(previous, next), eps) == SCPointContainment2d::OnBoundary;
         }
 
-        [[nodiscard]] double ComputePolygonScale( const Polygon2d &polygon )
+        [[nodiscard]] double ComputePolygonScale(const SCPolygon2d& polygon)
         {
-            const Polyline2d outer = polygon.OuterRing();
-            if( outer.PointCount() == 0 )
+            const SCPolyline2d outer = polygon.OuterRing();
+            if (outer.PointCount() == 0)
             {
                 return 0.0;
             }
 
-            double minX = outer.PointAt( 0 ).x;
-            double minY = outer.PointAt( 0 ).y;
+            double minX = outer.PointAt(0).x;
+            double minY = outer.PointAt(0).y;
             double maxX = minX;
             double maxY = minY;
-            for( std::size_t i = 1; i < outer.PointCount(); ++i )
+            for (std::size_t i = 1; i < outer.PointCount(); ++i)
             {
-                const Point2d point = outer.PointAt( i );
-                minX = std::min( minX, point.x );
-                minY = std::min( minY, point.y );
-                maxX = std::max( maxX, point.x );
-                maxY = std::max( maxY, point.y );
+                const SCPoint2d point = outer.PointAt(i);
+                minX = std::min(minX, point.x);
+                minY = std::min(minY, point.y);
+                maxX = std::max(maxX, point.x);
+                maxY = std::max(maxY, point.y);
             }
 
             const double dx = maxX - minX;
             const double dy = maxY - minY;
-            return std::sqrt( dx * dx + dy * dy );
+            return std::sqrt(dx * dx + dy * dy);
         }
 
         struct PolygonBounds
         {
-            double minX{ 0.0 };
-            double minY{ 0.0 };
-            double maxX{ 0.0 };
-            double maxY{ 0.0 };
+            double minX{0.0};
+            double minY{0.0};
+            double maxX{0.0};
+            double maxY{0.0};
         };
 
-        [[nodiscard]] PolygonBounds ComputePolygonBounds( const Polygon2d &polygon )
+        [[nodiscard]] PolygonBounds ComputePolygonBounds(const SCPolygon2d& polygon)
         {
-            const Polyline2d outer = polygon.OuterRing();
+            const SCPolyline2d outer = polygon.OuterRing();
             PolygonBounds bounds{};
-            if( outer.PointCount() == 0 )
+            if (outer.PointCount() == 0)
             {
                 return bounds;
             }
 
-            bounds.minX = outer.PointAt( 0 ).x;
-            bounds.minY = outer.PointAt( 0 ).y;
+            bounds.minX = outer.PointAt(0).x;
+            bounds.minY = outer.PointAt(0).y;
             bounds.maxX = bounds.minX;
             bounds.maxY = bounds.minY;
-            for( std::size_t i = 1; i < outer.PointCount(); ++i )
+            for (std::size_t i = 1; i < outer.PointCount(); ++i)
             {
-                const Point2d point = outer.PointAt( i );
-                bounds.minX = std::min( bounds.minX, point.x );
-                bounds.minY = std::min( bounds.minY, point.y );
-                bounds.maxX = std::max( bounds.maxX, point.x );
-                bounds.maxY = std::max( bounds.maxY, point.y );
+                const SCPoint2d point = outer.PointAt(i);
+                bounds.minX = std::min(bounds.minX, point.x);
+                bounds.minY = std::min(bounds.minY, point.y);
+                bounds.maxX = std::max(bounds.maxX, point.x);
+                bounds.maxY = std::max(bounds.maxY, point.y);
             }
 
             return bounds;
         }
 
-        [[nodiscard]] bool BoundsOverlap( const Polygon2d &first, const Polygon2d &second, double eps )
+        [[nodiscard]] bool BoundsOverlap(const SCPolygon2d& first, const SCPolygon2d& second, double eps)
         {
-            const PolygonBounds a = ComputePolygonBounds( first );
-            const PolygonBounds b = ComputePolygonBounds( second );
-            if( a.maxX < b.minX - eps || b.maxX < a.minX - eps )
+            const PolygonBounds a = ComputePolygonBounds(first);
+            const PolygonBounds b = ComputePolygonBounds(second);
+            if (a.maxX < b.minX - eps || b.maxX < a.minX - eps)
             {
                 return false;
             }
-            if( a.maxY < b.minY - eps || b.maxY < a.minY - eps )
+            if (a.maxY < b.minY - eps || b.maxY < a.minY - eps)
             {
                 return false;
             }
             return true;
         }
 
-        [[nodiscard]] bool BoundsContain( const Polygon2d &outer, const Polygon2d &inner, double eps )
+        [[nodiscard]] bool BoundsContain(const SCPolygon2d& outer, const SCPolygon2d& inner, double eps)
         {
-            const PolygonBounds a = ComputePolygonBounds( outer );
-            const PolygonBounds b = ComputePolygonBounds( inner );
-            return a.minX <= b.minX + eps && a.minY <= b.minY + eps && a.maxX + eps >= b.maxX &&
-                   a.maxY + eps >= b.maxY;
+            const PolygonBounds a = ComputePolygonBounds(outer);
+            const PolygonBounds b = ComputePolygonBounds(inner);
+            return a.minX <= b.minX + eps && a.minY <= b.minY + eps && a.maxX + eps >= b.maxX && a.maxY + eps >= b.maxY;
         }
 
-        [[nodiscard]] PointContainment2d ClassifyFaceAgainstPolygon( const Polygon2d &face,
-                                                                     const Point2d &sample,
-                                                                     const Polygon2d &polygon,
-                                                                     double eps )
+        [[nodiscard]] SCPointContainment2d ClassifyFaceAgainstPolygon(const SCPolygon2d& face,
+                                                                    const SCPoint2d& sample,
+                                                                    const SCPolygon2d& polygon,
+                                                                    double eps)
         {
             int insideCount = 0;
             int outsideCount = 0;
-            auto accumulate = [&]( const Point2d &candidate ) {
-                if( LocatePoint( candidate, face, eps ) != PointContainment2d::Inside )
+            auto accumulate = [&](const SCPoint2d& candidate) {
+                if (LocatePoint(candidate, face, eps) != SCPointContainment2d::Inside)
                 {
                     return;
                 }
 
-                const PointContainment2d containment = LocatePoint( candidate, polygon, eps );
-                if( containment == PointContainment2d::Inside )
+                const SCPointContainment2d containment = LocatePoint(candidate, polygon, eps);
+                if (containment == SCPointContainment2d::Inside)
                 {
                     ++insideCount;
-                }
-                else if( containment == PointContainment2d::Outside )
+                } else if (containment == SCPointContainment2d::Outside)
                 {
                     ++outsideCount;
                 }
             };
 
-            accumulate( Centroid( face ) );
-            accumulate( sample );
+            accumulate(Centroid(face));
+            accumulate(sample);
 
-            const double scale = ComputePolygonScale( face );
-            const double baseStep = std::max( 64.0 * eps, std::min( 0.05 * scale, 1e-3 ) );
-            const double steps[] = { baseStep, 0.5 * baseStep, 2.0 * baseStep };
-            const Vector2d offsets[] = { { 1.0, 0.0 },
-                                         { -1.0, 0.0 },
-                                         { 0.0, 1.0 },
-                                         { 0.0, -1.0 },
-                                         { 0.7071067811865476, 0.7071067811865476 },
-                                         { 0.7071067811865476, -0.7071067811865476 },
-                                         { -0.7071067811865476, 0.7071067811865476 },
-                                         { -0.7071067811865476, -0.7071067811865476 } };
-            for( double step : steps )
+            const double scale = ComputePolygonScale(face);
+            const double baseStep = std::max(64.0 * eps, std::min(0.05 * scale, 1e-3));
+            const double steps[] = {baseStep, 0.5 * baseStep, 2.0 * baseStep};
+            const SCVector2d offsets[] = {{1.0, 0.0},
+                                        {-1.0, 0.0},
+                                        {0.0, 1.0},
+                                        {0.0, -1.0},
+                                        {0.7071067811865476, 0.7071067811865476},
+                                        {0.7071067811865476, -0.7071067811865476},
+                                        {-0.7071067811865476, 0.7071067811865476},
+                                        {-0.7071067811865476, -0.7071067811865476}};
+            for (double step : steps)
             {
-                for( const Vector2d &offset : offsets )
+                for (const SCVector2d& offset : offsets)
                 {
-                    accumulate( sample + offset * step );
+                    accumulate(sample + offset * step);
                 }
             }
 
-            if( insideCount > 0 && outsideCount == 0 )
+            if (insideCount > 0 && outsideCount == 0)
             {
-                return PointContainment2d::Inside;
+                return SCPointContainment2d::Inside;
             }
-            if( outsideCount > 0 && insideCount == 0 )
+            if (outsideCount > 0 && insideCount == 0)
             {
-                return PointContainment2d::Outside;
+                return SCPointContainment2d::Outside;
             }
-            if( insideCount > outsideCount )
+            if (insideCount > outsideCount)
             {
-                return PointContainment2d::Inside;
+                return SCPointContainment2d::Inside;
             }
-            if( outsideCount > insideCount )
+            if (outsideCount > insideCount)
             {
-                return PointContainment2d::Outside;
+                return SCPointContainment2d::Outside;
             }
 
-            return LocatePoint( sample, polygon, eps );
+            return LocatePoint(sample, polygon, eps);
         }
 
-        void AppendSplitEdges( const std::vector<RawSegment> &segments, std::vector<Point2d> &vertices,
-                               std::vector<DirectedEdge> &edges,
-                               std::vector<std::vector<std::size_t>> &outgoing,
-                               std::unordered_set<std::uint64_t> &edgeKeys, double eps,
-                               double vertexTol )
+        void AppendSplitEdges(const std::vector<RawSegment>& segments,
+                              std::vector<SCPoint2d>& vertices,
+                              std::vector<DirectedEdge>& edges,
+                              std::vector<std::vector<std::size_t>>& outgoing,
+                              std::unordered_set<std::uint64_t>& edgeKeys,
+                              double eps,
+                              double vertexTol)
         {
-            for( const RawSegment &segment : segments )
+            for (const RawSegment& segment : segments)
             {
-                if( segment.start.AlmostEquals( segment.end, eps ) )
+                if (segment.start.AlmostEquals(segment.end, eps))
                 {
                     continue;
                 }
 
-                const std::size_t from = FindOrAddVertex( vertices, segment.start, vertexTol );
-                const std::size_t to = FindOrAddVertex( vertices, segment.end, vertexTol );
-                if( from == to )
+                const std::size_t from = FindOrAddVertex(vertices, segment.start, vertexTol);
+                const std::size_t to = FindOrAddVertex(vertices, segment.end, vertexTol);
+                if (from == to)
                 {
                     continue;
                 }
 
-                const std::uint64_t key = MakeUndirectedEdgeKey( from, to );
-                if( !edgeKeys.insert( key ).second )
+                const std::uint64_t key = MakeUndirectedEdgeKey(from, to);
+                if (!edgeKeys.insert(key).second)
                 {
                     continue;
                 }
 
-                const Vector2d forward = vertices[to] - vertices[from];
-                const Vector2d backward = vertices[from] - vertices[to];
+                const SCVector2d forward = vertices[to] - vertices[from];
+                const SCVector2d backward = vertices[from] - vertices[to];
 
                 const std::size_t forwardIndex = edges.size();
-                edges.push_back( DirectedEdge{ from, to, forwardIndex + 1,
-                                               std::atan2( forward.y, forward.x ), false } );
-                edges.push_back( DirectedEdge{ to, from, forwardIndex,
-                                               std::atan2( backward.y, backward.x ), false } );
+                edges.push_back(DirectedEdge{from, to, forwardIndex + 1, std::atan2(forward.y, forward.x), false});
+                edges.push_back(DirectedEdge{to, from, forwardIndex, std::atan2(backward.y, backward.x), false});
 
-                const std::size_t required = std::max( from, to ) + 1;
-                if( outgoing.size() < required )
+                const std::size_t required = std::max(from, to) + 1;
+                if (outgoing.size() < required)
                 {
-                    outgoing.resize( required );
+                    outgoing.resize(required);
                 }
-                outgoing[from].push_back( forwardIndex );
-                outgoing[to].push_back( forwardIndex + 1 );
+                outgoing[from].push_back(forwardIndex);
+                outgoing[to].push_back(forwardIndex + 1);
             }
         }
 
-        void SortOutgoing( const std::vector<DirectedEdge> &edges,
-                           std::vector<std::vector<std::size_t>> &outgoing )
+        void SortOutgoing(const std::vector<DirectedEdge>& edges, std::vector<std::vector<std::size_t>>& outgoing)
         {
-            for( auto &fan : outgoing )
+            for (auto& fan : outgoing)
             {
-                std::sort( fan.begin(), fan.end(), [&edges]( std::size_t lhs, std::size_t rhs ) {
+                std::sort(fan.begin(), fan.end(), [&edges](std::size_t lhs, std::size_t rhs) {
                     return edges[lhs].angle < edges[rhs].angle;
-                } );
+                });
             }
         }
 
-        [[nodiscard]] std::size_t PreviousOutgoing( const std::vector<std::size_t> &fan,
-                                                    std::size_t edgeIndex )
+        [[nodiscard]] std::size_t PreviousOutgoing(const std::vector<std::size_t>& fan, std::size_t edgeIndex)
         {
-            for( std::size_t i = 0; i < fan.size(); ++i )
+            for (std::size_t i = 0; i < fan.size(); ++i)
             {
-                if( fan[i] == edgeIndex )
+                if (fan[i] == edgeIndex)
                 {
-                    return fan[( i + fan.size() - 1 ) % fan.size()];
+                    return fan[(i + fan.size() - 1) % fan.size()];
                 }
             }
 
             return std::numeric_limits<std::size_t>::max();
         }
 
-        [[nodiscard]] std::size_t NextFaceEdge( const std::vector<DirectedEdge> &edges,
-                                                const std::vector<std::vector<std::size_t>> &outgoing,
-                                                std::size_t edgeIndex )
+        [[nodiscard]] std::size_t NextFaceEdge(const std::vector<DirectedEdge>& edges,
+                                               const std::vector<std::vector<std::size_t>>& outgoing,
+                                               std::size_t edgeIndex)
         {
-            const DirectedEdge &edge = edges[edgeIndex];
-            if( edge.to >= outgoing.size() )
+            const DirectedEdge& edge = edges[edgeIndex];
+            if (edge.to >= outgoing.size())
             {
                 return std::numeric_limits<std::size_t>::max();
             }
 
-            const std::vector<std::size_t> &fan = outgoing[edge.to];
-            if( fan.empty() )
+            const std::vector<std::size_t>& fan = outgoing[edge.to];
+            if (fan.empty())
             {
                 return std::numeric_limits<std::size_t>::max();
             }
 
-            return PreviousOutgoing( fan, edge.twin );
+            return PreviousOutgoing(fan, edge.twin);
         }
 
-        [[nodiscard]] std::vector<Point2d> SimplifyRingVertices( std::vector<Point2d> points,
-                                                                 double eps )
+        [[nodiscard]] std::vector<SCPoint2d> SimplifyRingVertices(std::vector<SCPoint2d> points, double eps)
         {
-            std::vector<Point2d> simplified;
-            simplified.reserve( points.size() );
-            for( const Point2d &point : points )
+            std::vector<SCPoint2d> simplified;
+            simplified.reserve(points.size());
+            for (const SCPoint2d& point : points)
             {
-                if( simplified.empty() || !simplified.back().AlmostEquals( point, eps ) )
+                if (simplified.empty() || !simplified.back().AlmostEquals(point, eps))
                 {
-                    simplified.push_back( point );
+                    simplified.push_back(point);
                 }
             }
 
-            while( simplified.size() >= 2 && simplified.front().AlmostEquals( simplified.back(), eps ) )
+            while (simplified.size() >= 2 && simplified.front().AlmostEquals(simplified.back(), eps))
             {
                 simplified.pop_back();
             }
 
             bool changed = true;
-            while( changed && simplified.size() >= 3 )
+            while (changed && simplified.size() >= 3)
             {
                 changed = false;
-                for( std::size_t i = 0; i < simplified.size(); ++i )
+                for (std::size_t i = 0; i < simplified.size(); ++i)
                 {
-                    const std::size_t previousIndex = ( i + simplified.size() - 1 ) % simplified.size();
-                    const std::size_t nextIndex = ( i + 1 ) % simplified.size();
-                    if( !IsNearlyCollinearVertex( simplified[previousIndex], simplified[i],
-                                                  simplified[nextIndex], eps ) )
+                    const std::size_t previousIndex = (i + simplified.size() - 1) % simplified.size();
+                    const std::size_t nextIndex = (i + 1) % simplified.size();
+                    if (!IsNearlyCollinearVertex(simplified[previousIndex], simplified[i], simplified[nextIndex], eps))
                     {
                         continue;
                     }
 
-                    simplified.erase( simplified.begin() + static_cast<std::ptrdiff_t>( i ) );
+                    simplified.erase(simplified.begin() + static_cast<std::ptrdiff_t>(i));
                     changed = true;
                     break;
                 }
@@ -1404,38 +1387,40 @@ namespace Geometry
             return simplified;
         }
 
-        [[nodiscard]] std::vector<Polyline2d> ExtractCandidateRings(
-            std::vector<DirectedEdge> &edges, const std::vector<Point2d> &vertices,
-            const std::vector<std::vector<std::size_t>> &outgoing, double eps )
+        [[nodiscard]] std::vector<SCPolyline2d> ExtractCandidateRings(
+            std::vector<DirectedEdge>& edges,
+            const std::vector<SCPoint2d>& vertices,
+            const std::vector<std::vector<std::size_t>>& outgoing,
+            double eps)
         {
-            std::vector<Polyline2d> rings;
-            for( std::size_t start = 0; start < edges.size(); ++start )
+            std::vector<SCPolyline2d> rings;
+            for (std::size_t start = 0; start < edges.size(); ++start)
             {
-                if( edges[start].visited )
+                if (edges[start].visited)
                 {
                     continue;
                 }
 
-                std::vector<Point2d> loopPoints;
+                std::vector<SCPoint2d> loopPoints;
                 std::size_t current = start;
                 bool closed = false;
-                for( std::size_t steps = 0; steps <= edges.size(); ++steps )
+                for (std::size_t steps = 0; steps <= edges.size(); ++steps)
                 {
-                    DirectedEdge &edge = edges[current];
-                    if( edge.visited )
+                    DirectedEdge& edge = edges[current];
+                    if (edge.visited)
                     {
                         break;
                     }
 
                     edge.visited = true;
-                    loopPoints.push_back( vertices[edge.from] );
+                    loopPoints.push_back(vertices[edge.from]);
 
-                    const std::size_t next = NextFaceEdge( edges, outgoing, current );
-                    if( next == std::numeric_limits<std::size_t>::max() )
+                    const std::size_t next = NextFaceEdge(edges, outgoing, current);
+                    if (next == std::numeric_limits<std::size_t>::max())
                     {
                         break;
                     }
-                    if( next == start )
+                    if (next == start)
                     {
                         closed = true;
                         break;
@@ -1443,59 +1428,58 @@ namespace Geometry
                     current = next;
                 }
 
-                if( !closed )
+                if (!closed)
                 {
                     continue;
                 }
 
-                std::vector<Point2d> simplified = SimplifyRingVertices( std::move( loopPoints ), eps );
-                if( simplified.size() < 3 )
+                std::vector<SCPoint2d> simplified = SimplifyRingVertices(std::move(loopPoints), eps);
+                if (simplified.size() < 3)
                 {
                     continue;
                 }
 
-                Polyline2d ring( std::move( simplified ), PolylineClosure::Closed );
-                if( !Validate( ring, eps ).valid )
+                SCPolyline2d ring(std::move(simplified), SCPolylineClosure::Closed);
+                if (!Validate(ring, eps).valid)
                 {
                     continue;
                 }
-                if( Orientation( ring ) != RingOrientation2d::CounterClockwise )
+                if (Orientation(ring) != SCRingOrientation2d::CounterClockwise)
                 {
                     continue;
                 }
 
-                rings.push_back( std::move( ring ) );
+                rings.push_back(std::move(ring));
             }
 
             return rings;
         }
 
-        [[nodiscard]] std::vector<std::size_t> BuildLoopParents( const std::vector<Polygon2d> &loops,
-                                                                 double eps )
+        [[nodiscard]] std::vector<std::size_t> BuildLoopParents(const std::vector<SCPolygon2d>& loops, double eps)
         {
-            std::vector<std::size_t> parents( loops.size(), static_cast<std::size_t>( -1 ) );
-            for( std::size_t i = 0; i < loops.size(); ++i )
+            std::vector<std::size_t> parents(loops.size(), static_cast<std::size_t>(-1));
+            for (std::size_t i = 0; i < loops.size(); ++i)
             {
                 const double loopArea = loops[i].Area();
                 double bestArea = 0.0;
-                for( std::size_t j = 0; j < loops.size(); ++j )
+                for (std::size_t j = 0; j < loops.size(); ++j)
                 {
-                    if( i == j )
+                    if (i == j)
                     {
                         continue;
                     }
 
                     const double containerArea = loops[j].Area();
-                    if( containerArea <= loopArea + eps )
+                    if (containerArea <= loopArea + eps)
                     {
                         continue;
                     }
-                    if( !Contains( loops[j], loops[i], eps ) )
+                    if (!Contains(loops[j], loops[i], eps))
                     {
                         continue;
                     }
 
-                    if( parents[i] == static_cast<std::size_t>( -1 ) || containerArea < bestArea )
+                    if (parents[i] == static_cast<std::size_t>(-1) || containerArea < bestArea)
                     {
                         parents[i] = j;
                         bestArea = containerArea;
@@ -1506,296 +1490,291 @@ namespace Geometry
             return parents;
         }
 
-        [[nodiscard]] std::vector<Polygon2d> BuildBoundedFacesFromCandidateRings(
-            const std::vector<Polyline2d> &rings, double areaTol, double eps )
+        [[nodiscard]] std::vector<SCPolygon2d> BuildBoundedFacesFromCandidateRings(const std::vector<SCPolyline2d>& rings,
+                                                                                 double areaTol,
+                                                                                 double eps)
         {
-            std::vector<Polygon2d> faces;
-            if( rings.empty() )
+            std::vector<SCPolygon2d> faces;
+            if (rings.empty())
             {
                 return faces;
             }
 
-            std::vector<Polygon2d> loopPolygons;
-            loopPolygons.reserve( rings.size() );
-            for( const Polyline2d &ring : rings )
+            std::vector<SCPolygon2d> loopPolygons;
+            loopPolygons.reserve(rings.size());
+            for (const SCPolyline2d& ring : rings)
             {
-                Polygon2d polygon( ring );
-                if( polygon.IsValid() )
+                SCPolygon2d polygon(ring);
+                if (polygon.IsValid())
                 {
-                    loopPolygons.push_back( std::move( polygon ) );
+                    loopPolygons.push_back(std::move(polygon));
                 }
             }
-            if( loopPolygons.empty() )
+            if (loopPolygons.empty())
             {
                 return faces;
             }
 
-            const std::vector<std::size_t> parents = BuildLoopParents( loopPolygons, eps );
-            faces.reserve( loopPolygons.size() );
-            for( std::size_t i = 0; i < loopPolygons.size(); ++i )
+            const std::vector<std::size_t> parents = BuildLoopParents(loopPolygons, eps);
+            faces.reserve(loopPolygons.size());
+            for (std::size_t i = 0; i < loopPolygons.size(); ++i)
             {
-                Polyline2d outerRing = loopPolygons[i].OuterRing();
-                if( Orientation( outerRing ) != RingOrientation2d::CounterClockwise )
+                SCPolyline2d outerRing = loopPolygons[i].OuterRing();
+                if (Orientation(outerRing) != SCRingOrientation2d::CounterClockwise)
                 {
-                    outerRing = Reverse( outerRing );
+                    outerRing = Reverse(outerRing);
                 }
 
-                std::vector<Polyline2d> holes;
-                for( std::size_t j = 0; j < loopPolygons.size(); ++j )
+                std::vector<SCPolyline2d> holes;
+                for (std::size_t j = 0; j < loopPolygons.size(); ++j)
                 {
-                    if( parents[j] != i )
+                    if (parents[j] != i)
                     {
                         continue;
                     }
 
-                    Polyline2d holeRing = loopPolygons[j].OuterRing();
-                    if( Orientation( holeRing ) != RingOrientation2d::Clockwise )
+                    SCPolyline2d holeRing = loopPolygons[j].OuterRing();
+                    if (Orientation(holeRing) != SCRingOrientation2d::Clockwise)
                     {
-                        holeRing = Reverse( holeRing );
+                        holeRing = Reverse(holeRing);
                     }
-                    holes.push_back( std::move( holeRing ) );
+                    holes.push_back(std::move(holeRing));
                 }
 
-                Polygon2d polygon( outerRing, std::move( holes ) );
-                if( polygon.IsValid() && Validate( polygon, eps ).valid && polygon.Area() > areaTol )
+                SCPolygon2d polygon(outerRing, std::move(holes));
+                if (polygon.IsValid() && Validate(polygon, eps).valid && polygon.Area() > areaTol)
                 {
-                    faces.push_back( std::move( polygon ) );
+                    faces.push_back(std::move(polygon));
                 }
             }
 
             return faces;
         }
 
-        [[nodiscard]] Point2d SampleFacePoint( const Polygon2d &polygon, double eps )
+        [[nodiscard]] SCPoint2d SampleFacePoint(const SCPolygon2d& polygon, double eps)
         {
-            const Point2d centroid = Centroid( polygon );
-            if( LocatePoint( centroid, polygon, eps ) == PointContainment2d::Inside )
+            const SCPoint2d centroid = Centroid(polygon);
+            if (LocatePoint(centroid, polygon, eps) == SCPointContainment2d::Inside)
             {
                 return centroid;
             }
 
-            const Polyline2d outer = polygon.OuterRing();
-            double minX = outer.PointAt( 0 ).x;
-            double minY = outer.PointAt( 0 ).y;
+            const SCPolyline2d outer = polygon.OuterRing();
+            double minX = outer.PointAt(0).x;
+            double minY = outer.PointAt(0).y;
             double maxX = minX;
             double maxY = minY;
-            for( std::size_t i = 1; i < outer.PointCount(); ++i )
+            for (std::size_t i = 1; i < outer.PointCount(); ++i)
             {
-                const Point2d point = outer.PointAt( i );
-                minX = std::min( minX, point.x );
-                minY = std::min( minY, point.y );
-                maxX = std::max( maxX, point.x );
-                maxY = std::max( maxY, point.y );
+                const SCPoint2d point = outer.PointAt(i);
+                minX = std::min(minX, point.x);
+                minY = std::min(minY, point.y);
+                maxX = std::max(maxX, point.x);
+                maxY = std::max(maxY, point.y);
             }
             const double dx = maxX - minX;
             const double dy = maxY - minY;
-            const double polygonScale = std::sqrt( dx * dx + dy * dy );
-            const double maxStep = std::max( 128.0 * eps, 0.1 * polygonScale );
-            for( std::size_t i = 0; i < outer.PointCount(); ++i )
+            const double polygonScale = std::sqrt(dx * dx + dy * dy);
+            const double maxStep = std::max(128.0 * eps, 0.1 * polygonScale);
+            for (std::size_t i = 0; i < outer.PointCount(); ++i)
             {
-                const Point2d start = outer.PointAt( i );
-                const Point2d end = outer.PointAt( ( i + 1 ) % outer.PointCount() );
-                const Vector2d edge = end - start;
+                const SCPoint2d start = outer.PointAt(i);
+                const SCPoint2d end = outer.PointAt((i + 1) % outer.PointCount());
+                const SCVector2d edge = end - start;
                 const double length = edge.Length();
-                if( length <= eps )
+                if (length <= eps)
                 {
                     continue;
                 }
 
-                const Point2d midpoint{ 0.5 * ( start.x + end.x ), 0.5 * ( start.y + end.y ) };
-                const Vector2d inward{ -edge.y / length, edge.x / length };
-                const double step = std::max( 32.0 * eps, std::min( 0.25 * length, maxStep ) );
-                const Point2d candidate = midpoint + inward * step;
-                if( LocatePoint( candidate, polygon, eps ) == PointContainment2d::Inside )
+                const SCPoint2d midpoint{0.5 * (start.x + end.x), 0.5 * (start.y + end.y)};
+                const SCVector2d inward{-edge.y / length, edge.x / length};
+                const double step = std::max(32.0 * eps, std::min(0.25 * length, maxStep));
+                const SCPoint2d candidate = midpoint + inward * step;
+                if (LocatePoint(candidate, polygon, eps) == SCPointContainment2d::Inside)
                 {
                     return candidate;
                 }
             }
 
-            for( std::size_t i = 0; i < outer.PointCount(); ++i )
+            for (std::size_t i = 0; i < outer.PointCount(); ++i)
             {
-                const Point2d prev =
-                    outer.PointAt( ( i + outer.PointCount() - 1 ) % outer.PointCount() );
-                const Point2d current = outer.PointAt( i );
-                const Point2d next = outer.PointAt( ( i + 1 ) % outer.PointCount() );
-                const Vector2d incoming = current - prev;
-                const Vector2d outgoing = next - current;
+                const SCPoint2d prev = outer.PointAt((i + outer.PointCount() - 1) % outer.PointCount());
+                const SCPoint2d current = outer.PointAt(i);
+                const SCPoint2d next = outer.PointAt((i + 1) % outer.PointCount());
+                const SCVector2d incoming = current - prev;
+                const SCVector2d outgoing = next - current;
                 const double incomingLength = incoming.Length();
                 const double outgoingLength = outgoing.Length();
-                if( incomingLength <= eps || outgoingLength <= eps )
+                if (incomingLength <= eps || outgoingLength <= eps)
                 {
                     continue;
                 }
 
-                if( Cross( incoming, outgoing ) <= eps )
+                if (Cross(incoming, outgoing) <= eps)
                 {
                     continue;
                 }
 
-                const Vector2d incomingNormal{ -incoming.y / incomingLength,
-                                               incoming.x / incomingLength };
-                const Vector2d outgoingNormal{ -outgoing.y / outgoingLength,
-                                               outgoing.x / outgoingLength };
-                Vector2d bisector = incomingNormal + outgoingNormal;
+                const SCVector2d incomingNormal{-incoming.y / incomingLength, incoming.x / incomingLength};
+                const SCVector2d outgoingNormal{-outgoing.y / outgoingLength, outgoing.x / outgoingLength};
+                SCVector2d bisector = incomingNormal + outgoingNormal;
                 const double bisectorLength = bisector.Length();
-                if( bisectorLength <= eps )
+                if (bisectorLength <= eps)
                 {
                     continue;
                 }
 
                 bisector = bisector / bisectorLength;
-                const double localScale = std::min( incomingLength, outgoingLength );
-                const double step = std::max( 32.0 * eps, std::min( 0.2 * localScale, maxStep ) );
-                const Point2d candidate = current + bisector * step;
-                if( LocatePoint( candidate, polygon, eps ) == PointContainment2d::Inside )
+                const double localScale = std::min(incomingLength, outgoingLength);
+                const double step = std::max(32.0 * eps, std::min(0.2 * localScale, maxStep));
+                const SCPoint2d candidate = current + bisector * step;
+                if (LocatePoint(candidate, polygon, eps) == SCPointContainment2d::Inside)
                 {
                     return candidate;
                 }
 
-                const Point2d triangleCentroid{ ( prev.x + current.x + next.x ) / 3.0,
-                                                ( prev.y + current.y + next.y ) / 3.0 };
-                if( LocatePoint( triangleCentroid, polygon, eps ) == PointContainment2d::Inside )
+                const SCPoint2d triangleCentroid{(prev.x + current.x + next.x) / 3.0,
+                                               (prev.y + current.y + next.y) / 3.0};
+                if (LocatePoint(triangleCentroid, polygon, eps) == SCPointContainment2d::Inside)
                 {
                     return triangleCentroid;
                 }
             }
 
-            return polygon.OuterRing().PointAt( 0 );
+            return polygon.OuterRing().PointAt(0);
         }
 
-        void AppendFaceBoundaries( const Polygon2d &polygon, MultiPolyline2d &polylines )
+        void AppendFaceBoundaries(const SCPolygon2d& polygon, SCMultiPolyline2d& polylines)
         {
-            polylines.Add( polygon.OuterRing() );
-            for( std::size_t i = 0; i < polygon.HoleCount(); ++i )
+            polylines.Add(polygon.OuterRing());
+            for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
             {
-                polylines.Add( polygon.HoleAt( i ) );
+                polylines.Add(polygon.HoleAt(i));
             }
         }
 
-        [[nodiscard]] MultiPolygon2d MakeSinglePolygonResult( const Polygon2d &polygon )
+        [[nodiscard]] SCMultiPolygon2d MakeSinglePolygonResult(const SCPolygon2d& polygon)
         {
-            MultiPolygon2d result;
-            if( polygon.IsValid() )
+            SCMultiPolygon2d result;
+            if (polygon.IsValid())
             {
-                result.Add( Polygon2d( polygon ) );
+                result.Add(SCPolygon2d(polygon));
             }
             return result;
         }
 
-        [[nodiscard]] MultiPolygon2d MakePairResult( const Polygon2d &first, const Polygon2d &second )
+        [[nodiscard]] SCMultiPolygon2d MakePairResult(const SCPolygon2d& first, const SCPolygon2d& second)
         {
-            MultiPolygon2d result;
-            if( first.IsValid() )
+            SCMultiPolygon2d result;
+            if (first.IsValid())
             {
-                result.Add( Polygon2d( first ) );
+                result.Add(SCPolygon2d(first));
             }
-            if( second.IsValid() )
+            if (second.IsValid())
             {
-                result.Add( Polygon2d( second ) );
+                result.Add(SCPolygon2d(second));
             }
             return result;
         }
 
-        [[nodiscard]] BooleanFastPathResult BooleanFastPath( const Polygon2d &first,
-                                                             const Polygon2d &second,
-                                                             PolygonContainment2d relation, BooleanOp op,
-                                                             double eps )
+        [[nodiscard]] BooleanFastPathResult BooleanFastPath(
+            const SCPolygon2d& first, const SCPolygon2d& second, PolygonContainment2d relation, BooleanOp op, double eps)
         {
-            switch( relation )
+            switch (relation)
             {
-            case PolygonContainment2d::Equal:
-            {
-                if( op == BooleanOp::Difference )
-                {
-                    return { MultiPolygon2d{}, true };
+                case PolygonContainment2d::Equal: {
+                    if (op == BooleanOp::Difference)
+                    {
+                        return {SCMultiPolygon2d{}, true};
+                    }
+                    return {MakeSinglePolygonResult(first), true};
                 }
-                return { MakeSinglePolygonResult( first ), true };
-            }
-            case PolygonContainment2d::Disjoint:
-            {
-                if( BoundsOverlap( first, second, eps ) )
-                {
-                    // Relate() can classify near-degenerate overlap families as disjoint
-                    // under tolerance pressure; fall back to arrangement solve.
+                case PolygonContainment2d::Disjoint: {
+                    if (BoundsOverlap(first, second, eps))
+                    {
+                        // Relate() can classify near-degenerate overlap
+                        // families as disjoint under tolerance pressure; fall
+                        // back to arrangement solve.
+                        break;
+                    }
+                    if (op == BooleanOp::Intersection)
+                    {
+                        return {SCMultiPolygon2d{}, true};
+                    }
+                    if (op == BooleanOp::Union)
+                    {
+                        return {MakePairResult(first, second), true};
+                    }
+                    return {MakeSinglePolygonResult(first), true};
+                }
+                case PolygonContainment2d::FirstContainsSecond: {
+                    if (!BoundsContain(first, second, eps))
+                    {
+                        break;
+                    }
+                    if (op == BooleanOp::Intersection)
+                    {
+                        return {MakeSinglePolygonResult(second), true};
+                    }
+                    if (op == BooleanOp::Union)
+                    {
+                        return {MakeSinglePolygonResult(first), true};
+                    }
                     break;
                 }
-                if( op == BooleanOp::Intersection )
-                {
-                    return { MultiPolygon2d{}, true };
-                }
-                if( op == BooleanOp::Union )
-                {
-                    return { MakePairResult( first, second ), true };
-                }
-                return { MakeSinglePolygonResult( first ), true };
-            }
-            case PolygonContainment2d::FirstContainsSecond:
-            {
-                if( !BoundsContain( first, second, eps ) )
-                {
+                case PolygonContainment2d::SecondContainsFirst: {
+                    if (!BoundsContain(second, first, eps))
+                    {
+                        break;
+                    }
+                    if (op == BooleanOp::Intersection)
+                    {
+                        return {MakeSinglePolygonResult(first), true};
+                    }
+                    if (op == BooleanOp::Union)
+                    {
+                        return {MakeSinglePolygonResult(second), true};
+                    }
+                    if (op == BooleanOp::Difference)
+                    {
+                        return {SCMultiPolygon2d{}, true};
+                    }
                     break;
                 }
-                if( op == BooleanOp::Intersection )
-                {
-                    return { MakeSinglePolygonResult( second ), true };
-                }
-                if( op == BooleanOp::Union )
-                {
-                    return { MakeSinglePolygonResult( first ), true };
-                }
-                break;
-            }
-            case PolygonContainment2d::SecondContainsFirst:
-            {
-                if( !BoundsContain( second, first, eps ) )
-                {
+                case PolygonContainment2d::Touching: {
+                    // Touching can hide ultra-thin but non-zero overlaps under
+                    // tight tolerances. Let arrangement classification decide
+                    // instead of short-circuiting.
                     break;
                 }
-                if( op == BooleanOp::Intersection )
-                {
-                    return { MakeSinglePolygonResult( first ), true };
-                }
-                if( op == BooleanOp::Union )
-                {
-                    return { MakeSinglePolygonResult( second ), true };
-                }
-                if( op == BooleanOp::Difference )
-                {
-                    return { MultiPolygon2d{}, true };
-                }
-                break;
-            }
-            case PolygonContainment2d::Touching:
-            {
-                // Touching can hide ultra-thin but non-zero overlaps under tight tolerances.
-                // Let arrangement classification decide instead of short-circuiting.
-                break;
-            }
-            case PolygonContainment2d::Intersecting:
-                break;
+                case PolygonContainment2d::Intersecting:
+                    break;
             }
 
             return {};
         }
 
-        [[nodiscard]] MultiPolygon2d BooleanCompose( const Polygon2d &first, const Polygon2d &second,
-                                                     BooleanOp op, double eps )
+        [[nodiscard]] SCMultiPolygon2d BooleanCompose(const SCPolygon2d& first,
+                                                    const SCPolygon2d& second,
+                                                    BooleanOp op,
+                                                    double eps)
         {
-            MultiPolygon2d result;
-            const Polygon2d normalizedFirst = NormalizeBooleanOperand( first, eps );
-            const Polygon2d normalizedSecond = NormalizeBooleanOperand( second, eps );
-            if( !normalizedFirst.IsValid() || !normalizedSecond.IsValid() )
+            SCMultiPolygon2d result;
+            const SCPolygon2d normalizedFirst = NormalizeBooleanOperand(first, eps);
+            const SCPolygon2d normalizedSecond = NormalizeBooleanOperand(second, eps);
+            if (!normalizedFirst.IsValid() || !normalizedSecond.IsValid())
             {
-                if( op == BooleanOp::Intersection )
+                if (op == BooleanOp::Intersection)
                 {
-                    MultiPolygon2d clipped = TryAxisAlignedBoxIntersectionFallback( first, second, eps );
-                    if( !clipped.IsEmpty() )
+                    SCMultiPolygon2d clipped = TryAxisAlignedBoxIntersectionFallback(first, second, eps);
+                    if (!clipped.IsEmpty())
                     {
                         return clipped;
                     }
 
-                    clipped = TryAxisAlignedBoxIntersectionFallback( second, first, eps );
-                    if( !clipped.IsEmpty() )
+                    clipped = TryAxisAlignedBoxIntersectionFallback(second, first, eps);
+                    if (!clipped.IsEmpty())
                     {
                         return clipped;
                     }
@@ -1803,106 +1782,100 @@ namespace Geometry
                 return result;
             }
 
-            const PolygonContainment2d relation = Relate( normalizedFirst, normalizedSecond, eps );
+            const PolygonContainment2d relation = Relate(normalizedFirst, normalizedSecond, eps);
             const BooleanFastPathResult fastPath =
-                BooleanFastPath( normalizedFirst, normalizedSecond, relation, op, eps );
-            if( fastPath.handled )
+                BooleanFastPath(normalizedFirst, normalizedSecond, relation, op, eps);
+            if (fastPath.handled)
             {
                 return fastPath.polygons;
             }
 
-            std::vector<RawSegment> rawSegments =
-                CollectBoundarySegments( normalizedFirst, normalizedSecond, eps );
-            if( rawSegments.empty() )
+            std::vector<RawSegment> rawSegments = CollectBoundarySegments(normalizedFirst, normalizedSecond, eps);
+            if (rawSegments.empty())
             {
                 return result;
             }
 
-            rawSegments = RemoveDuplicateSegments( rawSegments, eps );
-            rawSegments = FilterTinySegments( rawSegments, eps );
-            std::vector<RawSegment> splitSegments = SubdivideRawSegments( rawSegments, eps );
-            splitSegments = FilterTinySegments( splitSegments, eps );
-            splitSegments = MergeCollinearChainSegments( splitSegments, eps );
-            splitSegments = CollapseCollinearSegmentFamilies( splitSegments, eps );
-            splitSegments = RemoveDuplicateSegments( splitSegments, eps );
-            if( splitSegments.empty() )
+            rawSegments = RemoveDuplicateSegments(rawSegments, eps);
+            rawSegments = FilterTinySegments(rawSegments, eps);
+            std::vector<RawSegment> splitSegments = SubdivideRawSegments(rawSegments, eps);
+            splitSegments = FilterTinySegments(splitSegments, eps);
+            splitSegments = MergeCollinearChainSegments(splitSegments, eps);
+            splitSegments = CollapseCollinearSegmentFamilies(splitSegments, eps);
+            splitSegments = RemoveDuplicateSegments(splitSegments, eps);
+            if (splitSegments.empty())
             {
                 return result;
             }
 
-            const double areaTol = ComputeAreaTolerance( splitSegments, eps );
+            const double areaTol = ComputeAreaTolerance(splitSegments, eps);
 
-            std::vector<Point2d> vertices;
+            std::vector<SCPoint2d> vertices;
             std::vector<DirectedEdge> edges;
             std::vector<std::vector<std::size_t>> outgoing;
             std::unordered_set<std::uint64_t> edgeKeys;
-            const double splitVertexTol = ComputeVertexMergeTolerance( splitSegments, eps );
-            AppendSplitEdges( splitSegments, vertices, edges, outgoing, edgeKeys, eps, splitVertexTol );
-            if( edges.empty() )
+            const double splitVertexTol = ComputeVertexMergeTolerance(splitSegments, eps);
+            AppendSplitEdges(splitSegments, vertices, edges, outgoing, edgeKeys, eps, splitVertexTol);
+            if (edges.empty())
             {
                 return result;
             }
 
-            SortOutgoing( edges, outgoing );
-            const std::vector<Polyline2d> rings =
-                ExtractCandidateRings( edges, vertices, outgoing, eps );
-            const std::vector<Polygon2d> faces =
-                BuildBoundedFacesFromCandidateRings( rings, areaTol, eps );
-            if( faces.empty() )
+            SortOutgoing(edges, outgoing);
+            const std::vector<SCPolyline2d> rings = ExtractCandidateRings(edges, vertices, outgoing, eps);
+            const std::vector<SCPolygon2d> faces = BuildBoundedFacesFromCandidateRings(rings, areaTol, eps);
+            if (faces.empty())
             {
                 return result;
             }
 
-            MultiPolyline2d selectedBoundaries;
-            for( const Polygon2d &face : faces )
+            SCMultiPolyline2d selectedBoundaries;
+            for (const SCPolygon2d& face : faces)
             {
-                const Point2d sample = SampleFacePoint( face, eps );
-                const PointContainment2d inFirstClass =
-                    ClassifyFaceAgainstPolygon( face, sample, normalizedFirst, eps );
-                const PointContainment2d inSecondClass =
-                    ClassifyFaceAgainstPolygon( face, sample, normalizedSecond, eps );
-                const bool inFirst = inFirstClass == PointContainment2d::Inside;
-                const bool inSecond = inSecondClass == PointContainment2d::Inside;
-                if( Evaluate( op, inFirst, inSecond ) )
+                const SCPoint2d sample = SampleFacePoint(face, eps);
+                const SCPointContainment2d inFirstClass = ClassifyFaceAgainstPolygon(face, sample, normalizedFirst, eps);
+                const SCPointContainment2d inSecondClass =
+                    ClassifyFaceAgainstPolygon(face, sample, normalizedSecond, eps);
+                const bool inFirst = inFirstClass == SCPointContainment2d::Inside;
+                const bool inSecond = inSecondClass == SCPointContainment2d::Inside;
+                if (Evaluate(op, inFirst, inSecond))
                 {
-                    AppendFaceBoundaries( face, selectedBoundaries );
+                    AppendFaceBoundaries(face, selectedBoundaries);
                 }
             }
 
-            if( selectedBoundaries.IsEmpty() && op == BooleanOp::Intersection &&
-                BoundsOverlap( normalizedFirst, normalizedSecond, eps ) )
+            if (selectedBoundaries.IsEmpty() && op == BooleanOp::Intersection &&
+                BoundsOverlap(normalizedFirst, normalizedSecond, eps))
             {
-                for( const Polygon2d &face : faces )
+                for (const SCPolygon2d& face : faces)
                 {
-                    const Point2d sample = SampleFacePoint( face, eps );
-                    const PointContainment2d inFirstClass =
-                        ClassifyFaceAgainstPolygon( face, sample, normalizedFirst, eps );
-                    const PointContainment2d inSecondClass =
-                        ClassifyFaceAgainstPolygon( face, sample, normalizedSecond, eps );
-                    const bool inFirst = inFirstClass != PointContainment2d::Outside;
-                    const bool inSecond = inSecondClass != PointContainment2d::Outside;
-                    if( inFirst && inSecond )
+                    const SCPoint2d sample = SampleFacePoint(face, eps);
+                    const SCPointContainment2d inFirstClass =
+                        ClassifyFaceAgainstPolygon(face, sample, normalizedFirst, eps);
+                    const SCPointContainment2d inSecondClass =
+                        ClassifyFaceAgainstPolygon(face, sample, normalizedSecond, eps);
+                    const bool inFirst = inFirstClass != SCPointContainment2d::Outside;
+                    const bool inSecond = inSecondClass != SCPointContainment2d::Outside;
+                    if (inFirst && inSecond)
                     {
-                        AppendFaceBoundaries( face, selectedBoundaries );
+                        AppendFaceBoundaries(face, selectedBoundaries);
                     }
                 }
             }
 
-            if( selectedBoundaries.IsEmpty() )
+            if (selectedBoundaries.IsEmpty())
             {
-                if( op == BooleanOp::Intersection &&
-                    BoundsOverlap( normalizedFirst, normalizedSecond, eps ) )
+                if (op == BooleanOp::Intersection && BoundsOverlap(normalizedFirst, normalizedSecond, eps))
                 {
-                    MultiPolygon2d clipped =
-                        TryAxisAlignedBoxIntersectionFallback( normalizedFirst, normalizedSecond, eps );
-                    if( !clipped.IsEmpty() )
+                    SCMultiPolygon2d clipped =
+                        TryAxisAlignedBoxIntersectionFallback(normalizedFirst, normalizedSecond, eps);
+                    if (!clipped.IsEmpty())
                     {
                         return clipped;
                     }
 
-                    clipped =
-                        TryAxisAlignedBoxIntersectionFallback( normalizedSecond, normalizedFirst, eps );
-                    if( !clipped.IsEmpty() )
+                    clipped = TryAxisAlignedBoxIntersectionFallback(normalizedSecond, normalizedFirst, eps);
+                    if (!clipped.IsEmpty())
                     {
                         return clipped;
                     }
@@ -1910,56 +1883,55 @@ namespace Geometry
                 return result;
             }
 
-            return BuildMultiPolygonByLines( selectedBoundaries, eps );
+            return BuildMultiPolygonByLines(selectedBoundaries, eps);
         }
     }  // namespace
 
-    MultiPolygon2d Intersect( const Polygon2d &first, const Polygon2d &second, double eps )
+    SCMultiPolygon2d Intersect(const SCPolygon2d& first, const SCPolygon2d& second, double eps)
     {
-        return BooleanCompose( first, second, BooleanOp::Intersection, eps );
+        return BooleanCompose(first, second, BooleanOp::Intersection, eps);
     }
 
-    MultiPolygon2d Union( const Polygon2d &first, const Polygon2d &second, double eps )
+    SCMultiPolygon2d Union(const SCPolygon2d& first, const SCPolygon2d& second, double eps)
     {
-        MultiPolygon2d result = BooleanCompose( first, second, BooleanOp::Union, eps );
+        SCMultiPolygon2d result = BooleanCompose(first, second, BooleanOp::Union, eps);
 
-        const MultiPolygon2d overlap = BooleanCompose( first, second, BooleanOp::Intersection, eps );
-        const MultiPolygon2d firstOnly = BooleanCompose( first, second, BooleanOp::Difference, eps );
-        MultiPolygon2d secondOnly = BooleanCompose( second, first, BooleanOp::Difference, eps );
-        if( secondOnly.IsEmpty() && BoundsOverlap( first, second, eps ) )
+        const SCMultiPolygon2d overlap = BooleanCompose(first, second, BooleanOp::Intersection, eps);
+        const SCMultiPolygon2d firstOnly = BooleanCompose(first, second, BooleanOp::Difference, eps);
+        SCMultiPolygon2d secondOnly = BooleanCompose(second, first, BooleanOp::Difference, eps);
+        if (secondOnly.IsEmpty() && BoundsOverlap(first, second, eps))
         {
-            secondOnly = TryAxisAlignedBoxDifferenceFallback( second, first, eps );
+            secondOnly = TryAxisAlignedBoxDifferenceFallback(second, first, eps);
         }
-        const double expectedArea =
-            TotalArea( overlap ) + TotalArea( firstOnly ) + TotalArea( secondOnly );
-        const double actualArea = TotalArea( result );
-        const double areaTol = std::max( Geometry::kBooleanAreaEpsilon, 64.0 * eps * eps );
+        const double expectedArea = TotalArea(overlap) + TotalArea(firstOnly) + TotalArea(secondOnly);
+        const double actualArea = TotalArea(result);
+        const double areaTol = std::max(Geometry::kBooleanAreaEpsilon, 64.0 * eps * eps);
 
-        if( expectedArea > areaTol && actualArea + areaTol < expectedArea )
+        if (expectedArea > areaTol && actualArea + areaTol < expectedArea)
         {
-            MultiPolyline2d boundaries;
-            AppendMultiPolygonBoundaries( overlap, boundaries );
-            AppendMultiPolygonBoundaries( firstOnly, boundaries );
-            AppendMultiPolygonBoundaries( secondOnly, boundaries );
-            if( !boundaries.IsEmpty() )
+            SCMultiPolyline2d boundaries;
+            AppendMultiPolygonBoundaries(overlap, boundaries);
+            AppendMultiPolygonBoundaries(firstOnly, boundaries);
+            AppendMultiPolygonBoundaries(secondOnly, boundaries);
+            if (!boundaries.IsEmpty())
             {
-                MultiPolygon2d rebuilt = BuildMultiPolygonByLines(
-                    boundaries, std::max( eps, Geometry::kBooleanRebuildFallbackEpsilon ) );
-                if( !rebuilt.IsEmpty() && TotalArea( rebuilt ) + areaTol >= expectedArea )
+                SCMultiPolygon2d rebuilt =
+                    BuildMultiPolygonByLines(boundaries, std::max(eps, Geometry::kBooleanRebuildFallbackEpsilon));
+                if (!rebuilt.IsEmpty() && TotalArea(rebuilt) + areaTol >= expectedArea)
                 {
-                    result = std::move( rebuilt );
+                    result = std::move(rebuilt);
                 }
             }
 
-            if( TotalArea( result ) + areaTol < expectedArea )
+            if (TotalArea(result) + areaTol < expectedArea)
             {
-                MultiPolygon2d decomposed;
-                AppendPolygons( firstOnly, decomposed );
-                AppendPolygons( secondOnly, decomposed );
-                AppendPolygons( overlap, decomposed );
-                if( !decomposed.IsEmpty() && TotalArea( decomposed ) + areaTol >= expectedArea )
+                SCMultiPolygon2d decomposed;
+                AppendPolygons(firstOnly, decomposed);
+                AppendPolygons(secondOnly, decomposed);
+                AppendPolygons(overlap, decomposed);
+                if (!decomposed.IsEmpty() && TotalArea(decomposed) + areaTol >= expectedArea)
                 {
-                    result = std::move( decomposed );
+                    result = std::move(decomposed);
                 }
             }
         }
@@ -1967,17 +1939,18 @@ namespace Geometry
         return result;
     }
 
-    MultiPolygon2d Difference( const Polygon2d &first, const Polygon2d &second, double eps )
+    SCMultiPolygon2d Difference(const SCPolygon2d& first, const SCPolygon2d& second, double eps)
     {
-        MultiPolygon2d result = BooleanCompose( first, second, BooleanOp::Difference, eps );
-        if( result.IsEmpty() && BoundsOverlap( first, second, eps ) )
+        SCMultiPolygon2d result = BooleanCompose(first, second, BooleanOp::Difference, eps);
+        if (result.IsEmpty() && BoundsOverlap(first, second, eps))
         {
-            MultiPolygon2d fallback = TryAxisAlignedBoxDifferenceFallback( first, second, eps );
-            if( !fallback.IsEmpty() )
+            SCMultiPolygon2d fallback = TryAxisAlignedBoxDifferenceFallback(first, second, eps);
+            if (!fallback.IsEmpty())
             {
-                result = std::move( fallback );
+                result = std::move(fallback);
             }
         }
         return result;
     }
 }  // namespace Geometry
+

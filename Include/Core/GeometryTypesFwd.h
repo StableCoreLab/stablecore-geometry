@@ -7,42 +7,43 @@
 namespace Geometry
 {
     template <typename T>
-    struct Point2;
+    struct SCPoint2;
 
     template <typename T>
-    struct Vector2;
+    struct SCVector2;
 
     template <typename T>
-    struct Box2;
+    struct SCBox2;
 
     template <typename T>
-    struct Point3;
+    struct SCPoint3;
 
     template <typename T>
-    struct Vector3;
+    struct SCVector3;
 
-    struct Box3d;
+    struct SCBox3d;
 
-    struct Intervald;
+    struct SCIntervald;
 
-    struct Line3d;
+    struct SCLine3d;
 
-    struct LineSegment3d;
+    struct SCLineSegment3d;
 
-    struct Matrix3d;
+    struct SCMatrix3d;
 
-    struct Plane;
+    struct SCPlane;
 
-    struct Ray3d;
+    struct SCRay3d;
 
-    struct Transform3d;
+    struct SCTransform3d;
 
-    struct Triangle3d;
+    struct SCTriangle3d;
 
-    struct Direction3d;
+    struct SCDirection3d;
 
-    struct GeometryTolerance3d;
-    struct CurveEval3d;
-    struct SurfaceEval3d;
+    struct SCGeometryTolerance3d;
+    struct SCCurveEval3d;
+    struct SCSurfaceEval3d;
 
 }  // namespace Geometry
+

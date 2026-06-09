@@ -1,68 +1,112 @@
-﻿#include <gtest/gtest.h>
+#include <gtest/gtest.h>
 
 #include "Geometry.h"
 
-using Geometry::BrepBody;
+using Geometry::SCBrepBody;
 using Geometry::ConvertToTriangleMesh;
 using Geometry::PolyhedronBody;
 
-TEST( Conversion3dGapTest, HighFidelityBrepToMeshFeaturePreservationRemainsOpen )
+TEST(Conversion3dGapTest, HighFidelityBrepToMeshFeaturePreservationRemainsOpen)
 {
-    const BrepBody body( {} );
-    const auto converted = ConvertToTriangleMesh( body );
+    const SCBrepBody body({});
+    const auto converted = ConvertToTriangleMesh(body);
     (void)converted;
-    GTEST_SKIP() << "Known 3D gap: high-fidelity feature-preserving Brep->mesh conversion beyond planar "
-                    "holed+multi-face area-preserving subset, shared-edge global vertex-reuse subset, "
-                    "and disconnected closed-shell component-preserving subset is still open.";
+    GTEST_SKIP() << "Known 3D gap: high-fidelity feature-preserving Brep->mesh "
+                    "conversion beyond planar "
+                    "holed+multi-face area-preserving subset, shared-edge "
+                    "global vertex-reuse subset, "
+                    "and disconnected closed-shell component-preserving subset "
+                    "is still open.";
 }
 
-TEST( Conversion3dGapTest, GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen )
+TEST(Conversion3dGapTest, GeneralNonPlanarPolyhedronToBrepRepairRemainsOpen)
 {
     const PolyhedronBody body;
-    const auto mesh = ConvertToTriangleMesh( body );
+    const auto mesh = ConvertToTriangleMesh(body);
     (void)mesh;
-    GTEST_SKIP()
-        << "Known 3D gap: robust non-planar polyhedron->Brep repair beyond affine-planar + "
-           "support-plane-refit (including closed-shell shared-topology subset via triangular faces "
-           "[closed tetrahedron], support-plane-mismatch quad shared-edge-chain shared-topology subset, "
-           "shared-chain mixed-content full-composition subset, dual outer/hole duplicate-normalization "
-           "composition subset, deformed-cube multi-face non-planar subsets via single-displaced-vertex "
-           "/ dual-displaced-vertices / single-duplicate-loop / dual-duplicate-loop, hole-dominated "
-           "holed-face all-loop support-plane scoring subset, hole-dominated shared-edge mixed-content "
-           "all-loop support-plane scoring subset, hole-dominated shared-chain mixed-content all-loop "
-           "support-plane scoring subset, near-equal shared-edge representative-average "
-           "vertex-placement subset, support-mismatch near-equal shared-edge representative-average "
-           "subset, support-mismatch near-equal shared-apex fan representative-average subset, "
-           "support-mismatch near-equal shared-edge-chain representative-average subset, "
-           "support-mismatch near-equal shared-corner fan representative-average subset, "
-           "support-mismatch near-equal closed-tetra representative-average subset, support-mismatch "
-           "near-equal shared-edge-chain with duplicate-normalization representative-average subset, "
-           "support-mismatch near-equal shared-chain mixed-content duplicate-hole "
-           "representative-average subset, support-mismatch near-equal shared-chain hole-dominated "
-           "mixed-content representative-average subset, support-mismatch near-equal shared-chain "
-           "hole-dominated mixed-content with duplicate-hole representative-average subset, "
-           "support-mismatch near-equal shared-chain hole-dominated full-composition "
-           "representative-average subset, support-mismatch near-equal shared-chain full-composition "
-           "representative-average subset, support-mismatch near-equal shared-chain dual-duplicate "
-           "full-composition representative-average subset, support-mismatch near-equal closed-tetra "
-           "dual-shared-vertices representative-average subset, support-mismatch near-equal "
-           "closed-tetra dual-shared-vertices with duplicate-loop-normalization subset, "
-           "support-mismatch near-equal closed-tetra all-shared-vertices representative-average subset, "
-           "support-mismatch near-equal closed-tetra all-shared-vertices with "
-           "duplicate-loop-normalization subset, support-mismatch near-equal closed-prism "
-           "dual-shared-vertices representative-average subset, support-mismatch near-equal "
-           "closed-prism dual-shared-vertices with duplicate-loop-normalization subset, "
-           "support-mismatch near-equal closed-prism all-shared-vertices representative-average subset, "
-           "support-mismatch near-equal closed-prism all-vertices with duplicate-loop-normalization "
-           "subset, support-mismatch near-equal closed-cuboid dual-shared-vertices "
-           "representative-average subset, support-mismatch near-equal closed-cuboid "
-           "dual-shared-vertices with duplicate-loop-normalization subset, support-mismatch near-equal "
-           "closed-cuboid dual-shared-vertices with dual-duplicate-loop-normalization subset, "
-           "support-mismatch near-equal closed-cuboid triple-shared-vertices representative-average "
-           "subset, support-mismatch near-equal closed-cuboid triple-shared-vertices with "
-           "duplicate-loop-normalization subset, and support-mismatch near-equal closed-cuboid "
-           "triple-shared-vertices with dual-duplicate-loop-normalization subset) + scale-aware "
-           "tiny-loop normal fallback + mild/tiny-scale outer/hole/multi-face/mixed-content/shared-edge "
-           "loop-projection + duplicate/collinear-leading normalization composition subset is still "
-           "open.";
+    GTEST_SKIP() << "Known 3D gap: robust non-planar polyhedron->Brep repair beyond "
+                    "affine-planar + "
+                    "support-plane-refit (including closed-shell shared-topology subset "
+                    "via triangular faces "
+                    "[closed tetrahedron], support-plane-mismatch quad "
+                    "shared-edge-chain shared-topology subset, "
+                    "shared-chain mixed-content full-composition subset, dual "
+                    "outer/hole duplicate-normalization "
+                    "composition subset, deformed-cube multi-face non-planar subsets "
+                    "via single-displaced-vertex "
+                    "/ dual-displaced-vertices / single-duplicate-loop / "
+                    "dual-duplicate-loop, hole-dominated "
+                    "holed-face all-loop support-plane scoring subset, hole-dominated "
+                    "shared-edge mixed-content "
+                    "all-loop support-plane scoring subset, hole-dominated shared-chain "
+                    "mixed-content all-loop "
+                    "support-plane scoring subset, near-equal shared-edge "
+                    "representative-average "
+                    "vertex-placement subset, support-mismatch near-equal shared-edge "
+                    "representative-average "
+                    "subset, support-mismatch near-equal shared-apex fan "
+                    "representative-average subset, "
+                    "support-mismatch near-equal shared-edge-chain "
+                    "representative-average subset, "
+                    "support-mismatch near-equal shared-corner fan "
+                    "representative-average subset, "
+                    "support-mismatch near-equal closed-tetra representative-average "
+                    "subset, support-mismatch "
+                    "near-equal shared-edge-chain with duplicate-normalization "
+                    "representative-average subset, "
+                    "support-mismatch near-equal shared-chain mixed-content "
+                    "duplicate-hole "
+                    "representative-average subset, support-mismatch near-equal "
+                    "shared-chain hole-dominated "
+                    "mixed-content representative-average subset, support-mismatch "
+                    "near-equal shared-chain "
+                    "hole-dominated mixed-content with duplicate-hole "
+                    "representative-average subset, "
+                    "support-mismatch near-equal shared-chain hole-dominated "
+                    "full-composition "
+                    "representative-average subset, support-mismatch near-equal "
+                    "shared-chain full-composition "
+                    "representative-average subset, support-mismatch near-equal "
+                    "shared-chain dual-duplicate "
+                    "full-composition representative-average subset, support-mismatch "
+                    "near-equal closed-tetra "
+                    "dual-shared-vertices representative-average subset, "
+                    "support-mismatch near-equal "
+                    "closed-tetra dual-shared-vertices with "
+                    "duplicate-loop-normalization subset, "
+                    "support-mismatch near-equal closed-tetra all-shared-vertices "
+                    "representative-average subset, "
+                    "support-mismatch near-equal closed-tetra all-shared-vertices with "
+                    "duplicate-loop-normalization subset, support-mismatch near-equal "
+                    "closed-prism "
+                    "dual-shared-vertices representative-average subset, "
+                    "support-mismatch near-equal "
+                    "closed-prism dual-shared-vertices with "
+                    "duplicate-loop-normalization subset, "
+                    "support-mismatch near-equal closed-prism all-shared-vertices "
+                    "representative-average subset, "
+                    "support-mismatch near-equal closed-prism all-vertices with "
+                    "duplicate-loop-normalization "
+                    "subset, support-mismatch near-equal closed-cuboid "
+                    "dual-shared-vertices "
+                    "representative-average subset, support-mismatch near-equal "
+                    "closed-cuboid "
+                    "dual-shared-vertices with duplicate-loop-normalization subset, "
+                    "support-mismatch near-equal "
+                    "closed-cuboid dual-shared-vertices with "
+                    "dual-duplicate-loop-normalization subset, "
+                    "support-mismatch near-equal closed-cuboid triple-shared-vertices "
+                    "representative-average "
+                    "subset, support-mismatch near-equal closed-cuboid "
+                    "triple-shared-vertices with "
+                    "duplicate-loop-normalization subset, and support-mismatch "
+                    "near-equal closed-cuboid "
+                    "triple-shared-vertices with dual-duplicate-loop-normalization "
+                    "subset) + scale-aware "
+                    "tiny-loop normal fallback + mild/tiny-scale "
+                    "outer/hole/multi-face/mixed-content/shared-edge "
+                    "loop-projection + duplicate/collinear-leading normalization "
+                    "composition subset is still "
+                    "open.";
 }
+

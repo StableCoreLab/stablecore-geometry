@@ -4,7 +4,7 @@ namespace Geometry
 {
     const double kPi = 3.141592653589793238462643383279502884;
     const double kTwoPi = 2.0 * kPi;
-    const std::array<double, 4> kArcBoundsCriticalAngles = { 0.0, kPi * 0.5, kPi, kPi * 1.5 };
+    const std::array<double, 4> kArcBoundsCriticalAngles = {0.0, kPi * 0.5, kPi, kPi * 1.5};
     const double kSharedTopologyMatchEpsilon = 1e-6;
     const double kLoopCleanupEpsilon = kDefaultEpsilon;
     const double kRepresentativeMatchEpsilon = 1e-6;

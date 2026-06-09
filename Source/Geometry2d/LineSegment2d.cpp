@@ -1,100 +1,108 @@
-﻿#include "Geometry2d/LineSegment2d.h"
+#include "Geometry2d/SCLineSegment2d.h"
 
 #include <memory>
 #include <sstream>
 
-#include "Types/Geometry2d/Vector2.h"
+#include "Types/Geometry2d/SCVector2.h"
 
 namespace Geometry
 {
-    LineSegment2d::LineSegment2d( const Point2d &startPoint, const Point2d &endPoint ) :
-        startPoint( startPoint ),
-        endPoint( endPoint )
+    SCLineSegment2d::SCLineSegment2d(const SCPoint2d& startPoint, const SCPoint2d& endPoint)
+        : startPoint(startPoint), endPoint(endPoint)
     {
     }
 
-    LineSegment2d LineSegment2d::FromEndpoints( const Point2d &startPoint, const Point2d &endPoint )
+    SCLineSegment2d SCLineSegment2d::FromEndpoints(const SCPoint2d& startPoint, const SCPoint2d& endPoint)
     {
-        return LineSegment2d( startPoint, endPoint );
+        return SCLineSegment2d(startPoint, endPoint);
     }
 
-    SegmentKind2 LineSegment2d::Kind() const { return SegmentKind2::Line; }
-
-    bool LineSegment2d::IsValid() const
+    SCSegmentKind2 SCLineSegment2d::Kind() const
     {
-        return startPoint.IsValid() && endPoint.IsValid() && !startPoint.AlmostEquals( endPoint );
+        return SCSegmentKind2::Line;
     }
 
-    Point2d LineSegment2d::StartPoint() const { return startPoint; }
-
-    Point2d LineSegment2d::EndPoint() const { return endPoint; }
-
-    double LineSegment2d::Length() const { return ( endPoint - startPoint ).Length(); }
-
-    Box2d LineSegment2d::Bounds() const
+    bool SCLineSegment2d::IsValid() const
     {
-        if( !IsValid() )
+        return startPoint.IsValid() && endPoint.IsValid() && !startPoint.AlmostEquals(endPoint);
+    }
+
+    SCPoint2d SCLineSegment2d::StartPoint() const
+    {
+        return startPoint;
+    }
+
+    SCPoint2d SCLineSegment2d::EndPoint() const
+    {
+        return endPoint;
+    }
+
+    double SCLineSegment2d::Length() const
+    {
+        return (endPoint - startPoint).Length();
+    }
+
+    SCBox2d SCLineSegment2d::Bounds() const
+    {
+        if (!IsValid())
         {
-            return Box2d{};
+            return SCBox2d{};
         }
 
-        Box2d box;
-        box.ExpandToInclude( startPoint );
-        box.ExpandToInclude( endPoint );
+        SCBox2d box;
+        box.ExpandToInclude(startPoint);
+        box.ExpandToInclude(endPoint);
         return box;
     }
 
-    Point2d LineSegment2d::PointAt( double parameter ) const
+    SCPoint2d SCLineSegment2d::PointAt(double parameter) const
     {
-        return PointAtLength( parameter * Length(), false );
+        return PointAtLength(parameter * Length(), false);
     }
 
-    Point2d LineSegment2d::PointAtLength( double distanceFromStart, bool clampToSegment ) const
+    SCPoint2d SCLineSegment2d::PointAtLength(double distanceFromStart, bool clampToSegment) const
     {
-        if( !IsValid() )
+        if (!IsValid())
         {
             return startPoint;
         }
 
         const double length = Length();
-        if( length <= 0.0 )
+        if (length <= 0.0)
         {
             return startPoint;
         }
 
-        if( clampToSegment )
+        if (clampToSegment)
         {
-            if( distanceFromStart < 0.0 )
+            if (distanceFromStart < 0.0)
             {
                 distanceFromStart = 0.0;
-            }
-            else if( distanceFromStart > length )
+            } else if (distanceFromStart > length)
             {
                 distanceFromStart = length;
             }
         }
 
         const double ratio = distanceFromStart / length;
-        return Point2d{ startPoint.x + ( endPoint.x - startPoint.x ) * ratio,
-                        startPoint.y + ( endPoint.y - startPoint.y ) * ratio };
+        return SCPoint2d{startPoint.x + (endPoint.x - startPoint.x) * ratio,
+                       startPoint.y + (endPoint.y - startPoint.y) * ratio};
     }
 
-    bool LineSegment2d::AlmostEquals( const LineSegment2d &other, double eps ) const
+    bool SCLineSegment2d::AlmostEquals(const SCLineSegment2d& other, double eps) const
     {
-        return startPoint.AlmostEquals( other.startPoint, eps ) &&
-               endPoint.AlmostEquals( other.endPoint, eps );
+        return startPoint.AlmostEquals(other.startPoint, eps) && endPoint.AlmostEquals(other.endPoint, eps);
     }
 
-    std::string LineSegment2d::DebugString() const
+    std::string SCLineSegment2d::DebugString() const
     {
         std::ostringstream stream;
-        stream << "LineSegment2d{start=" << startPoint.DebugString()
-               << ", end=" << endPoint.DebugString() << "}";
+        stream << "SCLineSegment2d{start=" << startPoint.DebugString() << ", end=" << endPoint.DebugString() << "}";
         return stream.str();
     }
 
-    std::unique_ptr<Segment2d> LineSegment2d::Clone() const
+    std::unique_ptr<ISCSegment2d> SCLineSegment2d::Clone() const
     {
-        return std::make_unique<LineSegment2d>( *this );
+        return std::make_unique<SCLineSegment2d>(*this);
     }
 }  // namespace Geometry

@@ -6,26 +6,26 @@
 #include "Core/GeometryTypesPrimitives.h"
 #include "Core/GeometryTypes.h"
 #include "Export/GeometryExport.h"
-#include "Geometry2d/Segment2d.h"
+#include "Geometry2d/ISCSegment2d.h"
 #include "Support/Epsilon.h"
-#include "Types/Geometry2d/Box2.h"
-#include "Types/Geometry2d/Point2.h"
-#include "Types/Geometry2d/Vector2.h"
-#include "Types/Geometry3d/Box3.h"
-#include "Types/Geometry3d/Interval.h"
-#include "Types/Geometry3d/Line3.h"
-#include "Types/Geometry3d/Plane.h"
+#include "Types/Geometry2d/SCBox2.h"
+#include "Types/Geometry2d/SCPoint2.h"
+#include "Types/Geometry2d/SCVector2.h"
+#include "Types/Geometry3d/SCBox3.h"
+#include "Types/Geometry3d/SCIntervald.h"
+#include "Types/Geometry3d/SCLine3d.h"
+#include "Types/Geometry3d/SCPlane.h"
 
 namespace Geometry
 {
-    enum class RingOrientation2d
+    enum class SCRingOrientation2d
     {
         Unknown,
         Clockwise,
         CounterClockwise
     };
 
-    enum class IntersectionKind2d
+    enum class SCIntersectionKind2d
     {
         None,
         Point,
@@ -33,39 +33,43 @@ namespace Geometry
         Tangent
     };
 
-    struct GEOMETRY_API IntersectionPoint2d
+    struct GEOMETRY_API SCIntersectionPoint2d
     {
-        Point2d point{};
-        double parameterOnFirst{ 0.0 };
-        double parameterOnSecond{ 0.0 };
+        SCPoint2d point{};
+        double parameterOnFirst{0.0};
+        double parameterOnSecond{0.0};
 
-        [[nodiscard]] bool IsValid() const { return point.IsValid(); }
-
-        [[nodiscard]] bool AlmostEquals( const IntersectionPoint2d &other,
-                                         double eps = Geometry::kDefaultEpsilon ) const
+        [[nodiscard]] bool IsValid() const
         {
-            return point.AlmostEquals( other.point, eps ) &&
-                   std::abs( parameterOnFirst - other.parameterOnFirst ) <= eps &&
-                   std::abs( parameterOnSecond - other.parameterOnSecond ) <= eps;
+            return point.IsValid();
+        }
+
+        [[nodiscard]] bool AlmostEquals(const SCIntersectionPoint2d& other, double eps = Geometry::kDefaultEpsilon) const
+        {
+            return point.AlmostEquals(other.point, eps) && std::abs(parameterOnFirst - other.parameterOnFirst) <= eps &&
+                   std::abs(parameterOnSecond - other.parameterOnSecond) <= eps;
         }
     };
 
-    struct GEOMETRY_API SegmentIntersection2d
+    struct GEOMETRY_API SCSegmentIntersection2d
     {
-        IntersectionKind2d kind{ IntersectionKind2d::None };
-        std::array<IntersectionPoint2d, 2> points{};
-        std::size_t pointCount{ 0 };
+        SCIntersectionKind2d kind{SCIntersectionKind2d::None};
+        std::array<SCIntersectionPoint2d, 2> points{};
+        std::size_t pointCount{0};
 
-        [[nodiscard]] bool HasIntersection() const { return kind != IntersectionKind2d::None; }
+        [[nodiscard]] bool HasIntersection() const
+        {
+            return kind != SCIntersectionKind2d::None;
+        }
     };
 
-    struct GEOMETRY_API ClosestPoints2d
+    struct GEOMETRY_API SCClosestPoints2d
     {
-        Point2d firstPoint{};
-        Point2d secondPoint{};
-        double parameterOnFirst{ 0.0 };
-        double parameterOnSecond{ 0.0 };
-        double distanceSquared{ 0.0 };
+        SCPoint2d firstPoint{};
+        SCPoint2d secondPoint{};
+        double parameterOnFirst{0.0};
+        double parameterOnSecond{0.0};
+        double distanceSquared{0.0};
 
         [[nodiscard]] bool IsValid() const
         {
@@ -73,12 +77,12 @@ namespace Geometry
         }
     };
 
-    struct GEOMETRY_API AxisSample2d
+    struct GEOMETRY_API SCAxisSample2d
     {
-        Point2d point{};
-        Vector2d tangent{};
-        Vector2d normal{};
-        double parameter{ 0.0 };
+        SCPoint2d point{};
+        SCVector2d tangent{};
+        SCVector2d normal{};
+        double parameter{0.0};
 
         [[nodiscard]] bool IsValid() const
         {
@@ -86,11 +90,11 @@ namespace Geometry
         }
     };
 
-    struct GEOMETRY_API AxisProjection2d
+    struct GEOMETRY_API SCAxisProjection2d
     {
-        SegmentProjection2d projection{};
-        Vector2d tangent{};
-        Vector2d normal{};
+        SCSegmentProjection2d projection{};
+        SCVector2d tangent{};
+        SCVector2d normal{};
 
         [[nodiscard]] bool IsValid() const
         {
@@ -98,39 +102,48 @@ namespace Geometry
         }
     };
 
-    struct GEOMETRY_API SegmentTrim2d
+    struct GEOMETRY_API SCSegmentTrim2d
     {
-        bool success{ false };
-        std::unique_ptr<Segment2d> segment{};
+        bool success{false};
+        std::unique_ptr<ISCSegment2d> segment{};
 
-        SegmentTrim2d() = default;
-        SegmentTrim2d( SegmentTrim2d && ) noexcept = default;
-        SegmentTrim2d &operator=( SegmentTrim2d && ) noexcept = default;
-        SegmentTrim2d( const SegmentTrim2d & ) = delete;
-        SegmentTrim2d &operator=( const SegmentTrim2d & ) = delete;
+        SCSegmentTrim2d() = default;
+        SCSegmentTrim2d(SCSegmentTrim2d&&) noexcept = default;
+        SCSegmentTrim2d& operator=(SCSegmentTrim2d&&) noexcept = default;
+        SCSegmentTrim2d(const SCSegmentTrim2d&) = delete;
+        SCSegmentTrim2d& operator=(const SCSegmentTrim2d&) = delete;
     };
 
-    struct GEOMETRY_API SegmentSplit2d
+    struct GEOMETRY_API SCSegmentSplit2d
     {
-        bool success{ false };
-        std::unique_ptr<Segment2d> first{};
-        std::unique_ptr<Segment2d> second{};
+        bool success{false};
+        std::unique_ptr<ISCSegment2d> first{};
+        std::unique_ptr<ISCSegment2d> second{};
 
-        SegmentSplit2d() = default;
-        SegmentSplit2d( SegmentSplit2d && ) noexcept = default;
-        SegmentSplit2d &operator=( SegmentSplit2d && ) noexcept = default;
-        SegmentSplit2d( const SegmentSplit2d & ) = delete;
-        SegmentSplit2d &operator=( const SegmentSplit2d & ) = delete;
+        SCSegmentSplit2d() = default;
+        SCSegmentSplit2d(SCSegmentSplit2d&&) noexcept = default;
+        SCSegmentSplit2d& operator=(SCSegmentSplit2d&&) noexcept = default;
+        SCSegmentSplit2d(const SCSegmentSplit2d&) = delete;
+        SCSegmentSplit2d& operator=(const SCSegmentSplit2d&) = delete;
     };
 
-    struct GEOMETRY_API SnapResult2d
+    struct GEOMETRY_API SCSnapResult2d
     {
-        bool snapped{ false };
-        Point2d point{};
-        double distanceSquared{ 0.0 };
-        std::size_t segmentIndex{ 0 };
-        double parameter{ 0.0 };
+        bool snapped{false};
+        SCPoint2d point{};
+        double distanceSquared{0.0};
+        std::size_t segmentIndex{0};
+        double parameter{0.0};
 
-        [[nodiscard]] bool IsValid() const { return !snapped || point.IsValid(); }
+        [[nodiscard]] bool IsValid() const
+        {
+            return !snapped || point.IsValid();
+        }
     };
 }  // namespace Geometry
+
+
+
+
+
+

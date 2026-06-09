@@ -1,17 +1,17 @@
 #pragma once
 #include <string>
 #include <vector>
-#include "Brep/BrepBody.h"
+#include "Brep/SCBrepBody.h"
 #include "Brep/MeshConversion.h"
 #include "Brep/PolyhedronBody.h"
 #include "Core/GeometryTypes.h"
 #include "Export/GeometryExport.h"
-#include "Geometry2d/Polygon2d.h"
+#include "Geometry2d/SCPolygon2d.h"
 #include "Support/Epsilon.h"
 
 namespace Geometry
 {
-    enum class SectionIssue3d
+    enum class SCSectionIssue3d
     {
         None,
         InvalidPlane,
@@ -23,42 +23,42 @@ namespace Geometry
         InvalidContour
     };
 
-    enum class SectionFaceRebuildIssue3d
+    enum class SCSectionFaceRebuildIssue3d
     {
         None,
         InvalidSection,
         InvalidPolygon
     };
 
-    enum class SectionBodyRebuildIssue3d
+    enum class SCSectionBodyRebuildIssue3d
     {
         None,
         InvalidSection,
         FaceRebuildFailed
     };
 
-    struct GEOMETRY_API SectionBodySetRebuildResult3d
+    struct GEOMETRY_API SCSectionBodySetRebuildResult3d
     {
-        bool success{ false };
-        SectionBodyRebuildIssue3d issue{ SectionBodyRebuildIssue3d::None };
+        bool success{false};
+        SCSectionBodyRebuildIssue3d issue{SCSectionBodyRebuildIssue3d::None};
         std::vector<std::size_t> rootPolygonIndices{};
         std::vector<PolyhedronBody> bodies{};
 
-        [[nodiscard]] bool IsValid( double eps = Geometry::kDefaultEpsilon ) const
+        [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
         {
-            if( !success )
+            if (!success)
             {
                 return true;
             }
 
-            if( bodies.size() != rootPolygonIndices.size() )
+            if (bodies.size() != rootPolygonIndices.size())
             {
                 return false;
             }
 
-            for( const PolyhedronBody &body : bodies )
+            for (const PolyhedronBody& body : bodies)
             {
-                if( !body.IsValid( eps ) )
+                if (!body.IsValid(eps))
                 {
                     return false;
                 }
@@ -68,7 +68,7 @@ namespace Geometry
         }
     };
 
-    enum class SectionContentKind3d
+    enum class SCSectionContentKind3d
     {
         Empty,
         Curve,
@@ -76,26 +76,26 @@ namespace Geometry
         Mixed
     };
 
-    struct GEOMETRY_API SectionPolyline3d
+    struct GEOMETRY_API SCSectionPolyline3d
     {
-        bool closed{ false };
-        std::vector<Point3d> points{};
+        bool closed{false};
+        std::vector<SCPoint3d> points{};
 
-        [[nodiscard]] bool IsValid( double eps = Geometry::kDefaultEpsilon ) const
+        [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
         {
-            if( closed ? points.size() < 3 : points.size() < 2 )
+            if (closed ? points.size() < 3 : points.size() < 2)
             {
                 return false;
             }
 
-            for( std::size_t i = 0; i < points.size(); ++i )
+            for (std::size_t i = 0; i < points.size(); ++i)
             {
-                if( !points[i].IsValid() )
+                if (!points[i].IsValid())
                 {
                     return false;
                 }
 
-                if( i > 0 && points[i].AlmostEquals( points[i - 1], eps ) )
+                if (i > 0 && points[i].AlmostEquals(points[i - 1], eps))
                 {
                     return false;
                 }
@@ -105,49 +105,49 @@ namespace Geometry
         }
     };
 
-    struct GEOMETRY_API PolyhedronSection3d
+    struct GEOMETRY_API SCPolyhedronSection3d
     {
-        bool success{ false };
-        SectionIssue3d issue{ SectionIssue3d::None };
-        std::vector<LineSegment3d> segments{};
-        std::vector<SectionPolyline3d> contours{};
-        std::vector<Polygon2d> polygons{};
-        Point3d origin{};
-        Vector3d uAxis{};
-        Vector3d vAxis{};
+        bool success{false};
+        SCSectionIssue3d issue{SCSectionIssue3d::None};
+        std::vector<SCLineSegment3d> segments{};
+        std::vector<SCSectionPolyline3d> contours{};
+        std::vector<SCPolygon2d> polygons{};
+        SCPoint3d origin{};
+        SCVector3d uAxis{};
+        SCVector3d vAxis{};
 
-        [[nodiscard]] bool IsValid( double eps = Geometry::kDefaultEpsilon ) const
+        [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
         {
-            if( !success )
+            if (!success)
             {
                 return true;
             }
 
-            if( !origin.IsValid() || !uAxis.IsValid() || !vAxis.IsValid() || uAxis.Length() <= eps ||
-                vAxis.Length() <= eps )
+            if (!origin.IsValid() || !uAxis.IsValid() || !vAxis.IsValid() || uAxis.Length() <= eps ||
+                vAxis.Length() <= eps)
             {
                 return false;
             }
 
-            for( const LineSegment3d &segment : segments )
+            for (const SCLineSegment3d& segment : segments)
             {
-                if( !segment.IsValid( eps ) )
+                if (!segment.IsValid(eps))
                 {
                     return false;
                 }
             }
 
-            for( const SectionPolyline3d &contour : contours )
+            for (const SCSectionPolyline3d& contour : contours)
             {
-                if( !contour.IsValid( eps ) )
+                if (!contour.IsValid(eps))
                 {
                     return false;
                 }
             }
 
-            for( const Polygon2d &polygon : polygons )
+            for (const SCPolygon2d& polygon : polygons)
             {
-                if( !polygon.IsValid() )
+                if (!polygon.IsValid())
                 {
                     return false;
                 }
@@ -157,33 +157,33 @@ namespace Geometry
         }
     };
 
-    struct GEOMETRY_API SectionFaceRebuildResult3d
+    struct GEOMETRY_API SCSectionFaceRebuildResult3d
     {
-        bool success{ false };
-        SectionFaceRebuildIssue3d issue{ SectionFaceRebuildIssue3d::None };
+        bool success{false};
+        SCSectionFaceRebuildIssue3d issue{SCSectionFaceRebuildIssue3d::None};
         struct FaceMapping
         {
-            std::size_t outerPolygonIndex{ 0 };
+            std::size_t outerPolygonIndex{0};
             std::vector<std::size_t> holePolygonIndices{};
         };
         std::vector<PolyhedronFace3d> faces{};
         std::vector<FaceMapping> mappings{};
 
-        [[nodiscard]] bool IsValid( double eps = Geometry::kDefaultEpsilon ) const
+        [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
         {
-            if( !success )
+            if (!success)
             {
                 return true;
             }
 
-            if( faces.size() != mappings.size() )
+            if (faces.size() != mappings.size())
             {
                 return false;
             }
 
-            for( const PolyhedronFace3d &face : faces )
+            for (const PolyhedronFace3d& face : faces)
             {
-                if( !face.IsValid( eps ) )
+                if (!face.IsValid(eps))
                 {
                     return false;
                 }
@@ -193,34 +193,34 @@ namespace Geometry
         }
     };
 
-    struct GEOMETRY_API SectionBodyRebuildResult3d
+    struct GEOMETRY_API SCSectionBodyRebuildResult3d
     {
-        bool success{ false };
-        SectionBodyRebuildIssue3d issue{ SectionBodyRebuildIssue3d::None };
+        bool success{false};
+        SCSectionBodyRebuildIssue3d issue{SCSectionBodyRebuildIssue3d::None};
         PolyhedronBody body{};
 
-        [[nodiscard]] bool IsValid( double eps = Geometry::kDefaultEpsilon ) const
+        [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
         {
-            return !success || body.IsValid( eps ) || body.IsEmpty();
+            return !success || body.IsValid(eps) || body.IsEmpty();
         }
     };
 
-    struct GEOMETRY_API SectionBrepFaceRebuildResult3d
+    struct GEOMETRY_API SCSectionBrepFaceRebuildResult3d
     {
-        bool success{ false };
-        SectionFaceRebuildIssue3d issue{ SectionFaceRebuildIssue3d::None };
-        std::vector<BrepFace> faces{};
+        bool success{false};
+        SCSectionFaceRebuildIssue3d issue{SCSectionFaceRebuildIssue3d::None};
+        std::vector<SCBrepFace> faces{};
 
-        [[nodiscard]] bool IsValid( const GeometryTolerance3d &tolerance = {} ) const
+        [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const
         {
-            if( !success )
+            if (!success)
             {
                 return true;
             }
 
-            for( const BrepFace &face : faces )
+            for (const SCBrepFace& face : faces)
             {
-                if( !face.IsValid( tolerance ) )
+                if (!face.IsValid(tolerance))
                 {
                     return false;
                 }
@@ -230,40 +230,40 @@ namespace Geometry
         }
     };
 
-    struct GEOMETRY_API SectionBrepBodyRebuildResult3d
+    struct GEOMETRY_API SCSectionBrepBodyRebuildResult3d
     {
-        bool success{ false };
-        SectionBodyRebuildIssue3d issue{ SectionBodyRebuildIssue3d::None };
-        BrepBody body{};
+        bool success{false};
+        SCSectionBodyRebuildIssue3d issue{SCSectionBodyRebuildIssue3d::None};
+        SCBrepBody body{};
 
-        [[nodiscard]] bool IsValid( const GeometryTolerance3d &tolerance = {} ) const
+        [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const
         {
-            return !success || body.IsValid( tolerance ) || body.IsEmpty();
+            return !success || body.IsValid(tolerance) || body.IsEmpty();
         }
     };
 
-    struct GEOMETRY_API SectionBrepBodySetRebuildResult3d
+    struct GEOMETRY_API SCSectionBrepBodySetRebuildResult3d
     {
-        bool success{ false };
-        SectionBodyRebuildIssue3d issue{ SectionBodyRebuildIssue3d::None };
+        bool success{false};
+        SCSectionBodyRebuildIssue3d issue{SCSectionBodyRebuildIssue3d::None};
         std::vector<std::size_t> rootPolygonIndices{};
-        std::vector<BrepBody> bodies{};
+        std::vector<SCBrepBody> bodies{};
 
-        [[nodiscard]] bool IsValid( const GeometryTolerance3d &tolerance = {} ) const
+        [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const
         {
-            if( !success )
+            if (!success)
             {
                 return true;
             }
 
-            if( rootPolygonIndices.size() != bodies.size() )
+            if (rootPolygonIndices.size() != bodies.size())
             {
                 return false;
             }
 
-            for( const BrepBody &body : bodies )
+            for (const SCBrepBody& body : bodies)
             {
-                if( !body.IsValid( tolerance ) )
+                if (!body.IsValid(tolerance))
                 {
                     return false;
                 }
@@ -273,100 +273,114 @@ namespace Geometry
         }
     };
 
-    struct GEOMETRY_API SectionTopologyNode3d
+    struct GEOMETRY_API SCSectionTopologyNode3d
     {
-        std::size_t polygonIndex{ 0 };
-        std::size_t parentIndex{ static_cast<std::size_t>( -1 ) };
-        std::size_t depth{ 0 };
+        std::size_t polygonIndex{0};
+        std::size_t parentIndex{static_cast<std::size_t>(-1)};
+        std::size_t depth{0};
         std::vector<std::size_t> children{};
     };
 
-    class GEOMETRY_API SectionTopology3d
+    class GEOMETRY_API SCSectionTopology3d
     {
     public:
-        [[nodiscard]] bool IsValid() const { return valid_; }
-
-        [[nodiscard]] std::size_t Count() const { return nodes_.size(); }
-
-        [[nodiscard]] bool IsEmpty() const { return nodes_.empty(); }
-
-        [[nodiscard]] const SectionTopologyNode3d &Node( std::size_t index ) const
+        [[nodiscard]] bool IsValid() const
         {
-            return nodes_.at( index );
+            return valid_;
         }
 
-        [[nodiscard]] std::size_t ParentOf( std::size_t index ) const
+        [[nodiscard]] std::size_t Count() const
         {
-            return nodes_.at( index ).parentIndex;
+            return nodes_.size();
         }
 
-        [[nodiscard]] const std::vector<std::size_t> &ChildrenOf( std::size_t index ) const
+        [[nodiscard]] bool IsEmpty() const
         {
-            return nodes_.at( index ).children;
+            return nodes_.empty();
         }
 
-        [[nodiscard]] const std::vector<std::size_t> &Roots() const { return roots_; }
+        [[nodiscard]] const SCSectionTopologyNode3d& Node(std::size_t index) const
+        {
+            return nodes_.at(index);
+        }
+
+        [[nodiscard]] std::size_t ParentOf(std::size_t index) const
+        {
+            return nodes_.at(index).parentIndex;
+        }
+
+        [[nodiscard]] const std::vector<std::size_t>& ChildrenOf(std::size_t index) const
+        {
+            return nodes_.at(index).children;
+        }
+
+        [[nodiscard]] const std::vector<std::size_t>& Roots() const
+        {
+            return roots_;
+        }
 
         [[nodiscard]] std::string DebugString() const;
 
     private:
-        friend GEOMETRY_API SectionTopology3d BuildSectionTopology( const PolyhedronSection3d &section,
-                                                                    double eps );
+        friend GEOMETRY_API SCSectionTopology3d BuildSectionTopology(const SCPolyhedronSection3d& section, double eps);
 
-        bool valid_{ false };
-        std::vector<SectionTopologyNode3d> nodes_{};
+        bool valid_{false};
+        std::vector<SCSectionTopologyNode3d> nodes_{};
         std::vector<std::size_t> roots_{};
     };
 
-    struct GEOMETRY_API SectionComponent3d
+    struct GEOMETRY_API SCSectionComponent3d
     {
-        std::size_t rootPolygonIndex{ 0 };
+        std::size_t rootPolygonIndex{0};
         std::vector<std::size_t> polygonIndices{};
         std::vector<std::size_t> faceIndices{};
     };
 
-    struct GEOMETRY_API SectionComponents3d
+    struct GEOMETRY_API SCSectionComponents3d
     {
-        bool valid{ false };
-        std::vector<SectionComponent3d> components{};
+        bool valid{false};
+        std::vector<SCSectionComponent3d> components{};
 
-        [[nodiscard]] bool IsValid() const { return valid; }
-    };
-
-    struct GEOMETRY_API SectionMeshConversionResult3d
-    {
-        bool success{ false };
-        MeshConversionIssue3d issue{ MeshConversionIssue3d::None };
-        TriangleMesh mesh{};
-
-        [[nodiscard]] bool IsValid( double eps = Geometry::kDefaultEpsilon ) const
+        [[nodiscard]] bool IsValid() const
         {
-            return !success || mesh.IsValid( eps );
+            return valid;
         }
     };
 
-    struct GEOMETRY_API SectionMeshSetConversionResult3d
+    struct GEOMETRY_API SCSectionMeshConversionResult3d
     {
-        bool success{ false };
-        MeshConversionIssue3d issue{ MeshConversionIssue3d::None };
+        bool success{false};
+        MeshConversionIssue3d issue{MeshConversionIssue3d::None};
+        TriangleMesh mesh{};
+
+        [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
+        {
+            return !success || mesh.IsValid(eps);
+        }
+    };
+
+    struct GEOMETRY_API SCSectionMeshSetConversionResult3d
+    {
+        bool success{false};
+        MeshConversionIssue3d issue{MeshConversionIssue3d::None};
         std::vector<std::size_t> rootPolygonIndices{};
         std::vector<TriangleMesh> meshes{};
 
-        [[nodiscard]] bool IsValid( double eps = Geometry::kDefaultEpsilon ) const
+        [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
         {
-            if( !success )
+            if (!success)
             {
                 return true;
             }
 
-            if( meshes.size() != rootPolygonIndices.size() )
+            if (meshes.size() != rootPolygonIndices.size())
             {
                 return false;
             }
 
-            for( const TriangleMesh &mesh : meshes )
+            for (const TriangleMesh& mesh : meshes)
             {
-                if( !mesh.IsValid( eps ) )
+                if (!mesh.IsValid(eps))
                 {
                     return false;
                 }
@@ -376,60 +390,56 @@ namespace Geometry
         }
     };
 
-    using SectionBodySetRebuild3d = SectionBodySetRebuildResult3d;
-    using SectionFaceRebuild3d = SectionFaceRebuildResult3d;
-    using SectionBodyRebuild3d = SectionBodyRebuildResult3d;
-    using SectionBrepFaceRebuild3d = SectionBrepFaceRebuildResult3d;
-    using SectionBrepBodyRebuild3d = SectionBrepBodyRebuildResult3d;
-    using SectionBrepBodySetRebuild3d = SectionBrepBodySetRebuildResult3d;
-    using SectionMeshConversion3d = SectionMeshConversionResult3d;
-    using SectionMeshSetConversion3d = SectionMeshSetConversionResult3d;
+    using SCSectionBodySetRebuild3d = SCSectionBodySetRebuildResult3d;
+    using SCSectionFaceRebuild3d = SCSectionFaceRebuildResult3d;
+    using SCSectionBodyRebuild3d = SCSectionBodyRebuildResult3d;
+    using SCSectionBrepFaceRebuild3d = SCSectionBrepFaceRebuildResult3d;
+    using SCSectionBrepBodyRebuild3d = SCSectionBrepBodyRebuildResult3d;
+    using SCSectionBrepBodySetRebuild3d = SCSectionBrepBodySetRebuildResult3d;
+    using SCSectionMeshConversion3d = SCSectionMeshConversionResult3d;
+    using SCSectionMeshSetConversion3d = SCSectionMeshSetConversionResult3d;
 
-    [[nodiscard]] GEOMETRY_API PolyhedronSection3d Section( const PolyhedronBody &body,
-                                                            const Plane &plane,
-                                                            const GeometryTolerance3d &tolerance = {} );
+    [[nodiscard]] GEOMETRY_API SCPolyhedronSection3d Section(const PolyhedronBody& body,
+                                                           const SCPlane& plane,
+                                                           const SCGeometryTolerance3d& tolerance = {});
 
-    [[nodiscard]] GEOMETRY_API PolyhedronSection3d Section( const BrepBody &body, const Plane &plane,
-                                                            const GeometryTolerance3d &tolerance = {} );
+    [[nodiscard]] GEOMETRY_API SCPolyhedronSection3d Section(const SCBrepBody& body,
+                                                           const SCPlane& plane,
+                                                           const SCGeometryTolerance3d& tolerance = {});
 
-    [[nodiscard]] GEOMETRY_API SectionFaceRebuildResult3d
-    RebuildSectionFaces( const PolyhedronSection3d &section, double eps = Geometry::kDefaultEpsilon );
+    [[nodiscard]] GEOMETRY_API SCSectionFaceRebuildResult3d RebuildSectionFaces(const SCPolyhedronSection3d& section,
+                                                                              double eps = Geometry::kDefaultEpsilon);
 
-    [[nodiscard]] GEOMETRY_API SectionBrepFaceRebuildResult3d
-    RebuildSectionBrepFaces( const PolyhedronSection3d &section,
-                             double eps = Geometry::kDefaultEpsilon );
+    [[nodiscard]] GEOMETRY_API SCSectionBrepFaceRebuildResult3d
+    RebuildSectionBrepFaces(const SCPolyhedronSection3d& section, double eps = Geometry::kDefaultEpsilon);
 
-    [[nodiscard]] GEOMETRY_API SectionBodyRebuildResult3d
-    RebuildSectionBody( const PolyhedronSection3d &section, double eps = Geometry::kDefaultEpsilon );
+    [[nodiscard]] GEOMETRY_API SCSectionBodyRebuildResult3d RebuildSectionBody(const SCPolyhedronSection3d& section,
+                                                                             double eps = Geometry::kDefaultEpsilon);
 
-    [[nodiscard]] GEOMETRY_API SectionBrepBodyRebuildResult3d
-    RebuildSectionBrepBody( const PolyhedronSection3d &section,
-                            double eps = Geometry::kDefaultEpsilon );
+    [[nodiscard]] GEOMETRY_API SCSectionBrepBodyRebuildResult3d
+    RebuildSectionBrepBody(const SCPolyhedronSection3d& section, double eps = Geometry::kDefaultEpsilon);
 
-    [[nodiscard]] GEOMETRY_API SectionBrepBodySetRebuildResult3d
-    RebuildSectionBrepBodies( const PolyhedronSection3d &section,
-                              double eps = Geometry::kDefaultEpsilon );
+    [[nodiscard]] GEOMETRY_API SCSectionBrepBodySetRebuildResult3d
+    RebuildSectionBrepBodies(const SCPolyhedronSection3d& section, double eps = Geometry::kDefaultEpsilon);
 
-    [[nodiscard]] GEOMETRY_API SectionBodySetRebuildResult3d
-    RebuildSectionBodies( const PolyhedronSection3d &section,
-                          double eps = Geometry::kDefaultEpsilon );
+    [[nodiscard]] GEOMETRY_API SCSectionBodySetRebuildResult3d
+    RebuildSectionBodies(const SCPolyhedronSection3d& section, double eps = Geometry::kDefaultEpsilon);
 
-    [[nodiscard]] GEOMETRY_API SectionTopology3d
-    BuildSectionTopology( const PolyhedronSection3d &section, double eps = Geometry::kDefaultEpsilon );
+    [[nodiscard]] GEOMETRY_API SCSectionTopology3d BuildSectionTopology(const SCPolyhedronSection3d& section,
+                                                                      double eps = Geometry::kDefaultEpsilon);
 
-    [[nodiscard]] GEOMETRY_API SectionMeshConversionResult3d
-    ConvertSectionToTriangleMesh( const PolyhedronSection3d &section,
-                                  double eps = Geometry::kDefaultEpsilon );
+    [[nodiscard]] GEOMETRY_API SCSectionMeshConversionResult3d
+    ConvertSectionToTriangleMesh(const SCPolyhedronSection3d& section, double eps = Geometry::kDefaultEpsilon);
 
-    [[nodiscard]] GEOMETRY_API SectionMeshSetConversionResult3d
-    ConvertSectionToTriangleMeshes( const PolyhedronSection3d &section,
-                                    double eps = Geometry::kDefaultEpsilon );
+    [[nodiscard]] GEOMETRY_API SCSectionMeshSetConversionResult3d
+    ConvertSectionToTriangleMeshes(const SCPolyhedronSection3d& section, double eps = Geometry::kDefaultEpsilon);
 
-    [[nodiscard]] GEOMETRY_API SectionContentKind3d
-    ClassifySectionContent( const PolyhedronSection3d &section,
-                            double eps = Geometry::kDefaultEpsilon );
+    [[nodiscard]] GEOMETRY_API SCSectionContentKind3d ClassifySectionContent(const SCPolyhedronSection3d& section,
+                                                                           double eps = Geometry::kDefaultEpsilon);
 
-    [[nodiscard]] GEOMETRY_API SectionComponents3d
-    BuildSectionComponents( const PolyhedronSection3d &section,
-                            double eps = Geometry::kDefaultEpsilon );
+    [[nodiscard]] GEOMETRY_API SCSectionComponents3d BuildSectionComponents(const SCPolyhedronSection3d& section,
+                                                                          double eps = Geometry::kDefaultEpsilon);
 }  // namespace Geometry
+
+
+

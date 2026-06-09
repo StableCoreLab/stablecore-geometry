@@ -1,7 +1,7 @@
 #pragma once
 
 // Stable umbrella header for product-side use.
-// Keep this surface limited to the supported public entry points.
+// Keep this header limited to the supported public entry points.
 #include "Brep/BodyBoolean.h"
 #include "Core/GeometryApi.h"
 #include "Core/SearchPoly.h"

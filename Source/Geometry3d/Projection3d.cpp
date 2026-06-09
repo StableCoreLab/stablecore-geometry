@@ -1,11 +1,11 @@
-﻿#include "Core/Projection.h"
+#include "Core/Projection.h"
 
 #include <algorithm>
 #include <array>
 
 #include "Core/Relation.h"
-#include "Geometry3d/LineCurve3d.h"
-#include "Geometry3d/PlaneSurface.h"
+#include "Geometry3d/SCLineCurve3d.h"
+#include "Geometry3d/SCPlaneSurface.h"
 #include "Support/Epsilon.h"
 
 namespace Geometry
@@ -14,96 +14,92 @@ namespace Geometry
     {
         struct PlaneProjectionBasis
         {
-            Vector3d u{};
-            Vector3d v{};
+            SCVector3d u{};
+            SCVector3d v{};
         };
 
-        PlaneProjectionBasis BuildPlaneProjectionBasis( const Plane &plane, double eps )
+        PlaneProjectionBasis BuildPlaneProjectionBasis(const SCPlane& plane, double eps)
         {
-            const Vector3d normal = plane.UnitNormal( eps );
-            const Vector3d axis =
-                std::abs( normal.x ) <= std::abs( normal.y ) &&
-                        std::abs( normal.x ) <= std::abs( normal.z )
-                    ? Vector3d{ 1.0, 0.0, 0.0 }
-                    : ( std::abs( normal.y ) <= std::abs( normal.z ) ? Vector3d{ 0.0, 1.0, 0.0 }
-                                                                     : Vector3d{ 0.0, 0.0, 1.0 } );
-            const Vector3d u = Cross( normal, axis ).Normalized( eps );
-            const Vector3d v = Cross( normal, u ).Normalized( eps );
-            return { u, v };
+            const SCVector3d normal = plane.UnitNormal(eps);
+            const SCVector3d axis =
+                std::abs(normal.x) <= std::abs(normal.y) && std::abs(normal.x) <= std::abs(normal.z)
+                    ? SCVector3d{1.0, 0.0, 0.0}
+                    : (std::abs(normal.y) <= std::abs(normal.z) ? SCVector3d{0.0, 1.0, 0.0} : SCVector3d{0.0, 0.0, 1.0});
+            const SCVector3d u = Cross(normal, axis).Normalized(eps);
+            const SCVector3d v = Cross(normal, u).Normalized(eps);
+            return {u, v};
         }
 
-        Point2d ProjectToLocalPlaneCoordinates( const Point3d &point, const Plane &plane,
-                                                const PlaneProjectionBasis &basis )
+        SCPoint2d ProjectToLocalPlaneCoordinates(const SCPoint3d& point,
+                                               const SCPlane& plane,
+                                               const PlaneProjectionBasis& basis)
         {
-            const Vector3d delta = point - plane.origin;
-            return Point2d{ Dot( delta, basis.u ), Dot( delta, basis.v ) };
+            const SCVector3d delta = point - plane.origin;
+            return SCPoint2d{Dot(delta, basis.u), Dot(delta, basis.v)};
         }
 
-        double SignedArea2d( const std::vector<Point2d> &points )
+        double SignedArea2d(const std::vector<SCPoint2d>& points)
         {
-            if( points.size() < 3 )
+            if (points.size() < 3)
             {
                 return 0.0;
             }
 
             double area = 0.0;
-            for( std::size_t i = 0; i < points.size(); ++i )
+            for (std::size_t i = 0; i < points.size(); ++i)
             {
-                const Point2d &current = points[i];
-                const Point2d &next = points[( i + 1 ) % points.size()];
+                const SCPoint2d& current = points[i];
+                const SCPoint2d& next = points[(i + 1) % points.size()];
                 area += current.x * next.y - next.x * current.y;
             }
 
             return 0.5 * area;
         }
 
-        void EnsureRingOrientation( std::vector<Point2d> &points, bool counterClockwise )
+        void EnsureRingOrientation(std::vector<SCPoint2d>& points, bool counterClockwise)
         {
-            if( points.size() < 3 )
+            if (points.size() < 3)
             {
                 return;
             }
 
-            const double signedArea = SignedArea2d( points );
-            if( ( counterClockwise && signedArea < 0.0 ) || ( !counterClockwise && signedArea > 0.0 ) )
+            const double signedArea = SignedArea2d(points);
+            if ((counterClockwise && signedArea < 0.0) || (!counterClockwise && signedArea > 0.0))
             {
-                std::reverse( points.begin(), points.end() );
+                std::reverse(points.begin(), points.end());
             }
         }
 
-        double DistanceSquaredToSurfacePoint( const Point3d &point, const Surface &surface, double u,
-                                              double v )
+        double DistanceSquaredToSurfacePoint(const SCPoint3d& point, const ISCSurface& surface, double u, double v)
         {
-            return ( point - surface.PointAt( u, v ) ).LengthSquared();
+            return (point - surface.PointAt(u, v)).LengthSquared();
         }
 
-        SurfaceProjection3d RefineSurfaceProjection( const Point3d &point, const Surface &surface,
-                                                     double u, double v,
-                                                     const GeometryTolerance3d &tolerance )
+        SCSurfaceProjection3d RefineSurfaceProjection(
+            const SCPoint3d& point, const ISCSurface& surface, double u, double v, const SCGeometryTolerance3d& tolerance)
         {
-            const Intervald uRange = surface.URange();
-            const Intervald vRange = surface.VRange();
-            double bestU = std::clamp( u, uRange.min, uRange.max );
-            double bestV = std::clamp( v, vRange.min, vRange.max );
-            double bestDistanceSquared = DistanceSquaredToSurfacePoint( point, surface, bestU, bestV );
+            const SCIntervald uRange = surface.URange();
+            const SCIntervald vRange = surface.VRange();
+            double bestU = std::clamp(u, uRange.min, uRange.max);
+            double bestV = std::clamp(v, vRange.min, vRange.max);
+            double bestDistanceSquared = DistanceSquaredToSurfacePoint(point, surface, bestU, bestV);
 
-            double stepU = std::max( uRange.Length() * 0.25, tolerance.parameterEpsilon );
-            double stepV = std::max( vRange.Length() * 0.25, tolerance.parameterEpsilon );
+            double stepU = std::max(uRange.Length() * 0.25, tolerance.parameterEpsilon);
+            double stepV = std::max(vRange.Length() * 0.25, tolerance.parameterEpsilon);
 
-            for( int iteration = 0; iteration < 16; ++iteration )
+            for (int iteration = 0; iteration < 16; ++iteration)
             {
                 bool improved = false;
-                for( const double du : std::array<double, 3>{ -stepU, 0.0, stepU } )
+                for (const double du : std::array<double, 3>{-stepU, 0.0, stepU})
                 {
-                    for( const double dv : std::array<double, 3>{ -stepV, 0.0, stepV } )
+                    for (const double dv : std::array<double, 3>{-stepV, 0.0, stepV})
                     {
-                        const double candidateU = std::clamp( bestU + du, uRange.min, uRange.max );
-                        const double candidateV = std::clamp( bestV + dv, vRange.min, vRange.max );
+                        const double candidateU = std::clamp(bestU + du, uRange.min, uRange.max);
+                        const double candidateV = std::clamp(bestV + dv, vRange.min, vRange.max);
                         const double candidateDistanceSquared =
-                            DistanceSquaredToSurfacePoint( point, surface, candidateU, candidateV );
-                        if( candidateDistanceSquared +
-                                tolerance.distanceEpsilon * tolerance.distanceEpsilon <
-                            bestDistanceSquared )
+                            DistanceSquaredToSurfacePoint(point, surface, candidateU, candidateV);
+                        if (candidateDistanceSquared + tolerance.distanceEpsilon * tolerance.distanceEpsilon <
+                            bestDistanceSquared)
                         {
                             bestU = candidateU;
                             bestV = candidateV;
@@ -113,63 +109,66 @@ namespace Geometry
                     }
                 }
 
-                if( !improved )
+                if (!improved)
                 {
                     stepU *= 0.5;
                     stepV *= 0.5;
                 }
 
-                if( stepU <= tolerance.parameterEpsilon && stepV <= tolerance.parameterEpsilon )
+                if (stepU <= tolerance.parameterEpsilon && stepV <= tolerance.parameterEpsilon)
                 {
                     break;
                 }
             }
 
-            return { true, surface.PointAt( bestU, bestV ), bestU, bestV, bestDistanceSquared };
+            return {true, surface.PointAt(bestU, bestV), bestU, bestV, bestDistanceSquared};
         }
 
-        bool TryBuildPolygonFromBrepFaceTrims( const BrepFace &face, Polygon2d &polygon )
+        bool TryBuildPolygonFromBrepFaceTrims(const SCBrepFace& face, SCPolygon2d& polygon)
         {
-            if( face.OuterTrim().SupportSurface() == nullptr || !face.OuterTrim().IsValid() )
+            if (face.OuterTrim().SupportSurface() == nullptr || !face.OuterTrim().IsValid())
             {
                 return false;
             }
 
-            std::vector<Polyline2d> holes;
-            holes.reserve( face.HoleTrims().size() );
-            for( const CurveOnSurface &trim : face.HoleTrims() )
+            std::vector<SCPolyline2d> holes;
+            holes.reserve(face.HoleTrims().size());
+            for (const SCCurveOnSurface& trim : face.HoleTrims())
             {
-                if( !trim.IsValid() )
+                if (!trim.IsValid())
                 {
                     return false;
                 }
-                holes.push_back( trim.UvCurve() );
+                holes.push_back(trim.UvCurve());
             }
 
-            polygon = Polygon2d( face.OuterTrim().UvCurve(), std::move( holes ) );
+            polygon = SCPolygon2d(face.OuterTrim().UvCurve(), std::move(holes));
             return polygon.IsValid();
         }
 
-        LineProjection3d ProjectPointToSegment3d( const Point3d &point, const Point3d &start,
-                                                  const Point3d &end, double eps )
+        SCLineProjection3d ProjectPointToSegment3d(const SCPoint3d& point,
+                                                   const SCPoint3d& start,
+                                                   const SCPoint3d& end,
+                                                   double eps)
         {
-            const Vector3d direction = end - start;
+            const SCVector3d direction = end - start;
             const double lengthSquared = direction.LengthSquared();
-            if( lengthSquared <= eps * eps )
+            if (lengthSquared <= eps * eps)
             {
-                return { start, 0.0, ( point - start ).LengthSquared(), true };
+                return {start, 0.0, (point - start).LengthSquared(), true};
             }
 
-            const double parameter =
-                std::clamp( Dot( point - start, direction ) / lengthSquared, 0.0, 1.0 );
-            const Point3d projectedPoint = start + direction * parameter;
-            return { projectedPoint, parameter, ( point - projectedPoint ).LengthSquared(), true };
+            const double parameter = std::clamp(Dot(point - start, direction) / lengthSquared, 0.0, 1.0);
+            const SCPoint3d projectedPoint = start + direction * parameter;
+            return {projectedPoint, parameter, (point - projectedPoint).LengthSquared(), true};
         }
 
-        bool UpdateClosestTrimProjection( const Point3d &point, const CurveOnSurface &trim,
-                                          BrepFaceProjection3d &best, bool onBoundary )
+        bool UpdateClosestTrimProjection(const SCPoint3d& point,
+                                         const SCCurveOnSurface& trim,
+                                         SCBrepFaceProjection3d& best,
+                                         bool onBoundary)
         {
-            if( !trim.IsValid() || trim.PointCount() < 2 )
+            if (!trim.IsValid() || trim.PointCount() < 2)
             {
                 return false;
             }
@@ -177,16 +176,16 @@ namespace Geometry
             bool improved = false;
             const std::size_t pointCount = trim.PointCount();
             const std::size_t segmentCount = trim.UvCurve().IsClosed() ? pointCount : pointCount - 1;
-            for( std::size_t i = 0; i < segmentCount; ++i )
+            for (std::size_t i = 0; i < segmentCount; ++i)
             {
-                const std::size_t j = ( i + 1 ) % pointCount;
-                const LineProjection3d projected = ProjectPointToSegment3d(
-                    point, trim.PointAt( i ), trim.PointAt( j ), Geometry::kProjectionDefaultEpsilon );
-                if( !best.success || projected.distanceSquared < best.distanceSquared )
+                const std::size_t j = (i + 1) % pointCount;
+                const SCLineProjection3d projected = ProjectPointToSegment3d(
+                    point, trim.PointAt(i), trim.PointAt(j), Geometry::kProjectionDefaultEpsilon);
+                if (!best.success || projected.distanceSquared < best.distanceSquared)
                 {
-                    const Point2d uv0 = trim.UvPointAt( i );
-                    const Point2d uv1 = trim.UvPointAt( j );
-                    const Point2d uv = uv0 + ( uv1 - uv0 ) * projected.parameter;
+                    const SCPoint2d uv0 = trim.UvPointAt(i);
+                    const SCPoint2d uv1 = trim.UvPointAt(j);
+                    const SCPoint2d uv = uv0 + (uv1 - uv0) * projected.parameter;
                     best.success = true;
                     best.onTrimmedFace = false;
                     best.onBoundary = onBoundary;
@@ -201,33 +200,32 @@ namespace Geometry
             return improved;
         }
 
-        BrepEdgeProjection3d RefineCurveProjection( const Point3d &point, const Curve3d &curve,
-                                                    double initialParameter,
-                                                    const GeometryTolerance3d &tolerance )
+        SCBrepEdgeProjection3d RefineCurveProjection(const SCPoint3d& point,
+                                                   const ISCCurve3d& curve,
+                                                   double initialParameter,
+                                                   const SCGeometryTolerance3d& tolerance)
         {
-            const Intervald range = curve.ParameterRange();
-            if( !range.IsValid() )
+            const SCIntervald range = curve.ParameterRange();
+            if (!range.IsValid())
             {
                 return {};
             }
 
-            double bestParameter = std::clamp( initialParameter, range.min, range.max );
-            Point3d bestPoint = curve.PointAt( bestParameter );
-            double bestDistanceSquared = ( point - bestPoint ).LengthSquared();
-            double step = std::max( range.Length() * 0.25, tolerance.parameterEpsilon );
+            double bestParameter = std::clamp(initialParameter, range.min, range.max);
+            SCPoint3d bestPoint = curve.PointAt(bestParameter);
+            double bestDistanceSquared = (point - bestPoint).LengthSquared();
+            double step = std::max(range.Length() * 0.25, tolerance.parameterEpsilon);
 
-            for( int iteration = 0; iteration < 16; ++iteration )
+            for (int iteration = 0; iteration < 16; ++iteration)
             {
                 bool improved = false;
-                for( const double dt : std::array<double, 3>{ -step, 0.0, step } )
+                for (const double dt : std::array<double, 3>{-step, 0.0, step})
                 {
-                    const double candidateParameter =
-                        std::clamp( bestParameter + dt, range.min, range.max );
-                    const Point3d candidatePoint = curve.PointAt( candidateParameter );
-                    const double candidateDistanceSquared = ( point - candidatePoint ).LengthSquared();
-                    if( candidateDistanceSquared +
-                            tolerance.distanceEpsilon * tolerance.distanceEpsilon <
-                        bestDistanceSquared )
+                    const double candidateParameter = std::clamp(bestParameter + dt, range.min, range.max);
+                    const SCPoint3d candidatePoint = curve.PointAt(candidateParameter);
+                    const double candidateDistanceSquared = (point - candidatePoint).LengthSquared();
+                    if (candidateDistanceSquared + tolerance.distanceEpsilon * tolerance.distanceEpsilon <
+                        bestDistanceSquared)
                     {
                         bestParameter = candidateParameter;
                         bestPoint = candidatePoint;
@@ -236,135 +234,132 @@ namespace Geometry
                     }
                 }
 
-                if( !improved )
+                if (!improved)
                 {
                     step *= 0.5;
                 }
 
-                if( step <= tolerance.parameterEpsilon )
+                if (step <= tolerance.parameterEpsilon)
                 {
                     break;
                 }
             }
 
-            return { true, bestParameter, bestPoint, bestDistanceSquared };
+            return {true, bestParameter, bestPoint, bestDistanceSquared};
         }
 
-        Point3d ClosestPointOnTriangle( const Point3d &point, const Triangle3d &triangle, double eps )
+        SCPoint3d ClosestPointOnTriangle(const SCPoint3d& point, const SCTriangle3d& triangle, double eps)
         {
-            const Vector3d ab = triangle.b - triangle.a;
-            const Vector3d ac = triangle.c - triangle.a;
-            const Vector3d ap = point - triangle.a;
+            const SCVector3d ab = triangle.b - triangle.a;
+            const SCVector3d ac = triangle.c - triangle.a;
+            const SCVector3d ap = point - triangle.a;
 
-            const double d1 = Dot( ab, ap );
-            const double d2 = Dot( ac, ap );
-            if( d1 <= 0.0 && d2 <= 0.0 )
+            const double d1 = Dot(ab, ap);
+            const double d2 = Dot(ac, ap);
+            if (d1 <= 0.0 && d2 <= 0.0)
             {
                 return triangle.a;
             }
 
-            const Vector3d bp = point - triangle.b;
-            const double d3 = Dot( ab, bp );
-            const double d4 = Dot( ac, bp );
-            if( d3 >= 0.0 && d4 <= d3 )
+            const SCVector3d bp = point - triangle.b;
+            const double d3 = Dot(ab, bp);
+            const double d4 = Dot(ac, bp);
+            if (d3 >= 0.0 && d4 <= d3)
             {
                 return triangle.b;
             }
 
             const double vc = d1 * d4 - d3 * d2;
-            if( vc <= 0.0 && d1 >= 0.0 && d3 <= 0.0 )
+            if (vc <= 0.0 && d1 >= 0.0 && d3 <= 0.0)
             {
-                const double v = d1 / ( d1 - d3 );
+                const double v = d1 / (d1 - d3);
                 return triangle.a + ab * v;
             }
 
-            const Vector3d cp = point - triangle.c;
-            const double d5 = Dot( ab, cp );
-            const double d6 = Dot( ac, cp );
-            if( d6 >= 0.0 && d5 <= d6 )
+            const SCVector3d cp = point - triangle.c;
+            const double d5 = Dot(ab, cp);
+            const double d6 = Dot(ac, cp);
+            if (d6 >= 0.0 && d5 <= d6)
             {
                 return triangle.c;
             }
 
             const double vb = d5 * d2 - d1 * d6;
-            if( vb <= 0.0 && d2 >= 0.0 && d6 <= 0.0 )
+            if (vb <= 0.0 && d2 >= 0.0 && d6 <= 0.0)
             {
-                const double w = d2 / ( d2 - d6 );
+                const double w = d2 / (d2 - d6);
                 return triangle.a + ac * w;
             }
 
             const double va = d3 * d6 - d5 * d4;
-            if( va <= 0.0 && ( d4 - d3 ) >= 0.0 && ( d5 - d6 ) >= 0.0 )
+            if (va <= 0.0 && (d4 - d3) >= 0.0 && (d5 - d6) >= 0.0)
             {
-                const Vector3d bc = triangle.c - triangle.b;
-                const double w = ( d4 - d3 ) / ( ( d4 - d3 ) + ( d5 - d6 ) );
+                const SCVector3d bc = triangle.c - triangle.b;
+                const double w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
                 return triangle.b + bc * w;
             }
 
-            const Vector3d normal = Cross( ab, ac );
+            const SCVector3d normal = Cross(ab, ac);
             const double normalLengthSquared = normal.LengthSquared();
-            if( normalLengthSquared <= eps * eps )
+            if (normalLengthSquared <= eps * eps)
             {
                 return triangle.a;
             }
 
-            const double distance = Dot( point - triangle.a, normal ) / normalLengthSquared;
+            const double distance = Dot(point - triangle.a, normal) / normalLengthSquared;
             return point - normal * distance;
         }
     }  // namespace
 
-    LineProjection3d ProjectPointToLine( const Point3d &point, const Line3d &line,
-                                         const GeometryTolerance3d &tolerance )
+    SCLineProjection3d ProjectPointToLine(const SCPoint3d& point, const SCLine3d& line, const SCGeometryTolerance3d& tolerance)
     {
-        if( !line.IsValid( tolerance.distanceEpsilon ) )
+        if (!line.IsValid(tolerance.distanceEpsilon))
         {
-            return LineProjection3d{ line.origin, 0.0, ( point - line.origin ).LengthSquared(), false };
+            return SCLineProjection3d{line.origin, 0.0, (point - line.origin).LengthSquared(), false};
         }
 
         const double directionLengthSquared = line.direction.LengthSquared();
-        const double parameter = Dot( point - line.origin, line.direction ) / directionLengthSquared;
-        const Point3d projectedPoint = line.PointAt( parameter );
-        return LineProjection3d{ projectedPoint, parameter, ( point - projectedPoint ).LengthSquared(),
-                                 true };
+        const double parameter = Dot(point - line.origin, line.direction) / directionLengthSquared;
+        const SCPoint3d projectedPoint = line.PointAt(parameter);
+        return SCLineProjection3d{projectedPoint, parameter, (point - projectedPoint).LengthSquared(), true};
     }
 
-    CurveProjection3d ProjectPointToCurve( const Point3d &point, const Curve3d &curve,
-                                           const GeometryTolerance3d &tolerance )
+    SCCurveProjection3d ProjectPointToCurve(const SCPoint3d& point,
+                                          const ISCCurve3d& curve,
+                                          const SCGeometryTolerance3d& tolerance)
     {
-        if( !curve.IsValid( tolerance ) )
+        if (!curve.IsValid(tolerance))
         {
             return {};
         }
 
-        if( const auto *lineCurve = dynamic_cast<const LineCurve3d *>( &curve ) )
+        if (const auto* lineCurve = dynamic_cast<const SCLineCurve3d*>(&curve))
         {
-            const LineProjection3d lineProjection =
-                ProjectPointToLine( point, lineCurve->Line(), tolerance );
-            const Intervald range = lineCurve->ParameterRange();
-            const double parameter = std::clamp( lineProjection.parameter, range.min, range.max );
-            const Point3d projectedPoint = lineCurve->PointAt( parameter );
-            return { true, projectedPoint, parameter, ( point - projectedPoint ).LengthSquared() };
+            const SCLineProjection3d lineProjection = ProjectPointToLine(point, lineCurve->Line(), tolerance);
+            const SCIntervald range = lineCurve->ParameterRange();
+            const double parameter = std::clamp(lineProjection.parameter, range.min, range.max);
+            const SCPoint3d projectedPoint = lineCurve->PointAt(parameter);
+            return {true, projectedPoint, parameter, (point - projectedPoint).LengthSquared()};
         }
 
-        const Intervald range = curve.ParameterRange();
-        if( !range.IsValid() )
+        const SCIntervald range = curve.ParameterRange();
+        if (!range.IsValid())
         {
             return {};
         }
 
         constexpr std::size_t sampleCount = 17;
         double bestParameter = range.min;
-        Point3d bestPoint = curve.PointAt( bestParameter );
-        double bestDistanceSquared = ( point - bestPoint ).LengthSquared();
-        for( std::size_t i = 0; i < sampleCount; ++i )
+        SCPoint3d bestPoint = curve.PointAt(bestParameter);
+        double bestDistanceSquared = (point - bestPoint).LengthSquared();
+        for (std::size_t i = 0; i < sampleCount; ++i)
         {
-            const double parameter = i + 1 == sampleCount
-                                         ? range.max
-                                         : range.min + range.Length() * static_cast<double>( i ) /
-                                                           static_cast<double>( sampleCount - 1 );
-            const Point3d candidatePoint = curve.PointAt( parameter );
-            const double candidateDistanceSquared = ( point - candidatePoint ).LengthSquared();
-            if( candidateDistanceSquared < bestDistanceSquared )
+            const double parameter = i + 1 == sampleCount ? range.max
+                                                          : range.min + range.Length() * static_cast<double>(i) /
+                                                                            static_cast<double>(sampleCount - 1);
+            const SCPoint3d candidatePoint = curve.PointAt(parameter);
+            const double candidateDistanceSquared = (point - candidatePoint).LengthSquared();
+            if (candidateDistanceSquared < bestDistanceSquared)
             {
                 bestParameter = parameter;
                 bestPoint = candidatePoint;
@@ -372,35 +367,32 @@ namespace Geometry
             }
         }
 
-        const BrepEdgeProjection3d refined =
-            RefineCurveProjection( point, curve, bestParameter, tolerance );
-        return { refined.success, refined.point, refined.parameter, refined.distanceSquared };
+        const SCBrepEdgeProjection3d refined = RefineCurveProjection(point, curve, bestParameter, tolerance);
+        return {refined.success, refined.point, refined.parameter, refined.distanceSquared};
     }
 
-    CurveOnSurfaceProjection3d ProjectPointToCurveOnSurface( const Point3d &point,
-                                                             const CurveOnSurface &curveOnSurface,
-                                                             const GeometryTolerance3d &tolerance )
+    SCCurveOnSurfaceProjection3d ProjectPointToCurveOnSurface(const SCPoint3d& point,
+                                                            const SCCurveOnSurface& curveOnSurface,
+                                                            const SCGeometryTolerance3d& tolerance)
     {
-        CurveOnSurfaceProjection3d best{};
-        if( !curveOnSurface.IsValid( tolerance ) || curveOnSurface.PointCount() < 2 )
+        SCCurveOnSurfaceProjection3d best{};
+        if (!curveOnSurface.IsValid(tolerance) || curveOnSurface.PointCount() < 2)
         {
             return best;
         }
 
         const std::size_t pointCount = curveOnSurface.PointCount();
-        const std::size_t segmentCount =
-            curveOnSurface.UvCurve().IsClosed() ? pointCount : pointCount - 1;
-        for( std::size_t i = 0; i < segmentCount; ++i )
+        const std::size_t segmentCount = curveOnSurface.UvCurve().IsClosed() ? pointCount : pointCount - 1;
+        for (std::size_t i = 0; i < segmentCount; ++i)
         {
-            const std::size_t j = ( i + 1 ) % pointCount;
-            const LineProjection3d projected =
-                ProjectPointToSegment3d( point, curveOnSurface.PointAt( i ), curveOnSurface.PointAt( j ),
-                                         tolerance.distanceEpsilon );
-            if( !best.success || projected.distanceSquared < best.distanceSquared )
+            const std::size_t j = (i + 1) % pointCount;
+            const SCLineProjection3d projected = ProjectPointToSegment3d(
+                point, curveOnSurface.PointAt(i), curveOnSurface.PointAt(j), tolerance.distanceEpsilon);
+            if (!best.success || projected.distanceSquared < best.distanceSquared)
             {
-                const Point2d uv0 = curveOnSurface.UvPointAt( i );
-                const Point2d uv1 = curveOnSurface.UvPointAt( j );
-                const Point2d uv = uv0 + ( uv1 - uv0 ) * projected.parameter;
+                const SCPoint2d uv0 = curveOnSurface.UvPointAt(i);
+                const SCPoint2d uv1 = curveOnSurface.UvPointAt(j);
+                const SCPoint2d uv = uv0 + (uv1 - uv0) * projected.parameter;
                 best.success = true;
                 best.point = projected.point;
                 best.segmentIndex = i;
@@ -413,69 +405,69 @@ namespace Geometry
         return best;
     }
 
-    PlaneProjection3d ProjectPointToPlane( const Point3d &point, const Plane &plane,
-                                           const GeometryTolerance3d &tolerance )
+    SCPlaneProjection3d ProjectPointToPlane(const SCPoint3d& point,
+                                          const SCPlane& plane,
+                                          const SCGeometryTolerance3d& tolerance)
     {
-        if( !plane.IsValid( tolerance.distanceEpsilon ) )
+        if (!plane.IsValid(tolerance.distanceEpsilon))
         {
-            return PlaneProjection3d{ plane.origin, 0.0, ( point - plane.origin ).LengthSquared() };
+            return SCPlaneProjection3d{plane.origin, 0.0, (point - plane.origin).LengthSquared()};
         }
 
-        const Vector3d unitNormal = plane.UnitNormal( tolerance.distanceEpsilon );
-        const double signedDistance = Dot( point - plane.origin, unitNormal );
-        const Point3d projectedPoint = point - unitNormal * signedDistance;
-        return PlaneProjection3d{ projectedPoint, signedDistance, signedDistance * signedDistance };
+        const SCVector3d unitNormal = plane.UnitNormal(tolerance.distanceEpsilon);
+        const double signedDistance = Dot(point - plane.origin, unitNormal);
+        const SCPoint3d projectedPoint = point - unitNormal * signedDistance;
+        return SCPlaneProjection3d{projectedPoint, signedDistance, signedDistance * signedDistance};
     }
 
-    SurfaceProjection3d ProjectPointToSurface( const Point3d &point, const Surface &surface,
-                                               const GeometryTolerance3d &tolerance )
+    SCSurfaceProjection3d ProjectPointToSurface(const SCPoint3d& point,
+                                              const ISCSurface& surface,
+                                              const SCGeometryTolerance3d& tolerance)
     {
-        if( !surface.IsValid( tolerance ) )
+        if (!surface.IsValid(tolerance))
         {
             return {};
         }
 
-        const Intervald uRange = surface.URange();
-        const Intervald vRange = surface.VRange();
-        if( !uRange.IsValid() || !vRange.IsValid() )
+        const SCIntervald uRange = surface.URange();
+        const SCIntervald vRange = surface.VRange();
+        if (!uRange.IsValid() || !vRange.IsValid())
         {
             return {};
         }
 
-        if( const auto *planeSurface = dynamic_cast<const PlaneSurface *>( &surface ) )
+        if (const auto* planeSurface = dynamic_cast<const SCPlaneSurface*>(&surface))
         {
-            const PlaneProjection3d planeProjection =
-                ProjectPointToPlane( point, planeSurface->SupportPlane(), tolerance );
-            const Vector3d delta = planeProjection.point - planeSurface->SupportPlane().origin;
-            const Vector3d uAxis = planeSurface->UAxis();
-            const Vector3d vAxis = planeSurface->VAxis();
-            const double uDenominator = std::max( uAxis.LengthSquared(), tolerance.parameterEpsilon );
-            const double vDenominator = std::max( vAxis.LengthSquared(), tolerance.parameterEpsilon );
-            const double u = std::clamp( Dot( delta, uAxis ) / uDenominator, uRange.min, uRange.max );
-            const double v = std::clamp( Dot( delta, vAxis ) / vDenominator, vRange.min, vRange.max );
-            const Point3d surfacePoint = planeSurface->PointAt( u, v );
-            return { true, surfacePoint, u, v, ( point - surfacePoint ).LengthSquared() };
+            const SCPlaneProjection3d planeProjection =
+                ProjectPointToPlane(point, planeSurface->SupportPlane(), tolerance);
+            const SCVector3d delta = planeProjection.point - planeSurface->SupportPlane().origin;
+            const SCVector3d uAxis = planeSurface->UAxis();
+            const SCVector3d vAxis = planeSurface->VAxis();
+            const double uDenominator = std::max(uAxis.LengthSquared(), tolerance.parameterEpsilon);
+            const double vDenominator = std::max(vAxis.LengthSquared(), tolerance.parameterEpsilon);
+            const double u = std::clamp(Dot(delta, uAxis) / uDenominator, uRange.min, uRange.max);
+            const double v = std::clamp(Dot(delta, vAxis) / vDenominator, vRange.min, vRange.max);
+            const SCPoint3d surfacePoint = planeSurface->PointAt(u, v);
+            return {true, surfacePoint, u, v, (point - surfacePoint).LengthSquared()};
         }
 
         const std::size_t sampleCountU = 9;
         const std::size_t sampleCountV = 9;
         double bestU = uRange.min;
         double bestV = vRange.min;
-        double bestDistanceSquared = DistanceSquaredToSurfacePoint( point, surface, bestU, bestV );
-        for( std::size_t ui = 0; ui < sampleCountU; ++ui )
+        double bestDistanceSquared = DistanceSquaredToSurfacePoint(point, surface, bestU, bestV);
+        for (std::size_t ui = 0; ui < sampleCountU; ++ui)
         {
-            const double u = ui + 1 == sampleCountU
-                                 ? uRange.max
-                                 : uRange.min + uRange.Length() * static_cast<double>( ui ) /
-                                                    static_cast<double>( sampleCountU - 1 );
-            for( std::size_t vi = 0; vi < sampleCountV; ++vi )
+            const double u = ui + 1 == sampleCountU ? uRange.max
+                                                    : uRange.min + uRange.Length() * static_cast<double>(ui) /
+                                                                       static_cast<double>(sampleCountU - 1);
+            for (std::size_t vi = 0; vi < sampleCountV; ++vi)
             {
-                const double v = vi + 1 == sampleCountV
-                                     ? vRange.max
-                                     : vRange.min + vRange.Length() * static_cast<double>( vi ) /
-                                                        static_cast<double>( sampleCountV - 1 );
-                const double distanceSquared = DistanceSquaredToSurfacePoint( point, surface, u, v );
-                if( distanceSquared < bestDistanceSquared )
+                const double v = vi + 1 == sampleCountV ? vRange.max
+                                                        : vRange.min + vRange.Length() * static_cast<double>(vi) /
+                                                                           static_cast<double>(sampleCountV - 1);
+                const double distanceSquared = DistanceSquaredToSurfacePoint(point, surface, u, v);
+                if (distanceSquared < bestDistanceSquared)
                 {
                     bestU = u;
                     bestV = v;
@@ -484,34 +476,32 @@ namespace Geometry
             }
         }
 
-        return RefineSurfaceProjection( point, surface, bestU, bestV, tolerance );
+        return RefineSurfaceProjection(point, surface, bestU, bestV, tolerance);
     }
 
-    BrepFaceProjection3d ProjectPointToBrepFace( const Point3d &point, const BrepFace &face,
-                                                 const GeometryTolerance3d &tolerance )
+    SCBrepFaceProjection3d ProjectPointToBrepFace(const SCPoint3d& point,
+                                                const SCBrepFace& face,
+                                                const SCGeometryTolerance3d& tolerance)
     {
-        BrepFaceProjection3d best{};
-        if( !face.IsValid( tolerance ) || face.SupportSurface() == nullptr )
+        SCBrepFaceProjection3d best{};
+        if (!face.IsValid(tolerance) || face.SupportSurface() == nullptr)
         {
             return best;
         }
 
-        const SurfaceProjection3d surfaceProjection =
-            ProjectPointToSurface( point, *face.SupportSurface(), tolerance );
-        if( surfaceProjection.success )
+        const SCSurfaceProjection3d surfaceProjection = ProjectPointToSurface(point, *face.SupportSurface(), tolerance);
+        if (surfaceProjection.success)
         {
-            Polygon2d polygon{};
-            if( TryBuildPolygonFromBrepFaceTrims( face, polygon ) )
+            SCPolygon2d polygon{};
+            if (TryBuildPolygonFromBrepFaceTrims(face, polygon))
             {
-                const PointContainment2d containment =
-                    LocatePoint( Point2d{ surfaceProjection.u, surfaceProjection.v }, polygon,
-                                 tolerance.distanceEpsilon );
-                if( containment == PointContainment2d::Inside ||
-                    containment == PointContainment2d::OnBoundary )
+                const SCPointContainment2d containment =
+                    LocatePoint(SCPoint2d{surfaceProjection.u, surfaceProjection.v}, polygon, tolerance.distanceEpsilon);
+                if (containment == SCPointContainment2d::Inside || containment == SCPointContainment2d::OnBoundary)
                 {
                     best.success = true;
                     best.onTrimmedFace = true;
-                    best.onBoundary = containment == PointContainment2d::OnBoundary;
+                    best.onBoundary = containment == SCPointContainment2d::OnBoundary;
                     best.point = surfaceProjection.point;
                     best.u = surfaceProjection.u;
                     best.v = surfaceProjection.v;
@@ -521,55 +511,54 @@ namespace Geometry
             }
         }
 
-        if( face.OuterTrim().IsValid() )
+        if (face.OuterTrim().IsValid())
         {
-            UpdateClosestTrimProjection( point, face.OuterTrim(), best, true );
+            UpdateClosestTrimProjection(point, face.OuterTrim(), best, true);
         }
-        for( const CurveOnSurface &holeTrim : face.HoleTrims() )
+        for (const SCCurveOnSurface& holeTrim : face.HoleTrims())
         {
-            UpdateClosestTrimProjection( point, holeTrim, best, true );
+            UpdateClosestTrimProjection(point, holeTrim, best, true);
         }
         return best;
     }
 
-    BrepEdgeProjection3d ProjectPointToBrepEdge( const Point3d &point, const BrepEdge &edge,
-                                                 const GeometryTolerance3d &tolerance )
+    SCBrepEdgeProjection3d ProjectPointToBrepEdge(const SCPoint3d& point,
+                                                const SCBrepEdge& edge,
+                                                const SCGeometryTolerance3d& tolerance)
     {
-        if( !edge.IsValid( tolerance ) || edge.Curve() == nullptr )
+        if (!edge.IsValid(tolerance) || edge.Curve() == nullptr)
         {
             return {};
         }
 
-        if( const auto *lineCurve = dynamic_cast<const LineCurve3d *>( edge.Curve() ) )
+        if (const auto* lineCurve = dynamic_cast<const SCLineCurve3d*>(edge.Curve()))
         {
-            const LineProjection3d lineProjection =
-                ProjectPointToLine( point, lineCurve->Line(), tolerance );
-            const Intervald range = lineCurve->ParameterRange();
-            const double parameter = std::clamp( lineProjection.parameter, range.min, range.max );
-            const Point3d projectedPoint = lineCurve->PointAt( parameter );
-            return { true, parameter, projectedPoint, ( point - projectedPoint ).LengthSquared() };
+            const SCLineProjection3d lineProjection = ProjectPointToLine(point, lineCurve->Line(), tolerance);
+            const SCIntervald range = lineCurve->ParameterRange();
+            const double parameter = std::clamp(lineProjection.parameter, range.min, range.max);
+            const SCPoint3d projectedPoint = lineCurve->PointAt(parameter);
+            return {true, parameter, projectedPoint, (point - projectedPoint).LengthSquared()};
         }
 
-        const Curve3d &curve = *edge.Curve();
-        const Intervald range = curve.ParameterRange();
-        if( !range.IsValid() )
+        const ISCCurve3d& curve = *edge.Curve();
+        const SCIntervald range = curve.ParameterRange();
+        if (!range.IsValid())
         {
             return {};
         }
 
         constexpr std::size_t sampleCount = 17;
         double bestParameter = range.min;
-        Point3d bestPoint = curve.PointAt( bestParameter );
-        double bestDistanceSquared = ( point - bestPoint ).LengthSquared();
-        for( std::size_t i = 0; i < sampleCount; ++i )
+        SCPoint3d bestPoint = curve.PointAt(bestParameter);
+        double bestDistanceSquared = (point - bestPoint).LengthSquared();
+        for (std::size_t i = 0; i < sampleCount; ++i)
         {
-            const double parameter = i + 1 == sampleCount
-                                         ? range.max
-                                         : range.min + range.Length() * static_cast<double>( i ) /
-                                                           static_cast<double>( sampleCount - 1 );
-            const Point3d candidatePoint = curve.PointAt( parameter );
-            const double candidateDistanceSquared = ( point - candidatePoint ).LengthSquared();
-            if( candidateDistanceSquared < bestDistanceSquared )
+            const double parameter = i + 1 == sampleCount ? range.max
+                                                          : range.min + range.Length() * static_cast<double>(i) /
+                                                                            static_cast<double>(sampleCount - 1);
+            const SCPoint3d candidatePoint = curve.PointAt(parameter);
+            const double candidateDistanceSquared = (point - candidatePoint).LengthSquared();
+            if (candidateDistanceSquared < bestDistanceSquared)
             {
                 bestParameter = parameter;
                 bestPoint = candidatePoint;
@@ -577,45 +566,46 @@ namespace Geometry
             }
         }
 
-        return RefineCurveProjection( point, curve, bestParameter, tolerance );
+        return RefineCurveProjection(point, curve, bestParameter, tolerance);
     }
 
-    BrepVertexProjection3d ProjectPointToBrepVertex( const Point3d &point, const BrepVertex &vertex,
-                                                     const GeometryTolerance3d & )
+    SCBrepVertexProjection3d ProjectPointToBrepVertex(const SCPoint3d& point,
+                                                    const SCBrepVertex& vertex,
+                                                    const SCGeometryTolerance3d&)
     {
-        if( !vertex.IsValid() )
+        if (!vertex.IsValid())
         {
             return {};
         }
 
-        const Point3d vertexPoint = vertex.Point();
-        return { true, vertexPoint, ( point - vertexPoint ).LengthSquared() };
+        const SCPoint3d vertexPoint = vertex.Point();
+        return {true, vertexPoint, (point - vertexPoint).LengthSquared()};
     }
 
-    BrepBodyProjection3d ProjectPointToBrepBody( const Point3d &point, const BrepBody &body,
-                                                 const GeometryTolerance3d &tolerance )
+    SCBrepBodyProjection3d ProjectPointToBrepBody(const SCPoint3d& point,
+                                                const SCBrepBody& body,
+                                                const SCGeometryTolerance3d& tolerance)
     {
-        BrepBodyProjection3d best{};
-        if( !body.IsValid( tolerance ) )
+        SCBrepBodyProjection3d best{};
+        if (!body.IsValid(tolerance))
         {
             return best;
         }
 
         std::size_t faceIndex = 0;
-        for( std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex )
+        for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
         {
-            const BrepShell shell = body.ShellAt( shellIndex );
-            for( std::size_t localFaceIndex = 0; localFaceIndex < shell.FaceCount();
-                 ++localFaceIndex, ++faceIndex )
+            const SCBrepShell shell = body.ShellAt(shellIndex);
+            for (std::size_t localFaceIndex = 0; localFaceIndex < shell.FaceCount(); ++localFaceIndex, ++faceIndex)
             {
-                const BrepFaceProjection3d projected =
-                    ProjectPointToBrepFace( point, shell.FaceAt( localFaceIndex ), tolerance );
-                if( !projected.success )
+                const SCBrepFaceProjection3d projected =
+                    ProjectPointToBrepFace(point, shell.FaceAt(localFaceIndex), tolerance);
+                if (!projected.success)
                 {
                     continue;
                 }
 
-                if( !best.success || projected.distanceSquared < best.projection.distanceSquared )
+                if (!best.success || projected.distanceSquared < best.projection.distanceSquared)
                 {
                     best.success = true;
                     best.faceIndex = faceIndex;
@@ -627,33 +617,31 @@ namespace Geometry
         return best;
     }
 
-    PolyhedronFaceProjection3d ProjectPointToPolyhedronFace( const Point3d &point,
-                                                             const PolyhedronFace3d &face,
-                                                             const GeometryTolerance3d &tolerance )
+    SCPolyhedronFaceProjection3d ProjectPointToPolyhedronFace(const SCPoint3d& point,
+                                                            const PolyhedronFace3d& face,
+                                                            const SCGeometryTolerance3d& tolerance)
     {
-        PolyhedronFaceProjection3d best{};
-        if( !face.IsValid( tolerance.distanceEpsilon ) )
+        SCPolyhedronFaceProjection3d best{};
+        if (!face.IsValid(tolerance.distanceEpsilon))
         {
             return best;
         }
 
-        const FaceProjection3d faceProjection = ProjectFaceToPolygon2d( face, tolerance );
-        if( !faceProjection.success )
+        const SCFaceProjection3d faceProjection = ProjectFaceToPolygon2d(face, tolerance);
+        if (!faceProjection.success)
         {
             return best;
         }
 
-        const PlaneProjection3d planeProjection =
-            ProjectPointToPlane( point, face.SupportPlane(), tolerance );
-        const Point2d uv = ProjectToLocalPlaneCoordinates(
-            planeProjection.point, face.SupportPlane(), { faceProjection.uAxis, faceProjection.vAxis } );
-        const PointContainment2d containment =
-            LocatePoint( uv, faceProjection.polygon, tolerance.distanceEpsilon );
-        if( containment == PointContainment2d::Inside || containment == PointContainment2d::OnBoundary )
+        const SCPlaneProjection3d planeProjection = ProjectPointToPlane(point, face.SupportPlane(), tolerance);
+        const SCPoint2d uv = ProjectToLocalPlaneCoordinates(
+            planeProjection.point, face.SupportPlane(), {faceProjection.uAxis, faceProjection.vAxis});
+        const SCPointContainment2d containment = LocatePoint(uv, faceProjection.polygon, tolerance.distanceEpsilon);
+        if (containment == SCPointContainment2d::Inside || containment == SCPointContainment2d::OnBoundary)
         {
             best.success = true;
             best.onFace = true;
-            best.onBoundary = containment == PointContainment2d::OnBoundary;
+            best.onBoundary = containment == SCPointContainment2d::OnBoundary;
             best.point = planeProjection.point;
             best.u = uv.x;
             best.v = uv.y;
@@ -661,60 +649,60 @@ namespace Geometry
             return best;
         }
 
-        auto updateLoop = [&]( const PolyhedronLoop3d &loop ) {
-            const auto &vertices = loop.Vertices();
-            for( std::size_t i = 0; i < vertices.size(); ++i )
+        auto updateLoop = [&](const PolyhedronLoop3d& loop) {
+            const auto& vertices = loop.Vertices();
+            for (std::size_t i = 0; i < vertices.size(); ++i)
             {
-                const Point3d &start = vertices[i];
-                const Point3d &end = vertices[( i + 1 ) % vertices.size()];
-                const LineProjection3d projected =
-                    ProjectPointToSegment3d( point, start, end, tolerance.distanceEpsilon );
-                if( !best.success || projected.distanceSquared < best.distanceSquared )
+                const SCPoint3d& start = vertices[i];
+                const SCPoint3d& end = vertices[(i + 1) % vertices.size()];
+                const SCLineProjection3d projected =
+                    ProjectPointToSegment3d(point, start, end, tolerance.distanceEpsilon);
+                if (!best.success || projected.distanceSquared < best.distanceSquared)
                 {
                     best.success = true;
                     best.onFace = false;
                     best.onBoundary = true;
                     best.point = projected.point;
                     best.distanceSquared = projected.distanceSquared;
-                    const Point2d uv0 = ProjectToLocalPlaneCoordinates(
-                        start, face.SupportPlane(), { faceProjection.uAxis, faceProjection.vAxis } );
-                    const Point2d uv1 = ProjectToLocalPlaneCoordinates(
-                        end, face.SupportPlane(), { faceProjection.uAxis, faceProjection.vAxis } );
-                    const Point2d edgeUv = uv0 + ( uv1 - uv0 ) * projected.parameter;
+                    const SCPoint2d uv0 = ProjectToLocalPlaneCoordinates(
+                        start, face.SupportPlane(), {faceProjection.uAxis, faceProjection.vAxis});
+                    const SCPoint2d uv1 = ProjectToLocalPlaneCoordinates(
+                        end, face.SupportPlane(), {faceProjection.uAxis, faceProjection.vAxis});
+                    const SCPoint2d edgeUv = uv0 + (uv1 - uv0) * projected.parameter;
                     best.u = edgeUv.x;
                     best.v = edgeUv.y;
                 }
             }
         };
 
-        updateLoop( face.OuterLoop() );
-        for( std::size_t i = 0; i < face.HoleCount(); ++i )
+        updateLoop(face.OuterLoop());
+        for (std::size_t i = 0; i < face.HoleCount(); ++i)
         {
-            updateLoop( face.HoleAt( i ) );
+            updateLoop(face.HoleAt(i));
         }
         return best;
     }
 
-    PolyhedronBodyProjection3d ProjectPointToPolyhedronBody( const Point3d &point,
-                                                             const PolyhedronBody &body,
-                                                             const GeometryTolerance3d &tolerance )
+    SCPolyhedronBodyProjection3d ProjectPointToPolyhedronBody(const SCPoint3d& point,
+                                                            const PolyhedronBody& body,
+                                                            const SCGeometryTolerance3d& tolerance)
     {
-        PolyhedronBodyProjection3d best{};
-        if( !body.IsValid( tolerance.distanceEpsilon ) )
+        SCPolyhedronBodyProjection3d best{};
+        if (!body.IsValid(tolerance.distanceEpsilon))
         {
             return best;
         }
 
-        for( std::size_t faceIndex = 0; faceIndex < body.FaceCount(); ++faceIndex )
+        for (std::size_t faceIndex = 0; faceIndex < body.FaceCount(); ++faceIndex)
         {
-            const PolyhedronFaceProjection3d projected =
-                ProjectPointToPolyhedronFace( point, body.FaceAt( faceIndex ), tolerance );
-            if( !projected.success )
+            const SCPolyhedronFaceProjection3d projected =
+                ProjectPointToPolyhedronFace(point, body.FaceAt(faceIndex), tolerance);
+            if (!projected.success)
             {
                 continue;
             }
 
-            if( !best.success || projected.distanceSquared < best.projection.distanceSquared )
+            if (!best.success || projected.distanceSquared < best.projection.distanceSquared)
             {
                 best.success = true;
                 best.faceIndex = faceIndex;
@@ -725,22 +713,22 @@ namespace Geometry
         return best;
     }
 
-    TriangleMeshProjection3d ProjectPointToTriangleMesh( const Point3d &point, const TriangleMesh &mesh,
-                                                         const GeometryTolerance3d &tolerance )
+    SCTriangleMeshProjection3d ProjectPointToTriangleMesh(const SCPoint3d& point,
+                                                        const TriangleMesh& mesh,
+                                                        const SCGeometryTolerance3d& tolerance)
     {
-        TriangleMeshProjection3d best{};
-        if( !mesh.IsValid( tolerance.distanceEpsilon ) )
+        SCTriangleMeshProjection3d best{};
+        if (!mesh.IsValid(tolerance.distanceEpsilon))
         {
             return best;
         }
 
-        for( std::size_t triangleIndex = 0; triangleIndex < mesh.TriangleCount(); ++triangleIndex )
+        for (std::size_t triangleIndex = 0; triangleIndex < mesh.TriangleCount(); ++triangleIndex)
         {
-            const Triangle3d triangle = mesh.TriangleAt( triangleIndex );
-            const Point3d projectedPoint =
-                ClosestPointOnTriangle( point, triangle, tolerance.distanceEpsilon );
-            const double distanceSquared = ( point - projectedPoint ).LengthSquared();
-            if( !best.success || distanceSquared < best.distanceSquared )
+            const SCTriangle3d triangle = mesh.TriangleAt(triangleIndex);
+            const SCPoint3d projectedPoint = ClosestPointOnTriangle(point, triangle, tolerance.distanceEpsilon);
+            const double distanceSquared = (point - projectedPoint).LengthSquared();
+            if (!best.success || distanceSquared < best.distanceSquared)
             {
                 best.success = true;
                 best.triangleIndex = triangleIndex;
@@ -752,47 +740,45 @@ namespace Geometry
         return best;
     }
 
-    FaceProjection3d ProjectFaceToPolygon2d( const PolyhedronFace3d &face,
-                                             const GeometryTolerance3d &tolerance )
+    SCFaceProjection3d ProjectFaceToPolygon2d(const PolyhedronFace3d& face, const SCGeometryTolerance3d& tolerance)
     {
-        if( !face.IsValid( tolerance.distanceEpsilon ) )
+        if (!face.IsValid(tolerance.distanceEpsilon))
         {
             return {};
         }
 
-        const Plane plane = face.SupportPlane();
-        const PlaneProjectionBasis basis = BuildPlaneProjectionBasis( plane, tolerance.distanceEpsilon );
+        const SCPlane plane = face.SupportPlane();
+        const PlaneProjectionBasis basis = BuildPlaneProjectionBasis(plane, tolerance.distanceEpsilon);
         const PolyhedronLoop3d outerLoop = face.OuterLoop();
-        std::vector<Point2d> outerPoints;
-        outerPoints.reserve( outerLoop.VertexCount() );
-        for( const Point3d &vertex : outerLoop.Vertices() )
+        std::vector<SCPoint2d> outerPoints;
+        outerPoints.reserve(outerLoop.VertexCount());
+        for (const SCPoint3d& vertex : outerLoop.Vertices())
         {
-            outerPoints.push_back( ProjectToLocalPlaneCoordinates( vertex, plane, basis ) );
+            outerPoints.push_back(ProjectToLocalPlaneCoordinates(vertex, plane, basis));
         }
-        EnsureRingOrientation( outerPoints, true );
+        EnsureRingOrientation(outerPoints, true);
 
-        std::vector<Polyline2d> holeRings;
-        holeRings.reserve( face.HoleCount() );
-        for( std::size_t i = 0; i < face.HoleCount(); ++i )
+        std::vector<SCPolyline2d> holeRings;
+        holeRings.reserve(face.HoleCount());
+        for (std::size_t i = 0; i < face.HoleCount(); ++i)
         {
-            std::vector<Point2d> holePoints;
-            const PolyhedronLoop3d hole = face.HoleAt( i );
-            holePoints.reserve( hole.VertexCount() );
-            for( const Point3d &vertex : hole.Vertices() )
+            std::vector<SCPoint2d> holePoints;
+            const PolyhedronLoop3d hole = face.HoleAt(i);
+            holePoints.reserve(hole.VertexCount());
+            for (const SCPoint3d& vertex : hole.Vertices())
             {
-                holePoints.push_back( ProjectToLocalPlaneCoordinates( vertex, plane, basis ) );
+                holePoints.push_back(ProjectToLocalPlaneCoordinates(vertex, plane, basis));
             }
-            EnsureRingOrientation( holePoints, false );
-            holeRings.emplace_back( std::move( holePoints ), PolylineClosure::Closed );
+            EnsureRingOrientation(holePoints, false);
+            holeRings.emplace_back(std::move(holePoints), SCPolylineClosure::Closed);
         }
 
-        Polygon2d polygon( Polyline2d( std::move( outerPoints ), PolylineClosure::Closed ),
-                           std::move( holeRings ) );
-        if( !polygon.IsValid() )
+        SCPolygon2d polygon(SCPolyline2d(std::move(outerPoints), SCPolylineClosure::Closed), std::move(holeRings));
+        if (!polygon.IsValid())
         {
             return {};
         }
 
-        return FaceProjection3d{ true, std::move( polygon ), plane.origin, basis.u, basis.v };
+        return SCFaceProjection3d{true, std::move(polygon), plane.origin, basis.u, basis.v};
     }
 }  // namespace Geometry

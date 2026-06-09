@@ -61,7 +61,7 @@ BRep 不应只建 vertex / edge / face 三层。
 
 1. 先完成 `PolyhedronBody` 的基础工作流
 2. 再建立 `BrepBody` skeleton
-3. 在 `CurveOnSurface` 与基础拓扑表达明确后，再推进更复杂 BRep 算法
+3. 在 `SCCurveOnSurface` 与基础拓扑表达明确后，再推进更复杂 BRep 算法
 
 ## 7. 当前固定结论
 

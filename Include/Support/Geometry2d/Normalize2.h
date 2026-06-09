@@ -7,17 +7,15 @@
 namespace Geometry
 {
     template <typename T>
-    [[nodiscard]] bool TryNormalize( const Vector2<T> &vector, Vector2<double> &normalized,
-                                     double eps = kDefaultEpsilon )
+    [[nodiscard]] bool TryNormalize(const SCVector2<T>& vector, SCVector2<double>& normalized, double eps = kDefaultEpsilon)
     {
-        if( IsZero( vector, eps ) )
+        if (IsZero(vector, eps))
         {
             return false;
         }
 
-        const double length = static_cast<double>( vector.Length() );
-        normalized = Vector2<double>( static_cast<double>( vector.x ) / length,
-                                      static_cast<double>( vector.y ) / length );
+        const double length = static_cast<double>(vector.Length());
+        normalized = SCVector2<double>(static_cast<double>(vector.x) / length, static_cast<double>(vector.y) / length);
         return true;
     }
 }  // namespace Geometry
