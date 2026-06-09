@@ -57,15 +57,15 @@ Lib/cmake/SCGeometry/
 
 类型层负责表达几何数据和少量天然属性，例如：
 
-- `Point2d`
-- `Vector2d`
-- `Box2d`
-- `Point3d`
-- `Vector3d`
-- `Box3d`
-- `Line3d`
-- `Plane`
-- `Triangle3d`
+- `SCPoint2d`
+- `SCVector2d`
+- `SCBox2d`
+- `SCPoint3d`
+- `SCVector3d`
+- `SCBox3d`
+- `SCLine3d`
+- `SCPlane`
+- `SCTriangle3d`
 
 ### 5.2 服务层
 
@@ -107,9 +107,9 @@ Lib/cmake/SCGeometry/
 
 负责基础辅助类型、数值工具和实现细节类型。
 
-### 6.6 Box2
+### 6.6 SCBox2
 
-`Box2<T>` 作为 2D 包围盒，职责是表达最小轴对齐边界范围，适合保留为成员能力的内容包括：
+`SCBox2<T>` 作为 2D 包围盒，职责是表达最小轴对齐边界范围，适合保留为成员能力的内容包括：
 
 - `MinPoint()`
 - `MaxPoint()`
@@ -117,7 +117,7 @@ Lib/cmake/SCGeometry/
 - `IsValid()`
 - `Expand(...)`
 
-`Box2<T>` 的边界约束是保持轻量和值类型语义，不承担以下职责：
+`SCBox2<T>` 的边界约束是保持轻量和值类型语义，不承担以下职责：
 
 - 复杂空间索引逻辑
 - 多对象布尔流程

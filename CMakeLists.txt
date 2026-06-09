@@ -98,10 +98,7 @@ function(SCGeometryShouldInstallPublicHeader header_path should_install_var)
         "${header_path}"
     )
 
-    if(SCGEOMETRY_HEADER_RELATIVE_PATH MATCHES "^Geometry2d/SC" OR
-       SCGEOMETRY_HEADER_RELATIVE_PATH MATCHES "^Geometry2d/ISC" OR
-       SCGEOMETRY_HEADER_RELATIVE_PATH MATCHES "^Geometry3d/SC" OR
-       SCGEOMETRY_HEADER_RELATIVE_PATH MATCHES "^Types/Detail/")
+    if(SCGEOMETRY_HEADER_RELATIVE_PATH MATCHES "^Types/Detail/")
         set(${should_install_var} OFF PARENT_SCOPE)
         return()
     endif()

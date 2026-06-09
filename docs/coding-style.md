@@ -33,10 +33,10 @@ namespace Geometry
 ### 2.1 使用 PascalCase
 
 ```cpp
-struct Point2d;
-struct Vector2d;
+struct SCPoint2d;
+struct SCVector2d;
 struct ISCSegment2d;
-struct Box2d;
+struct SCBox2d;
 struct ProjectionResult;
 ```
 
@@ -51,7 +51,7 @@ struct ProjectionResult;
 例如：
 
 ```cpp
-Point2d   // 正确
+SCPoint2d // 正确
 Point2D   // 不建议
 Point2    // 不建议
 ```
@@ -105,8 +105,8 @@ intersectionPoint
 class ISCSegment2d
 {
 public:
-    Point2d m_start;
-    Point2d m_end;
+    SCPoint2d m_start;
+    SCPoint2d m_end;
 };
 ```
 
@@ -177,7 +177,7 @@ struct SegmentIntersectionResult
     bool m_intersect{false};
     bool m_parallel{false};
     bool m_collinear{false};
-    Point2d m_point{};
+    SCPoint2d m_point{};
 };
 ```
 
@@ -194,8 +194,8 @@ struct SegmentIntersectionResult
 ### 8.1 使用 PascalCase
 
 ```text
-Point2d.h
-Vector2d.h
+SCPoint2d.h
+SCVector2d.h
 ISCSegment2d.h
 Distance2d.h
 Distance2d.cpp
