@@ -137,9 +137,8 @@ namespace Geometry
     };
 
     [[nodiscard]] GEOMETRY_API SCSearchPolyResult2d SearchPolygons(const SCMultiPolyline2d& lines,
-                                                                 SCSearchPolyOptions2d options = {});
+                                                                   SCSearchPolyOptions2d options = {});
 
     [[nodiscard]] GEOMETRY_API std::optional<SCSearchPolyCandidate2d> SearchPolygonContainingPoint(
         const SCMultiPolyline2d& lines, const SCPoint2d& point, SCSearchPolyOptions2d options = {});
 }  // namespace Geometry
-

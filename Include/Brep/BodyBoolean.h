@@ -63,5 +63,3 @@ namespace Geometry
                                                                     const PolyhedronBody& second,
                                                                     BodyBooleanOptions3d options = {});
 }  // namespace Geometry
-
-

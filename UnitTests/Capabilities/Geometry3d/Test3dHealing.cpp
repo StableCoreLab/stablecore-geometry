@@ -4,27 +4,27 @@
 #include "Geometry.h"
 #include "Support/Fixtures3d.h"
 
+using Geometry::BrepHealing3d;
+using Geometry::Heal;
+using Geometry::HealingIssue3d;
+using Geometry::HealingPolicy3d;
+using Geometry::ISCSurface;
+using Geometry::PolyhedronBody;
+using Geometry::PolyhedronHealing3d;
 using Geometry::SCBrepBody;
 using Geometry::SCBrepCoedge;
 using Geometry::SCBrepEdge;
 using Geometry::SCBrepFace;
-using Geometry::BrepHealing3d;
 using Geometry::SCBrepLoop;
 using Geometry::SCBrepShell;
 using Geometry::SCBrepVertex;
 using Geometry::SCGeometryTolerance3d;
-using Geometry::Heal;
-using Geometry::HealingIssue3d;
-using Geometry::HealingPolicy3d;
 using Geometry::SCIntervald;
 using Geometry::SCLine3d;
 using Geometry::SCLineCurve3d;
 using Geometry::SCPlane;
 using Geometry::SCPlaneSurface;
 using Geometry::SCPoint3d;
-using Geometry::PolyhedronBody;
-using Geometry::PolyhedronHealing3d;
-using Geometry::ISCSurface;
 using Geometry::SCVector3d;
 
 // Demonstrates that the conservative healing pass preserves an already-valid
@@ -49,33 +49,34 @@ TEST(Healing3dCapabilityTest, UnitCubePolyhedronBodyHealingPreservesAllSixFaces)
 TEST(Healing3dCapabilityTest, PlanarBrepFaceWithoutTrimIsHealedWithBackfilledTrim)
 {
     std::vector<SCBrepVertex> vertices{SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
-    edges.emplace_back(
-        std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-            SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{1.0, 0.0, 0.0}), SCIntervald{0.0, 1.0})),
-        0,
-        1);
-    edges.emplace_back(
-        std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-            SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 0.0, 0.0}, SCVector3d{0.0, 1.0, 0.0}), SCIntervald{0.0, 1.0})),
-        1,
-        2);
-    edges.emplace_back(
-        std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-            SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 1.0, 0.0}, SCVector3d{-1.0, 0.0, 0.0}), SCIntervald{0.0, 1.0})),
-        2,
-        3);
-    edges.emplace_back(
-        std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-            SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 1.0, 0.0}, SCVector3d{0.0, -1.0, 0.0}), SCIntervald{0.0, 1.0})),
-        3,
-        0);
+    edges.emplace_back(std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
+                           SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{1.0, 0.0, 0.0}),
+                           SCIntervald{0.0, 1.0})),
+                       0,
+                       1);
+    edges.emplace_back(std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
+                           SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 0.0, 0.0}, SCVector3d{0.0, 1.0, 0.0}),
+                           SCIntervald{0.0, 1.0})),
+                       1,
+                       2);
+    edges.emplace_back(std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
+                           SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 1.0, 0.0}, SCVector3d{-1.0, 0.0, 0.0}),
+                           SCIntervald{0.0, 1.0})),
+                       2,
+                       3);
+    edges.emplace_back(std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
+                           SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 1.0, 0.0}, SCVector3d{0.0, -1.0, 0.0}),
+                           SCIntervald{0.0, 1.0})),
+                       3,
+                       0);
 
-    const SCBrepLoop outerLoop({SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
+    const SCBrepLoop outerLoop(
+        {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
     const SCPlaneSurface planeSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
     const SCBrepFace face(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()), outerLoop);
@@ -99,13 +100,13 @@ TEST(Healing3dCapabilityTest, PlanarBrepFaceWithoutTrimIsHealedWithBackfilledTri
 TEST(Healing3dCapabilityTest, PlanarHoledBrepFaceWithoutAnyTrimIsHealed)
 {
     std::vector<SCBrepVertex> vertices{SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 3.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 3.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 2.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 2.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 3.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 3.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 2.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 2.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -126,8 +127,10 @@ TEST(Healing3dCapabilityTest, PlanarHoledBrepFaceWithoutAnyTrimIsHealed)
     addEdge(6, 7);
     addEdge(7, 4);
 
-    const SCBrepLoop outerLoop({SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
-    const SCBrepLoop holeLoop({SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
+    const SCBrepLoop outerLoop(
+        {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
+    const SCBrepLoop holeLoop(
+        {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
     const SCPlaneSurface planeSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
     const SCBrepFace face(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()), outerLoop, {holeLoop});
@@ -154,9 +157,9 @@ TEST(Healing3dCapabilityTest, PlanarHoledBrepFaceWithoutAnyTrimIsHealed)
 TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseRecoverableSingleFaceShell)
 {
     std::vector<SCBrepVertex> vertices{SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -172,7 +175,8 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseRecoverableSingleFaceShel
     addEdge(2, 3);
     addEdge(3, 0);
 
-    const SCBrepLoop outerLoop({SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
+    const SCBrepLoop outerLoop(
+        {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
     const SCPlaneSurface planeSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
     const SCBrepFace face(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()), outerLoop);
@@ -194,11 +198,11 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseRecoverableSingleFaceShel
 TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseRecoverableMultiFaceOpenSheet)
 {
     std::vector<SCBrepVertex> vertices{SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -221,8 +225,10 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseRecoverableMultiFaceOpenS
     addEdge(5, 2);
     addEdge(2, 1);
 
-    const SCBrepLoop outerA({SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
-    const SCBrepLoop outerB({SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
+    const SCBrepLoop outerA(
+        {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
+    const SCBrepLoop outerB(
+        {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
     const SCPlaneSurface planeSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
 
@@ -248,11 +254,11 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseRecoverableMultiFaceOpenS
 TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseSharedEdgeOpenSheet)
 {
     std::vector<SCBrepVertex> vertices{SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -272,8 +278,10 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseSharedEdgeOpenSheet)
     addEdge(4, 5);
     addEdge(5, 2);
 
-    const SCBrepLoop outerA({SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
-    const SCBrepLoop outerB({SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(1, true)});
+    const SCBrepLoop outerA(
+        {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
+    const SCBrepLoop outerB(
+        {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(1, true)});
     const SCPlaneSurface planeSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
 
@@ -302,15 +310,15 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseSharedEdgeOpenSheet)
 TEST(Healing3dCapabilityTest, AggressiveHealingCanBoundaryCapSharedEdgeHoledShellWithMissingTrims)
 {
     std::vector<SCBrepVertex> vertices{SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 4.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 4.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.5, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.5, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.5, 3.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.5, 3.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 4.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 4.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 4.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.5, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.5, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.5, 3.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.5, 3.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 4.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -334,9 +342,12 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCanBoundaryCapSharedEdgeHoledShel
     addEdge(6, 7);
     addEdge(7, 4);
 
-    const SCBrepLoop outerA({SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
-    const SCBrepLoop holeA({SCBrepCoedge(7, false), SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false)});
-    const SCBrepLoop outerB({SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(1, true)});
+    const SCBrepLoop outerA(
+        {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
+    const SCBrepLoop holeA(
+        {SCBrepCoedge(7, false), SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false)});
+    const SCBrepLoop outerB(
+        {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(1, true)});
 
     const SCPlaneSurface mismatchedSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.2}, SCVector3d{0.0, 0.0, 1.0}));
@@ -373,17 +384,17 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCanBoundaryCapSharedEdgeHoledShel
 TEST(Healing3dCapabilityTest, AggressiveHealingCanBoundaryCapSharedEdgeShellInsideMixedBody)
 {
     std::vector<SCBrepVertex> vertices{// Closed shell.
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     // Eligible shared-edge shell.
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{5.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{5.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       // Eligible shared-edge shell.
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{5.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{5.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -413,8 +424,10 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCanBoundaryCapSharedEdgeShellInsi
         {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
     const SCBrepLoop closedOuterReversed(
         {SCBrepCoedge(3, true), SCBrepCoedge(2, true), SCBrepCoedge(1, true), SCBrepCoedge(0, true)});
-    const SCBrepLoop outerA({SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
-    const SCBrepLoop outerB({SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false), SCBrepCoedge(5, true)});
+    const SCBrepLoop outerA(
+        {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
+    const SCBrepLoop outerB(
+        {SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false), SCBrepCoedge(5, true)});
 
     const SCPlaneSurface planeSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
@@ -424,11 +437,11 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCanBoundaryCapSharedEdgeShellInsi
     const SCBrepFace faceB(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()), outerB);
 
     const SCBrepBody mixedBody(vertices,
-                             edges,
-                             {
-                                 SCBrepShell({closedFaceA, closedFaceB}, true),
-                                 SCBrepShell({faceA, faceB}, false),
-                             });
+                               edges,
+                               {
+                                   SCBrepShell({closedFaceA, closedFaceB}, true),
+                                   SCBrepShell({faceA, faceB}, false),
+                               });
     ASSERT_TRUE(mixedBody.IsValid());
     ASSERT_EQ(mixedBody.ShellCount(), 2);
     ASSERT_TRUE(mixedBody.ShellAt(0).IsClosed());
@@ -455,24 +468,24 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCanBoundaryCapSharedEdgeShellInsi
 TEST(Healing3dCapabilityTest, AggressiveHealingCanBoundaryCapTwoSharedEdgeShellsInsideMixedBody)
 {
     std::vector<SCBrepVertex> vertices{// Closed shell.
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     // Eligible shared-edge shell A.
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{5.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{5.0, 1.0, 0.0}),
-                                     // Eligible shared-edge shell B.
-                                     SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{8.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{8.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{9.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{9.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       // Eligible shared-edge shell A.
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{5.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{5.0, 1.0, 0.0}),
+                                       // Eligible shared-edge shell B.
+                                       SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{8.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{8.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{9.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{9.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -514,12 +527,15 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCanBoundaryCapTwoSharedEdgeShells
     const SCBrepLoop closedOuterReversed(
         {SCBrepCoedge(3, true), SCBrepCoedge(2, true), SCBrepCoedge(1, true), SCBrepCoedge(0, true)});
 
-    const SCBrepLoop outerA0({SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
-    const SCBrepLoop outerA1({SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false), SCBrepCoedge(5, true)});
+    const SCBrepLoop outerA0(
+        {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
+    const SCBrepLoop outerA1(
+        {SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false), SCBrepCoedge(5, true)});
 
     const SCBrepLoop outerB0(
         {SCBrepCoedge(11, false), SCBrepCoedge(12, false), SCBrepCoedge(13, false), SCBrepCoedge(14, false)});
-    const SCBrepLoop outerB1({SCBrepCoedge(15, false), SCBrepCoedge(16, false), SCBrepCoedge(17, false), SCBrepCoedge(12, true)});
+    const SCBrepLoop outerB1(
+        {SCBrepCoedge(15, false), SCBrepCoedge(16, false), SCBrepCoedge(17, false), SCBrepCoedge(12, true)});
 
     const SCBrepBody mixedBody(
         vertices,
@@ -572,24 +588,24 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCanBoundaryCapTwoSharedEdgeShells
 TEST(Healing3dCapabilityTest, AggressiveHealingSkipsCompetingSharedBoundaryEdgeEligibleShells)
 {
     std::vector<SCBrepVertex> vertices{// Independent eligible shell.
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
-                                     // Competing eligible shell A.
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{5.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{5.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
-                                     // Competing eligible shell B shares boundary edge (10,11) with shell A.
-                                     SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{8.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{8.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
+                                       // Competing eligible shell A.
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{5.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{5.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
+                                       // Competing eligible shell B shares boundary edge (10,11) with shell A.
+                                       SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{8.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{8.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -651,12 +667,12 @@ TEST(Healing3dCapabilityTest, AggressiveHealingSkipsCompetingSharedBoundaryEdgeE
     const SCBrepFace competingFaceB1(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()), competingB1);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({independentFaceA, independentFaceB}, false),
-                            SCBrepShell({competingFaceA0, competingFaceA1}, false),
-                            SCBrepShell({competingFaceB0, competingFaceB1}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({independentFaceA, independentFaceB}, false),
+                              SCBrepShell({competingFaceA0, competingFaceA1}, false),
+                              SCBrepShell({competingFaceB0, competingFaceB1}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
     ASSERT_EQ(body.ShellCount(), 3);
 
@@ -682,27 +698,27 @@ TEST(Healing3dCapabilityTest, AggressiveHealingSkipsCompetingSharedBoundaryEdgeE
 TEST(Healing3dCapabilityTest, AggressiveHealingSkipsGeometricallyCoincidentBoundaryLoopShells)
 {
     std::vector<SCBrepVertex> vertices{// Independent eligible shell.
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
-                                     // Geometrically coincident shell A.
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{5.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{5.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
-                                     // Geometrically coincident shell B uses duplicated topology at the same
-                                     // coordinates.
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{5.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{5.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
+                                       // Geometrically coincident shell A.
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{5.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{5.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
+                                       // Geometrically coincident shell B uses duplicated topology at the same
+                                       // coordinates.
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{5.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{5.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -764,12 +780,12 @@ TEST(Healing3dCapabilityTest, AggressiveHealingSkipsGeometricallyCoincidentBound
     const SCBrepFace coincidentFaceB1(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()), coincidentB1);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({independentFaceA, independentFaceB}, false),
-                            SCBrepShell({coincidentFaceA0, coincidentFaceA1}, false),
-                            SCBrepShell({coincidentFaceB0, coincidentFaceB1}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({independentFaceA, independentFaceB}, false),
+                              SCBrepShell({coincidentFaceA0, coincidentFaceA1}, false),
+                              SCBrepShell({coincidentFaceB0, coincidentFaceB1}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
     ASSERT_EQ(body.ShellCount(), 3);
 
@@ -791,20 +807,20 @@ TEST(Healing3dCapabilityTest, AggressiveHealingSkipsGeometricallyCoincidentBound
 TEST(Healing3dCapabilityTest, AggressiveHealingSkipsPartiallyOverlappedBoundaryLoopShells)
 {
     std::vector<SCBrepVertex> vertices{// Partial-overlap shell A.
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
-                                     // Partial-overlap shell B. Its boundary only overlaps shell A on a
-                                     // sub-interval, never on a whole boundary edge.
-                                     SCBrepVertex(SCPoint3d{0.5, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.5, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.5, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.5, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.5, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.5, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
+                                       // Partial-overlap shell B. Its boundary only overlaps shell A on a
+                                       // sub-interval, never on a whole boundary edge.
+                                       SCBrepVertex(SCPoint3d{0.5, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.5, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.5, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.5, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.5, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.5, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -834,10 +850,14 @@ TEST(Healing3dCapabilityTest, AggressiveHealingSkipsPartiallyOverlappedBoundaryL
     addEdge(10, 11);
     addEdge(11, 8);
 
-    const SCBrepLoop shellA0({SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
-    const SCBrepLoop shellA1({SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(1, true)});
-    const SCBrepLoop shellB0({SCBrepCoedge(7, false), SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false)});
-    const SCBrepLoop shellB1({SCBrepCoedge(11, false), SCBrepCoedge(12, false), SCBrepCoedge(13, false), SCBrepCoedge(8, true)});
+    const SCBrepLoop shellA0(
+        {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
+    const SCBrepLoop shellA1(
+        {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(1, true)});
+    const SCBrepLoop shellB0(
+        {SCBrepCoedge(7, false), SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false)});
+    const SCBrepLoop shellB1(
+        {SCBrepCoedge(11, false), SCBrepCoedge(12, false), SCBrepCoedge(13, false), SCBrepCoedge(8, true)});
 
     const SCPlaneSurface planeSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
@@ -847,11 +867,11 @@ TEST(Healing3dCapabilityTest, AggressiveHealingSkipsPartiallyOverlappedBoundaryL
     const SCBrepFace faceB1(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()), shellB1);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({faceA0, faceA1}, false),
-                            SCBrepShell({faceB0, faceB1}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({faceA0, faceA1}, false),
+                              SCBrepShell({faceB0, faceB1}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
     ASSERT_EQ(body.ShellCount(), 2);
 
@@ -872,26 +892,26 @@ TEST(Healing3dCapabilityTest, AggressiveHealingSkipsPartiallyOverlappedBoundaryL
 TEST(Healing3dCapabilityTest, AggressiveHealingClosesIndependentShellWhileSkippingPartialOverlapPair)
 {
     std::vector<SCBrepVertex> vertices{// Independent eligible shell.
-                                     SCBrepVertex(SCPoint3d{-4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-3.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-2.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-2.0, 1.0, 0.0}),
-                                     // Partial-overlap shell A.
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
-                                     // Partial-overlap shell B.
-                                     SCBrepVertex(SCPoint3d{0.5, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.5, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.5, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.5, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.5, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.5, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{-4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-3.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-2.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-2.0, 1.0, 0.0}),
+                                       // Partial-overlap shell A.
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
+                                       // Partial-overlap shell B.
+                                       SCBrepVertex(SCPoint3d{0.5, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.5, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.5, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.5, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.5, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.5, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -934,11 +954,14 @@ TEST(Healing3dCapabilityTest, AggressiveHealingClosesIndependentShellWhileSkippi
         {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
     const SCBrepLoop independentB(
         {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(1, true)});
-    const SCBrepLoop shellA0({SCBrepCoedge(7, false), SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false)});
-    const SCBrepLoop shellA1({SCBrepCoedge(11, false), SCBrepCoedge(12, false), SCBrepCoedge(13, false), SCBrepCoedge(8, true)});
+    const SCBrepLoop shellA0(
+        {SCBrepCoedge(7, false), SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false)});
+    const SCBrepLoop shellA1(
+        {SCBrepCoedge(11, false), SCBrepCoedge(12, false), SCBrepCoedge(13, false), SCBrepCoedge(8, true)});
     const SCBrepLoop shellB0(
         {SCBrepCoedge(14, false), SCBrepCoedge(15, false), SCBrepCoedge(16, false), SCBrepCoedge(17, false)});
-    const SCBrepLoop shellB1({SCBrepCoedge(18, false), SCBrepCoedge(19, false), SCBrepCoedge(20, false), SCBrepCoedge(15, true)});
+    const SCBrepLoop shellB1(
+        {SCBrepCoedge(18, false), SCBrepCoedge(19, false), SCBrepCoedge(20, false), SCBrepCoedge(15, true)});
 
     const SCPlaneSurface planeSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
@@ -950,12 +973,12 @@ TEST(Healing3dCapabilityTest, AggressiveHealingClosesIndependentShellWhileSkippi
     const SCBrepFace faceB1(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()), shellB1);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({independentFaceA, independentFaceB}, false),
-                            SCBrepShell({faceA0, faceA1}, false),
-                            SCBrepShell({faceB0, faceB1}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({independentFaceA, independentFaceB}, false),
+                              SCBrepShell({faceA0, faceA1}, false),
+                              SCBrepShell({faceB0, faceB1}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
     ASSERT_EQ(body.ShellCount(), 3);
 
@@ -977,24 +1000,24 @@ TEST(Healing3dCapabilityTest, AggressiveHealingClosesIndependentShellWhileSkippi
 TEST(Healing3dCapabilityTest, AggressiveHealingKeepsClosedShellWhileSkippingPartialOverlapPair)
 {
     std::vector<SCBrepVertex> vertices{// Closed shell.
-                                     SCBrepVertex(SCPoint3d{-4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-3.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-4.0, 1.0, 0.0}),
-                                     // Partial-overlap shell A.
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
-                                     // Partial-overlap shell B.
-                                     SCBrepVertex(SCPoint3d{0.5, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.5, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.5, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.5, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.5, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.5, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{-4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-3.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-4.0, 1.0, 0.0}),
+                                       // Partial-overlap shell A.
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
+                                       // Partial-overlap shell B.
+                                       SCBrepVertex(SCPoint3d{0.5, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.5, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.5, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.5, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.5, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.5, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -1034,11 +1057,14 @@ TEST(Healing3dCapabilityTest, AggressiveHealingKeepsClosedShellWhileSkippingPart
         {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
     const SCBrepLoop closedOuterReversed(
         {SCBrepCoedge(3, true), SCBrepCoedge(2, true), SCBrepCoedge(1, true), SCBrepCoedge(0, true)});
-    const SCBrepLoop shellA0({SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
-    const SCBrepLoop shellA1({SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false), SCBrepCoedge(5, true)});
+    const SCBrepLoop shellA0(
+        {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
+    const SCBrepLoop shellA1(
+        {SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false), SCBrepCoedge(5, true)});
     const SCBrepLoop shellB0(
         {SCBrepCoedge(11, false), SCBrepCoedge(12, false), SCBrepCoedge(13, false), SCBrepCoedge(14, false)});
-    const SCBrepLoop shellB1({SCBrepCoedge(15, false), SCBrepCoedge(16, false), SCBrepCoedge(17, false), SCBrepCoedge(12, true)});
+    const SCBrepLoop shellB1(
+        {SCBrepCoedge(15, false), SCBrepCoedge(16, false), SCBrepCoedge(17, false), SCBrepCoedge(12, true)});
 
     const SCPlaneSurface planeSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
@@ -1050,12 +1076,12 @@ TEST(Healing3dCapabilityTest, AggressiveHealingKeepsClosedShellWhileSkippingPart
     const SCBrepFace faceB1(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()), shellB1);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({closedFaceA, closedFaceB}, true),
-                            SCBrepShell({faceA0, faceA1}, false),
-                            SCBrepShell({faceB0, faceB1}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({closedFaceA, closedFaceB}, true),
+                              SCBrepShell({faceA0, faceA1}, false),
+                              SCBrepShell({faceB0, faceB1}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
     ASSERT_EQ(body.ShellCount(), 3);
 
@@ -1076,33 +1102,33 @@ TEST(Healing3dCapabilityTest, AggressiveHealingKeepsClosedShellWhileSkippingPart
 TEST(Healing3dCapabilityTest, AggressiveHealingClosesIndependentAndVertexTouchShellsWhileSkippingPartialOverlapPair)
 {
     std::vector<SCBrepVertex> vertices{// Independent shell.
-                                     SCBrepVertex(SCPoint3d{-4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-3.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-2.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-2.0, 1.0, 0.0}),
-                                     // Partial-overlap shell A.
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
-                                     // Partial-overlap shell B.
-                                     SCBrepVertex(SCPoint3d{0.5, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.5, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.5, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.5, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.5, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.5, 1.0, 0.0}),
-                                     // Vertex-touch shell shares only vertex 17 with partial-overlap shell
-                                     // B.
-                                     SCBrepVertex(SCPoint3d{3.5, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.5, 2.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.5, 2.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.5, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.5, 2.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{-4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-3.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-2.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-2.0, 1.0, 0.0}),
+                                       // Partial-overlap shell A.
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
+                                       // Partial-overlap shell B.
+                                       SCBrepVertex(SCPoint3d{0.5, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.5, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.5, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.5, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.5, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.5, 1.0, 0.0}),
+                                       // Vertex-touch shell shares only vertex 17 with partial-overlap shell
+                                       // B.
+                                       SCBrepVertex(SCPoint3d{3.5, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.5, 2.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.5, 2.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.5, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.5, 2.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -1154,14 +1180,18 @@ TEST(Healing3dCapabilityTest, AggressiveHealingClosesIndependentAndVertexTouchSh
         {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
     const SCBrepLoop independentB(
         {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(1, true)});
-    const SCBrepLoop shellA0({SCBrepCoedge(7, false), SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false)});
-    const SCBrepLoop shellA1({SCBrepCoedge(11, false), SCBrepCoedge(12, false), SCBrepCoedge(13, false), SCBrepCoedge(8, true)});
+    const SCBrepLoop shellA0(
+        {SCBrepCoedge(7, false), SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false)});
+    const SCBrepLoop shellA1(
+        {SCBrepCoedge(11, false), SCBrepCoedge(12, false), SCBrepCoedge(13, false), SCBrepCoedge(8, true)});
     const SCBrepLoop shellB0(
         {SCBrepCoedge(14, false), SCBrepCoedge(15, false), SCBrepCoedge(16, false), SCBrepCoedge(17, false)});
-    const SCBrepLoop shellB1({SCBrepCoedge(18, false), SCBrepCoedge(19, false), SCBrepCoedge(20, false), SCBrepCoedge(15, true)});
+    const SCBrepLoop shellB1(
+        {SCBrepCoedge(18, false), SCBrepCoedge(19, false), SCBrepCoedge(20, false), SCBrepCoedge(15, true)});
     const SCBrepLoop shellC0(
         {SCBrepCoedge(21, false), SCBrepCoedge(22, false), SCBrepCoedge(23, false), SCBrepCoedge(24, false)});
-    const SCBrepLoop shellC1({SCBrepCoedge(25, false), SCBrepCoedge(26, false), SCBrepCoedge(27, false), SCBrepCoedge(22, true)});
+    const SCBrepLoop shellC1(
+        {SCBrepCoedge(25, false), SCBrepCoedge(26, false), SCBrepCoedge(27, false), SCBrepCoedge(22, true)});
 
     const SCPlaneSurface planeSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
@@ -1175,13 +1205,13 @@ TEST(Healing3dCapabilityTest, AggressiveHealingClosesIndependentAndVertexTouchSh
     const SCBrepFace faceC1(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()), shellC1);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({independentFaceA, independentFaceB}, false),
-                            SCBrepShell({faceA0, faceA1}, false),
-                            SCBrepShell({faceB0, faceB1}, false),
-                            SCBrepShell({faceC0, faceC1}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({independentFaceA, independentFaceB}, false),
+                              SCBrepShell({faceA0, faceA1}, false),
+                              SCBrepShell({faceB0, faceB1}, false),
+                              SCBrepShell({faceC0, faceC1}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
     ASSERT_EQ(body.ShellCount(), 4);
 
@@ -1209,18 +1239,18 @@ TEST(Healing3dCapabilityTest, AggressiveHealingClosesIndependentAndVertexTouchSh
 TEST(Healing3dCapabilityTest, AggressiveHealingClosesVertexTouchingEligibleSharedEdgeShells)
 {
     std::vector<SCBrepVertex> vertices{// Eligible shell A.
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
-                                     // Eligible shell B shares only vertex 5 with shell A.
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 2.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
+                                       // Eligible shell B shares only vertex 5 with shell A.
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 2.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -1250,10 +1280,14 @@ TEST(Healing3dCapabilityTest, AggressiveHealingClosesVertexTouchingEligibleShare
     addEdge(9, 10);
     addEdge(10, 7);
 
-    const SCBrepLoop shellA0({SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
-    const SCBrepLoop shellA1({SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(1, true)});
-    const SCBrepLoop shellB0({SCBrepCoedge(7, false), SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false)});
-    const SCBrepLoop shellB1({SCBrepCoedge(11, false), SCBrepCoedge(12, false), SCBrepCoedge(13, false), SCBrepCoedge(8, true)});
+    const SCBrepLoop shellA0(
+        {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
+    const SCBrepLoop shellA1(
+        {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(1, true)});
+    const SCBrepLoop shellB0(
+        {SCBrepCoedge(7, false), SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false)});
+    const SCBrepLoop shellB1(
+        {SCBrepCoedge(11, false), SCBrepCoedge(12, false), SCBrepCoedge(13, false), SCBrepCoedge(8, true)});
 
     const SCPlaneSurface planeSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
@@ -1263,11 +1297,11 @@ TEST(Healing3dCapabilityTest, AggressiveHealingClosesVertexTouchingEligibleShare
     const SCBrepFace shellBFace1(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()), shellB1);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({shellAFace0, shellAFace1}, false),
-                            SCBrepShell({shellBFace0, shellBFace1}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({shellAFace0, shellAFace1}, false),
+                              SCBrepShell({shellBFace0, shellBFace1}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
     ASSERT_EQ(body.ShellCount(), 2);
 
@@ -1291,23 +1325,23 @@ TEST(Healing3dCapabilityTest, AggressiveHealingClosesVertexTouchingEligibleShare
 TEST(Healing3dCapabilityTest, AggressiveHealingKeepsCompetingPairOpenButClosesVertexTouchShell)
 {
     std::vector<SCBrepVertex> vertices{// Competing shell A.
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
-                                     // Competing shell B shares boundary edge (4,5) with shell A.
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     // Vertex-touch shell C shares only vertex 9 with shell B.
-                                     SCBrepVertex(SCPoint3d{5.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{5.0, 2.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 2.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 2.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
+                                       // Competing shell B shares boundary edge (4,5) with shell A.
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       // Vertex-touch shell C shares only vertex 9 with shell B.
+                                       SCBrepVertex(SCPoint3d{5.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{5.0, 2.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 2.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 2.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -1346,13 +1380,18 @@ TEST(Healing3dCapabilityTest, AggressiveHealingKeepsCompetingPairOpenButClosesVe
     addEdge(13, 14);
     addEdge(14, 11);
 
-    const SCBrepLoop shellA0({SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
-    const SCBrepLoop shellA1({SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(1, true)});
-    const SCBrepLoop shellB0({SCBrepCoedge(7, false), SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false)});
-    const SCBrepLoop shellB1({SCBrepCoedge(11, false), SCBrepCoedge(12, false), SCBrepCoedge(13, false), SCBrepCoedge(8, true)});
+    const SCBrepLoop shellA0(
+        {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
+    const SCBrepLoop shellA1(
+        {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(1, true)});
+    const SCBrepLoop shellB0(
+        {SCBrepCoedge(7, false), SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false)});
+    const SCBrepLoop shellB1(
+        {SCBrepCoedge(11, false), SCBrepCoedge(12, false), SCBrepCoedge(13, false), SCBrepCoedge(8, true)});
     const SCBrepLoop shellC0(
         {SCBrepCoedge(14, false), SCBrepCoedge(15, false), SCBrepCoedge(16, false), SCBrepCoedge(17, false)});
-    const SCBrepLoop shellC1({SCBrepCoedge(18, false), SCBrepCoedge(19, false), SCBrepCoedge(20, false), SCBrepCoedge(15, true)});
+    const SCBrepLoop shellC1(
+        {SCBrepCoedge(18, false), SCBrepCoedge(19, false), SCBrepCoedge(20, false), SCBrepCoedge(15, true)});
 
     const SCPlaneSurface planeSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
@@ -1364,12 +1403,12 @@ TEST(Healing3dCapabilityTest, AggressiveHealingKeepsCompetingPairOpenButClosesVe
     const SCBrepFace faceC1(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()), shellC1);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({faceA0, faceA1}, false),
-                            SCBrepShell({faceB0, faceB1}, false),
-                            SCBrepShell({faceC0, faceC1}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({faceA0, faceA1}, false),
+                              SCBrepShell({faceB0, faceB1}, false),
+                              SCBrepShell({faceC0, faceC1}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
     ASSERT_EQ(body.ShellCount(), 3);
 
@@ -1394,30 +1433,30 @@ TEST(Healing3dCapabilityTest, AggressiveHealingKeepsCompetingPairOpenButClosesVe
 TEST(Healing3dCapabilityTest, AggressiveHealingClosesIndependentAndVertexTouchShellsWhileSkippingCompetingPair)
 {
     std::vector<SCBrepVertex> vertices{// Independent shell.
-                                     SCBrepVertex(SCPoint3d{-4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-3.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-2.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-2.0, 1.0, 0.0}),
-                                     // Competing shell A.
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
-                                     // Competing shell B shares boundary edge (10,11) with shell A.
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     // Vertex-touch shell C shares only vertex 15 with shell B.
-                                     SCBrepVertex(SCPoint3d{5.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{5.0, 2.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 2.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 2.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{-4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-3.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-2.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-2.0, 1.0, 0.0}),
+                                       // Competing shell A.
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
+                                       // Competing shell B shares boundary edge (10,11) with shell A.
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       // Vertex-touch shell C shares only vertex 15 with shell B.
+                                       SCBrepVertex(SCPoint3d{5.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{5.0, 2.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 2.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 2.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -1469,14 +1508,18 @@ TEST(Healing3dCapabilityTest, AggressiveHealingClosesIndependentAndVertexTouchSh
         {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
     const SCBrepLoop independentB(
         {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(1, true)});
-    const SCBrepLoop shellA0({SCBrepCoedge(7, false), SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false)});
-    const SCBrepLoop shellA1({SCBrepCoedge(11, false), SCBrepCoedge(12, false), SCBrepCoedge(13, false), SCBrepCoedge(8, true)});
+    const SCBrepLoop shellA0(
+        {SCBrepCoedge(7, false), SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false)});
+    const SCBrepLoop shellA1(
+        {SCBrepCoedge(11, false), SCBrepCoedge(12, false), SCBrepCoedge(13, false), SCBrepCoedge(8, true)});
     const SCBrepLoop shellB0(
         {SCBrepCoedge(14, false), SCBrepCoedge(15, false), SCBrepCoedge(16, false), SCBrepCoedge(17, false)});
-    const SCBrepLoop shellB1({SCBrepCoedge(18, false), SCBrepCoedge(19, false), SCBrepCoedge(20, false), SCBrepCoedge(15, true)});
+    const SCBrepLoop shellB1(
+        {SCBrepCoedge(18, false), SCBrepCoedge(19, false), SCBrepCoedge(20, false), SCBrepCoedge(15, true)});
     const SCBrepLoop shellC0(
         {SCBrepCoedge(21, false), SCBrepCoedge(22, false), SCBrepCoedge(23, false), SCBrepCoedge(24, false)});
-    const SCBrepLoop shellC1({SCBrepCoedge(25, false), SCBrepCoedge(26, false), SCBrepCoedge(27, false), SCBrepCoedge(22, true)});
+    const SCBrepLoop shellC1(
+        {SCBrepCoedge(25, false), SCBrepCoedge(26, false), SCBrepCoedge(27, false), SCBrepCoedge(22, true)});
 
     const SCPlaneSurface planeSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
@@ -1490,13 +1533,13 @@ TEST(Healing3dCapabilityTest, AggressiveHealingClosesIndependentAndVertexTouchSh
     const SCBrepFace faceC1(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()), shellC1);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({independentFaceA, independentFaceB}, false),
-                            SCBrepShell({faceA0, faceA1}, false),
-                            SCBrepShell({faceB0, faceB1}, false),
-                            SCBrepShell({faceC0, faceC1}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({independentFaceA, independentFaceB}, false),
+                              SCBrepShell({faceA0, faceA1}, false),
+                              SCBrepShell({faceB0, faceB1}, false),
+                              SCBrepShell({faceC0, faceC1}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
     ASSERT_EQ(body.ShellCount(), 4);
 
@@ -1524,28 +1567,28 @@ TEST(Healing3dCapabilityTest, AggressiveHealingClosesIndependentAndVertexTouchSh
 TEST(Healing3dCapabilityTest, AggressiveHealingKeepsClosedShellAndCompetingPairWhileClosingVertexTouchShell)
 {
     std::vector<SCBrepVertex> vertices{// Closed shell.
-                                     SCBrepVertex(SCPoint3d{-4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-3.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{-4.0, 1.0, 0.0}),
-                                     // Competing shell A.
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
-                                     // Competing shell B shares boundary edge (8,9) with shell A.
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     // Vertex-touch shell C shares only vertex 13 with shell B.
-                                     SCBrepVertex(SCPoint3d{5.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{5.0, 2.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 2.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 2.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{-4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-3.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{-4.0, 1.0, 0.0}),
+                                       // Competing shell A.
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
+                                       // Competing shell B shares boundary edge (8,9) with shell A.
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       // Vertex-touch shell C shares only vertex 13 with shell B.
+                                       SCBrepVertex(SCPoint3d{5.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{5.0, 2.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 2.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 2.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -1594,14 +1637,18 @@ TEST(Healing3dCapabilityTest, AggressiveHealingKeepsClosedShellAndCompetingPairW
         {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
     const SCBrepLoop closedOuterReversed(
         {SCBrepCoedge(3, true), SCBrepCoedge(2, true), SCBrepCoedge(1, true), SCBrepCoedge(0, true)});
-    const SCBrepLoop shellA0({SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
-    const SCBrepLoop shellA1({SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false), SCBrepCoedge(5, true)});
+    const SCBrepLoop shellA0(
+        {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
+    const SCBrepLoop shellA1(
+        {SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false), SCBrepCoedge(5, true)});
     const SCBrepLoop shellB0(
         {SCBrepCoedge(11, false), SCBrepCoedge(12, false), SCBrepCoedge(13, false), SCBrepCoedge(14, false)});
-    const SCBrepLoop shellB1({SCBrepCoedge(15, false), SCBrepCoedge(16, false), SCBrepCoedge(17, false), SCBrepCoedge(12, true)});
+    const SCBrepLoop shellB1(
+        {SCBrepCoedge(15, false), SCBrepCoedge(16, false), SCBrepCoedge(17, false), SCBrepCoedge(12, true)});
     const SCBrepLoop shellC0(
         {SCBrepCoedge(18, false), SCBrepCoedge(19, false), SCBrepCoedge(20, false), SCBrepCoedge(21, false)});
-    const SCBrepLoop shellC1({SCBrepCoedge(22, false), SCBrepCoedge(23, false), SCBrepCoedge(24, false), SCBrepCoedge(19, true)});
+    const SCBrepLoop shellC1(
+        {SCBrepCoedge(22, false), SCBrepCoedge(23, false), SCBrepCoedge(24, false), SCBrepCoedge(19, true)});
 
     const SCPlaneSurface planeSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
@@ -1615,13 +1662,13 @@ TEST(Healing3dCapabilityTest, AggressiveHealingKeepsClosedShellAndCompetingPairW
     const SCBrepFace faceC1(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()), shellC1);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({closedFaceA, closedFaceB}, true),
-                            SCBrepShell({faceA0, faceA1}, false),
-                            SCBrepShell({faceB0, faceB1}, false),
-                            SCBrepShell({faceC0, faceC1}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({closedFaceA, closedFaceB}, true),
+                              SCBrepShell({faceA0, faceA1}, false),
+                              SCBrepShell({faceB0, faceB1}, false),
+                              SCBrepShell({faceC0, faceC1}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
     ASSERT_EQ(body.ShellCount(), 4);
 
@@ -1647,13 +1694,13 @@ TEST(Healing3dCapabilityTest, AggressiveHealingKeepsClosedShellAndCompetingPairW
 TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseRecoverableHoledOpenShell)
 {
     std::vector<SCBrepVertex> vertices{SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 4.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 4.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 3.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 3.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 4.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 4.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 3.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 3.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -1674,8 +1721,10 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseRecoverableHoledOpenShell
     addEdge(6, 7);
     addEdge(7, 4);
 
-    const SCBrepLoop outerLoop({SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
-    const SCBrepLoop holeLoop({SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
+    const SCBrepLoop outerLoop(
+        {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
+    const SCBrepLoop holeLoop(
+        {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
 
     const SCPlaneSurface planeSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
@@ -1697,13 +1746,13 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCanCloseRecoverableHoledOpenShell
 TEST(Healing3dCapabilityTest, AggressiveHealingCompositeHoledOpenShellWithMissingTrims)
 {
     std::vector<SCBrepVertex> vertices{SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 4.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 4.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 3.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 3.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 4.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 4.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 3.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 3.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -1723,8 +1772,10 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCompositeHoledOpenShellWithMissin
     addEdge(6, 7);
     addEdge(7, 4);
 
-    const SCBrepLoop outerLoop({SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
-    const SCBrepLoop holeLoop({SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
+    const SCBrepLoop outerLoop(
+        {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
+    const SCBrepLoop holeLoop(
+        {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
     const SCPlaneSurface planeSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
 
@@ -1751,15 +1802,15 @@ TEST(Healing3dCapabilityTest, AggressiveHealingCompositeHoledOpenShellWithMissin
 TEST(Healing3dCapabilityTest, AggressiveHealingClosesMultipleOpenShells)
 {
     std::vector<SCBrepVertex> vertices{// Shell A
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     // Shell B
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       // Shell B
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -1782,8 +1833,10 @@ TEST(Healing3dCapabilityTest, AggressiveHealingClosesMultipleOpenShells)
     addEdge(6, 7);
     addEdge(7, 4);
 
-    const SCBrepLoop loopA({SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
-    const SCBrepLoop loopB({SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
+    const SCBrepLoop loopA(
+        {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
+    const SCBrepLoop loopB(
+        {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
     const SCPlaneSurface planeSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
 
@@ -1809,15 +1862,15 @@ TEST(Healing3dCapabilityTest, AggressiveHealingClosesMultipleOpenShells)
 TEST(Healing3dCapabilityTest, AggressiveHealingPreservesClosedShellAndClosesOpenShell)
 {
     std::vector<SCBrepVertex> vertices{// Closed shell vertices
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     // Open shell vertices
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       // Open shell vertices
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -1844,7 +1897,8 @@ TEST(Healing3dCapabilityTest, AggressiveHealingPreservesClosedShellAndClosesOpen
         {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
     const SCBrepLoop closedOuterReversed(
         {SCBrepCoedge(3, true), SCBrepCoedge(2, true), SCBrepCoedge(1, true), SCBrepCoedge(0, true)});
-    const SCBrepLoop openOuter({SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
+    const SCBrepLoop openOuter(
+        {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
 
     const SCPlaneSurface planeSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
@@ -1875,15 +1929,15 @@ TEST(Healing3dCapabilityTest, AggressiveHealingPreservesClosedShellAndClosesOpen
 TEST(Healing3dCapabilityTest, AggressiveHealingPartiallyRepairsMixedOpenShells)
 {
     std::vector<SCBrepVertex> vertices{// Planar open shell (eligible)
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     // Non-planar open shell (ineligible for aggressive closure)
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.1}),
-                                     SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       // Non-planar open shell (ineligible for aggressive closure)
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.1}),
+                                       SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -1906,7 +1960,8 @@ TEST(Healing3dCapabilityTest, AggressiveHealingPartiallyRepairsMixedOpenShells)
     addEdge(6, 7);
     addEdge(7, 4);
 
-    const SCBrepLoop planarLoop({SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
+    const SCBrepLoop planarLoop(
+        {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
     const SCBrepLoop nonPlanarLoop(
         {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
 
@@ -1917,7 +1972,8 @@ TEST(Healing3dCapabilityTest, AggressiveHealingPartiallyRepairsMixedOpenShells)
 
     const SCBrepFace planarFace(std::shared_ptr<ISCSurface>(planarSurface.Clone().release()), planarLoop);
     const SCBrepFace nonPlanarFace(std::shared_ptr<ISCSurface>(nonPlanarSupport.Clone().release()), nonPlanarLoop);
-    const SCBrepBody mixedOpenBody(vertices, edges, {SCBrepShell({planarFace}, false), SCBrepShell({nonPlanarFace}, false)});
+    const SCBrepBody mixedOpenBody(
+        vertices, edges, {SCBrepShell({planarFace}, false), SCBrepShell({nonPlanarFace}, false)});
     ASSERT_TRUE(mixedOpenBody.IsValid());
     ASSERT_FALSE(mixedOpenBody.ShellAt(0).IsClosed());
     ASSERT_FALSE(mixedOpenBody.ShellAt(1).IsClosed());
@@ -1936,11 +1992,11 @@ TEST(Healing3dCapabilityTest, AggressiveHealingPartiallyRepairsMixedOpenShells)
 TEST(Healing3dCapabilityTest, AggressiveHealingRejectsNonPlanarSharedEdgeShellForBoundaryCap)
 {
     std::vector<SCBrepVertex> vertices{SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{2.0, 0.0, 0.5}),
-                                     SCBrepVertex(SCPoint3d{2.0, 1.0, 0.5})};
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0, 0.0, 0.5}),
+                                       SCBrepVertex(SCPoint3d{2.0, 1.0, 0.5})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -1960,8 +2016,10 @@ TEST(Healing3dCapabilityTest, AggressiveHealingRejectsNonPlanarSharedEdgeShellFo
     addEdge(4, 5);
     addEdge(5, 2);
 
-    const SCBrepLoop firstLoop({SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
-    const SCBrepLoop secondLoop({SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(1, true)});
+    const SCBrepLoop firstLoop(
+        {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
+    const SCBrepLoop secondLoop(
+        {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(1, true)});
 
     const SCPlaneSurface firstSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
@@ -1991,20 +2049,20 @@ TEST(Healing3dCapabilityTest, AggressiveHealingRejectsNonPlanarSharedEdgeShellFo
 TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellMixedDeterministicBehavior)
 {
     std::vector<SCBrepVertex> vertices{// Closed shell vertices
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     // Eligible open shell vertices
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
-                                     // Ineligible open shell vertices
-                                     SCBrepVertex(SCPoint3d{6.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 1.0, 0.15}),
-                                     SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       // Eligible open shell vertices
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
+                                       // Ineligible open shell vertices
+                                       SCBrepVertex(SCPoint3d{6.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 1.0, 0.15}),
+                                       SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -2052,12 +2110,12 @@ TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellMixedDeterministicBehav
     const SCBrepFace ineligibleFace(std::shared_ptr<ISCSurface>(ineligibleSupport.Clone().release()), ineligibleOpen);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({closedFaceA, closedFaceB}, true),
-                            SCBrepShell({eligibleFace}, false),
-                            SCBrepShell({ineligibleFace}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({closedFaceA, closedFaceB}, true),
+                              SCBrepShell({eligibleFace}, false),
+                              SCBrepShell({ineligibleFace}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
     ASSERT_EQ(body.ShellCount(), 3);
     ASSERT_TRUE(body.ShellAt(0).IsClosed());
@@ -2082,20 +2140,20 @@ TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellMixedDeterministicBehav
 TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellMixedWithEligibleTrimBackfill)
 {
     std::vector<SCBrepVertex> vertices{// Closed shell vertices
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     // Eligible open shell vertices
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
-                                     // Ineligible open shell vertices
-                                     SCBrepVertex(SCPoint3d{6.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 1.0, 0.12}),
-                                     SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       // Eligible open shell vertices
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
+                                       // Ineligible open shell vertices
+                                       SCBrepVertex(SCPoint3d{6.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 1.0, 0.12}),
+                                       SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -2145,12 +2203,12 @@ TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellMixedWithEligibleTrimBa
     const SCBrepFace ineligibleFace(std::shared_ptr<ISCSurface>(ineligibleSupport.Clone().release()), ineligibleOpen);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({closedFaceA, closedFaceB}, true),
-                            SCBrepShell({eligibleFace}, false),
-                            SCBrepShell({ineligibleFace}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({closedFaceA, closedFaceB}, true),
+                              SCBrepShell({eligibleFace}, false),
+                              SCBrepShell({ineligibleFace}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
 
     const BrepHealing3d healed = Heal(body, SCGeometryTolerance3d{}, HealingPolicy3d::Aggressive);
@@ -2170,22 +2228,22 @@ TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellMixedWithEligibleTrimBa
 TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellWithEligibleMultiFaceOpenSheet)
 {
     std::vector<SCBrepVertex> vertices{// Closed shell vertices
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     // Eligible open-sheet vertices (two faces)
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{5.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{5.0, 1.0, 0.0}),
-                                     // Ineligible open shell vertices
-                                     SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{8.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{8.0, 1.0, 0.14}),
-                                     SCBrepVertex(SCPoint3d{7.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       // Eligible open-sheet vertices (two faces)
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{5.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{5.0, 1.0, 0.0}),
+                                       // Ineligible open shell vertices
+                                       SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{8.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{8.0, 1.0, 0.14}),
+                                       SCBrepVertex(SCPoint3d{7.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -2221,7 +2279,8 @@ TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellWithEligibleMultiFaceOp
         {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
     const SCBrepLoop closedOuterReversed(
         {SCBrepCoedge(3, true), SCBrepCoedge(2, true), SCBrepCoedge(1, true), SCBrepCoedge(0, true)});
-    const SCBrepLoop eligibleA({SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
+    const SCBrepLoop eligibleA(
+        {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
     const SCBrepLoop eligibleB(
         {SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false), SCBrepCoedge(11, false)});
     const SCBrepLoop ineligibleLoop(
@@ -2239,12 +2298,12 @@ TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellWithEligibleMultiFaceOp
     const SCBrepFace ineligibleFace(std::shared_ptr<ISCSurface>(ineligibleSupport.Clone().release()), ineligibleLoop);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({closedFaceA, closedFaceB}, true),
-                            SCBrepShell({eligibleFaceA, eligibleFaceB}, false),
-                            SCBrepShell({ineligibleFace}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({closedFaceA, closedFaceB}, true),
+                              SCBrepShell({eligibleFaceA, eligibleFaceB}, false),
+                              SCBrepShell({ineligibleFace}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
     ASSERT_EQ(body.FaceCount(), 5);
 
@@ -2265,24 +2324,24 @@ TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellWithEligibleMultiFaceOp
 TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellWithEligibleHoledShellAndMissingTrims)
 {
     std::vector<SCBrepVertex> vertices{// Closed shell vertices
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     // Eligible holed open shell vertices
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 4.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 4.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 3.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 3.0, 0.0}),
-                                     // Ineligible open shell vertices
-                                     SCBrepVertex(SCPoint3d{9.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{10.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{10.0, 1.0, 0.15}),
-                                     SCBrepVertex(SCPoint3d{9.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       // Eligible holed open shell vertices
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 4.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 4.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 3.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 3.0, 0.0}),
+                                       // Ineligible open shell vertices
+                                       SCBrepVertex(SCPoint3d{9.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{10.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{10.0, 1.0, 0.15}),
+                                       SCBrepVertex(SCPoint3d{9.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -2338,12 +2397,12 @@ TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellWithEligibleHoledShellA
     const SCBrepFace ineligibleFace(std::shared_ptr<ISCSurface>(ineligibleSupport.Clone().release()), ineligibleLoop);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({closedFaceA, closedFaceB}, true),
-                            SCBrepShell({eligibleHoledFace}, false),
-                            SCBrepShell({ineligibleFace}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({closedFaceA, closedFaceB}, true),
+                              SCBrepShell({eligibleHoledFace}, false),
+                              SCBrepShell({ineligibleFace}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
 
     const BrepHealing3d healed = Heal(body, SCGeometryTolerance3d{}, HealingPolicy3d::Aggressive);
@@ -2367,29 +2426,29 @@ TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellWithEligibleHoledShellA
 TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellEligibleMultiFaceHoledMissingTrims)
 {
     std::vector<SCBrepVertex> vertices{// Closed shell vertices
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     // Eligible face A (holed)
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 4.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 4.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 3.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 3.0, 0.0}),
-                                     // Eligible face B (plain)
-                                     SCBrepVertex(SCPoint3d{8.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{9.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{9.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{8.0, 1.0, 0.0}),
-                                     // Ineligible shell
-                                     SCBrepVertex(SCPoint3d{11.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{12.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{12.0, 1.0, 0.13}),
-                                     SCBrepVertex(SCPoint3d{11.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       // Eligible face A (holed)
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 4.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 4.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 3.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 3.0, 0.0}),
+                                       // Eligible face B (plain)
+                                       SCBrepVertex(SCPoint3d{8.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{9.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{9.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{8.0, 1.0, 0.0}),
+                                       // Ineligible shell
+                                       SCBrepVertex(SCPoint3d{11.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{12.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{12.0, 1.0, 0.13}),
+                                       SCBrepVertex(SCPoint3d{11.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -2452,12 +2511,12 @@ TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellEligibleMultiFaceHoledM
     const SCBrepFace ineligibleFace(std::shared_ptr<ISCSurface>(ineligibleSupport.Clone().release()), ineligibleLoop);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({closedFaceA, closedFaceB}, true),
-                            SCBrepShell({eligibleFaceA, eligibleFaceB}, false),
-                            SCBrepShell({ineligibleFace}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({closedFaceA, closedFaceB}, true),
+                              SCBrepShell({eligibleFaceA, eligibleFaceB}, false),
+                              SCBrepShell({ineligibleFace}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
 
     const BrepHealing3d healed = Heal(body, SCGeometryTolerance3d{}, HealingPolicy3d::Aggressive);
@@ -2480,29 +2539,29 @@ TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellEligibleMultiFaceHoledM
 TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellEligibleMultiFaceBothTrimsMissing)
 {
     std::vector<SCBrepVertex> vertices{// Closed shell vertices
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     // Eligible face A (holed)
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 4.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 4.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 3.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 3.0, 0.0}),
-                                     // Eligible face B (plain)
-                                     SCBrepVertex(SCPoint3d{8.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{9.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{9.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{8.0, 1.0, 0.0}),
-                                     // Ineligible shell
-                                     SCBrepVertex(SCPoint3d{11.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{12.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{12.0, 1.0, 0.11}),
-                                     SCBrepVertex(SCPoint3d{11.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       // Eligible face A (holed)
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 4.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 4.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 3.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 3.0, 0.0}),
+                                       // Eligible face B (plain)
+                                       SCBrepVertex(SCPoint3d{8.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{9.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{9.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{8.0, 1.0, 0.0}),
+                                       // Ineligible shell
+                                       SCBrepVertex(SCPoint3d{11.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{12.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{12.0, 1.0, 0.11}),
+                                       SCBrepVertex(SCPoint3d{11.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -2566,12 +2625,12 @@ TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellEligibleMultiFaceBothTr
     const SCBrepFace ineligibleFace(std::shared_ptr<ISCSurface>(ineligibleSupport.Clone().release()), ineligibleLoop);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({closedFaceA, closedFaceB}, true),
-                            SCBrepShell({eligibleFaceA, eligibleFaceB}, false),
-                            SCBrepShell({ineligibleFace}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({closedFaceA, closedFaceB}, true),
+                              SCBrepShell({eligibleFaceA, eligibleFaceB}, false),
+                              SCBrepShell({ineligibleFace}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
 
     const BrepHealing3d healed = Heal(body, SCGeometryTolerance3d{}, HealingPolicy3d::Aggressive);
@@ -2595,29 +2654,29 @@ TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellEligibleMultiFaceBothTr
 TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellEligibleMultiFaceHoledSupportPlaneMismatch)
 {
     std::vector<SCBrepVertex> vertices{// Closed shell vertices
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     // Eligible face A (holed)
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 4.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 4.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 3.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 3.0, 0.0}),
-                                     // Eligible face B (plain)
-                                     SCBrepVertex(SCPoint3d{8.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{9.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{9.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{8.0, 1.0, 0.0}),
-                                     // Ineligible shell
-                                     SCBrepVertex(SCPoint3d{11.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{12.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{12.0, 1.0, 0.10}),
-                                     SCBrepVertex(SCPoint3d{11.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       // Eligible face A (holed)
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 4.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 4.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 3.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 3.0, 0.0}),
+                                       // Eligible face B (plain)
+                                       SCBrepVertex(SCPoint3d{8.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{9.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{9.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{8.0, 1.0, 0.0}),
+                                       // Ineligible shell
+                                       SCBrepVertex(SCPoint3d{11.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{12.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{12.0, 1.0, 0.10}),
+                                       SCBrepVertex(SCPoint3d{11.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -2678,18 +2737,20 @@ TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellEligibleMultiFaceHoledS
 
     const SCBrepFace closedFaceA(std::shared_ptr<ISCSurface>(closedSurface.Clone().release()), closedOuter);
     const SCBrepFace closedFaceB(std::shared_ptr<ISCSurface>(closedSurface.Clone().release()), closedOuterReversed);
-    const SCBrepFace eligibleFaceA(
-        std::shared_ptr<ISCSurface>(eligibleMismatchedSurface.Clone().release()), eligibleHoledOuter, {eligibleHoledHole});
-    const SCBrepFace eligibleFaceB(std::shared_ptr<ISCSurface>(eligibleMismatchedSurface.Clone().release()), eligiblePlain);
+    const SCBrepFace eligibleFaceA(std::shared_ptr<ISCSurface>(eligibleMismatchedSurface.Clone().release()),
+                                   eligibleHoledOuter,
+                                   {eligibleHoledHole});
+    const SCBrepFace eligibleFaceB(std::shared_ptr<ISCSurface>(eligibleMismatchedSurface.Clone().release()),
+                                   eligiblePlain);
     const SCBrepFace ineligibleFace(std::shared_ptr<ISCSurface>(ineligibleSupport.Clone().release()), ineligibleLoop);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({closedFaceA, closedFaceB}, true),
-                            SCBrepShell({eligibleFaceA, eligibleFaceB}, false),
-                            SCBrepShell({ineligibleFace}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({closedFaceA, closedFaceB}, true),
+                              SCBrepShell({eligibleFaceA, eligibleFaceB}, false),
+                              SCBrepShell({ineligibleFace}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
 
     const BrepHealing3d healed = Heal(body, SCGeometryTolerance3d{}, HealingPolicy3d::Aggressive);
@@ -2711,22 +2772,22 @@ TEST(Healing3dCapabilityTest, AggressiveHealingThreeShellEligibleMultiFaceHoledS
 TEST(Healing3dCapabilityTest, AggressiveHealingMixedSupportMismatchWithIneligibleMultiFaceShell)
 {
     std::vector<SCBrepVertex> vertices{// Closed shell
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     // Eligible open shell
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
-                                     // Ineligible multi-face shell
-                                     SCBrepVertex(SCPoint3d{6.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{8.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{8.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       // Eligible open shell
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
+                                       // Ineligible multi-face shell
+                                       SCBrepVertex(SCPoint3d{6.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{8.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{8.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -2782,12 +2843,12 @@ TEST(Healing3dCapabilityTest, AggressiveHealingMixedSupportMismatchWithIneligibl
     const SCBrepFace ineligibleFaceB(std::shared_ptr<ISCSurface>(ineligibleSurface.Clone().release()), ineligibleB);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({closedFaceA, closedFaceB}, true),
-                            SCBrepShell({eligibleFace}, false),
-                            SCBrepShell({ineligibleFaceA, ineligibleFaceB}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({closedFaceA, closedFaceB}, true),
+                              SCBrepShell({eligibleFace}, false),
+                              SCBrepShell({ineligibleFaceA, ineligibleFaceB}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
     ASSERT_EQ(body.FaceCount(), 5);
 
@@ -2809,22 +2870,22 @@ TEST(Healing3dCapabilityTest, AggressiveHealingMixedSupportMismatchWithIneligibl
 TEST(Healing3dCapabilityTest, AggressiveHealingMixedSupportMismatchWithTrimBackfillAndIneligibleMultiFace)
 {
     std::vector<SCBrepVertex> vertices{// Closed shell
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     // Eligible open shell
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
-                                     // Ineligible multi-face shell
-                                     SCBrepVertex(SCPoint3d{6.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{8.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{8.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       // Eligible open shell
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
+                                       // Ineligible multi-face shell
+                                       SCBrepVertex(SCPoint3d{6.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{8.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{8.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -2882,12 +2943,12 @@ TEST(Healing3dCapabilityTest, AggressiveHealingMixedSupportMismatchWithTrimBackf
     const SCBrepFace ineligibleFaceB(std::shared_ptr<ISCSurface>(ineligibleSurface.Clone().release()), ineligibleB);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({closedFaceA, closedFaceB}, true),
-                            SCBrepShell({eligibleFace}, false),
-                            SCBrepShell({ineligibleFaceA, ineligibleFaceB}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({closedFaceA, closedFaceB}, true),
+                              SCBrepShell({eligibleFace}, false),
+                              SCBrepShell({ineligibleFaceA, ineligibleFaceB}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
 
     const BrepHealing3d healed = Heal(body, SCGeometryTolerance3d{}, HealingPolicy3d::Aggressive);
@@ -2914,26 +2975,26 @@ TEST(Healing3dCapabilityTest, AggressiveHealingMixedSupportMismatchWithTrimBackf
 TEST(Healing3dCapabilityTest, AggressiveHealingSupportMismatchHoledEligibleWithIneligibleMultiFace)
 {
     std::vector<SCBrepVertex> vertices{// Closed shell
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     // Eligible holed shell
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 4.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 4.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 3.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 3.0, 0.0}),
-                                     // Ineligible multi-face shell
-                                     SCBrepVertex(SCPoint3d{9.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{10.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{10.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{9.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{11.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{11.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       // Eligible holed shell
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 4.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 4.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 3.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 3.0, 0.0}),
+                                       // Ineligible multi-face shell
+                                       SCBrepVertex(SCPoint3d{9.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{10.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{10.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{9.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{11.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{11.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -2997,12 +3058,12 @@ TEST(Healing3dCapabilityTest, AggressiveHealingSupportMismatchHoledEligibleWithI
     const SCBrepFace ineligibleFaceB(std::shared_ptr<ISCSurface>(ineligibleSurface.Clone().release()), ineligibleB);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({closedFaceA, closedFaceB}, true),
-                            SCBrepShell({eligibleFace}, false),
-                            SCBrepShell({ineligibleFaceA, ineligibleFaceB}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({closedFaceA, closedFaceB}, true),
+                              SCBrepShell({eligibleFace}, false),
+                              SCBrepShell({ineligibleFaceA, ineligibleFaceB}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
 
     const BrepHealing3d healed = Heal(body, SCGeometryTolerance3d{}, HealingPolicy3d::Aggressive);
@@ -3029,31 +3090,31 @@ TEST(Healing3dCapabilityTest, AggressiveHealingSupportMismatchHoledEligibleWithI
 TEST(Healing3dCapabilityTest, AggressiveHealingSupportMismatchEligibleMultiFaceMissingTrimsWithIneligibleMultiFace)
 {
     std::vector<SCBrepVertex> vertices{// Closed shell
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     // Eligible multi-face shell: face A holed
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 4.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 4.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 3.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 3.0, 0.0}),
-                                     // Eligible face B plain
-                                     SCBrepVertex(SCPoint3d{8.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{9.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{9.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{8.0, 1.0, 0.0}),
-                                     // Ineligible multi-face shell
-                                     SCBrepVertex(SCPoint3d{11.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{12.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{12.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{11.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{13.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{13.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       // Eligible multi-face shell: face A holed
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 4.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 4.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 3.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 3.0, 0.0}),
+                                       // Eligible face B plain
+                                       SCBrepVertex(SCPoint3d{8.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{9.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{9.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{8.0, 1.0, 0.0}),
+                                       // Ineligible multi-face shell
+                                       SCBrepVertex(SCPoint3d{11.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{12.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{12.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{11.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{13.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{13.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -3126,12 +3187,12 @@ TEST(Healing3dCapabilityTest, AggressiveHealingSupportMismatchEligibleMultiFaceM
     const SCBrepFace ineligibleFaceB(std::shared_ptr<ISCSurface>(ineligibleSurface.Clone().release()), ineligibleB);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({closedFaceA, closedFaceB}, true),
-                            SCBrepShell({eligibleFaceA, eligibleFaceB}, false),
-                            SCBrepShell({ineligibleFaceA, ineligibleFaceB}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({closedFaceA, closedFaceB}, true),
+                              SCBrepShell({eligibleFaceA, eligibleFaceB}, false),
+                              SCBrepShell({ineligibleFaceA, ineligibleFaceB}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
 
     const BrepHealing3d healed = Heal(body, SCGeometryTolerance3d{}, HealingPolicy3d::Aggressive);
@@ -3155,7 +3216,7 @@ TEST(Healing3dCapabilityTest, AggressiveHealingSupportMismatchEligibleMultiFaceM
 }
 
 // Demonstrates conservative trim backfill for a SCBrepFace whose support plane
-// has a non-horizontal (vertically-oriented) normal é—?the y=0 plane with
+// has a non-horizontal (vertically-oriented) normal é—‚?the y=0 plane with
 // normal (0,1,0). This narrows the
 // NonPlanarTrimmedFaceTopologyRepairRemainsOpen gap to the subset: single
 // axis-non-horizontal planar face with missing trim.
@@ -3163,33 +3224,34 @@ TEST(Healing3dCapabilityTest, NonHorizontalPlaneBrepFaceWithoutTrimIsHealedWithB
 {
     // Vertices on the y=0 plane (vertical face, normal = +y).
     std::vector<SCBrepVertex> vertices{SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 1.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 1.0})};
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 1.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 1.0})};
 
     std::vector<SCBrepEdge> edges;
-    edges.emplace_back(
-        std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-            SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{1.0, 0.0, 0.0}), SCIntervald{0.0, 1.0})),
-        0,
-        1);
-    edges.emplace_back(
-        std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-            SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}), SCIntervald{0.0, 1.0})),
-        1,
-        2);
-    edges.emplace_back(
-        std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-            SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 0.0, 1.0}, SCVector3d{-1.0, 0.0, 0.0}), SCIntervald{0.0, 1.0})),
-        2,
-        3);
-    edges.emplace_back(
-        std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-            SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 0.0, 1.0}, SCVector3d{0.0, 0.0, -1.0}), SCIntervald{0.0, 1.0})),
-        3,
-        0);
+    edges.emplace_back(std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
+                           SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{1.0, 0.0, 0.0}),
+                           SCIntervald{0.0, 1.0})),
+                       0,
+                       1);
+    edges.emplace_back(std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
+                           SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}),
+                           SCIntervald{0.0, 1.0})),
+                       1,
+                       2);
+    edges.emplace_back(std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
+                           SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 0.0, 1.0}, SCVector3d{-1.0, 0.0, 0.0}),
+                           SCIntervald{0.0, 1.0})),
+                       2,
+                       3);
+    edges.emplace_back(std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
+                           SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 0.0, 1.0}, SCVector3d{0.0, 0.0, -1.0}),
+                           SCIntervald{0.0, 1.0})),
+                       3,
+                       0);
 
-    const SCBrepLoop outerLoop({SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
+    const SCBrepLoop outerLoop(
+        {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
 
     // Support plane: y=0, normal pointing in +y direction.
     const SCPlaneSurface verticalSurface =
@@ -3218,33 +3280,34 @@ TEST(Healing3dCapabilityTest, XNormalPlaneBrepFaceWithoutTrimIsHealedWithBackfil
 {
     // Vertices on the x=0 plane (vertical face, normal = +x).
     std::vector<SCBrepVertex> vertices{SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 1.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 1.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 1.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 1.0})};
 
     std::vector<SCBrepEdge> edges;
-    edges.emplace_back(
-        std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-            SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 1.0, 0.0}), SCIntervald{0.0, 1.0})),
-        0,
-        1);
-    edges.emplace_back(
-        std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-            SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 1.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}), SCIntervald{0.0, 1.0})),
-        1,
-        2);
-    edges.emplace_back(
-        std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-            SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 1.0, 1.0}, SCVector3d{0.0, -1.0, 0.0}), SCIntervald{0.0, 1.0})),
-        2,
-        3);
-    edges.emplace_back(
-        std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-            SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 0.0, 1.0}, SCVector3d{0.0, 0.0, -1.0}), SCIntervald{0.0, 1.0})),
-        3,
-        0);
+    edges.emplace_back(std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
+                           SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 1.0, 0.0}),
+                           SCIntervald{0.0, 1.0})),
+                       0,
+                       1);
+    edges.emplace_back(std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
+                           SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 1.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}),
+                           SCIntervald{0.0, 1.0})),
+                       1,
+                       2);
+    edges.emplace_back(std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
+                           SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 1.0, 1.0}, SCVector3d{0.0, -1.0, 0.0}),
+                           SCIntervald{0.0, 1.0})),
+                       2,
+                       3);
+    edges.emplace_back(std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
+                           SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 0.0, 1.0}, SCVector3d{0.0, 0.0, -1.0}),
+                           SCIntervald{0.0, 1.0})),
+                       3,
+                       0);
 
-    const SCBrepLoop outerLoop({SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
+    const SCBrepLoop outerLoop(
+        {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
 
     // Support plane: x=0, normal pointing in +x direction.
     const SCPlaneSurface xNormalSurface =
@@ -3271,33 +3334,34 @@ TEST(Healing3dCapabilityTest, ObliquePlaneBrepFaceWithoutTrimIsHealedWithBackfil
 {
     // All vertices lie on x+y+z=0.
     std::vector<SCBrepVertex> vertices{SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, -1.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, -2.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, -1.0})};
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, -1.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, -2.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, -1.0})};
 
     std::vector<SCBrepEdge> edges;
-    edges.emplace_back(
-        std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-            SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{1.0, 0.0, -1.0}), SCIntervald{0.0, 1.0})),
-        0,
-        1);
-    edges.emplace_back(
-        std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-            SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 0.0, -1.0}, SCVector3d{0.0, 1.0, -1.0}), SCIntervald{0.0, 1.0})),
-        1,
-        2);
-    edges.emplace_back(
-        std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-            SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 1.0, -2.0}, SCVector3d{-1.0, 0.0, 1.0}), SCIntervald{0.0, 1.0})),
-        2,
-        3);
-    edges.emplace_back(
-        std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-            SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 1.0, -1.0}, SCVector3d{0.0, -1.0, 1.0}), SCIntervald{0.0, 1.0})),
-        3,
-        0);
+    edges.emplace_back(std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
+                           SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{1.0, 0.0, -1.0}),
+                           SCIntervald{0.0, 1.0})),
+                       0,
+                       1);
+    edges.emplace_back(std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
+                           SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 0.0, -1.0}, SCVector3d{0.0, 1.0, -1.0}),
+                           SCIntervald{0.0, 1.0})),
+                       1,
+                       2);
+    edges.emplace_back(std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
+                           SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 1.0, -2.0}, SCVector3d{-1.0, 0.0, 1.0}),
+                           SCIntervald{0.0, 1.0})),
+                       2,
+                       3);
+    edges.emplace_back(std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
+                           SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 1.0, -1.0}, SCVector3d{0.0, -1.0, 1.0}),
+                           SCIntervald{0.0, 1.0})),
+                       3,
+                       0);
 
-    const SCBrepLoop outerLoop({SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
+    const SCBrepLoop outerLoop(
+        {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
 
     const SCPlaneSurface obliqueSurface =
         SCPlaneSurface::FromPlane(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{1.0, 1.0, 1.0}));
@@ -3317,34 +3381,34 @@ TEST(Healing3dCapabilityTest, ObliquePlaneBrepFaceWithoutTrimIsHealedWithBackfil
     ASSERT_EQ(healedFace.OuterTrim().PointCount(), 4);
 }
 
-// Demonstrates aggressive healing handles a four-shell body é—?one closed plus
-// two independent eligible single-face open shells plus one ineligible é—?and
+// Demonstrates aggressive healing handles a four-shell body é—‚?one closed plus
+// two independent eligible single-face open shells plus one ineligible é—‚?and
 // closes exactly the two eligible shells, leaving the closed and ineligible
 // shells unchanged. Narrows the AggressiveShellRepairPolicyRemainsOpen gap to
 // the four-shell two-eligible-plus-one-ineligible subset.
 TEST(Healing3dCapabilityTest, AggressiveFourShellTwoEligibleOneIneligibleDeterministicBehavior)
 {
     std::vector<SCBrepVertex> vertices{// Shell 0: closed (2-face, z=0)
-                                     SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                     // Shell 1: eligible single-face open (z=0)
-                                     SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
-                                     // Shell 2: eligible single-face open (z=0)
-                                     SCBrepVertex(SCPoint3d{6.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{7.0, 1.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
-                                     // Shell 3: ineligible é—?vertex 14 has z-offset (not on z=0 support
-                                     // plane)
-                                     SCBrepVertex(SCPoint3d{9.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{10.0, 0.0, 0.0}),
-                                     SCBrepVertex(SCPoint3d{10.0, 1.0, 0.15}),
-                                     SCBrepVertex(SCPoint3d{9.0, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
+                                       // Shell 1: eligible single-face open (z=0)
+                                       SCBrepVertex(SCPoint3d{3.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{4.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{3.0, 1.0, 0.0}),
+                                       // Shell 2: eligible single-face open (z=0)
+                                       SCBrepVertex(SCPoint3d{6.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{7.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{6.0, 1.0, 0.0}),
+                                       // Shell 3: ineligible é—‚?vertex 14 has z-offset (not on z=0 support
+                                       // plane)
+                                       SCBrepVertex(SCPoint3d{9.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{10.0, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{10.0, 1.0, 0.15}),
+                                       SCBrepVertex(SCPoint3d{9.0, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {
@@ -3375,8 +3439,10 @@ TEST(Healing3dCapabilityTest, AggressiveFourShellTwoEligibleOneIneligibleDetermi
 
     const SCBrepLoop closedOuter(
         {SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)});
-    const SCBrepLoop closedReversed({SCBrepCoedge(3, true), SCBrepCoedge(2, true), SCBrepCoedge(1, true), SCBrepCoedge(0, true)});
-    const SCBrepLoop eligible1({SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
+    const SCBrepLoop closedReversed(
+        {SCBrepCoedge(3, true), SCBrepCoedge(2, true), SCBrepCoedge(1, true), SCBrepCoedge(0, true)});
+    const SCBrepLoop eligible1(
+        {SCBrepCoedge(4, false), SCBrepCoedge(5, false), SCBrepCoedge(6, false), SCBrepCoedge(7, false)});
     const SCBrepLoop eligible2(
         {SCBrepCoedge(8, false), SCBrepCoedge(9, false), SCBrepCoedge(10, false), SCBrepCoedge(11, false)});
     const SCBrepLoop ineligible(
@@ -3394,13 +3460,13 @@ TEST(Healing3dCapabilityTest, AggressiveFourShellTwoEligibleOneIneligibleDetermi
     const SCBrepFace ineligibleFace(std::shared_ptr<ISCSurface>(ineligibleSupport.Clone().release()), ineligible);
 
     const SCBrepBody body(vertices,
-                        edges,
-                        {
-                            SCBrepShell({closedFaceA, closedFaceB}, true),
-                            SCBrepShell({eligibleFace1}, false),
-                            SCBrepShell({eligibleFace2}, false),
-                            SCBrepShell({ineligibleFace}, false),
-                        });
+                          edges,
+                          {
+                              SCBrepShell({closedFaceA, closedFaceB}, true),
+                              SCBrepShell({eligibleFace1}, false),
+                              SCBrepShell({eligibleFace2}, false),
+                              SCBrepShell({ineligibleFace}, false),
+                          });
     ASSERT_TRUE(body.IsValid());
     ASSERT_EQ(body.ShellCount(), 4);
     ASSERT_TRUE(body.ShellAt(0).IsClosed());
@@ -3420,6 +3486,3 @@ TEST(Healing3dCapabilityTest, AggressiveFourShellTwoEligibleOneIneligibleDetermi
     // closed:2, eligible1:1->2, eligible2:1->2, ineligible:1 unchanged.
     ASSERT_EQ(healed.body.FaceCount(), 7);
 }
-
-
-

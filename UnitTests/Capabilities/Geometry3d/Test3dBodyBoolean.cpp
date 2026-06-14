@@ -11,13 +11,13 @@ using Geometry::BodyBooleanIssue3d;
 using Geometry::BodyBooleanOptions3d;
 using Geometry::DifferenceBodies;
 using Geometry::IntersectBodies;
-using Geometry::SCPlane;
-using Geometry::SCPoint3d;
 using Geometry::PolyhedronBody;
 using Geometry::PolyhedronFace3d;
 using Geometry::PolyhedronLoop3d;
-using Geometry::UnionBodies;
+using Geometry::SCPlane;
+using Geometry::SCPoint3d;
 using Geometry::SCVector3d;
+using Geometry::UnionBodies;
 
 namespace
 {
@@ -110,7 +110,7 @@ namespace
     {
         const SCPlane rotatedPlane =
             SCPlane::FromPointAndNormal(RotatePointAroundZ(face.SupportPlane().origin, origin, angleRadians),
-                                      RotateVectorAroundZ(face.SupportPlane().normal, angleRadians));
+                                        RotateVectorAroundZ(face.SupportPlane().normal, angleRadians));
 
         PolyhedronLoop3d outer = RotateLoopAroundZ(face.OuterLoop(), origin, angleRadians);
         std::vector<PolyhedronLoop3d> holes;
