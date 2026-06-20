@@ -1,3 +1,4 @@
+pushd
 @echo off
 setlocal
 
@@ -37,3 +38,4 @@ if errorlevel 1 (
 echo [OK] Solution generated successfully.
 echo [OK] Open: "%BUILD_DIR%\SCGeometry.sln"
 exit /b 0
+popd
