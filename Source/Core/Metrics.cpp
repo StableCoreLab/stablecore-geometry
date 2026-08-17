@@ -67,4 +67,9 @@ namespace Geometry
     {
         return std::sqrt(DistanceSquared(point, segment));
     }
+
+    SCBox2d Bounds(const SCPolyline2d& polyline)
+    {
+        return polyline.Bounds();
+    }
 }  // namespace Geometry

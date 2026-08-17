@@ -5,6 +5,7 @@
 #include "Geometry2d/SCArcSegment2d.h"
 #include "Geometry2d/SCLineSegment2d.h"
 #include "Geometry2d/ISCSegment2d.h"
+#include "Geometry2d/SCPolyline2d.h"
 #include "Support/Epsilon.h"
 
 namespace Geometry
@@ -19,6 +20,8 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API double Distance(const SCPoint2d& point, const SCLineSegment2d& segment);
     [[nodiscard]] GEOMETRY_API double Distance(const SCPoint2d& point, const SCArcSegment2d& segment);
     [[nodiscard]] GEOMETRY_API double Distance(const SCPoint2d& point, const ISCSegment2d& segment);
+
+    [[nodiscard]] GEOMETRY_API SCBox2d Bounds(const SCPolyline2d& polyline);
 
     [[nodiscard]] GEOMETRY_API bool Contains(const SCBox2d& box,
                                              const SCPoint2d& point,

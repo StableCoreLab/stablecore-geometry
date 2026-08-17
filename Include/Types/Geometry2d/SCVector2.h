@@ -3,6 +3,7 @@
 #include <cmath>
 #include <type_traits>
 
+#include "Support/Epsilon.h"
 #include "Types/Geometry2d/SCPoint2.h"
 
 namespace Geometry
@@ -31,6 +32,16 @@ namespace Geometry
         {
             using std::sqrt;
             return sqrt(LengthSquared());
+        }
+
+        [[nodiscard]] SCVector2 Normalized(double eps = kDefaultEpsilon) const
+        {
+            const auto length = Length();
+            if (length <= eps)
+            {
+                return SCVector2{};
+            }
+            return *this / length;
         }
 
         [[nodiscard]] std::string DebugString() const
