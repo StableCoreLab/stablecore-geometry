@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -65,6 +66,9 @@ namespace Geometry
         [[nodiscard]] std::vector<SCSegmentSearchHit2d> QueryWithinDistance(const SCPoint2d& point,
                                                                           double maxDistance) const;
         [[nodiscard]] std::optional<SCSegmentSearchHit2d> Nearest(const SCPoint2d& point) const;
+        [[nodiscard]] std::vector<SCSegmentSearchHit2d> QueryKNearest(const SCPoint2d& point,
+                                                                      std::size_t k,
+                                                                      double maxDistance = std::numeric_limits<double>::max()) const;
         [[nodiscard]] std::string DebugString() const;
 
         [[nodiscard]] const std::vector<SCSegmentSearchEntry2d>& Entries() const;

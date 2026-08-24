@@ -3,9 +3,11 @@
 #include "Brep/SCBrepBody.h"
 #include "Brep/SCBrepVertex.h"
 #include "Brep/PolyhedronBody.h"
+#include "Geometry2d/SCLine2d.h"
 #include "Core/Results.h"
 #include "Export/GeometryExport.h"
 #include "Geometry2d/SCArcSegment2d.h"
+#include "Geometry2d/SCPolyline2d.h"
 #include "Geometry2d/SCLineSegment2d.h"
 #include "Geometry2d/ISCSegment2d.h"
 #include "Geometry3d/ISCSurface.h"
@@ -17,6 +19,15 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API SCSegmentIntersection2d Intersect(const SCLineSegment2d& first,
                                                                const SCLineSegment2d& second,
                                                                double eps = Geometry::kDefaultEpsilon);
+    [[nodiscard]] GEOMETRY_API SCLineIntersection2d Intersect(const SCLine2d& first,
+                                                              const SCLine2d& second,
+                                                              double eps = Geometry::kDefaultEpsilon);
+    [[nodiscard]] GEOMETRY_API SCLineIntersection2d Intersect(const SCLine2d& first,
+                                                              const SCLineSegment2d& second,
+                                                              double eps = Geometry::kDefaultEpsilon);
+    [[nodiscard]] GEOMETRY_API SCLineIntersection2d Intersect(const SCLineSegment2d& first,
+                                                              const SCLine2d& second,
+                                                              double eps = Geometry::kDefaultEpsilon);
     [[nodiscard]] GEOMETRY_API SCSegmentIntersection2d Intersect(const SCLineSegment2d& first,
                                                                const SCArcSegment2d& second,
                                                                double eps = Geometry::kDefaultEpsilon);
@@ -26,6 +37,19 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API SCSegmentIntersection2d Intersect(const ISCSegment2d& first,
                                                                const ISCSegment2d& second,
                                                                double eps = Geometry::kDefaultEpsilon);
+    [[nodiscard]] GEOMETRY_API std::vector<SCPolylineIntersectionPoint2d> Intersect(const SCPolyline2d& first,
+                                                                                   const SCPolyline2d& second,
+                                                                                   double eps = Geometry::kDefaultEpsilon);
+    [[nodiscard]] GEOMETRY_API std::vector<SCPolylineIntersectionPoint2d> Intersect(const SCPolyline2d& polyline,
+                                                                                   const ISCSegment2d& segment,
+                                                                                   double eps = Geometry::kDefaultEpsilon);
+    [[nodiscard]] GEOMETRY_API std::vector<SCPolylineIntersectionPoint2d> Intersect(const ISCSegment2d& segment,
+                                                                                   const SCPolyline2d& polyline,
+                                                                                   double eps = Geometry::kDefaultEpsilon);
+    [[nodiscard]] GEOMETRY_API SCExtendedIntersection2d IntersectExtended(const ISCSegment2d& first,
+                                                                         const ISCSegment2d& second,
+                                                                         SCExtensionPolicy policy = SCExtensionPolicy::ExtendBoth,
+                                                                         double eps = Geometry::kDefaultEpsilon);
 
     [[nodiscard]] GEOMETRY_API SCLinePlaneIntersection3d Intersect(const SCLine3d& line,
                                                                  const SCPlane& plane,
@@ -85,5 +109,4 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API SCClosestPoints2d ClosestPoints(const SCArcSegment2d& first, const SCArcSegment2d& second);
     [[nodiscard]] GEOMETRY_API SCClosestPoints2d ClosestPoints(const ISCSegment2d& first, const ISCSegment2d& second);
 }  // namespace Geometry
-
 

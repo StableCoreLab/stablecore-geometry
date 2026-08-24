@@ -40,3 +40,15 @@
 
 - 代码、测试和文档现在都应围绕当前发布版结构书写
 - 如果新能力已经稳定，就应尽快从 gap 侧迁入 capability 侧
+- 
+## Current sync additions
+
+- Added public surface for `TangentPoints`, `SCLine2d`, `IntersectExtended`, `ProjectPointToLineSegment` for 3D, `SCBoxTree3d`, `SCSegmentSearch3d`, and `SnapPointToSegments3d`.
+- Added tests:
+  - `UnitTests/Capabilities/Core/TestMissingAlgorithms.cpp`
+  - `UnitTests/Gaps/Core/TestMissingAlgorithmsGaps.cpp`
+  - `UnitTests/Gaps/Geometry3d/TestMissingAlgorithmsGaps.cpp`
+- Remaining sync themes:
+  - epsilon-sensitive tangent and intersection boundary wording
+  - polyline de-duplication and ordering stability
+  - 3D projection / snapping tie-break contracts

@@ -75,3 +75,28 @@
 - 再把复杂体相交和并差结果稳定下来
 - 再把二维闭合搜索和歧义恢复补齐
 - 最后补修复链路，让上游输入更稳定
+- 
+## Current additions
+
+- `UnitTests/Capabilities/Core/TestMissingAlgorithms.cpp`
+- `UnitTests/Gaps/Core/TestMissingAlgorithmsGaps.cpp`
+- `UnitTests/Gaps/Geometry3d/TestMissingAlgorithmsGaps.cpp`
+
+## Covered APIs
+
+- `TangentPoints`
+- `SCLine2d` and `Intersect` / `IntersectExtended`
+- `ProjectPointToLineSegment` for 3D
+- `SCBoxTree2d::QueryKNearest`
+- `SCSegmentSearch2d::QueryKNearest`
+- `SCBoxTree3d`
+- `SCSegmentSearch3d`
+- `SnapPointToSegments3d`
+
+## Remaining gap themes
+
+- epsilon-sensitive tangent boundary classification
+- extended intersection overlap / coincidence corner cases
+- polyline endpoint de-duplication stability
+- 3D zero-length / near-zero-length segment projection boundary
+- 3D equal-distance tie breaking for snapping and KNN

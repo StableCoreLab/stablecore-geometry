@@ -36,6 +36,12 @@ namespace Geometry
                                                                     const SCArcSegment2d& second,
                                                                     double eps);
 
+        [[nodiscard]] SCExtendedIntersection2d IntersectArcArcExtendedInternal(const SCArcSegment2d& first,
+                                                                                const SCArcSegment2d& second,
+                                                                                bool extendFirst,
+                                                                                bool extendSecond,
+                                                                                double eps);
+
         [[nodiscard]] ArcProjectionCandidate ProjectPointToArcSegmentLocal(const SCPoint2d& point,
                                                                            const SCArcSegment2d& arc,
                                                                            double eps);
@@ -105,6 +111,30 @@ namespace Geometry
             }
 
             return -NormalizeAngle(arc.startAngle - angle) / arc.sweepAngle;
+        }
+
+        void SortIntersectionPointsByFirstParameter(std::array<SCIntersectionPoint2d, 2>& points, std::size_t pointCount)
+        {
+            if (pointCount == 2 && points[1].parameterOnFirst < points[0].parameterOnFirst)
+            {
+                std::swap(points[0], points[1]);
+            }
+        }
+
+        [[nodiscard]] SCExtendedIntersection2d MakeExtendedOverlapIntersection(const SCIntersectionPoint2d& firstPoint,
+                                                                                const SCIntersectionPoint2d& secondPoint,
+                                                                                bool onFirstSegment,
+                                                                                bool onSecondSegment)
+        {
+            SCExtendedIntersection2d result;
+            result.kind = SCIntersectionKind2d::Overlap;
+            result.pointCount = 2;
+            result.points[0] = firstPoint;
+            result.points[1] = secondPoint;
+            SortIntersectionPointsByFirstParameter(result.points, result.pointCount);
+            result.onFirstSegment = onFirstSegment;
+            result.onSecondSegment = onSecondSegment;
+            return result;
         }
 
         [[nodiscard]] SCSegmentProjection2d ProjectPointToLineSegmentLocal(const SCPoint2d& point,
@@ -752,6 +782,154 @@ namespace Geometry
             return result;
         }
 
+        [[nodiscard]] SCExtendedIntersection2d IntersectArcArcExtendedInternal(const SCArcSegment2d& first,
+                                                                                const SCArcSegment2d& second,
+                                                                                bool extendFirst,
+                                                                                bool extendSecond,
+                                                                                double eps)
+        {
+            SCExtendedIntersection2d result;
+            if (!first.IsValid() || !second.IsValid())
+            {
+                return result;
+            }
+
+            if (SameCircle(first, second, eps))
+            {
+                const bool firstActsAsFullCircle = extendFirst || AlmostEqual(std::abs(first.sweepAngle), kTwoPi, eps);
+                const bool secondActsAsFullCircle = extendSecond || AlmostEqual(std::abs(second.sweepAngle), kTwoPi, eps);
+
+                if (firstActsAsFullCircle && secondActsAsFullCircle)
+                {
+                    result.kind = SCIntersectionKind2d::Overlap;
+                    result.infiniteOverlap = true;
+                    return result;
+                }
+
+                if (firstActsAsFullCircle)
+                {
+                    return MakeExtendedOverlapIntersection(
+                        SCIntersectionPoint2d{second.StartPoint(), ArcParameterAtAngle(first, second.startAngle), 0.0},
+                        SCIntersectionPoint2d{second.EndPoint(), ArcParameterAtAngle(first, second.EndAngle()), 1.0},
+                        !extendFirst,
+                        true);
+                }
+
+                if (secondActsAsFullCircle)
+                {
+                    return MakeExtendedOverlapIntersection(
+                        SCIntersectionPoint2d{first.StartPoint(), 0.0, ArcParameterAtAngle(second, first.startAngle)},
+                        SCIntersectionPoint2d{first.EndPoint(), 1.0, ArcParameterAtAngle(second, first.EndAngle())},
+                        true,
+                        !extendSecond);
+                }
+
+                const SCSegmentIntersection2d intersection = IntersectArcArcSameCircle(first, second, eps);
+                if (!intersection.HasIntersection())
+                {
+                    return result;
+                }
+
+                result.kind = intersection.kind;
+                result.pointCount = intersection.pointCount;
+                for (std::size_t index = 0; index < intersection.pointCount; ++index)
+                {
+                    result.points[index] = intersection.points[index];
+                }
+                result.onFirstSegment = true;
+                result.onSecondSegment = true;
+                return result;
+            }
+
+            const SCVector2d centerDelta = second.center - first.center;
+            const double distanceSquared = Dot(centerDelta, centerDelta);
+            if (distanceSquared <= eps * eps)
+            {
+                return result;
+            }
+
+            const double distance = std::sqrt(distanceSquared);
+            if (distance > first.radius + second.radius + eps ||
+                distance < std::abs(first.radius - second.radius) - eps)
+            {
+                return result;
+            }
+
+            const double a =
+                (first.radius * first.radius - second.radius * second.radius + distanceSquared) / (2.0 * distance);
+            const double hSquared = first.radius * first.radius - a * a;
+            if (hSquared < -eps)
+            {
+                return result;
+            }
+
+            const double h = hSquared <= 0.0 ? 0.0 : std::sqrt(hSquared);
+            const SCVector2d unit = centerDelta / distance;
+            const SCPoint2d basePoint = MakePoint(first.center.x + a * unit.x, first.center.y + a * unit.y);
+            const SCVector2d perpendicular{-unit.y, unit.x};
+
+            const SCPoint2d candidateOne =
+                MakePoint(basePoint.x + h * perpendicular.x, basePoint.y + h * perpendicular.y);
+            const SCPoint2d candidateTwo =
+                MakePoint(basePoint.x - h * perpendicular.x, basePoint.y - h * perpendicular.y);
+
+            SCSegmentIntersection2d intersection;
+            bool hasPoint = false;
+            for (const SCPoint2d& point : std::array<SCPoint2d, 2>{candidateOne, candidateTwo})
+            {
+                const double angleFirst = std::atan2(point.y - first.center.y, point.x - first.center.x);
+                const double angleSecond = std::atan2(point.y - second.center.y, point.x - second.center.x);
+                if ((!extendFirst && !IsAngleOnArc(first, angleFirst, eps)) ||
+                    (!extendSecond && !IsAngleOnArc(second, angleSecond, eps)))
+                {
+                    continue;
+                }
+
+                const double firstParameter = ArcParameterAtAngle(first, angleFirst);
+                const double secondParameter = ArcParameterAtAngle(second, angleSecond);
+                if (!hasPoint)
+                {
+                    intersection = MakePointIntersection(
+                        point,
+                        firstParameter,
+                        secondParameter,
+                        AlmostEqual(h, 0.0, eps) ? SCIntersectionKind2d::Tangent : SCIntersectionKind2d::Point);
+                    hasPoint = true;
+                    continue;
+                }
+
+                AddIntersectionPoint(intersection,
+                                     SCIntersectionKind2d::Point,
+                                     point,
+                                     firstParameter,
+                                     secondParameter,
+                                     eps);
+            }
+
+            if (!intersection.HasIntersection())
+            {
+                return result;
+            }
+
+            result.kind = intersection.kind;
+            result.pointCount = intersection.pointCount;
+            for (std::size_t index = 0; index < intersection.pointCount; ++index)
+            {
+                result.points[index] = intersection.points[index];
+            }
+            result.onFirstSegment = true;
+            result.onSecondSegment = true;
+            for (std::size_t index = 0; index < intersection.pointCount; ++index)
+            {
+                const double firstParameter = result.points[index].parameterOnFirst;
+                const double secondParameter = result.points[index].parameterOnSecond;
+                result.onFirstSegment = result.onFirstSegment && firstParameter >= -eps && firstParameter <= 1.0 + eps;
+                result.onSecondSegment =
+                    result.onSecondSegment && secondParameter >= -eps && secondParameter <= 1.0 + eps;
+            }
+            return result;
+        }
+
         [[nodiscard]] SCClosestPoints2d ClosestPointsLineArcInternal(const SCLineSegment2d& line,
                                                                    const SCArcSegment2d& arc,
                                                                    double eps)
@@ -898,5 +1076,587 @@ namespace Geometry
 
         return SCClosestPoints2d{};
     }
-}  // namespace Geometry
 
+        [[nodiscard]] double LineParameterAtPoint(const SCLine2d& line, const SCPoint2d& point, double eps)
+        {
+            const SCVector2d delta = point - line.origin;
+            const double denominator = Dot(line.direction, line.direction);
+            if (denominator <= eps * eps)
+            {
+                return 0.0;
+            }
+            return Dot(delta, line.direction) / denominator;
+        }
+
+        [[nodiscard]] SCLineIntersection2d MakeNoLineIntersection()
+        {
+            return {};
+        }
+
+        [[nodiscard]] SCLineIntersection2d MakeLinePointIntersection(const SCPoint2d& point,
+                                                                    double firstParameter,
+                                                                    double secondParameter)
+        {
+            SCLineIntersection2d result;
+            result.kind = SCIntersectionKind2d::Point;
+            result.pointCount = 1;
+            result.points[0] = SCIntersectionPoint2d{point, firstParameter, secondParameter};
+            return result;
+        }
+
+        [[nodiscard]] SCLineIntersection2d SwapLineIntersection(SCLineIntersection2d result)
+        {
+            if (result.pointCount >= 1)
+            {
+                std::swap(result.points[0].parameterOnFirst, result.points[0].parameterOnSecond);
+            }
+            if (result.pointCount == 2)
+            {
+                std::swap(result.points[1].parameterOnFirst, result.points[1].parameterOnSecond);
+                std::swap(result.points[0], result.points[1]);
+            }
+            return result;
+        }
+
+        [[nodiscard]] SCExtendedIntersection2d MakeNoExtendedIntersection()
+        {
+            return {};
+        }
+
+        [[nodiscard]] SCExtendedIntersection2d MakeExtendedIntersectionFromIntersection(const SCSegmentIntersection2d& intersection)
+        {
+            SCExtendedIntersection2d result;
+            if (!intersection.HasIntersection())
+            {
+                return result;
+            }
+
+            result.kind = intersection.kind;
+            result.pointCount = intersection.pointCount;
+            result.infiniteOverlap = false;
+            for (std::size_t index = 0; index < intersection.pointCount; ++index)
+            {
+                result.points[index] = intersection.points[index];
+            }
+            if (intersection.pointCount >= 1)
+            {
+                result.onFirstSegment = true;
+                result.onSecondSegment = true;
+            }
+            return result;
+        }
+
+        [[nodiscard]] SCExtensionPolicy SwapExtendedIntersectionPolicy(SCExtensionPolicy policy)
+        {
+            switch (policy)
+            {
+                case SCExtensionPolicy::ExtendFirst:
+                    return SCExtensionPolicy::ExtendSecond;
+                case SCExtensionPolicy::ExtendSecond:
+                    return SCExtensionPolicy::ExtendFirst;
+                default:
+                    return policy;
+            }
+        }
+
+        [[nodiscard]] double PolylineSegmentGlobalParameter(const SCPolyline2d& polyline,
+                                                            std::size_t segmentIndex,
+                                                            double localParameter,
+                                                            const std::vector<double>& segmentLengths,
+                                                            double totalLength)
+        {
+            if (totalLength <= Geometry::kIntersectionDefaultEpsilon)
+            {
+                return 0.0;
+            }
+
+            double lengthBefore = 0.0;
+            for (std::size_t i = 0; i < segmentIndex && i < segmentLengths.size(); ++i)
+            {
+                lengthBefore += segmentLengths[i];
+            }
+
+            return (lengthBefore + segmentLengths[segmentIndex] * localParameter) / totalLength;
+        }
+
+        void AppendPolylineIntersection(std::vector<SCPolylineIntersectionPoint2d>& result,
+                                        const SCPolylineIntersectionPoint2d& candidate,
+                                        double eps)
+        {
+            for (auto& existing : result)
+            {
+                if (existing.point.AlmostEquals(candidate.point, eps))
+                {
+                    if (candidate.globalParameterOnFirst < existing.globalParameterOnFirst)
+                    {
+                        existing = candidate;
+                    }
+                    return;
+                }
+            }
+
+            result.push_back(candidate);
+        }
+
+        [[nodiscard]] SCLineIntersection2d IntersectLineLineInternal(const SCLine2d& first,
+                                                                     const SCLine2d& second,
+                                                                     double eps)
+        {
+            SCLineIntersection2d result;
+            const SCVector2d p = first.origin - SCPoint2d{};
+            const SCVector2d q = second.origin - SCPoint2d{};
+            const SCVector2d r = first.direction;
+            const SCVector2d s = second.direction;
+            const SCVector2d qp = second.origin - first.origin;
+            const double det = Cross(r, s);
+            if (std::abs(det) <= eps)
+            {
+                result.parallel = true;
+                if (std::abs(Cross(qp, r)) <= eps)
+                {
+                    result.kind = SCIntersectionKind2d::Overlap;
+                    result.collinear = true;
+                    result.infiniteOverlap = true;
+                }
+                return result;
+            }
+
+            const double t = Cross(qp, s) / det;
+            const double u = Cross(qp, r) / det;
+            const SCPoint2d point = first.PointAt(t);
+            result = MakeLinePointIntersection(point, t, u);
+            return result;
+        }
+
+        [[nodiscard]] SCLineIntersection2d IntersectLineSegmentInternal(const SCLine2d& line,
+                                                                        const SCLineSegment2d& segment,
+                                                                        double eps)
+        {
+            const SCLine2d segmentLine = SCLine2d::FromTwoPoints(segment.startPoint, segment.endPoint);
+            const SCLineIntersection2d lineLine = IntersectLineLineInternal(line, segmentLine, eps);
+            if (lineLine.kind == SCIntersectionKind2d::Point)
+            {
+                const double segmentParameter = lineLine.points[0].parameterOnSecond;
+                if (segmentParameter < -eps || segmentParameter > 1.0 + eps)
+                {
+                    return {};
+                }
+                SCLineIntersection2d result = lineLine;
+                result.points[0].parameterOnSecond = std::clamp(segmentParameter, 0.0, 1.0);
+                return result;
+            }
+
+            if (lineLine.collinear)
+            {
+                const double firstParameter = LineParameterAtPoint(line, segment.startPoint, eps);
+                const double secondParameter = LineParameterAtPoint(line, segment.endPoint, eps);
+                SCLineIntersection2d result;
+                result.kind = SCIntersectionKind2d::Overlap;
+                result.parallel = true;
+                result.collinear = true;
+                result.infiniteOverlap = false;
+                result.pointCount = 2;
+                result.points[0] = SCIntersectionPoint2d{segment.startPoint, firstParameter, 0.0};
+                result.points[1] = SCIntersectionPoint2d{segment.endPoint, secondParameter, 1.0};
+                if (result.points[0].parameterOnFirst > result.points[1].parameterOnFirst)
+                {
+                    std::swap(result.points[0], result.points[1]);
+                }
+                return result;
+            }
+
+            return {};
+        }
+
+        [[nodiscard]] SCSegmentIntersection2d IntersectLineArcExtended(const SCLine2d& line,
+                                                                       const SCArcSegment2d& arc,
+                                                                       bool extendLine,
+                                                                       bool extendArc,
+                                                                       double eps)
+        {
+            if (!line.IsValid(eps) || !arc.IsValid())
+            {
+                return {};
+            }
+
+            const SCVector2d direction = line.direction;
+            const SCVector2d fromCenter = line.origin - arc.center;
+            const double a = Dot(direction, direction);
+            if (a <= eps)
+            {
+                return {};
+            }
+
+            const double b = 2.0 * Dot(fromCenter, direction);
+            const double c = Dot(fromCenter, fromCenter) - arc.radius * arc.radius;
+            const double discriminant = b * b - 4.0 * a * c;
+            if (discriminant < -eps)
+            {
+                return {};
+            }
+
+            const double sqrtDiscriminant = discriminant <= 0.0 ? 0.0 : std::sqrt(discriminant);
+            const double invDenominator = 0.5 / a;
+            const double roots[2] = {(-b - sqrtDiscriminant) * invDenominator, (-b + sqrtDiscriminant) * invDenominator};
+
+            SCSegmentIntersection2d result;
+            bool hasPoint = false;
+            for (double t : roots)
+            {
+                const SCPoint2d point = line.PointAt(t);
+                const double angle = std::atan2(point.y - arc.center.y, point.x - arc.center.x);
+                const double arcParameter = arc.sweepAngle >= 0.0 ? (angle - arc.startAngle) / arc.sweepAngle
+                                                                   : (arc.startAngle - angle) / (-arc.sweepAngle);
+                const bool onLine = extendLine || (t >= -eps && t <= 1.0 + eps);
+                const bool onArc = extendArc || IsAngleOnArc(arc, angle, eps);
+                if (!onLine || !onArc)
+                {
+                    continue;
+                }
+
+                double clampedT = t;
+                if (!extendLine)
+                {
+                    clampedT = std::clamp(t, 0.0, 1.0);
+                }
+
+                double clampedArcParameter = arcParameter;
+                if (!extendArc)
+                {
+                    clampedArcParameter = std::clamp(arcParameter, 0.0, 1.0);
+                }
+                if (!hasPoint)
+                {
+                    result.kind = AlmostEqual(discriminant, 0.0, eps) ? SCIntersectionKind2d::Tangent
+                                                                       : SCIntersectionKind2d::Point;
+                    result.pointCount = 1;
+                    result.points[0] = SCIntersectionPoint2d{point, clampedT, clampedArcParameter};
+                    hasPoint = true;
+                }
+                else
+                {
+                    AddIntersectionPoint(result,
+                                         SCIntersectionKind2d::Point,
+                                         point,
+                                         clampedT,
+                                         clampedArcParameter,
+                                         eps);
+                }
+            }
+
+            return result;
+        }
+
+        [[nodiscard]] std::vector<SCPolylineIntersectionPoint2d> IntersectPolylinePolylineInternal(const SCPolyline2d& first,
+                                                                                                 const SCPolyline2d& second,
+                                                                                                 double eps)
+        {
+            std::vector<SCPolylineIntersectionPoint2d> result;
+            if (!first.IsValid() || !second.IsValid())
+            {
+                return result;
+            }
+
+            std::vector<double> firstSegmentLengths;
+            std::vector<double> secondSegmentLengths;
+            firstSegmentLengths.reserve(first.SegmentCount());
+            secondSegmentLengths.reserve(second.SegmentCount());
+            double firstTotalLength = 0.0;
+            double secondTotalLength = 0.0;
+            for (std::size_t i = 0; i < first.SegmentCount(); ++i)
+            {
+                const auto segment = first.SegmentAt(i);
+                const double length = segment == nullptr ? 0.0 : segment->Length();
+                firstSegmentLengths.push_back(length);
+                firstTotalLength += length;
+            }
+            for (std::size_t i = 0; i < second.SegmentCount(); ++i)
+            {
+                const auto segment = second.SegmentAt(i);
+                const double length = segment == nullptr ? 0.0 : segment->Length();
+                secondSegmentLengths.push_back(length);
+                secondTotalLength += length;
+            }
+
+            for (std::size_t i = 0; i < first.SegmentCount(); ++i)
+            {
+                const auto firstSegment = first.SegmentAt(i);
+                if (firstSegment == nullptr)
+                {
+                    continue;
+                }
+                for (std::size_t j = 0; j < second.SegmentCount(); ++j)
+                {
+                    const auto secondSegment = second.SegmentAt(j);
+                    if (secondSegment == nullptr)
+                    {
+                        continue;
+                    }
+
+                    const SCSegmentIntersection2d intersection = Intersect(*firstSegment, *secondSegment, eps);
+                    if (!intersection.HasIntersection())
+                    {
+                        continue;
+                    }
+
+                    for (std::size_t index = 0; index < intersection.pointCount; ++index)
+                    {
+                        const SCIntersectionPoint2d& point = intersection.points[index];
+                        const SCPolylineIntersectionPoint2d polyPoint{intersection.kind,
+                                                                       point.point,
+                                                                       i,
+                                                                       j,
+                                                                       point.parameterOnFirst,
+                                                                       point.parameterOnSecond,
+                                                                       PolylineSegmentGlobalParameter(first, i, point.parameterOnFirst, firstSegmentLengths, firstTotalLength),
+                                                                       PolylineSegmentGlobalParameter(second, j, point.parameterOnSecond, secondSegmentLengths, secondTotalLength)};
+                        AppendPolylineIntersection(result, polyPoint, eps);
+                    }
+                }
+            }
+
+            std::sort(result.begin(), result.end(), [](const SCPolylineIntersectionPoint2d& lhs, const SCPolylineIntersectionPoint2d& rhs) {
+                if (lhs.segmentIndexOnFirst != rhs.segmentIndexOnFirst)
+                {
+                    return lhs.segmentIndexOnFirst < rhs.segmentIndexOnFirst;
+                }
+                if (lhs.parameterOnFirstSegment != rhs.parameterOnFirstSegment)
+                {
+                    return lhs.parameterOnFirstSegment < rhs.parameterOnFirstSegment;
+                }
+                return lhs.segmentIndexOnSecond < rhs.segmentIndexOnSecond;
+            });
+            return result;
+        }
+
+    SCLineIntersection2d Intersect(const SCLine2d& first, const SCLine2d& second, double eps)
+    {
+        return IntersectLineLineInternal(first, second, eps);
+    }
+
+    SCLineIntersection2d Intersect(const SCLine2d& first, const SCLineSegment2d& second, double eps)
+    {
+        return IntersectLineSegmentInternal(first, second, eps);
+    }
+
+    SCLineIntersection2d Intersect(const SCLineSegment2d& first, const SCLine2d& second, double eps)
+    {
+        return SwapLineIntersection(IntersectLineSegmentInternal(second, first, eps));
+    }
+
+    std::vector<SCPolylineIntersectionPoint2d> Intersect(const SCPolyline2d& first,
+                                                         const SCPolyline2d& second,
+                                                         double eps)
+    {
+        return IntersectPolylinePolylineInternal(first, second, eps);
+    }
+
+    std::vector<SCPolylineIntersectionPoint2d> Intersect(const SCPolyline2d& polyline,
+                                                         const ISCSegment2d& segment,
+                                                         double eps)
+    {
+        std::vector<SCPolylineIntersectionPoint2d> result;
+        if (!polyline.IsValid() || !segment.IsValid())
+        {
+            return result;
+        }
+
+        std::vector<double> segmentLengths;
+        segmentLengths.reserve(polyline.SegmentCount());
+        double totalLength = 0.0;
+        for (std::size_t i = 0; i < polyline.SegmentCount(); ++i)
+        {
+            const auto polySegment = polyline.SegmentAt(i);
+            const double length = polySegment == nullptr ? 0.0 : polySegment->Length();
+            segmentLengths.push_back(length);
+            totalLength += length;
+        }
+
+        for (std::size_t i = 0; i < polyline.SegmentCount(); ++i)
+        {
+            const auto polySegment = polyline.SegmentAt(i);
+            if (polySegment == nullptr)
+            {
+                continue;
+            }
+
+            const SCSegmentIntersection2d intersection = Intersect(*polySegment, segment, eps);
+            if (!intersection.HasIntersection())
+            {
+                continue;
+            }
+
+            for (std::size_t index = 0; index < intersection.pointCount; ++index)
+            {
+                const SCIntersectionPoint2d& point = intersection.points[index];
+                const SCPolylineIntersectionPoint2d polyPoint{intersection.kind,
+                                                               point.point,
+                                                               i,
+                                                               0,
+                                                               point.parameterOnFirst,
+                                                               point.parameterOnSecond,
+                                                               PolylineSegmentGlobalParameter(polyline, i, point.parameterOnFirst, segmentLengths, totalLength),
+                                                               point.parameterOnSecond};
+                AppendPolylineIntersection(result, polyPoint, eps);
+            }
+        }
+
+        std::sort(result.begin(), result.end(), [](const SCPolylineIntersectionPoint2d& lhs, const SCPolylineIntersectionPoint2d& rhs) {
+            if (lhs.segmentIndexOnFirst != rhs.segmentIndexOnFirst)
+            {
+                return lhs.segmentIndexOnFirst < rhs.segmentIndexOnFirst;
+            }
+            return lhs.parameterOnFirstSegment < rhs.parameterOnFirstSegment;
+        });
+        return result;
+    }
+
+    std::vector<SCPolylineIntersectionPoint2d> Intersect(const ISCSegment2d& segment,
+                                                         const SCPolyline2d& polyline,
+                                                         double eps)
+    {
+        std::vector<SCPolylineIntersectionPoint2d> result = Intersect(polyline, segment, eps);
+        for (auto& point : result)
+        {
+            std::swap(point.segmentIndexOnFirst, point.segmentIndexOnSecond);
+            std::swap(point.parameterOnFirstSegment, point.parameterOnSecondSegment);
+            std::swap(point.globalParameterOnFirst, point.globalParameterOnSecond);
+        }
+        return result;
+    }
+
+    SCExtendedIntersection2d IntersectExtended(const ISCSegment2d& first,
+                                               const ISCSegment2d& second,
+                                               SCExtensionPolicy policy,
+                                               double eps)
+    {
+        if (!first.IsValid() || !second.IsValid())
+        {
+            return {};
+        }
+
+        const bool extendFirst = policy == SCExtensionPolicy::ExtendFirst || policy == SCExtensionPolicy::ExtendBoth;
+        const bool extendSecond = policy == SCExtensionPolicy::ExtendSecond || policy == SCExtensionPolicy::ExtendBoth;
+
+        if (policy == SCExtensionPolicy::None)
+        {
+            return MakeExtendedIntersectionFromIntersection(Intersect(first, second, eps));
+        }
+
+        if (first.Kind() == SCSegmentKind2::Line && second.Kind() == SCSegmentKind2::Line)
+        {
+            const SCLineSegment2d& firstLine = static_cast<const SCLineSegment2d&>(first);
+            const SCLineSegment2d& secondLine = static_cast<const SCLineSegment2d&>(second);
+            const SCLine2d lineA = SCLine2d::FromTwoPoints(firstLine.startPoint, firstLine.endPoint);
+            const SCLine2d lineB = SCLine2d::FromTwoPoints(secondLine.startPoint, secondLine.endPoint);
+            const SCLineIntersection2d lineIntersection = Intersect(lineA, lineB, eps);
+            SCExtendedIntersection2d result;
+            if (lineIntersection.kind == SCIntersectionKind2d::None)
+            {
+                return result;
+            }
+
+            if (lineIntersection.collinear)
+            {
+                if (extendFirst && extendSecond)
+                {
+                    result.kind = SCIntersectionKind2d::Overlap;
+                    result.infiniteOverlap = true;
+                    return result;
+                }
+
+                const SCLineSegment2d& overlapSegment = extendFirst ? secondLine : firstLine;
+                const double startParameterOnFirst = LineParameterAtPoint(lineA, overlapSegment.startPoint, eps);
+                const double endParameterOnFirst = LineParameterAtPoint(lineA, overlapSegment.endPoint, eps);
+                const double startParameterOnSecond = LineParameterAtPoint(lineB, overlapSegment.startPoint, eps);
+                const double endParameterOnSecond = LineParameterAtPoint(lineB, overlapSegment.endPoint, eps);
+                result.kind = SCIntersectionKind2d::Overlap;
+                result.pointCount = 2;
+                result.points[0] = SCIntersectionPoint2d{overlapSegment.startPoint,
+                                                         startParameterOnFirst,
+                                                         startParameterOnSecond};
+                result.points[1] = SCIntersectionPoint2d{overlapSegment.endPoint,
+                                                         endParameterOnFirst,
+                                                         endParameterOnSecond};
+                if (result.points[0].parameterOnFirst > result.points[1].parameterOnFirst)
+                {
+                    std::swap(result.points[0], result.points[1]);
+                }
+                result.onFirstSegment = result.points[0].parameterOnFirst >= -eps &&
+                                       result.points[0].parameterOnFirst <= 1.0 + eps &&
+                                       result.points[1].parameterOnFirst >= -eps &&
+                                       result.points[1].parameterOnFirst <= 1.0 + eps;
+                result.onSecondSegment = result.points[0].parameterOnSecond >= -eps &&
+                                        result.points[0].parameterOnSecond <= 1.0 + eps &&
+                                        result.points[1].parameterOnSecond >= -eps &&
+                                        result.points[1].parameterOnSecond <= 1.0 + eps;
+                return result;
+            }
+
+            const double firstParameter = lineIntersection.points[0].parameterOnFirst;
+            const double secondParameter = lineIntersection.points[0].parameterOnSecond;
+            const bool onFirst = extendFirst || (firstParameter >= -eps && firstParameter <= 1.0 + eps);
+            const bool onSecond = extendSecond || (secondParameter >= -eps && secondParameter <= 1.0 + eps);
+            if (!onFirst || !onSecond)
+            {
+                return result;
+            }
+
+            result.kind = SCIntersectionKind2d::Point;
+            result.pointCount = 1;
+            result.points[0] = lineIntersection.points[0];
+            result.onFirstSegment = firstParameter >= -eps && firstParameter <= 1.0 + eps;
+            result.onSecondSegment = secondParameter >= -eps && secondParameter <= 1.0 + eps;
+            return result;
+        }
+
+        if (first.Kind() == SCSegmentKind2::Line && second.Kind() == SCSegmentKind2::Arc)
+        {
+            const SCLineSegment2d& lineSegment = static_cast<const SCLineSegment2d&>(first);
+            const SCArcSegment2d& arc = static_cast<const SCArcSegment2d&>(second);
+            const SCLine2d line = SCLine2d::FromTwoPoints(lineSegment.startPoint, lineSegment.endPoint);
+            const SCSegmentIntersection2d intersection = IntersectLineArcExtended(line, arc, extendFirst, extendSecond, eps);
+            SCExtendedIntersection2d result;
+            if (!intersection.HasIntersection())
+            {
+                return result;
+            }
+
+            result.kind = intersection.kind;
+            result.pointCount = intersection.pointCount;
+            for (std::size_t index = 0; index < intersection.pointCount; ++index)
+            {
+                result.points[index] = intersection.points[index];
+            }
+            if (intersection.pointCount >= 1)
+            {
+                result.onFirstSegment = result.points[0].parameterOnFirst >= -eps && result.points[0].parameterOnFirst <= 1.0 + eps;
+                result.onSecondSegment = IsAngleOnArc(arc,
+                                                      arc.startAngle + arc.sweepAngle * result.points[0].parameterOnSecond,
+                                                      eps);
+            }
+            return result;
+        }
+
+        if (first.Kind() == SCSegmentKind2::Arc && second.Kind() == SCSegmentKind2::Line)
+        {
+            const SCExtendedIntersection2d swapped = IntersectExtended(second, first, SwapExtendedIntersectionPolicy(policy), eps);
+            SCExtendedIntersection2d result = swapped;
+            for (std::size_t index = 0; index < result.pointCount; ++index)
+            {
+                std::swap(result.points[index].parameterOnFirst, result.points[index].parameterOnSecond);
+            }
+            std::swap(result.onFirstSegment, result.onSecondSegment);
+            return result;
+        }
+
+        if (first.Kind() == SCSegmentKind2::Arc && second.Kind() == SCSegmentKind2::Arc)
+        {
+            const SCArcSegment2d& firstArc = static_cast<const SCArcSegment2d&>(first);
+            const SCArcSegment2d& secondArc = static_cast<const SCArcSegment2d&>(second);
+            return IntersectArcArcExtendedInternal(firstArc, secondArc, extendFirst, extendSecond, eps);
+        }
+
+        return MakeNoExtendedIntersection();
+    }
+}  // namespace Geometry

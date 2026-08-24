@@ -9,6 +9,7 @@
 #include "Core/GeometryTypes.h"
 #include "Export/GeometryExport.h"
 #include "Geometry2d/SCArcSegment2d.h"
+#include "Geometry2d/SCLine2d.h"
 #include "Geometry2d/SCLineSegment2d.h"
 #include "Geometry2d/SCPolygon2d.h"
 #include "Geometry2d/ISCSegment2d.h"
@@ -37,6 +38,15 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API SCLineProjection3d ProjectPointToLine(const SCPoint3d& point,
                                                                    const SCLine3d& line,
                                                                    const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCSegmentProjection3d ProjectPointToLineSegment(const SCPoint3d& point,
+                                                                             const SCLineSegment3d& segment,
+                                                                             bool clampToSegment = true,
+                                                                             const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCSegmentProjection3d ProjectPointToLineSegment(const SCPoint3d& point,
+                                                                             const SCPoint3d& segmentStart,
+                                                                             const SCPoint3d& segmentEnd,
+                                                                             bool clampToSegment = true,
+                                                                             const SCGeometryTolerance3d& tolerance = {});
 
     [[nodiscard]] GEOMETRY_API SCPlaneProjection3d ProjectPointToPlane(const SCPoint3d& point,
                                                                      const SCPlane& plane,
@@ -107,5 +117,4 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API SCVector2d NormalAt(const SCArcSegment2d& segment, double parameter);
     [[nodiscard]] GEOMETRY_API SCVector2d NormalAt(const ISCSegment2d& segment, double parameter);
 }  // namespace Geometry
-
 

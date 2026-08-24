@@ -39,6 +39,7 @@ namespace Geometry
         [[nodiscard]] bool AlmostEquals(const SCArcSegment2d& other, double eps = Geometry::kDefaultEpsilon) const;
         [[nodiscard]] std::string DebugString() const override;
         [[nodiscard]] std::unique_ptr<ISCSegment2d> Clone() const override;
+        [[nodiscard]] bool ContainsAngle(double angle) const;
 
         [[nodiscard]] constexpr bool operator==(const SCArcSegment2d& other) const = default;
         [[nodiscard]] constexpr bool operator!=(const SCArcSegment2d& other) const = default;
@@ -49,4 +50,3 @@ namespace Geometry
         [[nodiscard]] SCPoint2d PointAtAngle(double angle) const;
     };
 }  // namespace Geometry
-

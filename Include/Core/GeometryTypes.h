@@ -72,6 +72,35 @@ namespace Geometry
         }
     };
 
+    struct GEOMETRY_API SCSegmentProjection3d
+    {
+        SCPoint3d point{};
+        double parameter{0.0};
+        double distanceSquared{0.0};
+        bool isOnSegment{false};
+
+        [[nodiscard]] bool IsValid() const
+        {
+            return point.IsValid() && std::isfinite(parameter) && std::isfinite(distanceSquared) &&
+                   distanceSquared >= 0.0;
+        }
+
+        [[nodiscard]] bool AlmostEquals(const SCSegmentProjection3d& other, double eps = Geometry::kDefaultEpsilon) const
+        {
+            return point.AlmostEquals(other.point, eps) && std::abs(parameter - other.parameter) <= eps &&
+                   std::abs(distanceSquared - other.distanceSquared) <= eps && isOnSegment == other.isOnSegment;
+        }
+
+        [[nodiscard]] std::string DebugString() const
+        {
+            std::ostringstream stream;
+            stream << "SCSegmentProjection3d{point=" << point.DebugString() << ", parameter=" << parameter
+                   << ", distanceSquared=" << distanceSquared << ", isOnSegment=" << (isOnSegment ? "true" : "false")
+                   << "}";
+            return stream.str();
+        }
+    };
+
     struct GEOMETRY_API SCGeometryContext3d
     {
         SCGeometryTolerance3d tolerance{};
@@ -525,7 +554,6 @@ namespace Geometry
 {
     namespace Sdk = ::Geometry;
 }
-
 
 
 

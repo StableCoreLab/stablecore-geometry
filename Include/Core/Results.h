@@ -33,6 +33,14 @@ namespace Geometry
         Tangent
     };
 
+    enum class SCExtensionPolicy
+    {
+        None,
+        ExtendFirst,
+        ExtendSecond,
+        ExtendBoth
+    };
+
     struct GEOMETRY_API SCIntersectionPoint2d
     {
         SCPoint2d point{};
@@ -54,12 +62,59 @@ namespace Geometry
     struct GEOMETRY_API SCSegmentIntersection2d
     {
         SCIntersectionKind2d kind{SCIntersectionKind2d::None};
-        std::array<SCIntersectionPoint2d, 2> points{};
+        std::array<SCIntersectionPoint2d, 2> points{}; 
         std::size_t pointCount{0};
 
         [[nodiscard]] bool HasIntersection() const
         {
             return kind != SCIntersectionKind2d::None;
+        }
+    };
+
+    struct GEOMETRY_API SCLineIntersection2d
+    {
+        SCIntersectionKind2d kind{SCIntersectionKind2d::None};
+        std::array<SCIntersectionPoint2d, 2> points{};
+        std::size_t pointCount{0};
+        bool parallel{false};
+        bool collinear{false};
+        bool infiniteOverlap{false};
+
+        [[nodiscard]] bool HasIntersection() const
+        {
+            return kind != SCIntersectionKind2d::None;
+        }
+    };
+
+    struct GEOMETRY_API SCExtendedIntersection2d
+    {
+        SCIntersectionKind2d kind{SCIntersectionKind2d::None};
+        std::array<SCIntersectionPoint2d, 2> points{};
+        std::size_t pointCount{0};
+        bool onFirstSegment{false};
+        bool onSecondSegment{false};
+        bool infiniteOverlap{false};
+
+        [[nodiscard]] bool HasIntersection() const
+        {
+            return kind != SCIntersectionKind2d::None;
+        }
+    };
+
+    struct GEOMETRY_API SCPolylineIntersectionPoint2d
+    {
+        SCIntersectionKind2d kind{SCIntersectionKind2d::None};
+        SCPoint2d point{};
+        std::size_t segmentIndexOnFirst{0};
+        std::size_t segmentIndexOnSecond{0};
+        double parameterOnFirstSegment{0.0};
+        double parameterOnSecondSegment{0.0};
+        double globalParameterOnFirst{0.0};
+        double globalParameterOnSecond{0.0};
+
+        [[nodiscard]] bool IsValid() const
+        {
+            return kind != SCIntersectionKind2d::None && point.IsValid();
         }
     };
 
@@ -141,7 +196,6 @@ namespace Geometry
         }
     };
 }  // namespace Geometry
-
 
 
 

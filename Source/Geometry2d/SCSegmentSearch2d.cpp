@@ -1,6 +1,7 @@
 #include "Geometry2d/SCSegmentSearch2d.h"
 
 #include <algorithm>
+#include <limits>
 #include <sstream>
 #include <utility>
 
@@ -147,6 +148,55 @@ namespace Geometry
             }
         }
         return best;
+    }
+
+    std::vector<SCSegmentSearchHit2d> SCSegmentSearch2d::QueryKNearest(const SCPoint2d& point,
+                                                                       std::size_t k,
+                                                                       double maxDistance) const
+    {
+        std::vector<SCSegmentSearchHit2d> hits;
+        if (!(maxDistance >= 0.0))
+        {
+            return hits;
+        }
+
+        const double maxDistanceSquared = maxDistance * maxDistance;
+        hits.reserve(entries_.size());
+        for (const auto& entry : entries_)
+        {
+            const auto projection = ProjectPointToSegment(point, *entry.segment, true);
+            if (!projection.IsValid() || projection.distanceSquared > maxDistanceSquared)
+            {
+                continue;
+            }
+
+            hits.push_back(SCSegmentSearchHit2d{entry.id,
+                                                projection.point,
+                                                projection.distanceSquared,
+                                                projection.parameter,
+                                                projection.isOnSegment});
+        }
+
+        if (k < hits.size())
+        {
+            std::nth_element(hits.begin(), hits.begin() + static_cast<std::ptrdiff_t>(k), hits.end(), [](const auto& lhs, const auto& rhs) {
+                if (lhs.distanceSquared != rhs.distanceSquared)
+                {
+                    return lhs.distanceSquared < rhs.distanceSquared;
+                }
+                return lhs.id < rhs.id;
+            });
+            hits.resize(k);
+        }
+
+        std::sort(hits.begin(), hits.end(), [](const auto& lhs, const auto& rhs) {
+            if (lhs.distanceSquared != rhs.distanceSquared)
+            {
+                return lhs.distanceSquared < rhs.distanceSquared;
+            }
+            return lhs.id < rhs.id;
+        });
+        return hits;
     }
 
     std::string SCSegmentSearch2d::DebugString() const

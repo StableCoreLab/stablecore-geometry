@@ -25,6 +25,13 @@ namespace Geometry
         SCBox2d box{};
     };
 
+    struct GEOMETRY_API SCBoxTreeKnnHit2d
+    {
+        std::size_t id{0};
+        SCBox2d box{};
+        double distanceSquared{0.0};
+    };
+
     class GEOMETRY_API SCBoxTree2d
     {
     public:
@@ -44,6 +51,9 @@ namespace Geometry
         [[nodiscard]] std::vector<std::size_t> Query(const SCBox2d& box, double eps = Geometry::kDefaultEpsilon) const;
         [[nodiscard]] std::vector<std::size_t> QueryContaining(const SCPoint2d& point,
                                                                double eps = Geometry::kDefaultEpsilon) const;
+        [[nodiscard]] std::vector<SCBoxTreeKnnHit2d> QueryKNearest(const SCPoint2d& point,
+                                                                   std::size_t k,
+                                                                   double eps = Geometry::kDefaultEpsilon) const;
         [[nodiscard]] std::string DebugString() const;
 
         [[nodiscard]] const std::vector<SCBoxTreeEntry2d>& Entries() const;

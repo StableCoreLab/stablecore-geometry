@@ -159,6 +159,11 @@ namespace Geometry
         return std::make_unique<SCArcSegment2d>(*this);
     }
 
+    bool SCArcSegment2d::ContainsAngle(double angle) const
+    {
+        return IsAngleOnArc(angle);
+    }
+
     double SCArcSegment2d::NormalizeAngle(double angle)
     {
         angle = std::fmod(angle, 2.0 * std::numbers::pi_v<double>);

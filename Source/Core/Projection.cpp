@@ -180,5 +180,43 @@ namespace Geometry
     {
         return LeftNormal(TangentAt(segment, parameter));
     }
-}  // namespace Geometry
 
+    SCSegmentProjection3d ProjectPointToLineSegment(const SCPoint3d& point,
+                                                    const SCLineSegment3d& segment,
+                                                    bool clampToSegment,
+                                                    const SCGeometryTolerance3d& tolerance)
+    {
+        if (!segment.IsValid(tolerance.distanceEpsilon))
+        {
+            return SCSegmentProjection3d{segment.startPoint, 0.0, (point - segment.startPoint).LengthSquared(), true};
+        }
+
+        const SCVector3d direction = segment.endPoint - segment.startPoint;
+        const double lengthSquared = direction.LengthSquared();
+        if (lengthSquared <= tolerance.distanceEpsilon * tolerance.distanceEpsilon)
+        {
+            return SCSegmentProjection3d{segment.startPoint, 0.0, (point - segment.startPoint).LengthSquared(), true};
+        }
+
+        const double rawParameter = Dot(point - segment.startPoint, direction) / lengthSquared;
+        const double parameter = clampToSegment ? std::clamp(rawParameter, 0.0, 1.0) : rawParameter;
+        const SCPoint3d projectedPoint = segment.PointAt(parameter);
+        return SCSegmentProjection3d{projectedPoint,
+                                     parameter,
+                                     (point - projectedPoint).LengthSquared(),
+                                     rawParameter >= -tolerance.parameterEpsilon &&
+                                         rawParameter <= 1.0 + tolerance.parameterEpsilon};
+    }
+
+    SCSegmentProjection3d ProjectPointToLineSegment(const SCPoint3d& point,
+                                                    const SCPoint3d& segmentStart,
+                                                    const SCPoint3d& segmentEnd,
+                                                    bool clampToSegment,
+                                                    const SCGeometryTolerance3d& tolerance)
+    {
+        return ProjectPointToLineSegment(point,
+                                         SCLineSegment3d{segmentStart, segmentEnd},
+                                         clampToSegment,
+                                         tolerance);
+    }
+}  // namespace Geometry
