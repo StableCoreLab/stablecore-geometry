@@ -8,6 +8,11 @@
 #include <unordered_set>
 #include <vector>
 
+#include "../Detail/ArrangementVertices2d.h"
+#include "../Detail/DirectedEdgeFans2d.h"
+#include "../Detail/PolygonNesting2d.h"
+#include "../Detail/RingVertices2d.h"
+#include "../Detail/SegmentSubdivision2d.h"
 #include "Brep/Topology.h"
 #include "Core/Editing.h"
 #include "Core/Intersection.h"
@@ -29,12 +34,8 @@ namespace Geometry
             Difference
         };
 
-        struct DirectedEdge
+        struct DirectedEdge : Detail::DirectedEdge2d
         {
-            std::size_t from{0};
-            std::size_t to{0};
-            std::size_t twin{0};
-            double angle{0.0};
             bool visited{false};
         };
 
@@ -485,19 +486,6 @@ namespace Geometry
             return {};
         }
 
-        void AddParameter(std::vector<double>& parameters, double value, double eps)
-        {
-            value = std::clamp(value, 0.0, 1.0);
-            for (double existing : parameters)
-            {
-                if (std::abs(existing - value) <= eps)
-                {
-                    return;
-                }
-            }
-            parameters.push_back(value);
-        }
-
         [[nodiscard]] double ComputeParameterTolerance(const SCLineSegment2d& segment, double eps)
         {
             const double length = segment.Length();
@@ -511,138 +499,29 @@ namespace Geometry
             return std::min(1e-4, std::max(Geometry::kBooleanComparisonEpsilon, 8.0 * eps / length));
         }
 
-        [[nodiscard]] std::vector<double> CompactSortedParameters(std::vector<double> parameters, double parameterTol)
-        {
-            if (parameters.empty())
-            {
-                return parameters;
-            }
-
-            std::sort(parameters.begin(), parameters.end());
-            std::vector<double> compacted;
-            compacted.reserve(parameters.size());
-
-            std::size_t clusterStart = 0;
-            while (clusterStart < parameters.size())
-            {
-                std::size_t clusterEnd = clusterStart + 1;
-                double weighted = parameters[clusterStart];
-                while (clusterEnd < parameters.size() &&
-                       parameters[clusterEnd] <= parameters[clusterEnd - 1] + parameterTol)
-                {
-                    weighted += parameters[clusterEnd];
-                    ++clusterEnd;
-                }
-
-                const double representative = weighted / static_cast<double>(clusterEnd - clusterStart);
-                compacted.push_back(std::clamp(representative, 0.0, 1.0));
-                clusterStart = clusterEnd;
-            }
-
-            if (compacted.front() > parameterTol)
-            {
-                compacted.insert(compacted.begin(), 0.0);
-            } else
-            {
-                compacted.front() = 0.0;
-            }
-
-            if (compacted.back() < 1.0 - parameterTol)
-            {
-                compacted.push_back(1.0);
-            } else
-            {
-                compacted.back() = 1.0;
-            }
-
-            return compacted;
-        }
-
         [[nodiscard]] std::vector<RawSegment> SubdivideRawSegments(const std::vector<RawSegment>& rawSegments,
                                                                    double eps)
         {
-            std::vector<std::vector<double>> parameters(rawSegments.size(), std::vector<double>{0.0, 1.0});
-            for (std::size_t i = 0; i < rawSegments.size(); ++i)
+            std::vector<SCLineSegment2d> segments;
+            segments.reserve(rawSegments.size());
+            for (const RawSegment& rawSegment : rawSegments)
             {
-                const SCLineSegment2d first(rawSegments[i].start, rawSegments[i].end);
-                for (std::size_t j = i + 1; j < rawSegments.size(); ++j)
-                {
-                    const SCLineSegment2d second(rawSegments[j].start, rawSegments[j].end);
-                    const SCSegmentIntersection2d intersection = Intersect(first, second, eps);
-                    if (!intersection.HasIntersection())
-                    {
-                        continue;
-                    }
-
-                    for (std::size_t k = 0; k < intersection.pointCount; ++k)
-                    {
-                        AddParameter(parameters[i], intersection.points[k].parameterOnFirst, eps);
-                        AddParameter(parameters[j], intersection.points[k].parameterOnSecond, eps);
-                    }
-                }
+                segments.emplace_back(rawSegment.start, rawSegment.end);
             }
 
+            const std::vector<Detail::SubdividedLineSegment2d> subdivisions = Detail::SubdivideLineSegments(
+                segments,
+                eps,
+                [eps](const SCLineSegment2d& segment) { return ComputeParameterTolerance(segment, eps); });
+
             std::vector<RawSegment> splitSegments;
-            for (std::size_t i = 0; i < rawSegments.size(); ++i)
+            splitSegments.reserve(subdivisions.size());
+            for (const Detail::SubdividedLineSegment2d& subdivision : subdivisions)
             {
-                SCLineSegment2d segment(rawSegments[i].start, rawSegments[i].end);
-                const double parameterTol = ComputeParameterTolerance(segment, eps);
-                std::vector<double> params = CompactSortedParameters(parameters[i], parameterTol);
-
-                for (std::size_t k = 0; k + 1 < params.size(); ++k)
-                {
-                    if (params[k + 1] <= params[k] + parameterTol)
-                    {
-                        continue;
-                    }
-
-                    SCPoint2d start = segment.PointAt(params[k]);
-                    SCPoint2d end = segment.PointAt(params[k + 1]);
-                    if (params[k] <= parameterTol)
-                    {
-                        start = segment.startPoint;
-                    } else if (params[k] >= 1.0 - parameterTol)
-                    {
-                        start = segment.endPoint;
-                    }
-
-                    if (params[k + 1] <= parameterTol)
-                    {
-                        end = segment.startPoint;
-                    } else if (params[k + 1] >= 1.0 - parameterTol)
-                    {
-                        end = segment.endPoint;
-                    }
-
-                    if (!start.AlmostEquals(end, eps))
-                    {
-                        splitSegments.push_back(RawSegment{start, end});
-                    }
-                }
+                splitSegments.push_back(RawSegment{subdivision.start, subdivision.end});
             }
 
             return splitSegments;
-        }
-
-        [[nodiscard]] std::size_t FindOrAddVertex(std::vector<SCPoint2d>& vertices, const SCPoint2d& point, double eps)
-        {
-            for (std::size_t i = 0; i < vertices.size(); ++i)
-            {
-                if (vertices[i].AlmostEquals(point, eps))
-                {
-                    return i;
-                }
-            }
-
-            vertices.push_back(point);
-            return vertices.size() - 1;
-        }
-
-        [[nodiscard]] std::uint64_t MakeUndirectedEdgeKey(std::size_t first, std::size_t second)
-        {
-            const std::uint64_t a = static_cast<std::uint64_t>(std::min(first, second));
-            const std::uint64_t b = static_cast<std::uint64_t>(std::max(first, second));
-            return (a << 32U) | b;
         }
 
         [[nodiscard]] std::vector<RawSegment> RemoveDuplicateSegments(const std::vector<RawSegment>& segments,
@@ -660,14 +539,14 @@ namespace Geometry
                     continue;
                 }
 
-                const std::size_t from = FindOrAddVertex(vertices, segment.start, vertexTol);
-                const std::size_t to = FindOrAddVertex(vertices, segment.end, vertexTol);
+                const std::size_t from = Detail::FindOrAddVertex2d(vertices, segment.start, vertexTol);
+                const std::size_t to = Detail::FindOrAddVertex2d(vertices, segment.end, vertexTol);
                 if (from == to)
                 {
                     continue;
                 }
 
-                const std::uint64_t key = MakeUndirectedEdgeKey(from, to);
+                const std::uint64_t key = Detail::MakeUndirectedEdgeKey2d(from, to);
                 if (edgeKeys.emplace(key, unique.size()).second)
                 {
                     unique.push_back(segment);
@@ -745,8 +624,8 @@ namespace Geometry
 
                 for (const RawSegment& segment : working)
                 {
-                    const std::size_t from = FindOrAddVertex(vertices, segment.start, vertexTol);
-                    const std::size_t to = FindOrAddVertex(vertices, segment.end, vertexTol);
+                    const std::size_t from = Detail::FindOrAddVertex2d(vertices, segment.start, vertexTol);
+                    const std::size_t to = Detail::FindOrAddVertex2d(vertices, segment.end, vertexTol);
                     if (degree.size() < vertices.size())
                     {
                         degree.resize(vertices.size(), 0);
@@ -865,8 +744,8 @@ namespace Geometry
 
             for (const RawSegment& segment : segments)
             {
-                const std::size_t from = FindOrAddVertex(vertices, segment.start, vertexTol);
-                const std::size_t to = FindOrAddVertex(vertices, segment.end, vertexTol);
+                const std::size_t from = Detail::FindOrAddVertex2d(vertices, segment.start, vertexTol);
+                const std::size_t to = Detail::FindOrAddVertex2d(vertices, segment.end, vertexTol);
                 indexed.push_back(IndexedSegment{from, to});
 
                 const std::size_t required = std::max(from, to) + 1;
@@ -1276,14 +1155,14 @@ namespace Geometry
                     continue;
                 }
 
-                const std::size_t from = FindOrAddVertex(vertices, segment.start, vertexTol);
-                const std::size_t to = FindOrAddVertex(vertices, segment.end, vertexTol);
+                const std::size_t from = Detail::FindOrAddVertex2d(vertices, segment.start, vertexTol);
+                const std::size_t to = Detail::FindOrAddVertex2d(vertices, segment.end, vertexTol);
                 if (from == to)
                 {
                     continue;
                 }
 
-                const std::uint64_t key = MakeUndirectedEdgeKey(from, to);
+                const std::uint64_t key = Detail::MakeUndirectedEdgeKey2d(from, to);
                 if (!edgeKeys.insert(key).second)
                 {
                     continue;
@@ -1293,8 +1172,8 @@ namespace Geometry
                 const SCVector2d backward = vertices[from] - vertices[to];
 
                 const std::size_t forwardIndex = edges.size();
-                edges.push_back(DirectedEdge{from, to, forwardIndex + 1, std::atan2(forward.y, forward.x), false});
-                edges.push_back(DirectedEdge{to, from, forwardIndex, std::atan2(backward.y, backward.x), false});
+                edges.push_back(DirectedEdge{{from, to, forwardIndex + 1, std::atan2(forward.y, forward.x)}, false});
+                edges.push_back(DirectedEdge{{to, from, forwardIndex, std::atan2(backward.y, backward.x)}, false});
 
                 const std::size_t required = std::max(from, to) + 1;
                 if (outgoing.size() < required)
@@ -1306,64 +1185,9 @@ namespace Geometry
             }
         }
 
-        void SortOutgoing(const std::vector<DirectedEdge>& edges, std::vector<std::vector<std::size_t>>& outgoing)
-        {
-            for (auto& fan : outgoing)
-            {
-                std::sort(fan.begin(), fan.end(), [&edges](std::size_t lhs, std::size_t rhs) {
-                    return edges[lhs].angle < edges[rhs].angle;
-                });
-            }
-        }
-
-        [[nodiscard]] std::size_t PreviousOutgoing(const std::vector<std::size_t>& fan, std::size_t edgeIndex)
-        {
-            for (std::size_t i = 0; i < fan.size(); ++i)
-            {
-                if (fan[i] == edgeIndex)
-                {
-                    return fan[(i + fan.size() - 1) % fan.size()];
-                }
-            }
-
-            return std::numeric_limits<std::size_t>::max();
-        }
-
-        [[nodiscard]] std::size_t NextFaceEdge(const std::vector<DirectedEdge>& edges,
-                                               const std::vector<std::vector<std::size_t>>& outgoing,
-                                               std::size_t edgeIndex)
-        {
-            const DirectedEdge& edge = edges[edgeIndex];
-            if (edge.to >= outgoing.size())
-            {
-                return std::numeric_limits<std::size_t>::max();
-            }
-
-            const std::vector<std::size_t>& fan = outgoing[edge.to];
-            if (fan.empty())
-            {
-                return std::numeric_limits<std::size_t>::max();
-            }
-
-            return PreviousOutgoing(fan, edge.twin);
-        }
-
         [[nodiscard]] std::vector<SCPoint2d> SimplifyRingVertices(std::vector<SCPoint2d> points, double eps)
         {
-            std::vector<SCPoint2d> simplified;
-            simplified.reserve(points.size());
-            for (const SCPoint2d& point : points)
-            {
-                if (simplified.empty() || !simplified.back().AlmostEquals(point, eps))
-                {
-                    simplified.push_back(point);
-                }
-            }
-
-            while (simplified.size() >= 2 && simplified.front().AlmostEquals(simplified.back(), eps))
-            {
-                simplified.pop_back();
-            }
+            std::vector<SCPoint2d> simplified = Detail::NormalizeRingVertices2d(std::move(points), eps);
 
             bool changed = true;
             while (changed && simplified.size() >= 3)
@@ -1415,8 +1239,8 @@ namespace Geometry
                     edge.visited = true;
                     loopPoints.push_back(vertices[edge.from]);
 
-                    const std::size_t next = NextFaceEdge(edges, outgoing, current);
-                    if (next == std::numeric_limits<std::size_t>::max())
+                    const std::size_t next = Detail::NextFaceEdge(edges, outgoing, current);
+                    if (next == Detail::kInvalidDirectedEdge2d)
                     {
                         break;
                     }
@@ -1455,41 +1279,6 @@ namespace Geometry
             return rings;
         }
 
-        [[nodiscard]] std::vector<std::size_t> BuildLoopParents(const std::vector<SCPolygon2d>& loops, double eps)
-        {
-            std::vector<std::size_t> parents(loops.size(), static_cast<std::size_t>(-1));
-            for (std::size_t i = 0; i < loops.size(); ++i)
-            {
-                const double loopArea = loops[i].Area();
-                double bestArea = 0.0;
-                for (std::size_t j = 0; j < loops.size(); ++j)
-                {
-                    if (i == j)
-                    {
-                        continue;
-                    }
-
-                    const double containerArea = loops[j].Area();
-                    if (containerArea <= loopArea + eps)
-                    {
-                        continue;
-                    }
-                    if (!Contains(loops[j], loops[i], eps))
-                    {
-                        continue;
-                    }
-
-                    if (parents[i] == static_cast<std::size_t>(-1) || containerArea < bestArea)
-                    {
-                        parents[i] = j;
-                        bestArea = containerArea;
-                    }
-                }
-            }
-
-            return parents;
-        }
-
         [[nodiscard]] std::vector<SCPolygon2d> BuildBoundedFacesFromCandidateRings(const std::vector<SCPolyline2d>& rings,
                                                                                  double areaTol,
                                                                                  double eps)
@@ -1515,7 +1304,7 @@ namespace Geometry
                 return faces;
             }
 
-            const std::vector<std::size_t> parents = BuildLoopParents(loopPolygons, eps);
+            const std::vector<std::size_t> parents = Detail::BuildPolygonParents2d(loopPolygons, eps);
             faces.reserve(loopPolygons.size());
             for (std::size_t i = 0; i < loopPolygons.size(); ++i)
             {
@@ -1821,7 +1610,7 @@ namespace Geometry
                 return result;
             }
 
-            SortOutgoing(edges, outgoing);
+            Detail::SortOutgoingFans(edges, outgoing);
             const std::vector<SCPolyline2d> rings = ExtractCandidateRings(edges, vertices, outgoing, eps);
             const std::vector<SCPolygon2d> faces = BuildBoundedFacesFromCandidateRings(rings, areaTol, eps);
             if (faces.empty())
@@ -1953,4 +1742,3 @@ namespace Geometry
         return result;
     }
 }  // namespace Geometry
-

@@ -1,24 +1,16 @@
 #include <gtest/gtest.h>
 
-#include "Geometry.h"
-
-TEST(MissingAlgorithmsGapTest, TangentPointsBoundaryClassificationRemainsOpen)
+TEST(DISABLED_MissingAlgorithmsGapTest, TangentPointsBoundaryClassificationRemainsOpen)
 {
-    GTEST_SKIP() << "Known gap: tangent-point boundary classification near the circle/arc limit "
-                    "still depends on epsilon-sensitive angle filtering, especially when the "
-                    "query point is numerically close to the limiting tangent circle.";
+    GTEST_SKIP() << "Known gap: tangent classification at circle/arc tolerance boundaries.";
 }
 
-TEST(MissingAlgorithmsGapTest, IntersectExtendedDegenerateOverlapClassificationRemainsOpen)
+TEST(DISABLED_MissingAlgorithmsGapTest, IntersectExtendedDegenerateOverlapClassificationRemainsOpen)
 {
-    GTEST_SKIP() << "Known gap: IntersectExtended overlap semantics for degenerate or nearly "
-                    "degenerate extended configurations remain open, including when support "
-                    "geometries are coincident but finite overlap endpoints are unstable.";
+    GTEST_SKIP() << "Known gap: degenerate extended-overlap classification.";
 }
 
-TEST(MissingAlgorithmsGapTest, PolylineIntersectionEndpointDeduplicationRemainsOpen)
+TEST(DISABLED_MissingAlgorithmsGapTest, PolylineIntersectionEndpointDeduplicationRemainsOpen)
 {
-    GTEST_SKIP() << "Known gap: polyline-vs-polyline intersection still has boundary-sensitive "
-                    "endpoint de-duplication and ordering cases when multiple adjacent segment "
-                    "pairs report the same geometric hit.";
+    GTEST_SKIP() << "Known gap: endpoint-hit de-duplication and ordering.";
 }

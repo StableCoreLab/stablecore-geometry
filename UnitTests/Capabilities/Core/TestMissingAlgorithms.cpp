@@ -1,10 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <array>
-#include <numbers>
 
 #include "Geometry.h"
-#include "support/GeometryTestSupport.h"
 
 using Geometry::SCBox2d;
 using Geometry::SCBox3d;
@@ -37,8 +35,8 @@ TEST(MissingAlgorithmsCapabilityTest, TangentPointsReturnsTwoPointsForExternalPo
 
     ASSERT_TRUE(result.IsValid());
     EXPECT_EQ(result.pointCount, 2U);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(result.points[0], (SCPoint2d{2.5, -2.5 * std::sqrt(3.0)}), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(result.points[1], (SCPoint2d{2.5, 2.5 * std::sqrt(3.0)}), 1e-12);
+    EXPECT_TRUE(result.points[0].AlmostEquals(SCPoint2d{2.5, -2.5 * std::sqrt(3.0)}, 1e-12));
+    EXPECT_TRUE(result.points[1].AlmostEquals(SCPoint2d{2.5, 2.5 * std::sqrt(3.0)}, 1e-12));
 }
 
 TEST(MissingAlgorithmsCapabilityTest, Line2dIntersectionFindsPointAndSegmentHit)
@@ -48,13 +46,13 @@ TEST(MissingAlgorithmsCapabilityTest, Line2dIntersectionFindsPointAndSegmentHit)
     const auto lineLine = Geometry::Intersect(first, second);
     ASSERT_TRUE(lineLine.HasIntersection());
     ASSERT_EQ(lineLine.pointCount, 1U);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(lineLine.points[0].point, (SCPoint2d{2.0, 0.0}), 1e-12);
+    EXPECT_TRUE(lineLine.points[0].point.AlmostEquals(SCPoint2d{2.0, 0.0}, 1e-12));
 
     const SCLineSegment2d segment(SCPoint2d{2.0, -1.0}, SCPoint2d{2.0, 1.0});
     const auto lineSegment = Geometry::Intersect(first, segment);
     ASSERT_TRUE(lineSegment.HasIntersection());
     ASSERT_EQ(lineSegment.pointCount, 1U);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(lineSegment.points[0].point, (SCPoint2d{2.0, 0.0}), 1e-12);
+    EXPECT_TRUE(lineSegment.points[0].point.AlmostEquals(SCPoint2d{2.0, 0.0}, 1e-12));
 }
 
 TEST(MissingAlgorithmsCapabilityTest, IntersectExtendedPolicyNoneMatchesIntersectForCollinearLines)
@@ -71,8 +69,8 @@ TEST(MissingAlgorithmsCapabilityTest, IntersectExtendedPolicyNoneMatchesIntersec
     EXPECT_EQ(actual.pointCount, expected.pointCount);
     EXPECT_FALSE(actual.infiniteOverlap);
     ASSERT_EQ(actual.pointCount, 2U);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(actual.points[0].point, expected.points[0].point, 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(actual.points[1].point, expected.points[1].point, 1e-12);
+    EXPECT_TRUE(actual.points[0].point.AlmostEquals(expected.points[0].point, 1e-12));
+    EXPECT_TRUE(actual.points[1].point.AlmostEquals(expected.points[1].point, 1e-12));
     EXPECT_TRUE(actual.onFirstSegment);
     EXPECT_TRUE(actual.onSecondSegment);
 }
@@ -84,7 +82,7 @@ TEST(MissingAlgorithmsCapabilityTest, ProjectPointToLineSegment3dClampsAndProjec
 
     ASSERT_TRUE(projection.IsValid());
     EXPECT_DOUBLE_EQ(projection.parameter, 0.5);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(projection.point, (SCPoint3d{1.0, 0.0, 0.0}), 1e-12);
+    EXPECT_TRUE(projection.point.AlmostEquals(SCPoint3d{1.0, 0.0, 0.0}, 1e-12));
     EXPECT_DOUBLE_EQ(projection.distanceSquared, 1.0);
 }
 
@@ -150,7 +148,7 @@ TEST(MissingAlgorithmsCapabilityTest, QueryKNearestBreaksEqualDistanceTiesById)
 TEST(MissingAlgorithmsCapabilityTest, IntersectExtendedLineArcFindsExtendedHit)
 {
     const SCLineSegment2d lineSegment{SCPoint2d{3.0, 3.0}, SCPoint2d{4.0, 4.0}};
-    const SCArcSegment2d arc{SCPoint2d{0.0, 0.0}, std::sqrt(8.0), 0.0, std::numbers::pi / 2.0};
+    const SCArcSegment2d arc{SCPoint2d{0.0, 0.0}, std::sqrt(8.0), 0.0, Geometry::kPi / 2.0};
 
     const auto withoutExtension = Geometry::IntersectExtended(lineSegment, arc, Geometry::SCExtensionPolicy::None);
     EXPECT_FALSE(withoutExtension.HasIntersection());
@@ -159,7 +157,7 @@ TEST(MissingAlgorithmsCapabilityTest, IntersectExtendedLineArcFindsExtendedHit)
     ASSERT_TRUE(extended.HasIntersection());
     EXPECT_EQ(extended.kind, SCIntersectionKind2d::Point);
     ASSERT_EQ(extended.pointCount, 1U);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(extended.points[0].point, (SCPoint2d{2.0, 2.0}), 1e-12);
+    EXPECT_TRUE(extended.points[0].point.AlmostEquals(SCPoint2d{2.0, 2.0}, 1e-12));
     EXPECT_FALSE(extended.onFirstSegment);
     EXPECT_TRUE(extended.onSecondSegment);
 }
@@ -168,11 +166,11 @@ TEST(MissingAlgorithmsCapabilityTest, IntersectExtendedLineArcUsesCallerEpsilonF
 {
     const double delta = 5e-7;
     const double eps = 1e-6;
-    const double angle = std::numbers::pi / 2.0 + delta;
+    const double angle = Geometry::kPi / 2.0 + delta;
     const SCPoint2d tangentPoint{std::cos(angle), std::sin(angle)};
     const Geometry::SCVector2d tangentDirection{-std::sin(angle), std::cos(angle)};
     const SCLineSegment2d lineSegment{tangentPoint - tangentDirection * 0.5, tangentPoint + tangentDirection * 0.5};
-    const SCArcSegment2d arc{SCPoint2d{0.0, 0.0}, 1.0, 0.0, std::numbers::pi / 2.0};
+    const SCArcSegment2d arc{SCPoint2d{0.0, 0.0}, 1.0, 0.0, Geometry::kPi / 2.0};
 
     const auto strict = Geometry::IntersectExtended(lineSegment, arc, Geometry::SCExtensionPolicy::None, 1e-9);
     EXPECT_FALSE(strict.HasIntersection());
@@ -181,15 +179,15 @@ TEST(MissingAlgorithmsCapabilityTest, IntersectExtendedLineArcUsesCallerEpsilonF
     ASSERT_TRUE(relaxed.HasIntersection());
     EXPECT_EQ(relaxed.kind, SCIntersectionKind2d::Tangent);
     ASSERT_EQ(relaxed.pointCount, 1U);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(relaxed.points[0].point, tangentPoint, 1e-12);
+    EXPECT_TRUE(relaxed.points[0].point.AlmostEquals(tangentPoint, 1e-12));
     EXPECT_TRUE(relaxed.onFirstSegment);
     EXPECT_TRUE(relaxed.onSecondSegment);
 }
 
 TEST(MissingAlgorithmsCapabilityTest, ArcArcExtendedIntersectionHonorsPerSideExtension)
 {
-    const SCArcSegment2d first{SCPoint2d{0.0, 0.0}, 5.0, 0.0, std::numbers::pi / 4.0};
-    const SCArcSegment2d second{SCPoint2d{0.0, 0.0}, 5.0, std::numbers::pi / 2.0, std::numbers::pi / 6.0};
+    const SCArcSegment2d first{SCPoint2d{0.0, 0.0}, 5.0, 0.0, Geometry::kPi / 4.0};
+    const SCArcSegment2d second{SCPoint2d{0.0, 0.0}, 5.0, Geometry::kPi / 2.0, Geometry::kPi / 6.0};
 
     const auto withoutExtension = Geometry::IntersectExtended(first, second, Geometry::SCExtensionPolicy::None);
     EXPECT_FALSE(withoutExtension.HasIntersection());
@@ -198,8 +196,8 @@ TEST(MissingAlgorithmsCapabilityTest, ArcArcExtendedIntersectionHonorsPerSideExt
     ASSERT_TRUE(extendFirst.HasIntersection());
     EXPECT_EQ(extendFirst.kind, SCIntersectionKind2d::Overlap);
     ASSERT_EQ(extendFirst.pointCount, 2U);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(extendFirst.points[0].point, (SCPoint2d{0.0, 5.0}), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(extendFirst.points[1].point, second.EndPoint(), 1e-12);
+    EXPECT_TRUE(extendFirst.points[0].point.AlmostEquals(SCPoint2d{0.0, 5.0}, 1e-12));
+    EXPECT_TRUE(extendFirst.points[1].point.AlmostEquals(second.EndPoint(), 1e-12));
     EXPECT_FALSE(extendFirst.onFirstSegment);
     EXPECT_TRUE(extendFirst.onSecondSegment);
 }
@@ -212,7 +210,7 @@ TEST(MissingAlgorithmsCapabilityTest, SegmentSearch3dNearestUsesProvidedToleranc
 
     const auto strictHit = search.Nearest(SCPoint3d{0.0, 1.0, 0.0}, SCGeometryTolerance3d{1e-9, 1e-9, 1e-9});
     ASSERT_TRUE(strictHit.has_value());
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(strictHit->point, (SCPoint3d{0.0, 0.0, 0.0}), 1e-12);
+    EXPECT_TRUE(strictHit->point.AlmostEquals(SCPoint3d{0.0, 0.0, 0.0}, 1e-12));
 
     const auto looseHit = search.Nearest(SCPoint3d{0.0, 1.0, 0.0}, SCGeometryTolerance3d{1e-3, 1e-9, 1e-9});
     EXPECT_FALSE(looseHit.has_value());
@@ -226,7 +224,7 @@ TEST(MissingAlgorithmsCapabilityTest, PolylineIntersectionReturnsSharedCrossing)
     const auto intersections = Geometry::Intersect(first, second);
     ASSERT_EQ(intersections.size(), 1U);
     EXPECT_EQ(intersections[0].kind, SCIntersectionKind2d::Point);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(intersections[0].point, (SCPoint2d{2.0, 0.0}), 1e-12);
+    EXPECT_TRUE(intersections[0].point.AlmostEquals(SCPoint2d{2.0, 0.0}, 1e-12));
 }
 
 TEST(MissingAlgorithmsCapabilityTest, SnapPointToSegments3dFindsNearestSegment)
@@ -238,5 +236,5 @@ TEST(MissingAlgorithmsCapabilityTest, SnapPointToSegments3dFindsNearestSegment)
 
     ASSERT_TRUE(snapped.snapped);
     EXPECT_EQ(snapped.segmentIndex, 0U);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(snapped.point, (SCPoint3d{1.0, 0.0, 0.0}), 1e-12);
+    EXPECT_TRUE(snapped.point.AlmostEquals(SCPoint3d{1.0, 0.0, 0.0}, 1e-12));
 }

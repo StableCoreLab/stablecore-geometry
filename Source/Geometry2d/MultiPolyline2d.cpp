@@ -3,8 +3,6 @@
 #include <sstream>
 #include <utility>
 
-#include "Core/ShapeOps.h"
-
 namespace Geometry
 {
     SCMultiPolyline2d::SCMultiPolyline2d(std::vector<SCPolyline2d> polylines) : polylines_(std::move(polylines))

@@ -8,11 +8,12 @@
 #include <iostream>
 #include <limits>
 #include <sstream>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <vector>
+
+#include <gtest/gtest.h>
 
 #include "Geometry.h"
 
@@ -112,11 +113,9 @@ namespace Geometry::Test
             return out.str();
         }
 
-        [[noreturn]] inline void Fail(std::string_view kind, std::string_view file, int line, std::string_view message)
+        inline void Fail(std::string_view kind, const char* file, int line, std::string_view message)
         {
-            std::ostringstream out;
-            out << FormatLocation(file, line) << ": " << kind << ": " << message;
-            throw std::runtime_error(out.str());
+            ADD_FAILURE_AT(file, line) << kind << ": " << message;
         }
         template <typename T>
         [[nodiscard]] bool NearlyEqual(T lhs, T rhs, double eps)
@@ -223,7 +222,7 @@ namespace Geometry::Test
                                 double eps,
                                 std::string_view actualExpr,
                                 std::string_view expectedExpr,
-                                std::string_view file,
+                                const char* file,
                                 int line)
     {
         if (Detail::NearlyEqual(actual.x, expected.x, eps) && Detail::NearlyEqual(actual.y, expected.y, eps))
@@ -245,7 +244,7 @@ namespace Geometry::Test
                                  double eps,
                                  std::string_view actualExpr,
                                  std::string_view expectedExpr,
-                                 std::string_view file,
+                                 const char* file,
                                  int line)
     {
         AssertPointNear(actual, expected, eps, actualExpr, expectedExpr, file, line);
@@ -257,7 +256,7 @@ namespace Geometry::Test
                            double eps,
                            std::string_view actualExpr,
                            std::string_view expectedExpr,
-                           std::string_view file,
+                           const char* file,
                            int line)
     {
         if (Detail::NearlyEqual(actual, expected, eps))
@@ -278,7 +277,7 @@ namespace Geometry::Test
                               double eps,
                               std::string_view actualExpr,
                               std::string_view expectedExpr,
-                              std::string_view file,
+                              const char* file,
                               int line)
     {
         if constexpr (Detail::HasIsValid<Actual> && Detail::HasIsValid<Expected>)
@@ -292,6 +291,7 @@ namespace Geometry::Test
                              line,
                              std::string(actualExpr) + " = " + Detail::DescribeBoxLike(actual) + ", " +
                                  std::string(expectedExpr) + " = " + Detail::DescribeBoxLike(expected));
+                return;
             }
 
             if (!actualValid && !expectedValid)
@@ -312,7 +312,7 @@ namespace Geometry::Test
                                      double eps,
                                      std::string_view actualExpr,
                                      std::string_view expectedExpr,
-                                     std::string_view file,
+                                     const char* file,
                                      int line)
     {
         AssertPointNear(actual.point, expected.point, eps, actualExpr, expectedExpr, file, line);
@@ -335,7 +335,7 @@ namespace Geometry::Test
                                    double eps,
                                    std::string_view actualExpr,
                                    std::string_view expectedExpr,
-                                   std::string_view file,
+                                   const char* file,
                                    int line)
     {
         if (actual.PointCount() != expected.PointCount())
@@ -345,6 +345,7 @@ namespace Geometry::Test
                          line,
                          std::string(actualExpr) + " = " + Detail::DescribePolylineLike(actual) + ", " +
                              std::string(expectedExpr) + " = " + Detail::DescribePolylineLike(expected));
+            return;
         }
 
         if constexpr (requires {
@@ -359,6 +360,7 @@ namespace Geometry::Test
                              line,
                              std::string(actualExpr) + " = " + Detail::DescribePolylineLike(actual) + ", " +
                                  std::string(expectedExpr) + " = " + Detail::DescribePolylineLike(expected));
+                return;
             }
         }
 
@@ -374,7 +376,7 @@ namespace Geometry::Test
                                   double eps,
                                   std::string_view actualExpr,
                                   std::string_view expectedExpr,
-                                  std::string_view file,
+                                  const char* file,
                                   int line)
     {
         if (actual.HoleCount() != expected.HoleCount())
@@ -384,6 +386,7 @@ namespace Geometry::Test
                          line,
                          std::string(actualExpr) + " = " + Detail::DescribePolygonLike(actual) + ", " +
                              std::string(expectedExpr) + " = " + Detail::DescribePolygonLike(expected));
+            return;
         }
 
         AssertPolylineNear(actual.OuterRing(), expected.OuterRing(), eps, actualExpr, expectedExpr, file, line);

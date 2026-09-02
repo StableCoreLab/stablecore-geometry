@@ -3,8 +3,6 @@
 #include <sstream>
 #include <utility>
 
-#include "Core/ShapeOps.h"
-
 namespace Geometry
 {
     SCMultiPolygon2d::SCMultiPolygon2d(std::vector<SCPolygon2d> polygons) : polygons_(std::move(polygons))

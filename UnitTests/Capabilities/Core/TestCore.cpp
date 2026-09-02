@@ -1,10 +1,9 @@
 #include <gtest/gtest.h>
 #include <cmath>
 #include <memory>
-#include <numbers>
 
 #include "Geometry.h"
-#include "support/GeometryTestSupport.h"
+#include "Support/Fixtures3d.h"
 
 using Geometry::SCArcDirection;
 using Geometry::SCArcSegment2d;
@@ -130,38 +129,38 @@ using Geometry::VertexNormal;
 
 using namespace Geometry;
 
-TEST(GeometryTest, CoversCurrentCapabilities)
+TEST(GeometryTest, CoversTwoDimensionalPrimitives)
 {
     const SCPoint2d a = SCPoint2d::FromXY(0.0, 0.0);
     const SCPoint2d b = SCPoint2d::FromXY(3.0, 4.0);
     const SCVector2d offset = b - a;
 
-    GEOMETRY_TEST_ASSERT_NEAR(Distance(a, b), 5.0, 1e-12);
+    EXPECT_NEAR(Distance(a, b), 5.0, 1e-12);
     ASSERT_EQ(offset, SCVector2d(SCVector2d{3.0, 4.0}));
-    GEOMETRY_TEST_ASSERT_NEAR(offset.LengthSquared(), 25.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(offset.Length(), 5.0, 1e-12);
+    EXPECT_NEAR(offset.LengthSquared(), 25.0, 1e-12);
+    EXPECT_NEAR(offset.Length(), 5.0, 1e-12);
     ASSERT_EQ(a + offset, b);
     ASSERT_EQ(b - offset, a);
 
     const SCLineSegment2d line = SCLineSegment2d::FromEndpoints(a, b);
     ASSERT_TRUE(line.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(line.Length(), 5.0, 1e-12);
+    EXPECT_NEAR(line.Length(), 5.0, 1e-12);
     const SCPoint2d lineMidpoint{1.5, 2.0};
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(line.PointAt(0.5), lineMidpoint, 1e-12);
-    GEOMETRY_TEST_ASSERT_BOX_NEAR(line.Bounds(), SCBox2d::FromMinMax(SCPoint2d{0.0, 0.0}, SCPoint2d{3.0, 4.0}), 1e-12);
+    EXPECT_TRUE(line.PointAt(0.5).AlmostEquals(lineMidpoint, 1e-12));
+    EXPECT_TRUE(line.Bounds().AlmostEquals(SCBox2d::FromMinMax(SCPoint2d{0.0, 0.0}, SCPoint2d{3.0, 4.0}), 1e-12));
     ASSERT_EQ(line.DebugString().find("SCLineSegment2d{start="), 0);
     ASSERT_EQ(line.Kind(), SCSegmentKind2::Line);
 
     const SCArcSegment2d arc =
-        SCArcSegment2d::FromCenterRadiusStartSweep(SCPoint2d{0.0, 0.0}, 1.0, 0.0, std::numbers::pi_v<double> * 0.5);
+        SCArcSegment2d::FromCenterRadiusStartSweep(SCPoint2d{0.0, 0.0}, 1.0, 0.0, Geometry::kPi * 0.5);
     ASSERT_TRUE(arc.IsValid());
     ASSERT_EQ(arc.Direction(), SCArcDirection::CounterClockwise);
-    GEOMETRY_TEST_ASSERT_NEAR(arc.Length(), std::numbers::pi_v<double> * 0.5, 1e-12);
+    EXPECT_NEAR(arc.Length(), Geometry::kPi * 0.5, 1e-12);
     const SCPoint2d arcStart{1.0, 0.0};
     const SCPoint2d arcEnd{0.0, 1.0};
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(arc.StartPoint(), arcStart, 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(arc.EndPoint(), arcEnd, 1e-12);
-    GEOMETRY_TEST_ASSERT_BOX_NEAR(arc.Bounds(), SCBox2d::FromMinMax(SCPoint2d{0.0, 0.0}, SCPoint2d{1.0, 1.0}), 1e-12);
+    EXPECT_TRUE(arc.StartPoint().AlmostEquals(arcStart, 1e-12));
+    EXPECT_TRUE(arc.EndPoint().AlmostEquals(arcEnd, 1e-12));
+    EXPECT_TRUE(arc.Bounds().AlmostEquals(SCBox2d::FromMinMax(SCPoint2d{0.0, 0.0}, SCPoint2d{1.0, 1.0}), 1e-12));
     ASSERT_EQ(arc.DebugString().find("SCArcSegment2d{center="), 0);
     ASSERT_EQ(arc.Kind(), SCSegmentKind2::Arc);
 
@@ -169,14 +168,14 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     std::unique_ptr<ISCSegment2d> arcSegment = arc.Clone();
     ASSERT_EQ(lineSegment->Kind(), SCSegmentKind2::Line);
     ASSERT_EQ(arcSegment->Kind(), SCSegmentKind2::Arc);
-    GEOMETRY_TEST_ASSERT_NEAR(lineSegment->Length(), 5.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(arcSegment->Length(), std::numbers::pi_v<double> * 0.5, 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(lineSegment->StartPoint(), a, 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(arcSegment->EndPoint(), arcEnd, 1e-12);
+    EXPECT_NEAR(lineSegment->Length(), 5.0, 1e-12);
+    EXPECT_NEAR(arcSegment->Length(), Geometry::kPi * 0.5, 1e-12);
+    EXPECT_TRUE(lineSegment->StartPoint().AlmostEquals(a, 1e-12));
+    EXPECT_TRUE(arcSegment->EndPoint().AlmostEquals(arcEnd, 1e-12));
 
     const auto projection = ProjectPointToSegment(SCPoint2d{3.0, 1.0}, a, b);
     const SCSegmentProjection2d expectedProjection{SCPoint2d{1.56, 2.08}, 0.52, 3.24, true};
-    GEOMETRY_TEST_ASSERT_PROJECTION_NEAR(projection, expectedProjection, 1e-12);
+    EXPECT_TRUE(projection.AlmostEquals(expectedProjection, 1e-12));
 
     const SCBox2d boxA = SCBox2d::FromMinMax(SCPoint2d{0.0, 0.0}, SCPoint2d{2.0, 2.0});
     const SCBox2d boxB = SCBox2d::FromMinMax(SCPoint2d{1.0, 1.0}, SCPoint2d{3.0, 3.0});
@@ -186,11 +185,11 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     const SCPoint2d expectedCenter{1.0, 1.0};
 
     ASSERT_TRUE(boxA.IsValid());
-    GEOMETRY_TEST_ASSERT_BOX_NEAR(boxA, expectedBox, 1e-12);
+    EXPECT_TRUE(boxA.AlmostEquals(expectedBox, 1e-12));
     ASSERT_FALSE(invalidBox.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(boxA.Width(), 2.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(boxA.Height(), 2.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(boxA.Center(), expectedCenter, 1e-12);
+    EXPECT_NEAR(boxA.Width(), 2.0, 1e-12);
+    EXPECT_NEAR(boxA.Height(), 2.0, 1e-12);
+    EXPECT_TRUE(boxA.Center().AlmostEquals(expectedCenter, 1e-12));
     ASSERT_TRUE(Contains(boxA, SCPoint2d{1.0, 1.0}));
     ASSERT_TRUE(Intersects(boxA, boxB));
     ASSERT_FALSE(Intersects(boxA, boxC));
@@ -202,8 +201,8 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_EQ(openPath.PointCount(), 3);
     ASSERT_EQ(openPath.SegmentCount(), 2);
     const SCPoint2d openMidPoint{3.0, 0.0};
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.PointAt(1), openMidPoint, 1e-12);
-    GEOMETRY_TEST_ASSERT_BOX_NEAR(openPath.Bounds(), SCBox2d::FromMinMax(SCPoint2d{0.0, 0.0}, SCPoint2d{3.0, 4.0}), 1e-12);
+    EXPECT_TRUE(openPath.PointAt(1).AlmostEquals(openMidPoint, 1e-12));
+    EXPECT_TRUE(openPath.Bounds().AlmostEquals(SCBox2d::FromMinMax(SCPoint2d{0.0, 0.0}, SCPoint2d{3.0, 4.0}), 1e-12));
     ASSERT_EQ(openPath.DebugString().find("SCPolyline2d{closure=Open"), 0);
 
     const SCPolyline2d outerRing({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}, SCPoint2d{4.0, 4.0}, SCPoint2d{0.0, 4.0}},
@@ -215,18 +214,27 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_EQ(polygon.HoleCount(), 1);
     ASSERT_EQ(polygon.PointCount(), 8);
     ASSERT_EQ(polygon.SegmentCount(), 8);
-    GEOMETRY_TEST_ASSERT_POLYLINE_NEAR(polygon.OuterRing(), outerRing, 1e-12);
-    GEOMETRY_TEST_ASSERT_POLYLINE_NEAR(polygon.HoleAt(0), holeRing, 1e-12);
-    GEOMETRY_TEST_ASSERT_BOX_NEAR(polygon.Bounds(), SCBox2d::FromMinMax(SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 4.0}), 1e-12);
+    ASSERT_EQ(polygon.OuterRing().PointCount(), outerRing.PointCount());
+    ASSERT_EQ(polygon.HoleAt(0).PointCount(), holeRing.PointCount());
+    for (std::size_t i = 0; i < outerRing.PointCount(); ++i)
+    {
+        EXPECT_TRUE(polygon.OuterRing().PointAt(i).AlmostEquals(outerRing.PointAt(i), 1e-12));
+        EXPECT_TRUE(polygon.HoleAt(0).PointAt(i).AlmostEquals(holeRing.PointAt(i), 1e-12));
+    }
+    EXPECT_TRUE(polygon.Bounds().AlmostEquals(SCBox2d::FromMinMax(SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 4.0}), 1e-12));
     ASSERT_EQ(polygon.DebugString().find("SCPolygon2d{holeCount=1"), 0);
 
+}
+
+TEST(GeometryTest, CoversThreeDimensionalCapabilities)
+{
     const SCLine3d line3 = SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 2.0, 3.0}, SCVector3d{2.0, 0.0, 0.0});
     const SCLineCurve3d lineCurve = SCLineCurve3d::FromLine(line3, SCIntervald{-2.0, 3.0});
     ASSERT_TRUE(lineCurve.IsValid());
     ASSERT_FALSE(lineCurve.IsClosed());
     ASSERT_FALSE(lineCurve.IsPeriodic());
-    GEOMETRY_TEST_ASSERT_NEAR(lineCurve.StartParameter(), -2.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(lineCurve.EndParameter(), 3.0, 1e-12);
+    EXPECT_NEAR(lineCurve.StartParameter(), -2.0, 1e-12);
+    EXPECT_NEAR(lineCurve.EndParameter(), 3.0, 1e-12);
     ASSERT_TRUE(lineCurve.PointAt(0.5).AlmostEquals(SCPoint3d{2.0, 2.0, 3.0}, 1e-12));
     const auto lineEval = lineCurve.Evaluate(1.5, 2);
     ASSERT_TRUE(lineEval.IsValid());
@@ -243,28 +251,28 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_TRUE(lineClone->IsValid());
     ASSERT_TRUE(lineClone->PointAt(-2.0).AlmostEquals(SCPoint3d{-3.0, 2.0, 3.0}, 1e-12));
 
-    const SCPlane supportPlane = SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 5.0}, SCVector3d{0.0, 0.0, 1.0});
-    const SCPlaneSurface planeSurface = SCPlaneSurface::FromPlane(supportPlane, SCIntervald{-2.0, 2.0}, SCIntervald{-3.0, 1.0});
+    const SCPlane supportPlane = Geometry::Test::BuildSupportPlaneAtZ5();
+    const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
     ASSERT_TRUE(planeSurface.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(planeSurface.StartU(), -2.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(planeSurface.EndU(), 2.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(planeSurface.StartV(), -3.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(planeSurface.EndV(), 1.0, 1e-12);
+    EXPECT_NEAR(planeSurface.StartU(), -2.0, 1e-12);
+    EXPECT_NEAR(planeSurface.EndU(), 2.0, 1e-12);
+    EXPECT_NEAR(planeSurface.StartV(), -3.0, 1e-12);
+    EXPECT_NEAR(planeSurface.EndV(), 1.0, 1e-12);
     const SCPoint3d planePoint = planeSurface.PointAt(0.5, -1.0);
-    GEOMETRY_TEST_ASSERT_NEAR(supportPlane.SignedDistanceTo(planePoint), 0.0, 1e-12);
+    EXPECT_NEAR(supportPlane.SignedDistanceTo(planePoint), 0.0, 1e-12);
     const auto surfaceEval = planeSurface.Evaluate(0.25, 0.75, 1);
     ASSERT_TRUE(surfaceEval.IsValid());
     ASSERT_TRUE(surfaceEval.point.AlmostEquals(planeSurface.PointAt(0.25, 0.75), 1e-12));
-    GEOMETRY_TEST_ASSERT_NEAR(Geometry::Dot(surfaceEval.derivativeU, surfaceEval.normal), 0.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(Geometry::Dot(surfaceEval.derivativeV, surfaceEval.normal), 0.0, 1e-12);
+    EXPECT_NEAR(Geometry::Dot(surfaceEval.derivativeU, surfaceEval.normal), 0.0, 1e-12);
+    EXPECT_NEAR(Geometry::Dot(surfaceEval.derivativeV, surfaceEval.normal), 0.0, 1e-12);
     const SCBox3d surfaceBounds = planeSurface.Bounds();
     ASSERT_TRUE(surfaceBounds.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(surfaceBounds.MinPoint().z, 5.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(surfaceBounds.MaxPoint().z, 5.0, 1e-12);
+    EXPECT_NEAR(surfaceBounds.MinPoint().z, 5.0, 1e-12);
+    EXPECT_NEAR(surfaceBounds.MaxPoint().z, 5.0, 1e-12);
     std::unique_ptr<ISCSurface> surfaceClone = planeSurface.Clone();
     ASSERT_NE(surfaceClone, nullptr);
     ASSERT_TRUE(surfaceClone->IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(supportPlane.SignedDistanceTo(surfaceClone->PointAt(-2.0, -3.0)), 0.0, 1e-12);
+    EXPECT_NEAR(supportPlane.SignedDistanceTo(surfaceClone->PointAt(-2.0, -3.0)), 0.0, 1e-12);
 
     const SCNurbsCurve3d nurbsCurve(1,
                                   {
@@ -275,8 +283,8 @@ TEST(GeometryTest, CoversCurrentCapabilities)
                                   {0.0, 0.0, 0.5, 1.0, 1.0});
     ASSERT_TRUE(nurbsCurve.IsValid());
     ASSERT_FALSE(nurbsCurve.IsPeriodic());
-    GEOMETRY_TEST_ASSERT_NEAR(nurbsCurve.StartParameter(), 0.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(nurbsCurve.EndParameter(), 1.0, 1e-12);
+    EXPECT_NEAR(nurbsCurve.StartParameter(), 0.0, 1e-12);
+    EXPECT_NEAR(nurbsCurve.EndParameter(), 1.0, 1e-12);
     ASSERT_TRUE(nurbsCurve.PointAt(0.5).AlmostEquals(SCPoint3d{1.0, 1.0, 0.0}, 1e-12));
     const auto nurbsCurveEval = nurbsCurve.Evaluate(0.25, 2);
     ASSERT_TRUE(nurbsCurveEval.IsValid());
@@ -284,8 +292,8 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     const auto nurbsCurveProjection = ProjectPointToCurve(SCPoint3d{1.0, 0.0, 1.0}, nurbsCurve);
     ASSERT_TRUE(nurbsCurveProjection.success);
     ASSERT_TRUE(nurbsCurveProjection.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(nurbsCurveProjection.point.z, 0.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(Length(nurbsCurve, 64), std::sqrt(2.0) * 2.0, 5e-2);
+    EXPECT_NEAR(nurbsCurveProjection.point.z, 0.0, 1e-12);
+    EXPECT_NEAR(Length(nurbsCurve, 64), std::sqrt(2.0) * 2.0, 5e-2);
     const SCBox3d nurbsCurveBounds = nurbsCurve.Bounds();
     ASSERT_TRUE(nurbsCurveBounds.IsValid());
     ASSERT_TRUE(nurbsCurveBounds.MinPoint().AlmostEquals(SCPoint3d{0.0, 0.0, 0.0}, 1e-12));
@@ -295,27 +303,16 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_TRUE(nurbsCurveClone->IsValid());
     ASSERT_TRUE(nurbsCurveClone->PointAt(0.5).AlmostEquals(SCPoint3d{1.0, 1.0, 0.0}, 1e-12));
 
-    const SCNurbsSurface nurbsSurface(1,
-                                    1,
-                                    2,
-                                    2,
-                                    {
-                                        SCPoint3d{0.0, 0.0, 0.0},
-                                        SCPoint3d{2.0, 0.0, 0.0},
-                                        SCPoint3d{0.0, 2.0, 0.0},
-                                        SCPoint3d{2.0, 2.0, 0.0},
-                                    },
-                                    {0.0, 0.0, 1.0, 1.0},
-                                    {0.0, 0.0, 1.0, 1.0});
+    const SCNurbsSurface nurbsSurface = Geometry::Test::BuildUnitNurbsSurface();
     ASSERT_TRUE(nurbsSurface.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(nurbsSurface.StartU(), 0.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(nurbsSurface.EndU(), 1.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(nurbsSurface.StartV(), 0.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(nurbsSurface.EndV(), 1.0, 1e-12);
+    EXPECT_NEAR(nurbsSurface.StartU(), 0.0, 1e-12);
+    EXPECT_NEAR(nurbsSurface.EndU(), 1.0, 1e-12);
+    EXPECT_NEAR(nurbsSurface.StartV(), 0.0, 1e-12);
+    EXPECT_NEAR(nurbsSurface.EndV(), 1.0, 1e-12);
     ASSERT_TRUE(nurbsSurface.PointAt(0.5, 0.5).AlmostEquals(SCPoint3d{1.0, 1.0, 0.0}, 1e-12));
     const auto nurbsSurfaceEval = nurbsSurface.Evaluate(0.5, 0.5, 1);
     ASSERT_TRUE(nurbsSurfaceEval.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(nurbsSurfaceEval.normal.Normalized().z, 1.0, 1e-12);
+    EXPECT_NEAR(nurbsSurfaceEval.normal.Normalized().z, 1.0, 1e-12);
     const SCBox3d nurbsSurfaceBounds = nurbsSurface.Bounds();
     ASSERT_TRUE(nurbsSurfaceBounds.IsValid());
     ASSERT_TRUE(nurbsSurfaceBounds.MinPoint().AlmostEquals(SCPoint3d{0.0, 0.0, 0.0}, 1e-12));
@@ -332,18 +329,18 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     const auto lineCurveProjection = ProjectPointToCurve(SCPoint3d{0.5, 1.0, 0.0}, lowerRail);
     ASSERT_TRUE(lineCurveProjection.success);
     ASSERT_TRUE(lineCurveProjection.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(lineCurveProjection.parameter, 0.25, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(Distance(SCPoint3d{0.5, 1.0, 0.0}, lowerRail), 1.0, 1e-12);
+    EXPECT_NEAR(lineCurveProjection.parameter, 0.25, 1e-12);
+    EXPECT_NEAR(Distance(SCPoint3d{0.5, 1.0, 0.0}, lowerRail), 1.0, 1e-12);
     const auto lineCurveIntersection =
         Intersect(SCLine3d::FromOriginAndDirection(SCPoint3d{0.5, 1.0, 0.0}, SCVector3d{0.0, -1.0, 0.0}), lowerRail);
     ASSERT_TRUE(lineCurveIntersection.intersects);
     ASSERT_TRUE(lineCurveIntersection.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(lineCurveIntersection.curveParameter, 0.25, 1e-12);
+    EXPECT_NEAR(lineCurveIntersection.curveParameter, 0.25, 1e-12);
     const auto planeCurveIntersection =
         Intersect(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}), lowerRail);
     ASSERT_TRUE(planeCurveIntersection.intersects);
     ASSERT_TRUE(planeCurveIntersection.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(planeCurveIntersection.curveParameter, 0.0, 1e-12);
+    EXPECT_NEAR(planeCurveIntersection.curveParameter, 0.0, 1e-12);
     ASSERT_TRUE(planeCurveIntersection.point.AlmostEquals(SCPoint3d{0.0, 0.0, 0.0}, 1e-12));
     ASSERT_EQ(LocatePoint(SCPoint3d{0.5, 0.0, 0.0}, lowerRail), SCPointContainment2d::OnBoundary);
     ASSERT_EQ(LocatePoint(SCPoint3d{0.5, 1.0, 0.0}, lowerRail), SCPointContainment2d::Outside);
@@ -354,13 +351,13 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_TRUE(ruledSurface.PointAt(0.5, 0.5).AlmostEquals(SCPoint3d{1.0, 0.0, 1.0}, 1e-12));
     const auto ruledEval = ruledSurface.Evaluate(0.25, 0.25, 1);
     ASSERT_TRUE(ruledEval.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(ruledEval.normal.Length(), 4.0, 1e-12);
+    EXPECT_NEAR(ruledEval.normal.Length(), 4.0, 1e-12);
 
     const SCOffsetSurface offsetSurface = SCOffsetSurface::FromSurface(planeSurface, 2.0);
     ASSERT_TRUE(offsetSurface.IsValid());
     ASSERT_NE(offsetSurface.BaseSurface(), nullptr);
-    GEOMETRY_TEST_ASSERT_NEAR(offsetSurface.OffsetDistance(), 2.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(offsetSurface.PointAt(0.0, 0.0).z, 7.0, 1e-12);
+    EXPECT_NEAR(offsetSurface.OffsetDistance(), 2.0, 1e-12);
+    EXPECT_NEAR(offsetSurface.PointAt(0.0, 0.0).z, 7.0, 1e-12);
     const SCBox3d offsetBounds = offsetSurface.Bounds();
     ASSERT_TRUE(offsetBounds.IsValid());
     ASSERT_LE(offsetBounds.MinPoint().z, 3.0 + 1e-12);
@@ -380,15 +377,15 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_TRUE(curveOnSurface.PointAt(1).AlmostEquals(planeSurface.PointAt(0.0, -1.0), 1e-12));
     const SCBox3d curveOnSurfaceBounds = curveOnSurface.Bounds();
     ASSERT_TRUE(curveOnSurfaceBounds.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(curveOnSurfaceBounds.MinPoint().z, 5.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(curveOnSurfaceBounds.MaxPoint().z, 5.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(Bounds(curveOnSurface).MinPoint().z, 5.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(Length(curveOnSurface), std::sqrt(8.0) * 2.0, 1e-12);
+    EXPECT_NEAR(curveOnSurfaceBounds.MinPoint().z, 5.0, 1e-12);
+    EXPECT_NEAR(curveOnSurfaceBounds.MaxPoint().z, 5.0, 1e-12);
+    EXPECT_NEAR(Bounds(curveOnSurface).MinPoint().z, 5.0, 1e-12);
+    EXPECT_NEAR(Length(curveOnSurface), std::sqrt(8.0) * 2.0, 1e-12);
     const auto curveOnSurfaceProjection = ProjectPointToCurveOnSurface(SCPoint3d{0.0, -1.0, 6.0}, curveOnSurface);
     ASSERT_TRUE(curveOnSurfaceProjection.success);
     ASSERT_TRUE(curveOnSurfaceProjection.IsValid());
     ASSERT_TRUE(curveOnSurfaceProjection.point.AlmostEquals(SCPoint3d{0.0, -1.0, 5.0}, 1e-12));
-    GEOMETRY_TEST_ASSERT_NEAR(Distance(SCPoint3d{0.0, -1.0, 6.0}, curveOnSurface), 1.0, 1e-12);
+    EXPECT_NEAR(Distance(SCPoint3d{0.0, -1.0, 6.0}, curveOnSurface), 1.0, 1e-12);
     const auto curveOnSurfaceIntersection =
         Intersect(SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, -1.0, 6.0}, SCVector3d{0.0, 0.0, -1.0}), curveOnSurface);
     ASSERT_TRUE(curveOnSurfaceIntersection.intersects);
@@ -405,45 +402,49 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     const auto planeSurfaceProjection = ProjectPointToSurface(SCPoint3d{0.5, -1.0, 8.0}, planeSurface);
     ASSERT_TRUE(planeSurfaceProjection.success);
     ASSERT_TRUE(planeSurfaceProjection.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(planeSurfaceProjection.u, 0.5, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(planeSurfaceProjection.v, -1.0, 1e-12);
+    EXPECT_NEAR(planeSurfaceProjection.u, 0.5, 1e-12);
+    EXPECT_NEAR(planeSurfaceProjection.v, -1.0, 1e-12);
     ASSERT_TRUE(planeSurfaceProjection.point.AlmostEquals(SCPoint3d{0.5, -1.0, 5.0}, 1e-12));
 
     const auto nurbsSurfaceProjection = ProjectPointToSurface(SCPoint3d{0.6, 1.4, 1.0}, nurbsSurface);
     ASSERT_TRUE(nurbsSurfaceProjection.success);
     ASSERT_TRUE(nurbsSurfaceProjection.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(nurbsSurfaceProjection.u, 0.3, 5e-2);
-    GEOMETRY_TEST_ASSERT_NEAR(nurbsSurfaceProjection.v, 0.7, 5e-2);
-    GEOMETRY_TEST_ASSERT_NEAR(nurbsSurfaceProjection.point.z, 0.0, 1e-12);
+    EXPECT_NEAR(nurbsSurfaceProjection.u, 0.3, 5e-2);
+    EXPECT_NEAR(nurbsSurfaceProjection.v, 0.7, 5e-2);
+    EXPECT_NEAR(nurbsSurfaceProjection.point.z, 0.0, 1e-12);
 
     const auto planeSurfaceIntersection =
         Intersect(SCLine3d::FromOriginAndDirection(SCPoint3d{0.5, -1.0, 8.0}, SCVector3d{0.0, 0.0, -1.0}), planeSurface);
     ASSERT_TRUE(planeSurfaceIntersection.intersects);
     ASSERT_TRUE(planeSurfaceIntersection.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(planeSurfaceIntersection.lineParameter, 3.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(planeSurfaceIntersection.u, 0.5, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(planeSurfaceIntersection.v, -1.0, 1e-12);
+    EXPECT_NEAR(planeSurfaceIntersection.lineParameter, 3.0, 1e-12);
+    EXPECT_NEAR(planeSurfaceIntersection.u, 0.5, 1e-12);
+    EXPECT_NEAR(planeSurfaceIntersection.v, -1.0, 1e-12);
     ASSERT_TRUE(planeSurfaceIntersection.point.AlmostEquals(SCPoint3d{0.5, -1.0, 5.0}, 1e-12));
 
     const auto nurbsSurfaceIntersection =
         Intersect(SCLine3d::FromOriginAndDirection(SCPoint3d{0.6, 1.4, 1.0}, SCVector3d{0.0, 0.0, -1.0}), nurbsSurface);
     ASSERT_TRUE(nurbsSurfaceIntersection.intersects);
     ASSERT_TRUE(nurbsSurfaceIntersection.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(nurbsSurfaceIntersection.u, 0.3, 5e-2);
-    GEOMETRY_TEST_ASSERT_NEAR(nurbsSurfaceIntersection.v, 0.7, 5e-2);
-    GEOMETRY_TEST_ASSERT_NEAR(nurbsSurfaceIntersection.point.z, 0.0, 1e-12);
+    EXPECT_NEAR(nurbsSurfaceIntersection.u, 0.3, 5e-2);
+    EXPECT_NEAR(nurbsSurfaceIntersection.v, 0.7, 5e-2);
+    EXPECT_NEAR(nurbsSurfaceIntersection.point.z, 0.0, 1e-12);
 
-    GEOMETRY_TEST_ASSERT_NEAR(Distance(SCPoint3d{0.0, 0.0, 0.0}, SCPoint3d{1.0, 2.0, 2.0}), 3.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(Distance(SCPoint3d{0.0, 2.0, 0.0},
+    EXPECT_NEAR(Distance(SCPoint3d{0.0, 0.0, 0.0}, SCPoint3d{1.0, 2.0, 2.0}), 3.0, 1e-12);
+    EXPECT_NEAR(Distance(SCPoint3d{0.0, 2.0, 0.0},
                                        SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{1.0, 0.0, 0.0})),
                               2.0,
                               1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(Distance(SCPoint3d{0.0, 0.0, 8.0}, supportPlane), 3.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(Distance(SCPoint3d{0.5, -1.0, 8.0}, planeSurface), 3.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(Distance(SCPoint3d{0.6, 1.4, 1.0}, nurbsSurface), 1.0, 5e-2);
-    GEOMETRY_TEST_ASSERT_NEAR(
+    EXPECT_NEAR(Distance(SCPoint3d{0.0, 0.0, 8.0}, supportPlane), 3.0, 1e-12);
+    EXPECT_NEAR(Distance(SCPoint3d{0.5, -1.0, 8.0}, planeSurface), 3.0, 1e-12);
+    EXPECT_NEAR(Distance(SCPoint3d{0.6, 1.4, 1.0}, nurbsSurface), 1.0, 5e-2);
+    EXPECT_NEAR(
         Length(SCLineSegment3d::FromStartEnd(SCPoint3d{0.0, 0.0, 0.0}, SCPoint3d{0.0, 3.0, 4.0})), 5.0, 1e-12);
 
+}
+
+TEST(GeometryTest, CoversTriangleMeshCapabilities)
+{
     const TriangleMesh mesh(
         {
             SCPoint3d{0.0, 0.0, 0.0},
@@ -462,12 +463,12 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_TRUE(mesh.VertexAt(3).AlmostEquals(SCPoint3d{0.0, 0.0, 1.0}, 1e-12));
     const SCTriangle3d firstTriangle = mesh.TriangleAt(0);
     ASSERT_TRUE(firstTriangle.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(firstTriangle.Area(), 0.5, 1e-12);
+    EXPECT_NEAR(firstTriangle.Area(), 0.5, 1e-12);
     const SCBox3d meshBounds = mesh.Bounds();
     ASSERT_TRUE(meshBounds.IsValid());
     ASSERT_TRUE(meshBounds.MinPoint().AlmostEquals(SCPoint3d{0.0, 0.0, 0.0}, 1e-12));
     ASSERT_TRUE(meshBounds.MaxPoint().AlmostEquals(SCPoint3d{1.0, 1.0, 1.0}, 1e-12));
-    GEOMETRY_TEST_ASSERT_NEAR(mesh.SurfaceArea(), 1.0, 1e-12);
+    EXPECT_NEAR(mesh.SurfaceArea(), 1.0, 1e-12);
     const auto meshValidation = Validate(mesh);
     ASSERT_TRUE(meshValidation.valid);
     ASSERT_EQ(meshValidation.issue, SCMeshValidationIssue3d::None);
@@ -475,7 +476,7 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_TRUE(meshProjection.success);
     ASSERT_TRUE(meshProjection.IsValid());
     ASSERT_TRUE(meshProjection.point.AlmostEquals(SCPoint3d{0.0, 0.0, 1.0}, 1e-12));
-    GEOMETRY_TEST_ASSERT_NEAR(Distance(SCPoint3d{1.0, 1.0, 3.0}, mesh), std::sqrt(6.0), 1e-12);
+    EXPECT_NEAR(Distance(SCPoint3d{1.0, 1.0, 3.0}, mesh), std::sqrt(6.0), 1e-12);
     ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 0.0}, mesh), SCPointContainment2d::Outside);
     const auto meshLineIntersection =
         Intersect(SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 1.0, 3.0}, SCVector3d{0.0, 0.0, -1.0}), mesh);
@@ -489,10 +490,10 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_EQ(triangleNormals.size(), mesh.TriangleCount());
     ASSERT_TRUE(triangleNormals[1].AlmostEquals(SCVector3d{0.0, -1.0, 0.0}, 1e-12));
     const SCVector3d sharedVertexNormal = VertexNormal(mesh, 0);
-    GEOMETRY_TEST_ASSERT_NEAR(sharedVertexNormal.Length(), 1.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(sharedVertexNormal.x, 0.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(sharedVertexNormal.y, -std::sqrt(0.5), 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(sharedVertexNormal.z, std::sqrt(0.5), 1e-12);
+    EXPECT_NEAR(sharedVertexNormal.Length(), 1.0, 1e-12);
+    EXPECT_NEAR(sharedVertexNormal.x, 0.0, 1e-12);
+    EXPECT_NEAR(sharedVertexNormal.y, -std::sqrt(0.5), 1e-12);
+    EXPECT_NEAR(sharedVertexNormal.z, std::sqrt(0.5), 1e-12);
     const auto vertexNormals = ComputeVertexNormals(mesh);
     ASSERT_EQ(vertexNormals.size(), mesh.VertexCount());
     ASSERT_TRUE(vertexNormals[2].AlmostEquals(SCVector3d{0.0, 0.0, 1.0}, 1e-12));
@@ -525,7 +526,7 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_TRUE(repairedOpenMesh.mesh.IsValid());
     ASSERT_TRUE(IsConsistentlyOrientedTriangleMesh(repairedOpenMesh.mesh));
     ASSERT_TRUE(IsManifoldTriangleMesh(repairedOpenMesh.mesh));
-    GEOMETRY_TEST_ASSERT_NEAR(repairedOpenMesh.mesh.SurfaceArea(), mesh.SurfaceArea(), 1e-12);
+    EXPECT_NEAR(repairedOpenMesh.mesh.SurfaceArea(), mesh.SurfaceArea(), 1e-12);
     const TriangleMeshRepair3d closedNonPlanarMesh = CloseSinglePlanarBoundaryLoop(mesh);
     ASSERT_FALSE(closedNonPlanarMesh.success);
     ASSERT_EQ(closedNonPlanarMesh.issue, MeshRepairIssue3d::UnsupportedBoundaryTopology);
@@ -557,7 +558,7 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_TRUE(IsClosedTriangleMesh(tetraMesh));
     ASSERT_TRUE(IsManifoldTriangleMesh(tetraMesh));
     ASSERT_TRUE(IsConsistentlyOrientedTriangleMesh(tetraMesh));
-    GEOMETRY_TEST_ASSERT_NEAR(Volume(tetraMesh), 1.0 / 6.0, 1e-12);
+    EXPECT_NEAR(Volume(tetraMesh), 1.0 / 6.0, 1e-12);
     ASSERT_EQ(LocatePoint(SCPoint3d{0.1, 0.1, 0.1}, tetraMesh), SCPointContainment2d::Inside);
     ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 1.0}, tetraMesh), SCPointContainment2d::Outside);
     ASSERT_EQ(LocatePoint(SCPoint3d{0.0, 0.2, 0.2}, tetraMesh), SCPointContainment2d::OnBoundary);
@@ -665,7 +666,7 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_TRUE(movedMesh.IsValid());
     ASSERT_TRUE(movedMesh.VertexAt(0).AlmostEquals(SCPoint3d{2.0, -1.0, 3.0}, 1e-12));
     ASSERT_TRUE(movedMesh.VertexAt(3).AlmostEquals(SCPoint3d{2.0, -1.0, 4.0}, 1e-12));
-    GEOMETRY_TEST_ASSERT_NEAR(movedMesh.SurfaceArea(), mesh.SurfaceArea(), 1e-12);
+    EXPECT_NEAR(movedMesh.SurfaceArea(), mesh.SurfaceArea(), 1e-12);
 
     const TriangleMesh invalidMesh(
         {
@@ -680,6 +681,13 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_FALSE(invalidMeshValidation.valid);
     ASSERT_EQ(invalidMeshValidation.issue, SCMeshValidationIssue3d::DegenerateTriangle);
 
+}
+
+TEST(GeometryTest, CoversPolyhedronAndBrepCapabilities)
+{
+    const SCPlane supportPlane = Geometry::Test::BuildSupportPlaneAtZ5();
+    const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
+    const SCNurbsSurface nurbsSurface = Geometry::Test::BuildUnitNurbsSurface();
     const PolyhedronLoop3d outerLoop({
         SCPoint3d{0.0, 0.0, 0.0},
         SCPoint3d{2.0, 0.0, 0.0},
@@ -708,8 +716,7 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_TRUE(bodyBounds.IsValid());
     ASSERT_TRUE(bodyBounds.MinPoint().AlmostEquals(SCPoint3d{0.0, 0.0, 0.0}, 1e-12));
     ASSERT_TRUE(bodyBounds.MaxPoint().AlmostEquals(SCPoint3d{2.0, 2.0, 0.0}, 1e-12));
-    GEOMETRY_TEST_ASSERT_NEAR(Area(face), 4.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(Area(mesh), 1.0, 1e-12);
+    EXPECT_NEAR(Area(face), 4.0, 1e-12);
 
     const PolyhedronFace3d invalidFace(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}),
                                        PolyhedronLoop3d({
@@ -734,16 +741,16 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_FALSE(IsClosedTriangleMesh(surfaceMesh));
     for (const SCPoint3d& vertex : surfaceMesh.Vertices())
     {
-        GEOMETRY_TEST_ASSERT_NEAR(supportPlane.SignedDistanceTo(vertex), 0.0, 1e-12);
+        EXPECT_NEAR(supportPlane.SignedDistanceTo(vertex), 0.0, 1e-12);
     }
-    GEOMETRY_TEST_ASSERT_NEAR(surfaceMesh.SurfaceArea(), 16.0, 1e-12);
+    EXPECT_NEAR(surfaceMesh.SurfaceArea(), 16.0, 1e-12);
 
     const auto faceMesh = ConvertToTriangleMesh(face);
     ASSERT_TRUE(faceMesh.success);
     ASSERT_EQ(faceMesh.issue, MeshConversionIssue3d::None);
     ASSERT_TRUE(faceMesh.mesh.IsValid());
     ASSERT_EQ(faceMesh.mesh.TriangleCount(), 2);
-    GEOMETRY_TEST_ASSERT_NEAR(faceMesh.mesh.SurfaceArea(), 4.0, 1e-12);
+    EXPECT_NEAR(faceMesh.mesh.SurfaceArea(), 4.0, 1e-12);
     ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 0.0}, face), SCPointContainment2d::Inside);
     ASSERT_EQ(LocatePoint(SCPoint3d{2.0, 1.0, 0.0}, face), SCPointContainment2d::OnBoundary);
     ASSERT_EQ(LocatePoint(SCPoint3d{3.0, 1.0, 0.0}, face), SCPointContainment2d::Outside);
@@ -752,7 +759,7 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_TRUE(polyFaceProjection.IsValid());
     ASSERT_TRUE(polyFaceProjection.onFace);
     ASSERT_TRUE(polyFaceProjection.point.AlmostEquals(SCPoint3d{1.0, 1.0, 0.0}, 1e-12));
-    GEOMETRY_TEST_ASSERT_NEAR(Distance(SCPoint3d{1.0, 1.0, 3.0}, face), 3.0, 1e-12);
+    EXPECT_NEAR(Distance(SCPoint3d{1.0, 1.0, 3.0}, face), 3.0, 1e-12);
     const auto polyFaceLineIntersection =
         Intersect(SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 1.0, 3.0}, SCVector3d{0.0, 0.0, -1.0}), face);
     ASSERT_TRUE(polyFaceLineIntersection.intersects);
@@ -769,7 +776,7 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_TRUE(polyBodyProjection.IsValid());
     ASSERT_EQ(polyBodyProjection.faceIndex, 0);
     ASSERT_TRUE(polyBodyProjection.projection.point.AlmostEquals(SCPoint3d{2.0, 1.0, 0.0}, 1e-12));
-    GEOMETRY_TEST_ASSERT_NEAR(Distance(SCPoint3d{3.0, 1.0, 1.0}, body), std::sqrt(2.0), 1e-12);
+    EXPECT_NEAR(Distance(SCPoint3d{3.0, 1.0, 1.0}, body), std::sqrt(2.0), 1e-12);
     const auto polyBodyLineIntersection =
         Intersect(SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 1.0, 3.0}, SCVector3d{0.0, 0.0, -1.0}), body);
     ASSERT_TRUE(polyBodyLineIntersection.intersects);
@@ -792,26 +799,21 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_TRUE(projectedFace.success);
     ASSERT_TRUE(projectedFace.polygon.IsValid());
     ASSERT_EQ(projectedFace.polygon.HoleCount(), 1);
-    GEOMETRY_TEST_ASSERT_NEAR(projectedFace.origin.z, 0.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(Geometry::Dot(projectedFace.uAxis, projectedFace.vAxis), 0.0, 1e-12);
+    EXPECT_NEAR(projectedFace.origin.z, 0.0, 1e-12);
+    EXPECT_NEAR(Geometry::Dot(projectedFace.uAxis, projectedFace.vAxis), 0.0, 1e-12);
 
     const auto holedFaceMesh = ConvertToTriangleMesh(holedFace);
     ASSERT_TRUE(holedFaceMesh.success);
     ASSERT_EQ(holedFaceMesh.issue, MeshConversionIssue3d::None);
     ASSERT_TRUE(holedFaceMesh.mesh.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(holedFaceMesh.mesh.SurfaceArea(), projectedFace.polygon.Area(), 1e-12);
+    EXPECT_NEAR(holedFaceMesh.mesh.SurfaceArea(), projectedFace.polygon.Area(), 1e-12);
 
-    const std::vector<SCBrepVertex> brepVertices{
-        SCBrepVertex(SCPoint3d{0.0, 0.0, 5.0}),
-        SCBrepVertex(SCPoint3d{2.0, 0.0, 5.0}),
-        SCBrepVertex(SCPoint3d{2.0, 2.0, 5.0}),
-        SCBrepVertex(SCPoint3d{0.0, 2.0, 5.0}),
-    };
+    const std::vector<SCBrepVertex> brepVertices = Geometry::Test::BuildPlanarBrepVerticesAtZ5();
     const auto brepVertexProjection = ProjectPointToBrepVertex(SCPoint3d{1.0, 1.0, 6.0}, brepVertices[0]);
     ASSERT_TRUE(brepVertexProjection.success);
     ASSERT_TRUE(brepVertexProjection.IsValid());
     ASSERT_TRUE(brepVertexProjection.point.AlmostEquals(SCPoint3d{0.0, 0.0, 5.0}, 1e-12));
-    GEOMETRY_TEST_ASSERT_NEAR(Distance(SCPoint3d{1.0, 1.0, 6.0}, brepVertices[0]), std::sqrt(3.0), 1e-12);
+    EXPECT_NEAR(Distance(SCPoint3d{1.0, 1.0, 6.0}, brepVertices[0]), std::sqrt(3.0), 1e-12);
     const SCBox3d brepVertexBounds = Bounds(brepVertices[0]);
     ASSERT_TRUE(brepVertexBounds.IsValid());
     ASSERT_TRUE(brepVertexBounds.MinPoint().AlmostEquals(SCPoint3d{0.0, 0.0, 5.0}, 1e-12));
@@ -820,41 +822,15 @@ TEST(GeometryTest, CoversCurrentCapabilities)
         Intersect(SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 0.0, 6.0}, SCVector3d{0.0, 0.0, -1.0}), brepVertices[0]);
     ASSERT_TRUE(brepVertexLineIntersection.intersects);
     ASSERT_TRUE(brepVertexLineIntersection.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(brepVertexLineIntersection.lineParameter, 1.0, 1e-12);
+    EXPECT_NEAR(brepVertexLineIntersection.lineParameter, 1.0, 1e-12);
     ASSERT_TRUE(brepVertexLineIntersection.point.AlmostEquals(SCPoint3d{0.0, 0.0, 5.0}, 1e-12));
     const auto brepVertexPlaneIntersection =
         Intersect(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 5.0}, SCVector3d{0.0, 0.0, 1.0}), brepVertices[0]);
     ASSERT_TRUE(brepVertexPlaneIntersection.intersects);
     ASSERT_TRUE(brepVertexPlaneIntersection.IsValid());
     ASSERT_TRUE(brepVertexPlaneIntersection.point.AlmostEquals(SCPoint3d{0.0, 0.0, 5.0}, 1e-12));
-    const std::vector<SCBrepEdge> brepEdges{
-        SCBrepEdge(
-            std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-                SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 0.0, 5.0}, SCVector3d{2.0, 0.0, 0.0}), SCIntervald{0.0, 1.0})),
-            0,
-            1),
-        SCBrepEdge(
-            std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-                SCLine3d::FromOriginAndDirection(SCPoint3d{2.0, 0.0, 5.0}, SCVector3d{0.0, 2.0, 0.0}), SCIntervald{0.0, 1.0})),
-            1,
-            2),
-        SCBrepEdge(
-            std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-                SCLine3d::FromOriginAndDirection(SCPoint3d{2.0, 2.0, 5.0}, SCVector3d{-2.0, 0.0, 0.0}), SCIntervald{0.0, 1.0})),
-            2,
-            3),
-        SCBrepEdge(
-            std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
-                SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 2.0, 5.0}, SCVector3d{0.0, -2.0, 0.0}), SCIntervald{0.0, 1.0})),
-            3,
-            0),
-    };
-    const SCBrepLoop brepOuterLoop({
-        SCBrepCoedge(0, false),
-        SCBrepCoedge(1, false),
-        SCBrepCoedge(2, false),
-        SCBrepCoedge(3, false),
-    });
+    const std::vector<SCBrepEdge> brepEdges = Geometry::Test::BuildPlanarBrepEdgesAtZ5();
+    const SCBrepLoop brepOuterLoop = Geometry::Test::BuildPlanarBrepOuterLoop();
     ASSERT_TRUE(brepOuterLoop.IsValid());
     const SCBrepFace brepFace(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()),
                             brepOuterLoop,
@@ -871,14 +847,14 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_TRUE(brepFace.IsValid());
     const SCBox3d brepFaceBounds = brepFace.Bounds();
     ASSERT_TRUE(brepFaceBounds.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(brepFaceBounds.MinPoint().z, 5.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(brepFaceBounds.MaxPoint().z, 5.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(Bounds(brepFace).MinPoint().z, 5.0, 1e-12);
+    EXPECT_NEAR(brepFaceBounds.MinPoint().z, 5.0, 1e-12);
+    EXPECT_NEAR(brepFaceBounds.MaxPoint().z, 5.0, 1e-12);
+    EXPECT_NEAR(Bounds(brepFace).MinPoint().z, 5.0, 1e-12);
     const SCBrepShell brepShell({brepFace}, false);
     ASSERT_TRUE(brepShell.IsValid());
     const SCBox3d brepShellBounds = brepShell.Bounds();
     ASSERT_TRUE(brepShellBounds.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(brepShellBounds.MinPoint().z, 5.0, 1e-12);
+    EXPECT_NEAR(brepShellBounds.MinPoint().z, 5.0, 1e-12);
     const SCBrepBody brepBody(brepVertices, brepEdges, {brepShell});
     ASSERT_FALSE(brepBody.IsEmpty());
     ASSERT_TRUE(brepBody.IsValid());
@@ -895,32 +871,32 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     const auto brepEdgeProjection = ProjectPointToBrepEdge(SCPoint3d{1.0, 1.0, 5.0}, brepBody.EdgeAt(0));
     ASSERT_TRUE(brepEdgeProjection.success);
     ASSERT_TRUE(brepEdgeProjection.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(brepEdgeProjection.parameter, 0.5, 1e-12);
+    EXPECT_NEAR(brepEdgeProjection.parameter, 0.5, 1e-12);
     ASSERT_TRUE(brepEdgeProjection.point.AlmostEquals(SCPoint3d{1.0, 0.0, 5.0}, 1e-12));
-    GEOMETRY_TEST_ASSERT_NEAR(Distance(SCPoint3d{1.0, 1.0, 5.0}, brepBody.EdgeAt(0)), 1.0, 1e-12);
+    EXPECT_NEAR(Distance(SCPoint3d{1.0, 1.0, 5.0}, brepBody.EdgeAt(0)), 1.0, 1e-12);
     const auto brepEdgeLineIntersection =
         Intersect(SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, -1.0, 5.0}, SCVector3d{0.0, 1.0, 0.0}), brepBody.EdgeAt(0));
     ASSERT_TRUE(brepEdgeLineIntersection.intersects);
     ASSERT_TRUE(brepEdgeLineIntersection.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(brepEdgeLineIntersection.edgeParameter, 0.5, 1e-12);
+    EXPECT_NEAR(brepEdgeLineIntersection.edgeParameter, 0.5, 1e-12);
     ASSERT_TRUE(brepEdgeLineIntersection.point.AlmostEquals(SCPoint3d{1.0, 0.0, 5.0}, 1e-12));
     const auto brepEdgePlaneIntersection =
         Intersect(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 5.0}, SCVector3d{0.0, 0.0, 1.0}), brepBody.EdgeAt(0));
     ASSERT_TRUE(brepEdgePlaneIntersection.intersects);
     ASSERT_TRUE(brepEdgePlaneIntersection.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(brepEdgePlaneIntersection.edgeParameter, 0.0, 1e-12);
+    EXPECT_NEAR(brepEdgePlaneIntersection.edgeParameter, 0.0, 1e-12);
     ASSERT_TRUE(brepEdgePlaneIntersection.point.AlmostEquals(SCPoint3d{0.0, 0.0, 5.0}, 1e-12));
     const auto brepValidation = Validate(brepBody);
     ASSERT_TRUE(brepValidation.valid);
     ASSERT_EQ(brepValidation.issue, SCBrepValidationIssue3d::None);
-    GEOMETRY_TEST_ASSERT_NEAR(Area(brepFace), 4.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(Bounds(brepBody).MinPoint().z, 5.0, 1e-12);
+    EXPECT_NEAR(Area(brepFace), 4.0, 1e-12);
+    EXPECT_NEAR(Bounds(brepBody).MinPoint().z, 5.0, 1e-12);
     const auto brepFaceLineIntersection =
         Intersect(SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 1.0, 8.0}, SCVector3d{0.0, 0.0, -1.0}), brepFace);
     ASSERT_TRUE(brepFaceLineIntersection.intersects);
     ASSERT_TRUE(brepFaceLineIntersection.IsValid());
     ASSERT_FALSE(brepFaceLineIntersection.onBoundary);
-    GEOMETRY_TEST_ASSERT_NEAR(brepFaceLineIntersection.lineParameter, 3.0, 1e-12);
+    EXPECT_NEAR(brepFaceLineIntersection.lineParameter, 3.0, 1e-12);
     ASSERT_TRUE(brepFaceLineIntersection.point.AlmostEquals(SCPoint3d{1.0, 1.0, 5.0}, 1e-12));
     ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 5.0}, brepFace), SCPointContainment2d::Inside);
     ASSERT_EQ(LocatePoint(SCPoint3d{2.0, 1.0, 5.0}, brepFace), SCPointContainment2d::OnBoundary);
@@ -941,30 +917,30 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_TRUE(brepFaceProjectionInside.onTrimmedFace);
     ASSERT_FALSE(brepFaceProjectionInside.onBoundary);
     ASSERT_TRUE(brepFaceProjectionInside.point.AlmostEquals(SCPoint3d{1.0, 1.0, 5.0}, 1e-12));
-    GEOMETRY_TEST_ASSERT_NEAR(Distance(SCPoint3d{1.0, 1.0, 8.0}, brepFace), 3.0, 1e-12);
+    EXPECT_NEAR(Distance(SCPoint3d{1.0, 1.0, 8.0}, brepFace), 3.0, 1e-12);
     const auto brepFaceProjectionOutside = ProjectPointToBrepFace(SCPoint3d{3.0, 1.0, 5.0}, brepFace);
     ASSERT_TRUE(brepFaceProjectionOutside.success);
     ASSERT_TRUE(brepFaceProjectionOutside.IsValid());
     ASSERT_TRUE(brepFaceProjectionOutside.onTrimmedFace);
     ASSERT_TRUE(brepFaceProjectionOutside.onBoundary);
     ASSERT_TRUE(brepFaceProjectionOutside.point.AlmostEquals(SCPoint3d{2.0, 1.0, 5.0}, 1e-12));
-    GEOMETRY_TEST_ASSERT_NEAR(Distance(SCPoint3d{3.0, 1.0, 5.0}, brepFace), 1.0, 1e-12);
+    EXPECT_NEAR(Distance(SCPoint3d{3.0, 1.0, 5.0}, brepFace), 1.0, 1e-12);
     const auto brepBodyProjection = ProjectPointToBrepBody(SCPoint3d{3.0, 1.0, 5.0}, brepBody);
     ASSERT_TRUE(brepBodyProjection.success);
     ASSERT_TRUE(brepBodyProjection.IsValid());
     ASSERT_EQ(brepBodyProjection.faceIndex, 0);
     ASSERT_TRUE(brepBodyProjection.projection.point.AlmostEquals(SCPoint3d{2.0, 1.0, 5.0}, 1e-12));
-    GEOMETRY_TEST_ASSERT_NEAR(Distance(SCPoint3d{3.0, 1.0, 5.0}, brepBody), 1.0, 1e-12);
+    EXPECT_NEAR(Distance(SCPoint3d{3.0, 1.0, 5.0}, brepBody), 1.0, 1e-12);
     const auto brepFaceMesh = ConvertToTriangleMesh(brepFace);
     ASSERT_TRUE(brepFaceMesh.success);
     ASSERT_TRUE(brepFaceMesh.mesh.IsValid());
     ASSERT_EQ(brepFaceMesh.mesh.TriangleCount(), 2);
-    GEOMETRY_TEST_ASSERT_NEAR(brepFaceMesh.mesh.SurfaceArea(), 4.0, 1e-12);
+    EXPECT_NEAR(brepFaceMesh.mesh.SurfaceArea(), 4.0, 1e-12);
     const auto polyFaceFromBrep = ConvertToPolyhedronFace(brepFace);
     ASSERT_TRUE(polyFaceFromBrep.success);
     ASSERT_EQ(polyFaceFromBrep.issue, BrepConversionIssue3d::None);
     ASSERT_TRUE(polyFaceFromBrep.face.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(Area(polyFaceFromBrep.face), 4.0, 1e-12);
+    EXPECT_NEAR(Area(polyFaceFromBrep.face), 4.0, 1e-12);
     const BrepHealing3d healedBrepBody = Heal(brepBody);
     ASSERT_TRUE(healedBrepBody.success);
     ASSERT_EQ(healedBrepBody.issue, HealingIssue3d::None);
@@ -978,17 +954,17 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_EQ(polyBodyFromBrep.issue, BrepConversionIssue3d::None);
     ASSERT_TRUE(polyBodyFromBrep.body.IsValid());
     ASSERT_EQ(polyBodyFromBrep.body.FaceCount(), 1);
-    GEOMETRY_TEST_ASSERT_NEAR(Volume(brepBody), 0.0, 1e-12);
+    EXPECT_NEAR(Volume(brepBody), 0.0, 1e-12);
     const auto brepMesh = ConvertToTriangleMesh(brepBody);
     ASSERT_TRUE(brepMesh.success);
     ASSERT_TRUE(brepMesh.mesh.IsValid());
     ASSERT_EQ(brepMesh.mesh.TriangleCount(), 2);
-    GEOMETRY_TEST_ASSERT_NEAR(brepMesh.mesh.SurfaceArea(), 4.0, 1e-12);
+    EXPECT_NEAR(brepMesh.mesh.SurfaceArea(), 4.0, 1e-12);
     const SCPolyhedronSection3d brepSection =
         Section(brepBody, SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 5.0}, SCVector3d{0.0, 0.0, 1.0}));
     ASSERT_TRUE(brepSection.success);
     ASSERT_EQ(brepSection.polygons.size(), 1);
-    GEOMETRY_TEST_ASSERT_NEAR(brepSection.polygons[0].Area(), 4.0, 1e-12);
+    EXPECT_NEAR(brepSection.polygons[0].Area(), 4.0, 1e-12);
 
     const SCBrepBody invalidBrepBody(brepVertices,
                                    brepEdges,
@@ -1016,13 +992,13 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     const SCBrepFace brepFaceWithoutTrim(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()), brepOuterLoop);
     const SCBrepBody brepBodyWithoutTrim(brepVertices, brepEdges, {SCBrepShell({brepFaceWithoutTrim}, false)});
     ASSERT_TRUE(brepBodyWithoutTrim.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(Area(brepFaceWithoutTrim), 0.0, 1e-12);
+    EXPECT_NEAR(Area(brepFaceWithoutTrim), 0.0, 1e-12);
     const BrepHealing3d healedTrimmedBody = Heal(brepBodyWithoutTrim);
     ASSERT_TRUE(healedTrimmedBody.success);
     ASSERT_TRUE(healedTrimmedBody.body.IsValid());
     ASSERT_EQ(healedTrimmedBody.body.ShellCount(), 1);
     ASSERT_TRUE(healedTrimmedBody.body.ShellAt(0).FaceAt(0).OuterTrim().IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(Area(healedTrimmedBody.body.ShellAt(0).FaceAt(0)), 4.0, 1e-12);
+    EXPECT_NEAR(Area(healedTrimmedBody.body.ShellAt(0).FaceAt(0)), 4.0, 1e-12);
     const auto healedTrimmedFaceMesh = ConvertToTriangleMesh(healedTrimmedBody.body.ShellAt(0).FaceAt(0));
     ASSERT_TRUE(healedTrimmedFaceMesh.success);
     ASSERT_TRUE(healedTrimmedFaceMesh.mesh.IsValid());
@@ -1065,53 +1041,14 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_TRUE(nurbsBrepFaceProjection.onTrimmedFace);
     ASSERT_GE(nurbsBrepFaceProjection.point.z, 0.0);
     const double nurbsBrepFaceArea = Area(nurbsBrepFace);
-    GEOMETRY_TEST_ASSERT_NEAR(nurbsBrepFaceArea, 4.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(nurbsBrepFaceArea, nurbsBrepFaceMesh.mesh.SurfaceArea(), 1e-12);
+    EXPECT_NEAR(nurbsBrepFaceArea, 4.0, 1e-12);
+    EXPECT_NEAR(nurbsBrepFaceArea, nurbsBrepFaceMesh.mesh.SurfaceArea(), 1e-12);
 
-    const PolyhedronBody cubeBody({
-        PolyhedronFace3d(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, -1.0}),
-                         PolyhedronLoop3d({
-                             SCPoint3d{0.0, 0.0, 0.0},
-                             SCPoint3d{0.0, 1.0, 0.0},
-                             SCPoint3d{1.0, 1.0, 0.0},
-                             SCPoint3d{1.0, 0.0, 0.0},
-                         })),
-        PolyhedronFace3d(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 1.0}, SCVector3d{0.0, 0.0, 1.0}),
-                         PolyhedronLoop3d({
-                             SCPoint3d{0.0, 0.0, 1.0},
-                             SCPoint3d{1.0, 0.0, 1.0},
-                             SCPoint3d{1.0, 1.0, 1.0},
-                             SCPoint3d{0.0, 1.0, 1.0},
-                         })),
-        PolyhedronFace3d(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, -1.0, 0.0}),
-                         PolyhedronLoop3d({
-                             SCPoint3d{0.0, 0.0, 0.0},
-                             SCPoint3d{1.0, 0.0, 0.0},
-                             SCPoint3d{1.0, 0.0, 1.0},
-                             SCPoint3d{0.0, 0.0, 1.0},
-                         })),
-        PolyhedronFace3d(SCPlane::FromPointAndNormal(SCPoint3d{1.0, 0.0, 0.0}, SCVector3d{1.0, 0.0, 0.0}),
-                         PolyhedronLoop3d({
-                             SCPoint3d{1.0, 0.0, 0.0},
-                             SCPoint3d{1.0, 1.0, 0.0},
-                             SCPoint3d{1.0, 1.0, 1.0},
-                             SCPoint3d{1.0, 0.0, 1.0},
-                         })),
-        PolyhedronFace3d(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 1.0, 0.0}, SCVector3d{0.0, 1.0, 0.0}),
-                         PolyhedronLoop3d({
-                             SCPoint3d{0.0, 1.0, 0.0},
-                             SCPoint3d{0.0, 1.0, 1.0},
-                             SCPoint3d{1.0, 1.0, 1.0},
-                             SCPoint3d{1.0, 1.0, 0.0},
-                         })),
-        PolyhedronFace3d(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{-1.0, 0.0, 0.0}),
-                         PolyhedronLoop3d({
-                             SCPoint3d{0.0, 0.0, 0.0},
-                             SCPoint3d{0.0, 0.0, 1.0},
-                             SCPoint3d{0.0, 1.0, 1.0},
-                             SCPoint3d{0.0, 1.0, 0.0},
-                         })),
-    });
+}
+
+TEST(GeometryTest, CoversSectionRebuildCapabilities)
+{
+    const PolyhedronBody cubeBody = Geometry::Test::BuildUnitCubeBody();
     ASSERT_TRUE(cubeBody.IsValid());
     ASSERT_EQ(LocatePoint(SCPoint3d{0.5, 0.5, 0.5}, cubeBody), SCPointContainment2d::Inside);
     ASSERT_EQ(LocatePoint(SCPoint3d{1.5, 0.5, 0.5}, cubeBody), SCPointContainment2d::Outside);
@@ -1141,8 +1078,8 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_TRUE(middleSection.contours[0].closed);
     ASSERT_EQ(middleSection.contours[0].points.size(), 4);
     ASSERT_EQ(middleSection.polygons.size(), 1);
-    GEOMETRY_TEST_ASSERT_NEAR(middleSection.polygons[0].Area(), 1.0, 1e-12);
-    GEOMETRY_TEST_ASSERT_NEAR(middleSection.origin.z, 0.5, 1e-12);
+    EXPECT_NEAR(middleSection.polygons[0].Area(), 1.0, 1e-12);
+    EXPECT_NEAR(middleSection.origin.z, 0.5, 1e-12);
     const SCSectionFaceRebuild3d rebuiltMiddleFaces = RebuildSectionFaces(middleSection);
     ASSERT_TRUE(rebuiltMiddleFaces.success);
     ASSERT_EQ(rebuiltMiddleFaces.issue, SCSectionFaceRebuildIssue3d::None);
@@ -1155,7 +1092,7 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_TRUE(rebuiltMiddleBrepFaces.faces[0].OuterTrim().IsValid());
     const auto rebuiltMiddleMesh = ConvertToTriangleMesh(rebuiltMiddleFaces.faces[0]);
     ASSERT_TRUE(rebuiltMiddleMesh.success);
-    GEOMETRY_TEST_ASSERT_NEAR(rebuiltMiddleMesh.mesh.SurfaceArea(), 1.0, 1e-12);
+    EXPECT_NEAR(rebuiltMiddleMesh.mesh.SurfaceArea(), 1.0, 1e-12);
     const SCSectionBodyRebuild3d rebuiltMiddleBody = RebuildSectionBody(middleSection);
     ASSERT_TRUE(rebuiltMiddleBody.success);
     ASSERT_EQ(rebuiltMiddleBody.issue, SCSectionBodyRebuildIssue3d::None);
@@ -1179,7 +1116,7 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     const SCSectionMeshConversion3d middleSectionMesh = ConvertSectionToTriangleMesh(middleSection);
     ASSERT_TRUE(middleSectionMesh.success);
     ASSERT_TRUE(middleSectionMesh.IsValid());
-    GEOMETRY_TEST_ASSERT_NEAR(middleSectionMesh.mesh.SurfaceArea(), 1.0, 1e-12);
+    EXPECT_NEAR(middleSectionMesh.mesh.SurfaceArea(), 1.0, 1e-12);
     const SCSectionMeshSetConversion3d middleSectionMeshes = ConvertSectionToTriangleMeshes(middleSection);
     ASSERT_TRUE(middleSectionMeshes.success);
     ASSERT_TRUE(middleSectionMeshes.IsValid());
@@ -1203,7 +1140,7 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_TRUE(coplanarSection.IsValid());
     ASSERT_EQ(coplanarSection.contours.size(), 1);
     ASSERT_EQ(coplanarSection.polygons.size(), 1);
-    GEOMETRY_TEST_ASSERT_NEAR(coplanarSection.polygons[0].Area(), 1.0, 1e-12);
+    EXPECT_NEAR(coplanarSection.polygons[0].Area(), 1.0, 1e-12);
     const SCSectionFaceRebuild3d rebuiltCoplanarFaces = RebuildSectionFaces(coplanarSection);
     ASSERT_TRUE(rebuiltCoplanarFaces.success);
     ASSERT_EQ(rebuiltCoplanarFaces.faces.size(), 1);
@@ -1294,7 +1231,7 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_EQ(nestedComponents.components[0].faceIndices.size(), 1);
     const auto rebuiltMergedMesh = ConvertToTriangleMesh(rebuiltMergedFaces.faces[0]);
     ASSERT_TRUE(rebuiltMergedMesh.success);
-    GEOMETRY_TEST_ASSERT_NEAR(rebuiltMergedMesh.mesh.SurfaceArea(), 12.0, 1e-12);
+    EXPECT_NEAR(rebuiltMergedMesh.mesh.SurfaceArea(), 12.0, 1e-12);
     const SCSectionBodyRebuild3d rebuiltMergedBody = RebuildSectionBody(nestedSection);
     ASSERT_TRUE(rebuiltMergedBody.success);
     ASSERT_EQ(rebuiltMergedBody.body.FaceCount(), 1);
@@ -1316,7 +1253,7 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_EQ(rebuiltMergedBodies.rootPolygonIndices[0], 0);
     const SCSectionMeshConversion3d rebuiltMergedSectionMesh = ConvertSectionToTriangleMesh(nestedSection);
     ASSERT_TRUE(rebuiltMergedSectionMesh.success);
-    GEOMETRY_TEST_ASSERT_NEAR(rebuiltMergedSectionMesh.mesh.SurfaceArea(), 12.0, 1e-12);
+    EXPECT_NEAR(rebuiltMergedSectionMesh.mesh.SurfaceArea(), 12.0, 1e-12);
     const SCSectionMeshSetConversion3d rebuiltMergedSectionMeshes = ConvertSectionToTriangleMeshes(nestedSection);
     ASSERT_TRUE(rebuiltMergedSectionMeshes.success);
     ASSERT_EQ(rebuiltMergedSectionMeshes.meshes.size(), 1);
@@ -1386,6 +1323,3 @@ TEST(GeometryTest, CoversCurrentCapabilities)
     ASSERT_FALSE(invalidSectionValidation.valid);
     ASSERT_EQ(invalidSectionValidation.issue, SCSectionValidationIssue3d::InvalidBasis);
 }
-
-
-

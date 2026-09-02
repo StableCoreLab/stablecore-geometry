@@ -1,0 +1,42 @@
+﻿结论：可以交给 AI 辅助开发，但不能将 D1–D6 整包交给 AI 自主实现；当前设计稿更像“方向与门槛”，还不足以冻结关键 API 和行为。
+
+适合直接交给 AI 的工作：
+
+- D1：依赖扫描、头文件自洽编译、CMake 编译目标、生成 include/依赖报告、旧头转发的机械迁移。
+- D2：盘点失败哨兵、补现状测试、生成 API 对照表和弃用清单。
+- D3：建立暴力扫描 oracle、随机测试、基准框架和 dirty 状态测试。
+- D4：整理当前 Boolean 能力矩阵、补拓扑不变量测试、明确 unsupported issue。
+- D5：补基函数/导数、投影/求交的基准测试与退化样例。
+- D6：定位重复环遍历/排序逻辑，建立差分回归测试。进行中
+
+不宜让 AI 自主决定并直接落代码的部分：
+
+| 设计包 | 仍缺失的人工决策 |
+|---|---|
+| D1 | 当前头文件到目标模块的逐项归属、兼容期具体版本、是否允许 breaking change |
+| D2 | `optional` 与 `issue` 结果模型的适用边界、统一容差结构和旧 API 删除版本 |
+| D3 | `eps` 是保留还是删除、复杂度/内存/线程安全承诺 |
+| D4 | Polyhedron/B-rep 主表示、稳定 ID/句柄模型、Boolean 的正式支持矩阵 |
+| D5 | 补齐 rational NURBS 还是新建 `SCBSpline*`、参数域和求解器收敛标准 |
+| D6 | `SearchPoly` 的正式输入输出契约、三层 epsilon 的数值定义、诊断是否公开 |
+
+关键问题在于文档多处仍是“可选择”“若保留”“长期可选择”，例如 [design-proposals-d1-d6.md](D:/code/StableCore/Geometry/docs/design-proposals-d1-d6.md:14)、[design-proposals-d1-d6.md](D:/code/StableCore/Geometry/docs/design-proposals-d1-d6.md:28)。这类分歧若由 AI 自行选，会直接改变公开 API、数值语义或支持范围。
+
+建议执行方式：
+
+1. 人工先为每个 D 包确认上表中的决策，并补 API 对照表、兼容版本和验收测试清单。
+2. 再将每个 D 包拆成可独立回滚的小任务交给 AI。
+3. 每一小步都要求 AI：先写测试、实现、执行 Debug/RelWithDebInfo/包消费者回归、提交前审查。
+4. D4、D5、D6 的核心算法设计应保留人工评审关卡；AI 负责实现已冻结的细分方案。
+
+因此，当前文档可作为 AI 开发的“约束与任务拆分依据”，但还不能作为“AI 自主架构决策授权书”。
+
+
+
+
+UnitTests/Capabilities/Core/TestFailureSentinels.cpp
+UnitTests/Capabilities/Geometry2d/TestSpatialIndexOracle.cpp
+UnitTests/Support/PublicHeadersCompile.cpp
+docs/d1-dependency-report.md
+docs/d2-api-contract-inventory.md
+docs/d3-spatial-index-baseline.md

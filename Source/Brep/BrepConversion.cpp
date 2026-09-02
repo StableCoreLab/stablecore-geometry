@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <iostream>
 #include <limits>
 #include <map>
 #include <memory>
@@ -2242,5 +2241,4 @@ namespace Geometry
         }
     }
 }  // namespace Geometry
-
 

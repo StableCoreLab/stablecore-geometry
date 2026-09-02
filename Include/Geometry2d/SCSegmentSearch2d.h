@@ -7,10 +7,10 @@
 #include <string>
 #include <vector>
 
-#include "Core/Intersection.h"
-#include "Core/Metrics.h"
-#include "Core/Projection.h"
 #include "Export/GeometryExport.h"
+#include "Geometry2d/ISCSegment2d.h"
+#include "Geometry2d/SCArcSegment2d.h"
+#include "Geometry2d/SCLineSegment2d.h"
 #include "Support/Epsilon.h"
 
 namespace Geometry

@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 #include <cmath>
 
-#include "Support/GeometryTestSupport.h"
 #include "Types/Geometry2d/SCBox2.h"
 
 using Geometry::SCBox2d;
@@ -23,14 +22,14 @@ TEST(BoxTest, CoversCurrentCapabilities)
     ASSERT_EQ(pointBox.Width(), 0.0);
     ASSERT_EQ(pointBox.Height(), 0.0);
     ASSERT_EQ(pointBox.Area(), 0.0);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(pointBox.Center(), SCPoint2d(2.0, 3.0), 1e-12);
+    EXPECT_TRUE(pointBox.Center().AlmostEquals(SCPoint2d(2.0, 3.0), 1e-12));
 
     const SCBox2i boxA(SCPoint2i(1, 2), SCPoint2i(4, 6));
     ASSERT_TRUE(boxA.IsValid());
     ASSERT_EQ(boxA.Width(), 3.0);
     ASSERT_EQ(boxA.Height(), 4.0);
     ASSERT_EQ(boxA.Area(), 12.0);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(boxA.Center(), SCPoint2d(2.5, 4.0), 1e-12);
+    EXPECT_TRUE(boxA.Center().AlmostEquals(SCPoint2d(2.5, 4.0), 1e-12));
 
     SCBox2i expanded;
     expanded.ExpandToInclude(SCPoint2i(5, 7));
@@ -57,13 +56,13 @@ TEST(BoxTest, CoversCurrentCapabilities)
     ASSERT_LT(std::abs(floatingBox.Width() - 2.0), 1e-12);
     ASSERT_LT(std::abs(floatingBox.Height() - 0.5), 1e-12);
     ASSERT_LT(std::abs(floatingBox.Area() - 1.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(floatingBox.Center(), SCPoint2d(0.5, 2.75), 1e-12);
-    GEOMETRY_TEST_ASSERT_BOX_NEAR(floatingBox, SCBox2d::FromMinMax(SCPoint2d(-0.5, 2.5), SCPoint2d(1.5, 3.0)), 1e-12);
+    EXPECT_TRUE(floatingBox.Center().AlmostEquals(SCPoint2d(0.5, 2.75), 1e-12));
+    EXPECT_TRUE(floatingBox.AlmostEquals(SCBox2d::FromMinMax(SCPoint2d(-0.5, 2.5), SCPoint2d(1.5, 3.0)), 1e-12));
 
     const SCBox2i sameA(SCPoint2i(1, 2), SCPoint2i(3, 4));
     const SCBox2i sameB(SCPoint2i(1, 2), SCPoint2i(3, 4));
     const SCBox2i different(SCPoint2i(1, 2), SCPoint2i(3, 5));
     ASSERT_EQ(sameA, sameB);
     ASSERT_NE(sameA, different);
-    GEOMETRY_TEST_ASSERT_BOX_NEAR(sameA, sameB, 0.0);
+    EXPECT_TRUE(sameA.AlmostEquals(sameB, 0.0));
 }

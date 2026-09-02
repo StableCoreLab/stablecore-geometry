@@ -2,9 +2,9 @@
 #include <string>
 #include <vector>
 
-#include "Core/Metrics.h"
 #include "Export/GeometryExport.h"
 #include "Support/Epsilon.h"
+#include "Types/Geometry2d/SCBox2.h"
 
 namespace Geometry
 {

@@ -7,22 +7,16 @@
 #include "Geometry2d/SCArcSegment2d.h"
 #include "Geometry2d/SCLineSegment2d.h"
 #include "Geometry2d/SCPolyline2d.h"
-#include "Support/GeometryTestSupport.h"
+#include "Support/Epsilon.h"
 
 using Geometry::SCArcDirection;
 using Geometry::SCArcSegment2d;
 using Geometry::SCBox2d;
-using Geometry::IsEqual;
 using Geometry::SCLineSegment2d;
 using Geometry::SCPoint2d;
 using Geometry::SCPolyline2d;
 using Geometry::SCPolylineClosure;
 using Geometry::Reverse;
-
-namespace
-{
-    constexpr double kPi = 3.141592653589793238462643383279502884;
-}
 
 TEST(PolylineTest, CoversCurrentCapabilities)
 {
@@ -39,25 +33,25 @@ TEST(PolylineTest, CoversCurrentCapabilities)
     ASSERT_FALSE(openPath.IsClosed());
     ASSERT_EQ(openPath.SegmentCount(), 2);
     ASSERT_EQ(openPath.VertexCount(), 3);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.VertexAt(0), SCPoint2d(0.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.VertexAt(1), SCPoint2d(3.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.VertexAt(2), SCPoint2d(3.0, 4.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.StartPoint(), SCPoint2d(0.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.EndPoint(), SCPoint2d(3.0, 4.0), 1e-12);
+    EXPECT_TRUE(openPath.VertexAt(0).AlmostEquals(SCPoint2d(0.0, 0.0), 1e-12));
+    EXPECT_TRUE(openPath.VertexAt(1).AlmostEquals(SCPoint2d(3.0, 0.0), 1e-12));
+    EXPECT_TRUE(openPath.VertexAt(2).AlmostEquals(SCPoint2d(3.0, 4.0), 1e-12));
+    EXPECT_TRUE(openPath.StartPoint().AlmostEquals(SCPoint2d(0.0, 0.0), 1e-12));
+    EXPECT_TRUE(openPath.EndPoint().AlmostEquals(SCPoint2d(3.0, 4.0), 1e-12));
     ASSERT_LT(std::abs(openPath.Length() - 7.0), 1e-12);
     ASSERT_LT(std::abs(openPath.LengthAt(0.5) - 3.5), 1e-12);
     ASSERT_LT(std::abs(openPath.ParameterAtLength(3.5) - 0.5), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.PointAt(0.5), SCPoint2d(3.0, 0.5), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.PointAtLength(3.5), SCPoint2d(3.0, 0.5), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.PointAtLength(-2.0, true), SCPoint2d(0.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.PointAtLength(9.0, true), SCPoint2d(3.0, 4.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.PointAtLength(-2.0, false), SCPoint2d(-2.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openPath.PointAtLength(9.0, false), SCPoint2d(3.0, 6.0), 1e-12);
+    EXPECT_TRUE(openPath.PointAt(0.5).AlmostEquals(SCPoint2d(3.0, 0.5), 1e-12));
+    EXPECT_TRUE(openPath.PointAtLength(3.5).AlmostEquals(SCPoint2d(3.0, 0.5), 1e-12));
+    EXPECT_TRUE(openPath.PointAtLength(-2.0, true).AlmostEquals(SCPoint2d(0.0, 0.0), 1e-12));
+    EXPECT_TRUE(openPath.PointAtLength(9.0, true).AlmostEquals(SCPoint2d(3.0, 4.0), 1e-12));
+    EXPECT_TRUE(openPath.PointAtLength(-2.0, false).AlmostEquals(SCPoint2d(-2.0, 0.0), 1e-12));
+    EXPECT_TRUE(openPath.PointAtLength(9.0, false).AlmostEquals(SCPoint2d(3.0, 6.0), 1e-12));
 
     const SCBox2d openBox = openPath.Bounds();
     ASSERT_TRUE(openBox.IsValid());
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openBox.MinPoint(), SCPoint2d(0.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(openBox.MaxPoint(), SCPoint2d(3.0, 4.0), 1e-12);
+    EXPECT_TRUE(openBox.MinPoint().AlmostEquals(SCPoint2d(0.0, 0.0), 1e-12));
+    EXPECT_TRUE(openBox.MaxPoint().AlmostEquals(SCPoint2d(3.0, 4.0), 1e-12));
 
     auto broken = std::make_shared<SCLineSegment2d>(SCPoint2d(10.0, 10.0), SCPoint2d(11.0, 10.0));
     SCPolyline2d invalidOpen({first, broken}, SCPolylineClosure::Open);
@@ -71,8 +65,8 @@ TEST(PolylineTest, CoversCurrentCapabilities)
     ASSERT_TRUE(closedPath.IsValid());
     ASSERT_TRUE(closedPath.IsClosed());
     ASSERT_EQ(closedPath.VertexCount(), 3);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(closedPath.StartPoint(), SCPoint2d(0.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(closedPath.EndPoint(), SCPoint2d(0.0, 0.0), 1e-12);
+    EXPECT_TRUE(closedPath.StartPoint().AlmostEquals(SCPoint2d(0.0, 0.0), 1e-12));
+    EXPECT_TRUE(closedPath.EndPoint().AlmostEquals(SCPoint2d(0.0, 0.0), 1e-12));
 
     SCPolyline2d closedByRepeatedPoint({SCPoint2d(0.0, 0.0), SCPoint2d(1.0, 0.0), SCPoint2d(0.0, 1.0), SCPoint2d(0.0, 0.0)},
                                      SCPolylineClosure::Closed);
@@ -81,21 +75,21 @@ TEST(PolylineTest, CoversCurrentCapabilities)
     ASSERT_EQ(closedByRepeatedPoint.VertexCount(), 3);
 
     auto line = std::make_shared<SCLineSegment2d>(SCPoint2d(0.0, 0.0), SCPoint2d(1.0, 0.0));
-    auto arc = std::make_shared<SCArcSegment2d>(SCPoint2d(1.0, 1.0), 1.0, -kPi / 2.0, 0.0, SCArcDirection::CounterClockwise);
+    auto arc = std::make_shared<SCArcSegment2d>(SCPoint2d(1.0, 1.0), 1.0, -Geometry::kPi / 2.0, 0.0, SCArcDirection::CounterClockwise);
     SCPolyline2d mixedPath({line, arc}, SCPolylineClosure::Open);
 
     ASSERT_TRUE(mixedPath.IsValid());
-    ASSERT_LT(std::abs(mixedPath.Length() - (1.0 + kPi / 2.0)), 1e-12);
+    ASSERT_LT(std::abs(mixedPath.Length() - (1.0 + Geometry::kPi / 2.0)), 1e-12);
     const SCBox2d mixedBox = mixedPath.Bounds();
     ASSERT_TRUE(mixedBox.IsValid());
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(mixedBox.MinPoint(), SCPoint2d(0.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(mixedBox.MaxPoint(), SCPoint2d(2.0, 1.0), 1e-12);
+    EXPECT_TRUE(mixedBox.MinPoint().AlmostEquals(SCPoint2d(0.0, 0.0), 1e-12));
+    EXPECT_TRUE(mixedBox.MaxPoint().AlmostEquals(SCPoint2d(2.0, 1.0), 1e-12));
 
     const SCPolyline2d reversedMixedPath = Reverse(mixedPath);
     ASSERT_TRUE(reversedMixedPath.IsValid());
     ASSERT_EQ(reversedMixedPath.SegmentCount(), 2);
     ASSERT_EQ(reversedMixedPath.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2::Arc);
     ASSERT_EQ(reversedMixedPath.SegmentAt(1)->Kind(), Geometry::SCSegmentKind2::Line);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(reversedMixedPath.StartPoint(), SCPoint2d(2.0, 1.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(reversedMixedPath.EndPoint(), SCPoint2d(0.0, 0.0), 1e-12);
+    EXPECT_TRUE(reversedMixedPath.StartPoint().AlmostEquals(SCPoint2d(2.0, 1.0), 1e-12));
+    EXPECT_TRUE(reversedMixedPath.EndPoint().AlmostEquals(SCPoint2d(0.0, 0.0), 1e-12));
 }

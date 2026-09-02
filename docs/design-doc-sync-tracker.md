@@ -28,13 +28,11 @@
 
 ## CI 同步范围
 
-这部分内容和仓库里的 GitHub Actions、自动修复脚本保持一致，作为当前交接事实保留。
+当前仓库未配置 `.github/` GitHub Actions，也不存在 `scripts/ci-autofix.ps1`；以下 CI 事项仅作为待建设清单，不应视为现有能力：
 
-- `ci-windows-cmake` 负责 Windows + CMake preset 的 configure/build/test
-- 触发方式包括 push 到 `main`、pull request 和手动触发
-- `ci-autofix-on-failure` 只在 `ci-windows-cmake` 失败时触发
-- 自动修复只执行确定性、可验证、低风险的修复规则
-- 自动修复入口是 `scripts/ci-autofix.ps1`
+- 建立 Windows + CMake preset 的 configure/build/test 流程
+- 约定 push、pull request 和手动触发策略
+- 若引入自动修复，仅允许确定性、可验证、低风险规则
 
 ## 结论
 

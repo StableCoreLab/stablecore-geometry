@@ -42,17 +42,17 @@
 - `Serialize/GeometryText.h`：文本序列化辅助
 - `Export/GeometryExport.h`：导入导出标注
 
-需要跨 DLL 的公开值类型和结果结构，统一从这些公共头导出，并使用 `GEOMETRY_API`：
+需要跨 DLL 的公开结果结构统一从对应公共头导出并使用导出宏；header-only 值类型不额外添加 `GEOMETRY_API`：
 
 - `Core/GeometryTypes.h`
 - 其他公开 API 头中直接导出的值类型
 
-umbrella 中可直接获得的常用别名包括：
+umbrella 中可直接获得的常用类型（均保留 `SC` 前缀）包括：
 
-- `Point2d`, `Vector2d`, `Box2d`
-- `Point3d`, `Vector3d`, `Direction3d`, `Box3d`, `Intervald`
-- `Line3d`, `Ray3d`, `LineSegment3d`, `Triangle3d`
-- `Transform3d`, `Matrix3d`, `Plane`
+- `SCPoint2d`, `SCVector2d`, `SCBox2d`
+- `SCPoint3d`, `SCVector3d`, `SCDirection3d`, `SCBox3d`, `SCIntervald`
+- `SCLine3d`, `SCRay3d`, `SCLineSegment3d`, `SCTriangle3d`
+- `SCTransform3d`, `SCMatrix3d`, `SCPlane`
 
 如果只需要某一小块能力，建议直接包含对应头文件，而不是总是走 umbrella。
 
@@ -86,7 +86,7 @@ umbrella 中可直接获得的常用别名包括：
 GenerateGeometryVS2022.bat
 ```
 
-该脚本会在仓库根目录外生成到 `../Build/GeometryVs2022`，并打开 `SCGeometry.sln`。
+该脚本会在仓库根目录外生成到 `../Build/GeometryVs2022`，并输出生成的解决方案路径；不会自动打开 IDE。
 
 2. 或直接使用 CMake preset：
 
@@ -104,10 +104,10 @@ cmake --build --preset vs2022-x64-build --config RelWithDebInfo
 
 ### 发布布局
 
-- `bin/Release/x64`：DLL 和可执行文件
-- `bin/RelWithDebInfo/x64`：带调试信息的 DLL 和可执行文件
-- `lib/Release/x64`：导入库和静态库
-- `lib/RelWithDebInfo/x64`：带调试信息的导入库和静态库
+- `Bin/Release/x64`：DLL 和可执行文件
+- `Bin/RelWithDebInfo/x64`：带调试信息的 DLL 和可执行文件
+- `Lib/Release/x64`：导入库和静态库
+- `Lib/RelWithDebInfo/x64`：带调试信息的导入库和静态库
 - `Include/SCGeometry`：公开头文件
 - `Lib/cmake/SCGeometry`：CMake 包文件
 

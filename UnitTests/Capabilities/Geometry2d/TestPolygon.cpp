@@ -10,7 +10,6 @@
 #include "Geometry2d/SCArcSegment2d.h"
 #include "Geometry2d/SCLineSegment2d.h"
 #include "Geometry2d/SCPolygon2d.h"
-#include "Support/GeometryTestSupport.h"
 
 using Geometry::SCArcDirection;
 using Geometry::SCArcSegment2d;
@@ -42,7 +41,7 @@ namespace
     }
 }  // namespace
 
-TEST(PolygonTest, CoversCurrentCapabilities)
+TEST(PolygonTest, CoversPolygonMetricsAndBounds)
 {
     SCPolyline2d outerRing = MakeClosedRing({
         {SCPoint2d(0.0, 0.0), SCPoint2d(4.0, 0.0)},
@@ -66,13 +65,23 @@ TEST(PolygonTest, CoversCurrentCapabilities)
 
     ASSERT_LT(std::abs(polygon.Area() - 12.0), 1e-12);
     ASSERT_LT(std::abs(polygon.Perimeter() - 24.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(polygon.Centroid(), SCPoint2d(2.0, 2.0), 1e-12);
+    EXPECT_TRUE(polygon.Centroid().AlmostEquals(SCPoint2d(2.0, 2.0), 1e-12));
 
     const SCBox2d box = polygon.Bounds();
     ASSERT_TRUE(box.IsValid());
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(box.MinPoint(), SCPoint2d(0.0, 0.0), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(box.MaxPoint(), SCPoint2d(4.0, 4.0), 1e-12);
+    EXPECT_TRUE(box.MinPoint().AlmostEquals(SCPoint2d(0.0, 0.0), 1e-12));
+    EXPECT_TRUE(box.MaxPoint().AlmostEquals(SCPoint2d(4.0, 4.0), 1e-12));
 
+}
+
+TEST(PolygonTest, RejectsInvalidHoleConfigurations)
+{
+    SCPolyline2d outerRing = MakeClosedRing({
+        {SCPoint2d(0.0, 0.0), SCPoint2d(4.0, 0.0)},
+        {SCPoint2d(4.0, 0.0), SCPoint2d(4.0, 4.0)},
+        {SCPoint2d(4.0, 4.0), SCPoint2d(0.0, 4.0)},
+        {SCPoint2d(0.0, 4.0), SCPoint2d(0.0, 0.0)},
+    });
     SCPolyline2d badHole = MakeClosedRing({
         {SCPoint2d(1.0, 1.0), SCPoint2d(3.0, 1.0)},
         {SCPoint2d(3.0, 1.0), SCPoint2d(3.0, 3.0)},
@@ -112,26 +121,30 @@ TEST(PolygonTest, CoversCurrentCapabilities)
     });
     ASSERT_FALSE(SCPolygon2d(outerRing, {nestedHoleA, nestedHoleB}).IsValid());
 
+}
+
+TEST(PolygonTest, SupportsCurvedBoundaryPolygons)
+{
     std::vector<std::shared_ptr<Geometry::ISCSegment2d>> arcSegments;
     arcSegments.push_back(std::make_shared<SCLineSegment2d>(SCPoint2d(0.0, 0.0), SCPoint2d(1.0, 0.0)));
     arcSegments.push_back(std::make_shared<SCArcSegment2d>(
-        SCPoint2d(0.0, 0.0), 1.0, 0.0, std::acos(-1.0) * 0.5, SCArcDirection::CounterClockwise));
+        SCPoint2d(0.0, 0.0), 1.0, 0.0, Geometry::kPi * 0.5, SCArcDirection::CounterClockwise));
     arcSegments.push_back(std::make_shared<SCLineSegment2d>(SCPoint2d(0.0, 1.0), SCPoint2d(0.0, 0.0)));
 
     SCPolygon2d quarterDisk(SCPolyline2d(std::move(arcSegments), SCPolylineClosure::Closed));
     ASSERT_TRUE(quarterDisk.IsValid());
-    ASSERT_LT(std::abs(quarterDisk.Area() - (std::acos(-1.0) / 4.0)), 1e-12);
-    ASSERT_LT(std::abs(quarterDisk.Perimeter() - (2.0 + std::acos(-1.0) * 0.5)), 1e-12);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(
-        quarterDisk.Centroid(), SCPoint2d(4.0 / (3.0 * std::acos(-1.0)), 4.0 / (3.0 * std::acos(-1.0))), 1e-12);
+    ASSERT_LT(std::abs(quarterDisk.Area() - (Geometry::kPi / 4.0)), 1e-12);
+    ASSERT_LT(std::abs(quarterDisk.Perimeter() - (2.0 + Geometry::kPi * 0.5)), 1e-12);
+    EXPECT_TRUE(quarterDisk.Centroid().AlmostEquals(
+        SCPoint2d(4.0 / (3.0 * Geometry::kPi), 4.0 / (3.0 * Geometry::kPi)), 1e-12));
     ASSERT_EQ(LocatePoint(SCPoint2d(0.2, 0.2), quarterDisk), SCPointContainment2d::Inside);
     ASSERT_EQ(LocatePoint(SCPoint2d(0.9, 0.9), quarterDisk), SCPointContainment2d::Outside);
     ASSERT_EQ(LocatePoint(SCPoint2d(std::sqrt(0.5), std::sqrt(0.5)), quarterDisk), SCPointContainment2d::OnBoundary);
 
-    const double kPiValue = std::acos(-1.0);
+    const double pi = Geometry::kPi;
     std::vector<std::shared_ptr<Geometry::ISCSegment2d>> circleSegments;
-    circleSegments.push_back(std::make_shared<SCArcSegment2d>(SCPoint2d(0.0, 0.0), 1.0, 0.0, kPiValue));
-    circleSegments.push_back(std::make_shared<SCArcSegment2d>(SCPoint2d(0.0, 0.0), 1.0, kPiValue, kPiValue));
+    circleSegments.push_back(std::make_shared<SCArcSegment2d>(SCPoint2d(0.0, 0.0), 1.0, 0.0, pi));
+    circleSegments.push_back(std::make_shared<SCArcSegment2d>(SCPoint2d(0.0, 0.0), 1.0, pi, pi));
     SCPolyline2d fullCircleRing(std::move(circleSegments), SCPolylineClosure::Closed);
     SCPolygon2d fullCircle(fullCircleRing);
     const SCPolygonValidation2d fullCircleValidation = Validate(fullCircleRing);
@@ -139,5 +152,5 @@ TEST(PolygonTest, CoversCurrentCapabilities)
     ASSERT_TRUE(fullCircle.IsValid());
     ASSERT_EQ(Orientation(fullCircleRing), SCRingOrientation2d::CounterClockwise);
     ASSERT_EQ(LocatePoint(SCPoint2d(0.0, 0.0), fullCircle), SCPointContainment2d::Inside);
-    GEOMETRY_TEST_ASSERT_POINT_NEAR(Geometry::Centroid(fullCircle), SCPoint2d(0.0, 0.0), 1e-12);
+    EXPECT_TRUE(Geometry::Centroid(fullCircle).AlmostEquals(SCPoint2d(0.0, 0.0), 1e-12));
 }

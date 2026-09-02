@@ -1,9 +1,111 @@
 #include <gtest/gtest.h>
-#include <numbers>
+#include <ostream>
 #include <string>
 
 #include "Serialize/GeometryText.h"
-#include "Support/GeometryTestSupport.h"
+
+namespace
+{
+    enum class InvalidInputKind
+    {
+        Point,
+        Vector,
+        Box,
+        Projection,
+        Arc,
+        Polyline,
+        Polygon,
+    };
+
+    struct InvalidInputCase
+    {
+        const char* name;
+        InvalidInputKind kind;
+        const char* text;
+    };
+
+    void PrintTo(const InvalidInputCase& value, std::ostream* stream)
+    {
+        *stream << value.name << " {" << value.text << "}";
+    }
+
+    class SerializeInvalidInputTest : public ::testing::TestWithParam<InvalidInputCase>
+    {
+    };
+
+    TEST_P(SerializeInvalidInputTest, RejectsMalformedText)
+    {
+        using Geometry::SCArcSegment2d;
+        using Geometry::SCBox2d;
+        using Geometry::SCPoint2d;
+        using Geometry::SCPolygon2d;
+        using Geometry::SCPolyline2d;
+        using Geometry::SCSegmentProjection2d;
+        using Geometry::SCVector2d;
+        using Geometry::Serialize::FromText;
+
+        bool parsed = false;
+        switch (GetParam().kind)
+        {
+            case InvalidInputKind::Point:
+            {
+                SCPoint2d value{};
+                parsed = FromText(GetParam().text, value);
+                break;
+            }
+            case InvalidInputKind::Vector:
+            {
+                SCVector2d value{};
+                parsed = FromText(GetParam().text, value);
+                break;
+            }
+            case InvalidInputKind::Box:
+            {
+                SCBox2d value{};
+                parsed = FromText(GetParam().text, value);
+                break;
+            }
+            case InvalidInputKind::Projection:
+            {
+                SCSegmentProjection2d value{};
+                parsed = FromText(GetParam().text, value);
+                break;
+            }
+            case InvalidInputKind::Arc:
+            {
+                SCArcSegment2d value{};
+                parsed = FromText(GetParam().text, value);
+                break;
+            }
+            case InvalidInputKind::Polyline:
+            {
+                SCPolyline2d value;
+                parsed = FromText(GetParam().text, value);
+                break;
+            }
+            case InvalidInputKind::Polygon:
+            {
+                SCPolygon2d value;
+                parsed = FromText(GetParam().text, value);
+                break;
+            }
+        }
+
+        EXPECT_FALSE(parsed);
+    }
+
+    INSTANTIATE_TEST_SUITE_P(
+        MalformedInputs,
+        SerializeInvalidInputTest,
+        ::testing::Values(InvalidInputCase{"Point", InvalidInputKind::Point, "SCPoint2d 1.0"},
+                          InvalidInputCase{"Vector", InvalidInputKind::Vector, "SCVector2d 1 2 3"},
+                          InvalidInputCase{"Box", InvalidInputKind::Box, "SCBox2d 0 0 1"},
+                          InvalidInputCase{"Projection", InvalidInputKind::Projection, "SCSegmentProjection2d 1 2 3 4"},
+                          InvalidInputCase{"Arc", InvalidInputKind::Arc, "SCArcSegment2d 0 0 1 0 0"},
+                          InvalidInputCase{"Polyline", InvalidInputKind::Polyline, "SCPolyline2d open 2 0 0 1"},
+                          InvalidInputCase{"Polygon", InvalidInputKind::Polygon, "SCPolygon2d SCPolyline2d open 2 0 0 1 0 0"}),
+        [](const ::testing::TestParamInfo<InvalidInputCase>& info) { return info.param.name; });
+}
 
 TEST(SerializeTest, CoversCurrentCapabilities)
 {
@@ -22,10 +124,13 @@ TEST(SerializeTest, CoversCurrentCapabilities)
     const SCVector2d vector = SCVector2d::FromXY(-4.0, 8.5);
     const SCBox2d box = SCBox2d::FromMinMax(SCPoint2d{0.0, 1.0}, SCPoint2d{2.0, 3.0});
     const SCSegmentProjection2d projection{SCPoint2d{4.0, 5.0}, 0.25, 12.5, true};
-    const SCArcSegment2d arc(SCPoint2d{0.0, 0.0}, 1.0, 0.0, std::numbers::pi_v<double> * 0.5);
+    const SCArcSegment2d arc(SCPoint2d{0.0, 0.0}, 1.0, 0.0, Geometry::kPi * 0.5);
     const SCPolyline2d polyline({SCPoint2d{0.0, 0.0}, SCPoint2d{3.0, 0.0}, SCPoint2d{3.0, 4.0}}, SCPolylineClosure::Open);
-    const SCPolygon2d polygon(Geometry::Test::MakeRectangleRing(SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 4.0}),
-                            {Geometry::Test::MakeRectangleHoleRing(SCPoint2d{1.0, 1.0}, SCPoint2d{3.0, 3.0})});
+    const SCPolygon2d polygon(
+        SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}, SCPoint2d{4.0, 4.0}, SCPoint2d{0.0, 4.0}},
+                     SCPolylineClosure::Closed),
+        {SCPolyline2d({SCPoint2d{1.0, 1.0}, SCPoint2d{1.0, 3.0}, SCPoint2d{3.0, 3.0}, SCPoint2d{3.0, 1.0}},
+                      SCPolylineClosure::Closed)});
 
     const std::string pointText = ToText(point);
     const std::string vectorText = ToText(vector);
@@ -69,15 +174,27 @@ TEST(SerializeTest, CoversCurrentCapabilities)
     ASSERT_EQ(parsedProjection.distanceSquared, projection.distanceSquared);
     ASSERT_EQ(parsedProjection.isOnSegment, projection.isOnSegment);
     ASSERT_TRUE(parsedArc.AlmostEquals(arc));
-    GEOMETRY_TEST_ASSERT_POLYLINE_NEAR(parsedPolyline, polyline, 1e-12);
-    GEOMETRY_TEST_ASSERT_POLYGON_NEAR(parsedPolygon, polygon, 1e-12);
+    ASSERT_EQ(parsedPolyline.PointCount(), polyline.PointCount());
+    EXPECT_EQ(parsedPolyline.IsClosed(), polyline.IsClosed());
+    for (std::size_t i = 0; i < polyline.PointCount(); ++i)
+    {
+        EXPECT_TRUE(parsedPolyline.PointAt(i).AlmostEquals(polyline.PointAt(i), 1e-12));
+    }
 
-    ASSERT_FALSE(FromText("SCPoint2d 1.0", parsedPoint));
-    ASSERT_FALSE(FromText("SCVector2d 1 2 3", parsedVector));
-    ASSERT_FALSE(FromText("SCBox2d 0 0 1", parsedBox));
-    ASSERT_FALSE(FromText("SCSegmentProjection2d 1 2 3 4", parsedProjection));
-    ASSERT_FALSE(FromText("SCArcSegment2d 0 0 1 0 0", parsedArc));
-    ASSERT_FALSE(FromText("SCPolyline2d open 2 0 0 1", parsedPolyline));
-    ASSERT_FALSE(FromText("SCPolygon2d SCPolyline2d open 2 0 0 1 0 0", parsedPolygon));
+    ASSERT_EQ(parsedPolygon.HoleCount(), polygon.HoleCount());
+    ASSERT_EQ(parsedPolygon.OuterRing().PointCount(), polygon.OuterRing().PointCount());
+    for (std::size_t i = 0; i < polygon.OuterRing().PointCount(); ++i)
+    {
+        EXPECT_TRUE(parsedPolygon.OuterRing().PointAt(i).AlmostEquals(polygon.OuterRing().PointAt(i), 1e-12));
+    }
+    for (std::size_t holeIndex = 0; holeIndex < polygon.HoleCount(); ++holeIndex)
+    {
+        ASSERT_EQ(parsedPolygon.HoleAt(holeIndex).PointCount(), polygon.HoleAt(holeIndex).PointCount());
+        for (std::size_t pointIndex = 0; pointIndex < polygon.HoleAt(holeIndex).PointCount(); ++pointIndex)
+        {
+            EXPECT_TRUE(parsedPolygon.HoleAt(holeIndex).PointAt(pointIndex)
+                            .AlmostEquals(polygon.HoleAt(holeIndex).PointAt(pointIndex), 1e-12));
+        }
+    }
+
 }
-

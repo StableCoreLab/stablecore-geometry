@@ -13,6 +13,13 @@ list(SORT SCGEOMETRY_GAP_TEST_SOURCES)
 
 set(SCGEOMETRY_CAPABILITY_TESTS_TARGET SCGeometryCapabilitiesTests)
 set(SCGEOMETRY_GAP_TESTS_TARGET SCGeometryGapTests)
+set(SCGEOMETRY_PUBLIC_HEADERS_COMPILE_TARGET SCGeometryPublicHeadersCompile)
+
+add_library(${SCGEOMETRY_PUBLIC_HEADERS_COMPILE_TARGET} OBJECT
+    ${CMAKE_CURRENT_SOURCE_DIR}/Support/PublicHeadersCompile.cpp
+)
+target_link_libraries(${SCGEOMETRY_PUBLIC_HEADERS_COMPILE_TARGET} PRIVATE ${SCGEOMETRY_TARGET})
+SCGeometryConfigureTarget(${SCGEOMETRY_PUBLIC_HEADERS_COMPILE_TARGET})
 
 add_executable(${SCGEOMETRY_CAPABILITY_TESTS_TARGET} ${SCGEOMETRY_CAPABILITY_TEST_SOURCES})
 target_link_libraries(${SCGEOMETRY_CAPABILITY_TESTS_TARGET} PRIVATE ${SCGEOMETRY_TARGET} GTest::gtest GTest::gtest_main)
@@ -29,3 +36,17 @@ SCGeometryConfigureTarget(${SCGEOMETRY_GAP_TESTS_TARGET})
 SCGeometryConfigurePerformance(${SCGEOMETRY_GAP_TESTS_TARGET})
 SCCopyRuntimeDependenciesToTarget(${SCGEOMETRY_GAP_TESTS_TARGET} ${SCGEOMETRY_TARGET})
 gtest_discover_tests(${SCGEOMETRY_GAP_TESTS_TARGET})
+
+# This validates the installed CMake package, rather than only the build-tree
+# target used by the GTest executables above.
+add_test(
+    NAME SCGeometry.PackageConsumer
+    COMMAND ${CMAKE_COMMAND}
+        "-DSCGEOMETRY_BINARY_DIR=${CMAKE_BINARY_DIR}"
+        "-DSCGEOMETRY_CONSUMER_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/Integration/PackageConsumer"
+        "-DSCGEOMETRY_VERIFY_ROOT=${CMAKE_BINARY_DIR}/PackageConsumerVerification"
+        "-DSCGEOMETRY_CONFIG=$<CONFIG>"
+        "-DSCGEOMETRY_GENERATOR=${CMAKE_GENERATOR}"
+        "-DSCGEOMETRY_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/Integration/VerifyPackageConsumer.cmake"
+)

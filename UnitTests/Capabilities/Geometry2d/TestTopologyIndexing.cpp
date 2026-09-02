@@ -5,7 +5,6 @@
 #include "Geometry2d/SCBoxTree2d.h"
 #include "Geometry2d/SCKDTree2d.h"
 #include "Geometry2d/SCSegmentSearch2d.h"
-#include "Support/GeometryTestSupport.h"
 
 using Geometry::SCArcSegment2d;
 using Geometry::SCBox2d;

@@ -1,5 +1,9 @@
 #include "Geometry2d/SCSegmentSearch2d.h"
 
+#include "Core/Intersection.h"
+#include "Core/Metrics.h"
+#include "Core/Projection.h"
+
 #include <algorithm>
 #include <limits>
 #include <sstream>

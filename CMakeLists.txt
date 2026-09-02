@@ -176,7 +176,13 @@ if (MSVC)
     target_compile_options(${SCGEOMETRY_TARGET} PRIVATE /MP)
 endif()
 
-target_compile_definitions(${SCGEOMETRY_TARGET} PRIVATE GEOMETRY_BUILD_DLL)
+# The library exports its own symbols while every consumer of the shared target
+# imports them.  Keeping these definitions on their respective usage sides is
+# essential for exported data declarations on MSVC.
+target_compile_definitions(${SCGEOMETRY_TARGET}
+    PRIVATE GEOMETRY_BUILD_DLL
+    INTERFACE GEOMETRY_USE_DLL
+)
 
 set_target_properties(${SCGEOMETRY_TARGET} PROPERTIES
     EXPORT_NAME Geometry
