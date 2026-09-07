@@ -6,6 +6,7 @@
 #include "Core/Intersection.h"
 #include "Core/Relation.h"
 #include "Core/ShapeOps.h"
+#include "../Detail/SegmentKernel2d.h"
 
 namespace Geometry
 {
@@ -42,7 +43,7 @@ namespace Geometry
                     continue;
                 }
 
-                if (HasIntersection(*segments[i], *segments[j], eps))
+                if (Detail::IntersectKernelSegments(*segments[i], *segments[j], eps).HasIntersection())
                 {
                     return true;
                 }
@@ -284,5 +285,4 @@ namespace Geometry
         return {true, SCSectionValidationIssue3d::None, 0};
     }
 }  // namespace Geometry
-
 

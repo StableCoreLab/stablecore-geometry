@@ -1,5 +1,7 @@
 #include "Core/Intersection.h"
 
+#include "../Detail/SegmentKernel2d.h"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -997,33 +999,7 @@ namespace Geometry
 
     SCSegmentIntersection2d Intersect(const ISCSegment2d& first, const ISCSegment2d& second, double eps)
     {
-        if (!first.IsValid() || !second.IsValid())
-        {
-            return SCSegmentIntersection2d{};
-        }
-
-        if (first.Kind() == SCSegmentKind2::Line && second.Kind() == SCSegmentKind2::Line)
-        {
-            return Intersect(static_cast<const SCLineSegment2d&>(first), static_cast<const SCLineSegment2d&>(second), eps);
-        }
-
-        if (first.Kind() == SCSegmentKind2::Line && second.Kind() == SCSegmentKind2::Arc)
-        {
-            return Intersect(static_cast<const SCLineSegment2d&>(first), static_cast<const SCArcSegment2d&>(second), eps);
-        }
-
-        if (first.Kind() == SCSegmentKind2::Arc && second.Kind() == SCSegmentKind2::Line)
-        {
-            return SwapIntersectionResult(
-                Intersect(static_cast<const SCLineSegment2d&>(second), static_cast<const SCArcSegment2d&>(first), eps));
-        }
-
-        if (first.Kind() == SCSegmentKind2::Arc && second.Kind() == SCSegmentKind2::Arc)
-        {
-            return Intersect(static_cast<const SCArcSegment2d&>(first), static_cast<const SCArcSegment2d&>(second), eps);
-        }
-
-        return SCSegmentIntersection2d{};
+        return Detail::IntersectKernelSegments(first, second, eps);
     }
 
     bool HasIntersection(const ISCSegment2d& first, const ISCSegment2d& second, double eps)
@@ -1048,33 +1024,7 @@ namespace Geometry
 
     SCClosestPoints2d ClosestPoints(const ISCSegment2d& first, const ISCSegment2d& second)
     {
-        if (!first.IsValid() || !second.IsValid())
-        {
-            return SCClosestPoints2d{};
-        }
-
-        if (first.Kind() == SCSegmentKind2::Line && second.Kind() == SCSegmentKind2::Line)
-        {
-            return ClosestPoints(static_cast<const SCLineSegment2d&>(first), static_cast<const SCLineSegment2d&>(second));
-        }
-
-        if (first.Kind() == SCSegmentKind2::Line && second.Kind() == SCSegmentKind2::Arc)
-        {
-            return ClosestPoints(static_cast<const SCLineSegment2d&>(first), static_cast<const SCArcSegment2d&>(second));
-        }
-
-        if (first.Kind() == SCSegmentKind2::Arc && second.Kind() == SCSegmentKind2::Line)
-        {
-            return SwapClosestPointsResult(
-                ClosestPoints(static_cast<const SCLineSegment2d&>(second), static_cast<const SCArcSegment2d&>(first)));
-        }
-
-        if (first.Kind() == SCSegmentKind2::Arc && second.Kind() == SCSegmentKind2::Arc)
-        {
-            return ClosestPoints(static_cast<const SCArcSegment2d&>(first), static_cast<const SCArcSegment2d&>(second));
-        }
-
-        return SCClosestPoints2d{};
+        return Detail::ClosestKernelSegments(first, second);
     }
 
         [[nodiscard]] double LineParameterAtPoint(const SCLine2d& line, const SCPoint2d& point, double eps)

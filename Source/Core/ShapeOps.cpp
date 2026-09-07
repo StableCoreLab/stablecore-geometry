@@ -9,6 +9,7 @@
 #include "RingIntegral2d.h"
 #include "Core/Algorithms.h"
 #include "Support/Epsilon.h"
+#include "../Detail/SegmentKernel2d.h"
 
 namespace Geometry
 {
@@ -91,19 +92,13 @@ namespace Geometry
                 continue;
             }
 
-            switch (segment->Kind())
+            if (std::unique_ptr<ISCSegment2d> reversed = Detail::ReverseKernelSegment(*segment))
             {
-                case SCSegmentKind2::Line:
-                    segments.push_back(
-                        std::make_shared<SCLineSegment2d>(Reverse(static_cast<const SCLineSegment2d&>(*segment))));
-                    break;
-                case SCSegmentKind2::Arc:
-                    segments.push_back(
-                        std::make_shared<SCArcSegment2d>(Reverse(static_cast<const SCArcSegment2d&>(*segment))));
-                    break;
-                default:
-                    segments.push_back(std::shared_ptr<ISCSegment2d>(std::move(segment)));
-                    break;
+                segments.push_back(std::shared_ptr<ISCSegment2d>(std::move(reversed)));
+            }
+            else
+            {
+                segments.push_back(std::shared_ptr<ISCSegment2d>(std::move(segment)));
             }
         }
 
@@ -148,4 +143,3 @@ namespace Geometry
         return SCPolyline2d(std::move(segments), SCPolylineClosure::Closed);
     }
 }  // namespace Geometry
-
