@@ -82,14 +82,15 @@ TEST(PolygonTest, RejectsInvalidHoleConfigurations)
         {SCPoint2d(4.0, 4.0), SCPoint2d(0.0, 4.0)},
         {SCPoint2d(0.0, 4.0), SCPoint2d(0.0, 0.0)},
     });
-    SCPolyline2d badHole = MakeClosedRing({
+    SCPolyline2d ccwHole = MakeClosedRing({
         {SCPoint2d(1.0, 1.0), SCPoint2d(3.0, 1.0)},
         {SCPoint2d(3.0, 1.0), SCPoint2d(3.0, 3.0)},
         {SCPoint2d(3.0, 3.0), SCPoint2d(1.0, 3.0)},
         {SCPoint2d(1.0, 3.0), SCPoint2d(1.0, 1.0)},
     });
-    SCPolygon2d invalidPolygon(outerRing, {badHole});
-    ASSERT_FALSE(invalidPolygon.IsValid());
+    const SCPolygon2d polygonWithCcwHole(outerRing, {ccwHole});
+    ASSERT_TRUE(polygonWithCcwHole.IsValid());
+    EXPECT_DOUBLE_EQ(polygonWithCcwHole.Area(), 12.0);
 
     SCPolyline2d outsideHole = MakeClosedRing({
         {SCPoint2d(5.0, 5.0), SCPoint2d(6.0, 5.0)},

@@ -93,6 +93,33 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API bool IsPerpendicular(const SCVector3d& first,
                                                     const SCVector3d& second,
                                                     const SCGeometryTolerance3d& tolerance = {});
+
+    // 平行线段在 first 方向上的一维投影区间关系分类。该分类不要求两条线段共线，
+    // 仅在两者方向视为平行时比较各自在 first 方向上的投影区间重叠量。
+    enum class SCParallelSegmentProjectionRelation2d
+    {
+        InvalidInput,
+        NonParallel,
+        NoPositiveLengthIntersection,
+        EndpointTouch,
+        PositiveLengthIntersection
+    };
+
+    // 类型化的平行投影容差：角度与长度分别独立校验，避免用单一数值同时表达两个量纲。
+    // angularEpsilon 为单位方向叉积绝对值的无量纲阈值，合法范围严格为 (0, 1)；
+    // projectionEpsilon 为投影区间坐标单位阈值，必须有限且为正。
+    struct GEOMETRY_API SCParallelSegmentProjectionTolerance2d
+    {
+        double angularEpsilon{Geometry::kDefaultEpsilon};
+        double projectionEpsilon{Geometry::kDefaultEpsilon};
+
+        [[nodiscard]] bool IsValid() const;
+    };
+
+    [[nodiscard]] GEOMETRY_API SCParallelSegmentProjectionRelation2d
+    ClassifyParallelSegmentProjection(const SCLineSegment2d& first,
+                                      const SCLineSegment2d& second,
+                                      const SCParallelSegmentProjectionTolerance2d& tolerance);
 }  // namespace Geometry
 
 

@@ -17,6 +17,7 @@
 #include "Geometry2d/SCLineSegment2d.h"
 #include "RingIntegral2d.h"
 #include "../Detail/CurveArrangement2d.h"
+#include "../Detail/PolygonPositiveAreaIntersection2d.h"
 #include "../Detail/SegmentKernel2d.h"
 #include "../Detail/TriangulateContours2d.h"
 
@@ -822,5 +823,77 @@ namespace Geometry
             return {false, {}, result.failure};
         }
         return {true, std::move(result.polygon), SCPolygonTopologyFailure::None};
+    }
+
+    SCPolygonPositiveAreaIntersectionResult2d QueryPolygonPositiveAreaIntersection(const SCPolygon2d& first,
+                                                                                   const SCPolygon2d& second,
+                                                                                   double eps)
+    {
+        SCPolygonPositiveAreaIntersectionResult2d result;
+        // eps 仅用于输入规范化和普通浮点稳健控制，不是面积阈值；必须有限且为正。
+        if (!IsFinite(eps) || eps <= 0.0)
+        {
+            result.success = false;
+            result.hasPositiveAreaIntersection = false;
+            result.failure = SCPolygonPositiveAreaIntersectionFailure2d::InvalidInput;
+            return result;
+        }
+        if (!first.IsValid() || !second.IsValid())
+        {
+            result.success = false;
+            result.hasPositiveAreaIntersection = false;
+            result.failure = SCPolygonPositiveAreaIntersectionFailure2d::InvalidInput;
+            return result;
+        }
+
+        // 复用 NormalizePolygon 的输入检查；规范化失败不得解释为无冲突。
+        const SCPolygonNormalizeResult normalizedFirst = NormalizePolygon(first, eps);
+        if (!normalizedFirst.success)
+        {
+            result.success = false;
+            result.hasPositiveAreaIntersection = false;
+            result.failure = SCPolygonPositiveAreaIntersectionFailure2d::NormalizationFailure;
+            return result;
+        }
+        const SCPolygonNormalizeResult normalizedSecond = NormalizePolygon(second, eps);
+        if (!normalizedSecond.success)
+        {
+            result.success = false;
+            result.hasPositiveAreaIntersection = false;
+            result.failure = SCPolygonPositiveAreaIntersectionFailure2d::NormalizationFailure;
+            return result;
+        }
+
+        const Detail::PositiveAreaResult2d arrangement = Detail::BuildPositiveAreaArrangement2d(
+            normalizedFirst.polygon, normalizedSecond.polygon, eps);
+        switch (arrangement.status)
+        {
+            case Detail::PositiveAreaStatus2d::Success:
+                result.success = true;
+                result.hasPositiveAreaIntersection = arrangement.hasPositiveAreaIntersection;
+                result.failure = SCPolygonPositiveAreaIntersectionFailure2d::None;
+                break;
+            case Detail::PositiveAreaStatus2d::ArrangementFailure:
+                result.success = false;
+                result.hasPositiveAreaIntersection = false;
+                result.failure = SCPolygonPositiveAreaIntersectionFailure2d::ArrangementFailure;
+                break;
+            case Detail::PositiveAreaStatus2d::FaceClassificationFailure:
+                result.success = false;
+                result.hasPositiveAreaIntersection = false;
+                result.failure = SCPolygonPositiveAreaIntersectionFailure2d::FaceClassificationFailure;
+                break;
+            case Detail::PositiveAreaStatus2d::NumericalIndeterminate:
+                result.success = false;
+                result.hasPositiveAreaIntersection = false;
+                result.failure = SCPolygonPositiveAreaIntersectionFailure2d::NumericalIndeterminate;
+                break;
+            case Detail::PositiveAreaStatus2d::NonFiniteResult:
+                result.success = false;
+                result.hasPositiveAreaIntersection = false;
+                result.failure = SCPolygonPositiveAreaIntersectionFailure2d::NonFiniteResult;
+                break;
+        }
+        return result;
     }
 }  // namespace Geometry

@@ -105,4 +105,33 @@ namespace Geometry
 
     [[nodiscard]] GEOMETRY_API SCPolygonAppendHoleResult AppendHole(
         const SCPolygon2d& polygon, const SCPolyline2d& hole, double validationTolerance);
+
+    // 多边形正面积交集查询的专用失败原因，仅服务于本查询，不修改既有
+    // SCPolygonTopologyFailure 及 NormalizePolygon、ClassifyContainment 等返回契约。
+    enum class SCPolygonPositiveAreaIntersectionFailure2d
+    {
+        None,
+        InvalidInput,
+        NormalizationFailure,
+        ArrangementFailure,
+        FaceClassificationFailure,
+        NumericalIndeterminate,
+        NonFiniteResult
+    };
+
+    struct GEOMETRY_API SCPolygonPositiveAreaIntersectionResult2d
+    {
+        bool success{false};
+        bool hasPositiveAreaIntersection{false};
+        SCPolygonPositiveAreaIntersectionFailure2d failure{
+            SCPolygonPositiveAreaIntersectionFailure2d::InvalidInput};
+    };
+
+    // 查询两个填充集合是否存在可可靠判定的正面积公共区域。eps 仅用于输入规范化和
+    // 普通浮点稳健控制，不是面积阈值。成功且 hasPositiveAreaIntersection == false 只能表示
+    // 确认不相交或仅边界接触/重合；可能丢失正面积事实时返回 NumericalIndeterminate。
+    [[nodiscard]] GEOMETRY_API SCPolygonPositiveAreaIntersectionResult2d
+    QueryPolygonPositiveAreaIntersection(const SCPolygon2d& first,
+                                         const SCPolygon2d& second,
+                                         double eps = Geometry::kDefaultEpsilon);
 }  // namespace Geometry

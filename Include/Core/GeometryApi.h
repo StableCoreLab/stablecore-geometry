@@ -24,6 +24,7 @@
 #include "Core/GeometryTypes.h"
 #include "Core/Intersection.h"
 #include "Core/Measure.h"
+#include "Core/Metrics.h"
 #include "Core/Offset.h"
 #include "Core/PlaneOps.h"
 #include "Core/PolygonTopology.h"

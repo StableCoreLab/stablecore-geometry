@@ -1,5 +1,6 @@
 #include "Core/Relation.h"
 
+#include <algorithm>
 #include <cmath>
 #include <memory>
 #include <vector>
@@ -264,5 +265,132 @@ namespace Geometry
         return ignoreDirection && first.startPoint.AlmostEquals(second.endPoint, eps) &&
                first.endPoint.AlmostEquals(second.startPoint, eps);
     }
-}  // namespace Geometry
 
+    namespace
+    {
+        // 溢出安全的二维方向归一化：先以最大绝对分量缩放，再求长度与单位向量，
+        // 避免极大有限坐标在长度平方或叉积中溢出。零长度向量失败。
+        [[nodiscard]] bool OverflowSafeUnit(const SCVector2d& vector, SCVector2d& unit)
+        {
+            const double ax = std::abs(vector.x);
+            const double ay = std::abs(vector.y);
+            const double maxAbs = std::max(ax, ay);
+            if (!std::isfinite(maxAbs) || maxAbs <= 0.0)
+            {
+                return false;
+            }
+            const double sx = vector.x / maxAbs;
+            const double sy = vector.y / maxAbs;
+            const double length = std::sqrt(sx * sx + sy * sy);
+            if (!std::isfinite(length) || length <= 0.0)
+            {
+                return false;
+            }
+            unit = SCVector2d{sx / length, sy / length};
+            return unit.IsValid();
+        }
+
+        // 以 first.StartPoint() 为原点、unitFirst 为轴的溢出安全局部投影。
+        // unitFirst 分量在 [-1,1]，故点积结果不超过原始坐标量级，不会溢出。
+        [[nodiscard]] bool ProjectAlongAxis(const SCPoint2d& point, const SCPoint2d& origin, const SCVector2d& axis,
+                                            double& projection)
+        {
+            const SCVector2d delta = point - origin;
+            const double value = delta.x * axis.x + delta.y * axis.y;
+            if (!std::isfinite(value))
+            {
+                return false;
+            }
+            projection = value;
+            return true;
+        }
+    }  // namespace
+
+    bool SCParallelSegmentProjectionTolerance2d::IsValid() const
+    {
+        // angularEpsilon 是单位方向叉积绝对值的无量纲阈值，合法范围严格为 (0, 1)。
+        // angularEpsilon >= 1 会使任意方向被误判为平行，必须视为无效容差。
+        return std::isfinite(angularEpsilon) && angularEpsilon > 0.0 && angularEpsilon < 1.0 &&
+               std::isfinite(projectionEpsilon) && projectionEpsilon > 0.0;
+    }
+
+    SCParallelSegmentProjectionRelation2d ClassifyParallelSegmentProjection(
+        const SCLineSegment2d& first,
+        const SCLineSegment2d& second,
+        const SCParallelSegmentProjectionTolerance2d& tolerance)
+    {
+        if (!tolerance.IsValid())
+        {
+            return SCParallelSegmentProjectionRelation2d::InvalidInput;
+        }
+        // 该 API 的有效性契约不同于 SCLineSegment2d::IsValid()：非零但短于
+        // 默认几何 epsilon 的线段仍必须参与投影分类。
+        if (!first.startPoint.IsValid() || !first.endPoint.IsValid() || !second.startPoint.IsValid() ||
+            !second.endPoint.IsValid())
+        {
+            return SCParallelSegmentProjectionRelation2d::InvalidInput;
+        }
+
+        const SCVector2d firstDirection = first.endPoint - first.startPoint;
+        const SCVector2d secondDirection = second.endPoint - second.startPoint;
+        if (!firstDirection.IsValid() || !secondDirection.IsValid() ||
+            (firstDirection.x == 0.0 && firstDirection.y == 0.0) ||
+            (secondDirection.x == 0.0 && secondDirection.y == 0.0))
+        {
+            return SCParallelSegmentProjectionRelation2d::InvalidInput;
+        }
+
+        SCVector2d unitFirst{};
+        SCVector2d unitSecond{};
+        if (!OverflowSafeUnit(firstDirection, unitFirst) || !OverflowSafeUnit(secondDirection, unitSecond))
+        {
+            // 零长度线段或非有限中间计算均视为无效输入。
+            return SCParallelSegmentProjectionRelation2d::InvalidInput;
+        }
+
+        // 不得计算 eps * Length(u) * Length(v)：单位向量叉积绝对值不超过 1。
+        const double directionCross = std::abs(Cross(unitFirst, unitSecond));
+        if (!std::isfinite(directionCross))
+        {
+            return SCParallelSegmentProjectionRelation2d::InvalidInput;
+        }
+        if (directionCross > tolerance.angularEpsilon)
+        {
+            return SCParallelSegmentProjectionRelation2d::NonParallel;
+        }
+
+        // 投影区间：first 为 [0, L1]（unitFirst 即 first 方向），second 为 [min2, max2]。
+        double firstExtent = 0.0;
+        if (!ProjectAlongAxis(first.endPoint, first.startPoint, unitFirst, firstExtent))
+        {
+            return SCParallelSegmentProjectionRelation2d::InvalidInput;
+        }
+        double secondStart = 0.0;
+        double secondEnd = 0.0;
+        if (!ProjectAlongAxis(second.startPoint, first.startPoint, unitFirst, secondStart) ||
+            !ProjectAlongAxis(second.endPoint, first.startPoint, unitFirst, secondEnd))
+        {
+            return SCParallelSegmentProjectionRelation2d::InvalidInput;
+        }
+
+        const double firstMin = 0.0;
+        const double firstMax = std::max(0.0, firstExtent);
+        const double secondMin = std::min(secondStart, secondEnd);
+        const double secondMax = std::max(secondStart, secondEnd);
+        const double overlap = std::min(firstMax, secondMax) - std::max(firstMin, secondMin);
+        if (!std::isfinite(overlap))
+        {
+            return SCParallelSegmentProjectionRelation2d::InvalidInput;
+        }
+
+        if (overlap < -tolerance.projectionEpsilon)
+        {
+            return SCParallelSegmentProjectionRelation2d::NoPositiveLengthIntersection;
+        }
+        if (overlap <= tolerance.projectionEpsilon)
+        {
+            return SCParallelSegmentProjectionRelation2d::EndpointTouch;
+        }
+        return SCParallelSegmentProjectionRelation2d::PositiveLengthIntersection;
+    }
+}  // namespace Geometry

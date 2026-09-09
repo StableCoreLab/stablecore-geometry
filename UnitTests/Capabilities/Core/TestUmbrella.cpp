@@ -3,11 +3,20 @@
 #include "Geometry.h"
 
 using Geometry::BodyBooleanIssue3d;
+using Geometry::ClassifyParallelSegmentProjection;
+using Geometry::Contains;
 using Geometry::DifferenceBodies;
 using Geometry::IntersectBodies;
+using Geometry::Intersects;
+using Geometry::QueryPolygonPositiveAreaIntersection;
+using Geometry::SCBox2d;
+using Geometry::SCLineSegment2d;
+using Geometry::SCParallelSegmentProjectionRelation2d;
+using Geometry::SCParallelSegmentProjectionTolerance2d;
 using Geometry::SCPlane;
 using Geometry::SCPoint2d;
 using Geometry::SCPoint3d;
+using Geometry::SCPolygon2d;
 using Geometry::PolyhedronBody;
 using Geometry::PolyhedronFace3d;
 using Geometry::PolyhedronLoop3d;
@@ -114,5 +123,45 @@ TEST(UmbrellaHeaderTest, GeometryUmbrellaExposesBodyBooleanIssueContract)
     EXPECT_EQ(difference.issue, BodyBooleanIssue3d::InvalidInput);
     EXPECT_FALSE(intersection.IsSuccess());
     EXPECT_FALSE(difference.IsSuccess());
+}
+
+// 验证聚合入口 Geometry.h 暴露 ClassifyParallelSegmentProjection。
+TEST(UmbrellaHeaderTest, GeometryUmbrellaExposesParallelSegmentProjectionClassification)
+{
+    const SCParallelSegmentProjectionTolerance2d tolerance;
+    const auto relation = ClassifyParallelSegmentProjection(
+        SCLineSegment2d{SCPoint2d{0.0, 0.0}, SCPoint2d{10.0, 0.0}},
+        SCLineSegment2d{SCPoint2d{2.0, 0.0}, SCPoint2d{8.0, 0.0}},
+        tolerance);
+    EXPECT_EQ(relation, SCParallelSegmentProjectionRelation2d::PositiveLengthIntersection);
+}
+
+// 验证聚合入口 Geometry.h 暴露 QueryPolygonPositiveAreaIntersection。
+TEST(UmbrellaHeaderTest, GeometryUmbrellaExposesPolygonPositiveAreaIntersectionQuery)
+{
+    const SCPolygon2d first(SCPolyline2d({{0.0, 0.0}, {10.0, 0.0}, {10.0, 10.0}, {0.0, 10.0}},
+                                          SCPolylineClosure::Closed));
+    const SCPolygon2d second(SCPolyline2d({{5.0, 5.0}, {15.0, 5.0}, {15.0, 15.0}, {5.0, 15.0}},
+                                           SCPolylineClosure::Closed));
+    const auto result = QueryPolygonPositiveAreaIntersection(first, second);
+    ASSERT_TRUE(result.success);
+    EXPECT_TRUE(result.hasPositiveAreaIntersection);
+}
+
+// 验证聚合入口 Geometry.h 暴露 Contains(box, polyline)。
+TEST(UmbrellaHeaderTest, GeometryUmbrellaExposesBoxPolylineContains)
+{
+    const SCBox2d box = SCBox2d::FromMinMax(SCPoint2d{0.0, 0.0}, SCPoint2d{10.0, 10.0});
+    const SCPolyline2d polyline({{2.0, 2.0}, {8.0, 8.0}}, SCPolylineClosure::Open);
+    EXPECT_TRUE(Contains(box, polyline));
+}
+
+// 验证聚合入口 Geometry.h 暴露 Intersects(box, polyline)。
+TEST(UmbrellaHeaderTest, GeometryUmbrellaExposesBoxPolylineIntersects)
+{
+    const SCBox2d box = SCBox2d::FromMinMax(SCPoint2d{0.0, 0.0}, SCPoint2d{10.0, 10.0});
+    const SCPolyline2d polyline({{-5.0, 5.0}, {15.0, 5.0}}, SCPolylineClosure::Open);
+    EXPECT_TRUE(Intersects(box, polyline));
+    EXPECT_FALSE(Contains(box, polyline));
 }
 

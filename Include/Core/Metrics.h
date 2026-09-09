@@ -29,6 +29,16 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API bool Intersects(const SCBox2d& lhs,
                                                const SCBox2d& rhs,
                                                double eps = Geometry::kDefaultEpsilon);
+    // 盒-多段线包含：当且仅当路径的全部曲线点位于扩张闭盒 B_eps 时返回 true。
+    // B_eps 由 box 以 eps 扩张得到。空或零段多段线、无效输入均返回 false。
+    [[nodiscard]] GEOMETRY_API bool Contains(const SCBox2d& box,
+                                             const SCPolyline2d& polyline,
+                                             double eps = Geometry::kDefaultEpsilon);
+    // 盒-多段线相交：当且仅当路径与扩张闭盒 B_eps 有公共点时返回 true。
+    // 闭合多段线围住选择框但路径本身不接触时仍返回 false。
+    [[nodiscard]] GEOMETRY_API bool Intersects(const SCBox2d& box,
+                                               const SCPolyline2d& polyline,
+                                               double eps = Geometry::kDefaultEpsilon);
     [[nodiscard]] GEOMETRY_API bool Contains(const SCBox3d& box,
                                              const SCPoint3d& point,
                                              double eps = Geometry::kDefaultEpsilon);

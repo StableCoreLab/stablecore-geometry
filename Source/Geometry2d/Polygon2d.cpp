@@ -140,7 +140,9 @@ namespace Geometry
         }
 
         const double outerArea = RingSignedArea(impl_->outerRing);
-        if (!(outerArea > 0.0))
+        // 环方向不是结构有效性的前置条件；NormalizePolygon 会在需要方向语义的
+        // 算法入口统一规范化。这里仅排除零面积退化环。
+        if (!(std::abs(outerArea) > 0.0))
         {
             return false;
         }
@@ -158,7 +160,7 @@ namespace Geometry
             }
 
             const double holeArea = RingSignedArea(hole);
-            if (!(holeArea < 0.0))
+            if (!(std::abs(holeArea) > 0.0))
             {
                 return false;
             }
@@ -253,12 +255,14 @@ namespace Geometry
             return 0.0;
         }
 
-        double total = RingSignedArea(impl_->outerRing);
+        // IsValid 接受可由 NormalizePolygon 规范化的环方向，因此面积必须按环角色
+        // 计算，不能再依赖外环为正、洞环为负的方向约定。
+        double total = std::abs(RingSignedArea(impl_->outerRing));
         for (const auto& hole : impl_->holes)
         {
-            total += RingSignedArea(hole);
+            total -= std::abs(RingSignedArea(hole));
         }
-        return std::abs(total);
+        return total >= 0.0 ? total : 0.0;
     }
 
     double SCPolygon2d::Perimeter() const
@@ -328,4 +332,3 @@ namespace Geometry
         return stream.str();
     }
 }  // namespace Geometry
-
