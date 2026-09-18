@@ -40,7 +40,7 @@ namespace Geometry
 
         [[nodiscard]] bool ReadUint64(std::span<const std::byte> input, std::size_t& offset, std::uint64_t& value)
         {
-            if (input.size() - offset < sizeof(value))
+            if (offset > input.size() || input.size() - offset < sizeof(value))
             {
                 return false;
             }
@@ -48,6 +48,21 @@ namespace Geometry
             for (std::size_t i = 0; i < sizeof(value); ++i)
             {
                 value |= static_cast<std::uint64_t>(std::to_integer<unsigned int>(input[offset + i])) << (i * 8);
+            }
+            offset += sizeof(value);
+            return true;
+        }
+
+        [[nodiscard]] bool ReadUint32(std::span<const std::byte> input, std::size_t& offset, std::uint32_t& value)
+        {
+            if (offset > input.size() || input.size() - offset < sizeof(value))
+            {
+                return false;
+            }
+            value = 0;
+            for (std::size_t i = 0; i < sizeof(value); ++i)
+            {
+                value |= static_cast<std::uint32_t>(std::to_integer<unsigned int>(input[offset + i])) << (i * 8);
             }
             offset += sizeof(value);
             return true;
@@ -68,6 +83,63 @@ namespace Geometry
         {
             return {false, {}, failure};
         }
+
+        void AppendUint32(std::vector<std::byte>& output, std::uint32_t value)
+        {
+            for (std::size_t i = 0; i < sizeof(value); ++i)
+            {
+                output.push_back(static_cast<std::byte>((value >> (i * 8)) & 0xffU));
+            }
+        }
+
+        [[nodiscard]] SCSegmentDecodeResult DeserializeSegmentDefinition(
+            std::string_view typeId,
+            std::uint32_t definitionVersion,
+            std::span<const std::byte> definitionPayload)
+        {
+            if (!IsPortableBinary64())
+            {
+                return {false, nullptr, SCSegmentCodecFailure::UnsupportedPlatform};
+            }
+            if (typeId != kLineTypeId && typeId != kArcTypeId)
+            {
+                return {false, nullptr, SCSegmentCodecFailure::UnknownTypeId};
+            }
+            if (definitionVersion != kDefinitionVersion)
+            {
+                return {false, nullptr, SCSegmentCodecFailure::UnknownDefinitionVersion};
+            }
+
+            const std::size_t valueCount = typeId == kLineTypeId ? 4 : 5;
+            if (definitionPayload.size() != valueCount * sizeof(double))
+            {
+                return {false, nullptr, SCSegmentCodecFailure::MalformedPayload};
+            }
+            std::array<double, 5> values{};
+            std::size_t offset = 0;
+            for (std::size_t i = 0; i < valueCount; ++i)
+            {
+                if (!ReadDouble(definitionPayload, offset, values[i]))
+                {
+                    return {false, nullptr, SCSegmentCodecFailure::NonFiniteDefinition};
+                }
+            }
+
+            std::unique_ptr<ISCSegment2d> segment;
+            if (typeId == kLineTypeId)
+            {
+                segment = std::make_unique<SCLineSegment2d>(SCPoint2d{values[0], values[1]}, SCPoint2d{values[2], values[3]});
+            }
+            else
+            {
+                segment = std::make_unique<SCArcSegment2d>(SCPoint2d{values[0], values[1]}, values[2], values[3], values[4]);
+            }
+            if (segment == nullptr || !segment->IsValid())
+            {
+                return {false, nullptr, SCSegmentCodecFailure::InvalidDecodedSegment};
+            }
+            return {true, std::move(segment), SCSegmentCodecFailure::None};
+        }
     }  // namespace
 
     SCSegmentCodecResult SerializeSegment(const ISCSegment2d& segment)
@@ -76,20 +148,20 @@ namespace Geometry
         {
             return MakeFailure(SCSegmentCodecFailure::UnsupportedPlatform);
         }
-        SCSegmentDefinition definition;
-        definition.definitionVersion = kDefinitionVersion;
+        std::vector<std::byte> definitionPayload;
+        std::string_view typeId;
         if (const auto* line = dynamic_cast<const SCLineSegment2d*>(&segment); line != nullptr)
         {
             if (!line->IsValid())
             {
                 return MakeFailure(SCSegmentCodecFailure::InvalidDecodedSegment);
             }
-            definition.typeId = std::string(kLineTypeId);
-            definition.definitionPayload.reserve(4 * sizeof(double));
-            AppendDouble(definition.definitionPayload, line->startPoint.x);
-            AppendDouble(definition.definitionPayload, line->startPoint.y);
-            AppendDouble(definition.definitionPayload, line->endPoint.x);
-            AppendDouble(definition.definitionPayload, line->endPoint.y);
+            typeId = kLineTypeId;
+            definitionPayload.reserve(4 * sizeof(double));
+            AppendDouble(definitionPayload, line->startPoint.x);
+            AppendDouble(definitionPayload, line->startPoint.y);
+            AppendDouble(definitionPayload, line->endPoint.x);
+            AppendDouble(definitionPayload, line->endPoint.y);
         }
         else if (const auto* arc = dynamic_cast<const SCArcSegment2d*>(&segment); arc != nullptr)
         {
@@ -97,66 +169,67 @@ namespace Geometry
             {
                 return MakeFailure(SCSegmentCodecFailure::InvalidDecodedSegment);
             }
-            definition.typeId = std::string(kArcTypeId);
-            definition.definitionPayload.reserve(5 * sizeof(double));
-            AppendDouble(definition.definitionPayload, arc->center.x);
-            AppendDouble(definition.definitionPayload, arc->center.y);
-            AppendDouble(definition.definitionPayload, arc->radius);
-            AppendDouble(definition.definitionPayload, arc->startAngle);
-            AppendDouble(definition.definitionPayload, arc->sweepAngle);
+            typeId = kArcTypeId;
+            definitionPayload.reserve(5 * sizeof(double));
+            AppendDouble(definitionPayload, arc->center.x);
+            AppendDouble(definitionPayload, arc->center.y);
+            AppendDouble(definitionPayload, arc->radius);
+            AppendDouble(definitionPayload, arc->startAngle);
+            AppendDouble(definitionPayload, arc->sweepAngle);
         }
         else
         {
             return MakeFailure(SCSegmentCodecFailure::UnsupportedSegmentType);
         }
-        return {true, std::move(definition), SCSegmentCodecFailure::None};
+        std::vector<std::byte> record;
+        record.reserve(sizeof(std::uint32_t) + typeId.size() + sizeof(std::uint32_t) +
+                       sizeof(std::uint64_t) + definitionPayload.size());
+        AppendUint32(record, static_cast<std::uint32_t>(typeId.size()));
+        for (const char character : typeId)
+        {
+            record.push_back(static_cast<std::byte>(static_cast<unsigned char>(character)));
+        }
+        AppendUint32(record, kDefinitionVersion);
+        AppendUint64(record, static_cast<std::uint64_t>(definitionPayload.size()));
+        record.insert(record.end(), definitionPayload.begin(), definitionPayload.end());
+        return {true, std::move(record), SCSegmentCodecFailure::None};
     }
 
-    SCSegmentDecodeResult DeserializeSegment(std::string_view typeId,
-                                             std::uint32_t definitionVersion,
-                                             std::span<const std::byte> definitionPayload)
+    SCSegmentDecodeResult DeserializeSegment(std::span<const std::byte> serializedRecord)
     {
-        if (!IsPortableBinary64())
-        {
-            return {false, nullptr, SCSegmentCodecFailure::UnsupportedPlatform};
-        }
-        if (typeId != kLineTypeId && typeId != kArcTypeId)
-        {
-            return {false, nullptr, SCSegmentCodecFailure::UnknownTypeId};
-        }
-        if (definitionVersion != kDefinitionVersion)
-        {
-            return {false, nullptr, SCSegmentCodecFailure::UnknownDefinitionVersion};
-        }
+        constexpr std::size_t kMaxTypeIdLength = 256;
+        constexpr std::uint64_t kMaxPayloadLength = 4096;
 
-        const std::size_t valueCount = typeId == kLineTypeId ? 4 : 5;
-        if (definitionPayload.size() != valueCount * sizeof(double))
+        std::size_t offset = 0;
+        std::uint32_t typeIdLength = 0;
+        if (!ReadUint32(serializedRecord, offset, typeIdLength) || typeIdLength == 0 || typeIdLength > kMaxTypeIdLength)
         {
             return {false, nullptr, SCSegmentCodecFailure::MalformedPayload};
         }
-        std::array<double, 5> values{};
-        std::size_t offset = 0;
-        for (std::size_t i = 0; i < valueCount; ++i)
+        if (offset > serializedRecord.size() || typeIdLength > serializedRecord.size() - offset)
         {
-            if (!ReadDouble(definitionPayload, offset, values[i]))
-            {
-                return {false, nullptr, SCSegmentCodecFailure::NonFiniteDefinition};
-            }
+            return {false, nullptr, SCSegmentCodecFailure::MalformedPayload};
+        }
+        const auto typeIdBytes = serializedRecord.subspan(offset, typeIdLength);
+        const std::string_view typeId(reinterpret_cast<const char*>(typeIdBytes.data()), typeIdBytes.size());
+        offset += typeIdLength;
+
+        std::uint32_t definitionVersion = 0;
+        std::uint64_t payloadLength = 0;
+        if (!ReadUint32(serializedRecord, offset, definitionVersion) ||
+            !ReadUint64(serializedRecord, offset, payloadLength) ||
+            payloadLength > kMaxPayloadLength ||
+            payloadLength > serializedRecord.size() - offset)
+        {
+            return {false, nullptr, SCSegmentCodecFailure::MalformedPayload};
         }
 
-        std::unique_ptr<ISCSegment2d> segment;
-        if (typeId == kLineTypeId)
+        const auto definitionPayload = serializedRecord.subspan(offset, static_cast<std::size_t>(payloadLength));
+        offset += static_cast<std::size_t>(payloadLength);
+        if (offset != serializedRecord.size())
         {
-            segment = std::make_unique<SCLineSegment2d>(SCPoint2d{values[0], values[1]}, SCPoint2d{values[2], values[3]});
+            return {false, nullptr, SCSegmentCodecFailure::MalformedPayload};
         }
-        else
-        {
-            segment = std::make_unique<SCArcSegment2d>(SCPoint2d{values[0], values[1]}, values[2], values[3], values[4]);
-        }
-        if (segment == nullptr || !segment->IsValid())
-        {
-            return {false, nullptr, SCSegmentCodecFailure::InvalidDecodedSegment};
-        }
-        return {true, std::move(segment), SCSegmentCodecFailure::None};
+        return DeserializeSegmentDefinition(typeId, definitionVersion, definitionPayload);
     }
 }  // namespace Geometry

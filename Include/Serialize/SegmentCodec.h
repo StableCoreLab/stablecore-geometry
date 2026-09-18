@@ -25,17 +25,10 @@ namespace Geometry
         UnsupportedPlatform
     };
 
-    struct GEOMETRY_API SCSegmentDefinition
-    {
-        std::string typeId{};
-        std::uint32_t definitionVersion{0};
-        std::vector<std::byte> definitionPayload{};
-    };
-
     struct GEOMETRY_API SCSegmentCodecResult
     {
         bool success{false};
-        SCSegmentDefinition definition{};
+        std::vector<std::byte> serializedRecord{};
         SCSegmentCodecFailure failure{SCSegmentCodecFailure::None};
     };
 
@@ -49,7 +42,5 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API SCSegmentCodecResult SerializeSegment(const ISCSegment2d& segment);
 
     [[nodiscard]] GEOMETRY_API SCSegmentDecodeResult DeserializeSegment(
-        std::string_view typeId,
-        std::uint32_t definitionVersion,
-        std::span<const std::byte> definitionPayload);
+        std::span<const std::byte> serializedRecord);
 }  // namespace Geometry

@@ -70,9 +70,12 @@ umbrella 中可直接获得的常用类型（均保留 `SC` 前缀）包括：
 
 更多说明见：
 
-- [`docs/library-design.md`](docs/library-design.md)
-- [`docs/final-naming-plan.md`](docs/final-naming-plan.md)
-- [`docs/test-capability-coverage.md`](docs/test-capability-coverage.md)
+- [`docs/设计/库设计说明.md`](docs/设计/库设计说明.md)
+- [`docs/设计/多面体与BRep设计.md`](docs/设计/多面体与BRep设计.md)
+- [`docs/设计/平面与多边形拓扑设计.md`](docs/设计/平面与多边形拓扑设计.md)
+- [`docs/设计/段内核与序列化设计.md`](docs/设计/段内核与序列化设计.md)
+- [`docs/设计/关系内核设计.md`](docs/设计/关系内核设计.md)
+- [`docs/使用/使用说明.md`](docs/使用/使用说明.md)
 
 ## 构建
 
