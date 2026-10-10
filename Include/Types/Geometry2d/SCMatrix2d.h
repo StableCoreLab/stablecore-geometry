@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <optional>
 #include <sstream>
 #include <string>
 
@@ -43,7 +44,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsInvertible(double eps = kDefaultEpsilon) const
         {
-            return IsValid() && std::abs(Determinant()) > eps;
+            return Inverse(eps).has_value();
         }
 
         [[nodiscard]] SCMatrix2d Transpose() const
@@ -51,15 +52,21 @@ namespace Geometry
             return SCMatrix2d{m00, m10, m01, m11};
         }
 
-        [[nodiscard]] SCMatrix2d Inverse(double eps = kDefaultEpsilon) const
+        // Returns std::nullopt for invalid input, invalid tolerance, or a
+        // determinant within the supplied singularity tolerance.
+        [[nodiscard]] std::optional<SCMatrix2d> Inverse(double eps = kDefaultEpsilon) const
         {
-            const double det = Determinant();
-            if (!IsValid() || std::abs(det) <= eps)
+            if (!IsValid() || !std::isfinite(eps) || eps < 0.0)
             {
-                return SCMatrix2d{};
+                return std::nullopt;
             }
-            const double invDet = 1.0 / det;
-            return SCMatrix2d{m11 * invDet, -m01 * invDet, -m10 * invDet, m00 * invDet};
+            const double det = Determinant();
+            if (!std::isfinite(det) || std::abs(det) <= eps)
+            {
+                return std::nullopt;
+            }
+            const SCMatrix2d result{m11 / det, -m01 / det, -m10 / det, m00 / det};
+            return result.IsValid() ? std::optional<SCMatrix2d>{result} : std::nullopt;
         }
 
         [[nodiscard]] SCVector2d operator*(const SCVector2d& vector) const

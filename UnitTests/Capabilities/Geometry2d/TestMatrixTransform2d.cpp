@@ -41,7 +41,9 @@ TEST(Matrix2dTest, DeterminantInverseTranspose)
     EXPECT_NEAR(matrix.Determinant(), 6.0, 1e-12);
     ASSERT_TRUE(matrix.IsInvertible());
 
-    const SCMatrix2d product = matrix * matrix.Inverse();
+    const auto inverse = matrix.Inverse();
+    ASSERT_TRUE(inverse.has_value());
+    const SCMatrix2d product = matrix * *inverse;
     EXPECT_NEAR(product.m00, 1.0, 1e-12);
     EXPECT_NEAR(product.m01, 0.0, 1e-12);
     EXPECT_NEAR(product.m10, 0.0, 1e-12);
@@ -54,15 +56,11 @@ TEST(Matrix2dTest, DeterminantInverseTranspose)
     EXPECT_NEAR(transposed.m11, 3.0, 1e-12);
 }
 
-TEST(Matrix2dTest, SingularInverseReturnsEmptyMatrix)
+TEST(Matrix2dTest, SingularInverseReturnsNullopt)
 {
     const SCMatrix2d singular{1.0, 2.0, 2.0, 4.0};
     ASSERT_FALSE(singular.IsInvertible());
-    const SCMatrix2d inverse = singular.Inverse();
-    EXPECT_DOUBLE_EQ(inverse.m00, 0.0);
-    EXPECT_DOUBLE_EQ(inverse.m01, 0.0);
-    EXPECT_DOUBLE_EQ(inverse.m10, 0.0);
-    EXPECT_DOUBLE_EQ(inverse.m11, 0.0);
+    EXPECT_FALSE(singular.Inverse().has_value());
 }
 
 TEST(Matrix2dTest, MultiplicationIsAssociative)

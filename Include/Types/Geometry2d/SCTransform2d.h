@@ -63,12 +63,17 @@ namespace Geometry
         // identity transform and must not be used as a failure value.
         [[nodiscard]] std::optional<SCTransform2d> Inverse(double eps = kDefaultEpsilon) const
         {
-            if (!linear.IsInvertible(eps))
+            if (!IsValid())
             {
                 return std::nullopt;
             }
-            const SCMatrix2d inverseLinear = linear.Inverse(eps);
-            return SCTransform2d{inverseLinear, -(inverseLinear * translation)};
+            const std::optional<SCMatrix2d> inverseLinear = linear.Inverse(eps);
+            if (!inverseLinear.has_value())
+            {
+                return std::nullopt;
+            }
+            const SCTransform2d result{*inverseLinear, -(*inverseLinear * translation)};
+            return result.IsValid() ? std::optional<SCTransform2d>{result} : std::nullopt;
         }
 
         [[nodiscard]] std::string DebugString() const

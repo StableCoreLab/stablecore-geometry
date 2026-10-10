@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <optional>
 #include <sstream>
 #include <string>
 
@@ -52,14 +53,21 @@ namespace Geometry
             return SCDirection3d::FromVector(Apply(direction.Vector()), eps);
         }
 
-        [[nodiscard]] SCTransform3d Inverse(double eps = kDefaultEpsilon) const
+        // Returns std::nullopt when the linear part is invalid or singular
+        // under the supplied tolerance.
+        [[nodiscard]] std::optional<SCTransform3d> Inverse(double eps = kDefaultEpsilon) const
         {
-            const SCMatrix3d inverseLinear = linear.Inverse(eps);
-            if (!inverseLinear.IsInvertible(eps) && !linear.IsInvertible(eps))
+            if (!IsValid())
             {
-                return {};
+                return std::nullopt;
             }
-            return SCTransform3d{inverseLinear, -(inverseLinear * translation)};
+            const std::optional<SCMatrix3d> inverseLinear = linear.Inverse(eps);
+            if (!inverseLinear.has_value())
+            {
+                return std::nullopt;
+            }
+            const SCTransform3d result{*inverseLinear, -(*inverseLinear * translation)};
+            return result.IsValid() ? std::optional<SCTransform3d>{result} : std::nullopt;
         }
 
         [[nodiscard]] std::string DebugString() const
