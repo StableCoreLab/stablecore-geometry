@@ -4,7 +4,7 @@
 #include <limits>
 #include <vector>
 
-#include "Brep/Topology.h"
+#include "Core/PolygonRelation2d.h"
 
 namespace Geometry::Detail
 {

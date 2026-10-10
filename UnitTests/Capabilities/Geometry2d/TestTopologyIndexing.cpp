@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "Brep/Topology.h"
+#include "Core/PolygonRelation2d.h"
 #include "Geometry2d/SCBoxTree2d.h"
 #include "Geometry2d/SCKDTree2d.h"
 #include "Geometry2d/SCSegmentSearch2d.h"

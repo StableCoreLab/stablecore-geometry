@@ -1,8 +1,5 @@
 #pragma once
 
-#include "Brep/SCBrepBody.h"
-#include "Brep/SCBrepVertex.h"
-#include "Brep/PolyhedronBody.h"
 #include "Geometry2d/SCLine2d.h"
 #include "Core/Results.h"
 #include "Export/GeometryExport.h"
@@ -10,12 +7,21 @@
 #include "Geometry2d/SCPolyline2d.h"
 #include "Geometry2d/SCLineSegment2d.h"
 #include "Geometry2d/ISCSegment2d.h"
-#include "Geometry3d/ISCSurface.h"
-#include "Geometry3d/TriangleMesh.h"
 #include "Support/Epsilon.h"
 
 namespace Geometry
 {
+    class SCBrepBody;
+    class SCBrepEdge;
+    class SCBrepFace;
+    class SCBrepVertex;
+    class PolyhedronBody;
+    class PolyhedronFace3d;
+    class TriangleMesh;
+    class ISCCurve3d;
+    class ISCSurface;
+    class SCCurveOnSurface;
+
     [[nodiscard]] GEOMETRY_API SCSegmentIntersection2d Intersect(const SCLineSegment2d& first,
                                                                const SCLineSegment2d& second,
                                                                double eps = Geometry::kDefaultEpsilon);

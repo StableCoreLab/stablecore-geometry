@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Brep/Topology.h"
+#include "Core/PolygonRelation2d.h"
 #include "Core/AxisOps.h"
 #include "Core/Boolean.h"
 #include "Core/Editing.h"

@@ -5,6 +5,7 @@
 
 #include "Core/Intersection.h"
 #include "Core/Relation.h"
+#include "Core/ShapeOps.h"
 #include "Geometry2d/SCPathOps.h"
 
 namespace Geometry

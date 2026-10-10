@@ -5,8 +5,17 @@
 
 #include "Brep/MeshConversion.h"
 #include "Brep/MeshOps.h"
+#include "Brep/PolyhedronBody.h"
+#include "Brep/PolyhedronFace3d.h"
+#include "Brep/SCBrepBody.h"
+#include "Brep/SCBrepEdge.h"
+#include "Brep/SCBrepFace.h"
+#include "Brep/SCBrepVertex.h"
 #include "Core/Projection.h"
 #include "Core/ShapeOps.h"
+#include "Geometry3d/ISCCurve3d.h"
+#include "Geometry3d/ISCSurface.h"
+#include "Geometry3d/TriangleMesh.h"
 
 namespace Geometry
 {

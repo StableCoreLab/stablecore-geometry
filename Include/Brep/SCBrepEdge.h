@@ -4,7 +4,7 @@
 #include <sstream>
 #include <string>
 
-#include "Core/GeometryTypesPrimitives.h"
+#include "Types/Geometry3d/SCGeometryTypes3d.h"
 #include "Export/GeometryExport.h"
 #include "Geometry3d/ISCCurve3d.h"
 #include "Types/Geometry3d/SCBox3.h"

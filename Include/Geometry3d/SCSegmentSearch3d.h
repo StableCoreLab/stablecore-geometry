@@ -7,8 +7,6 @@
 #include <string>
 #include <vector>
 
-#include "Core/Metrics.h"
-#include "Core/Projection.h"
 #include "Export/GeometryExport.h"
 #include "Geometry3d/ISCCurve3d.h"
 #include "Geometry3d/SCLineCurve3d.h"

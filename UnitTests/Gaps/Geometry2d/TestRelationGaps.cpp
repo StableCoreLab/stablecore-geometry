@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "Brep/Topology.h"
+#include "Core/PolygonRelation2d.h"
 
 using Geometry::SCPoint2d;
 using Geometry::SCPolygon2d;

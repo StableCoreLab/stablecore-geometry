@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "Core/GeometryTypesPrimitives.h"
+#include "Types/Geometry3d/SCGeometryTypes3d.h"
 #include "Brep/SCBrepLoop.h"
 #include "Export/GeometryExport.h"
 #include "Geometry3d/SCCurveOnSurface.h"

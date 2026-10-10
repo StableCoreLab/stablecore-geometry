@@ -1,15 +1,16 @@
 #pragma once
 #include "Core/GeometryTypes.h"
-#include "Brep/SCBrepBody.h"
-#include "Brep/PolyhedronBody.h"
 #include "Core/Section.h"
 #include "Geometry2d/SCPolygon2d.h"
 #include "Geometry2d/SCPolyline2d.h"
-#include "Geometry3d/TriangleMesh.h"
 #include "Support/Epsilon.h"
 
 namespace Geometry
 {
+    class SCBrepBody;
+    class PolyhedronBody;
+    class TriangleMesh;
+
     enum class SCPolygonValidationIssue2d
     {
         None,

@@ -13,7 +13,7 @@
 #include "../Detail/PolygonNesting2d.h"
 #include "../Detail/RingVertices2d.h"
 #include "../Detail/SegmentSubdivision2d.h"
-#include "Brep/Topology.h"
+#include "Core/PolygonRelation2d.h"
 #include "Core/Editing.h"
 #include "Core/Intersection.h"
 #include "Core/Relation.h"

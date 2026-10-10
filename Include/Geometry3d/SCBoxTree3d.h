@@ -3,7 +3,6 @@
 #include <string>
 #include <vector>
 
-#include "Core/Metrics.h"
 #include "Export/GeometryExport.h"
 #include "Support/Epsilon.h"
 #include "Types/Geometry3d/SCBox3.h"

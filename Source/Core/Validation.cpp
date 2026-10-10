@@ -6,6 +6,9 @@
 #include "Core/Intersection.h"
 #include "Core/Relation.h"
 #include "Core/ShapeOps.h"
+#include "Brep/PolyhedronBody.h"
+#include "Brep/SCBrepBody.h"
+#include "Geometry3d/TriangleMesh.h"
 #include "../Detail/SegmentKernel2d.h"
 
 namespace Geometry

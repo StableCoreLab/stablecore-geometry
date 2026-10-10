@@ -6,8 +6,11 @@
 #include <string>
 #include <vector>
 
-#include "Core/GeometryTypes.h"
 #include "Export/GeometryExport.h"
+#include "Types/Geometry3d/SCBox3.h"
+#include "Types/Geometry3d/SCPoint3.h"
+#include "Types/Geometry3d/SCTransform3d.h"
+#include "Types/Geometry3d/SCTriangle3d.h"
 
 namespace Geometry
 {

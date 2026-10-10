@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "Core/GeometryTypesPrimitives.h"
+#include "Types/Geometry3d/SCGeometryTypes3d.h"
 #include "Brep/PolyhedronFace3d.h"
 #include "Export/GeometryExport.h"
 #include "Types/Geometry3d/SCBox3.h"

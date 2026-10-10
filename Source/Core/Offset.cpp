@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "RingIntegral2d.h"
-#include "Brep/Topology.h"
+#include "Core/PolygonRelation2d.h"
 #include "Core/Boolean.h"
 #include "Core/Editing.h"
 #include "Core/Metrics.h"

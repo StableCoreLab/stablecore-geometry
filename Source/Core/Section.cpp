@@ -12,12 +12,13 @@
 #include <vector>
 
 #include "Brep/MeshConversion.h"
-#include "Brep/Topology.h"
+#include "Core/PolygonRelation2d.h"
 #include "Core/Boolean.h"
 #include "Core/Editing.h"
 #include "Core/Offset.h"
 #include "Core/Projection.h"
 #include "Core/Relation.h"
+#include "Core/ShapeOps.h"
 #include "Geometry2d/SCPathOps.h"
 #include "Geometry3d/SCLineCurve3d.h"
 #include "Geometry3d/SCPlaneSurface.h"

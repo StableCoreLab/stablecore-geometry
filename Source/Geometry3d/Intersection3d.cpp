@@ -7,9 +7,16 @@
 
 #include "Core/Projection.h"
 #include "Core/Relation.h"
+#include "Brep/PolyhedronBody.h"
+#include "Brep/PolyhedronFace3d.h"
+#include "Brep/SCBrepBody.h"
+#include "Brep/SCBrepEdge.h"
+#include "Brep/SCBrepFace.h"
+#include "Brep/SCBrepVertex.h"
 #include "Geometry3d/SCLineCurve3d.h"
 #include "Geometry3d/SCNurbsSurface.h"
 #include "Geometry3d/SCPlaneSurface.h"
+#include "Geometry3d/TriangleMesh.h"
 #include "Support/Epsilon.h"
 
 namespace Geometry

@@ -5,6 +5,15 @@
 #include <numbers>
 
 #include "Core/Metrics.h"
+#include "Brep/PolyhedronBody.h"
+#include "Brep/PolyhedronFace3d.h"
+#include "Brep/SCBrepBody.h"
+#include "Brep/SCBrepEdge.h"
+#include "Brep/SCBrepFace.h"
+#include "Brep/SCBrepVertex.h"
+#include "Geometry3d/ISCCurve3d.h"
+#include "Geometry3d/ISCSurface.h"
+#include "Geometry3d/TriangleMesh.h"
 #include "Support/Geometry2d/Predicate2.h"
 #include "Support/Epsilon.h"
 

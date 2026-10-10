@@ -1,11 +1,5 @@
 #pragma once
 
-#include "Brep/SCBrepBody.h"
-#include "Brep/SCBrepEdge.h"
-#include "Brep/SCBrepFace.h"
-#include "Brep/SCBrepVertex.h"
-#include "Brep/PolyhedronBody.h"
-#include "Brep/PolyhedronFace3d.h"
 #include "Core/GeometryTypes.h"
 #include "Export/GeometryExport.h"
 #include "Geometry2d/SCArcSegment2d.h"
@@ -13,11 +7,20 @@
 #include "Geometry2d/SCLineSegment2d.h"
 #include "Geometry2d/SCPolygon2d.h"
 #include "Geometry2d/ISCSegment2d.h"
-#include "Geometry3d/ISCSurface.h"
-#include "Geometry3d/TriangleMesh.h"
 
 namespace Geometry
 {
+    class ISCCurve3d;
+    class ISCSurface;
+    class SCCurveOnSurface;
+    class SCBrepBody;
+    class SCBrepEdge;
+    class SCBrepFace;
+    class SCBrepVertex;
+    class PolyhedronBody;
+    class PolyhedronFace3d;
+    class TriangleMesh;
+
     [[nodiscard]] GEOMETRY_API SCSegmentProjection2d ProjectPointToLineSegment(const SCPoint2d& point,
                                                                              const SCLineSegment2d& segment,
                                                                              bool clampToSegment = true);

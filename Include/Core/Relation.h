@@ -1,9 +1,5 @@
 #pragma once
 
-#include "Brep/SCBrepBody.h"
-#include "Brep/SCBrepFace.h"
-#include "Brep/PolyhedronBody.h"
-#include "Brep/PolyhedronFace3d.h"
 #include "Core/GeometryTypes.h"
 #include "Export/GeometryExport.h"
 #include "Geometry2d/SCArcSegment2d.h"
@@ -11,13 +7,18 @@
 #include "Geometry2d/SCPolygon2d.h"
 #include "Geometry2d/SCPolyline2d.h"
 #include "Geometry2d/ISCSegment2d.h"
-#include "Geometry3d/ISCCurve3d.h"
 #include "Geometry3d/SCCurveOnSurface.h"
-#include "Geometry3d/TriangleMesh.h"
 #include "Support/Epsilon.h"
 
 namespace Geometry
 {
+    class ISCCurve3d;
+    class SCBrepBody;
+    class SCBrepFace;
+    class PolyhedronBody;
+    class PolyhedronFace3d;
+    class TriangleMesh;
+
     enum class SCPointContainment2d
     {
         Outside,

@@ -2,9 +2,9 @@
 
 #include <memory>
 
-#include "Core/GeometryTypesPrimitives.h"
 #include "Export/GeometryExport.h"
 #include "Types/Geometry3d/SCBox3.h"
+#include "Types/Geometry3d/SCGeometryTypes3d.h"
 #include "Types/Geometry3d/SCIntervald.h"
 
 namespace Geometry

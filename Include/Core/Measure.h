@@ -2,19 +2,23 @@
 
 #include <cstddef>
 
-#include "Brep/SCBrepBody.h"
-#include "Brep/SCBrepVertex.h"
-#include "Brep/PolyhedronBody.h"
 #include "Core/GeometryTypes.h"
 #include "Export/GeometryExport.h"
-#include "Geometry3d/ISCCurve3d.h"
 #include "Geometry3d/SCCurveOnSurface.h"
-#include "Geometry3d/ISCSurface.h"
-#include "Geometry3d/TriangleMesh.h"
 #include "Support/Epsilon.h"
 
 namespace Geometry
 {
+    class ISCCurve3d;
+    class ISCSurface;
+    class SCBrepBody;
+    class SCBrepEdge;
+    class SCBrepFace;
+    class SCBrepVertex;
+    class PolyhedronBody;
+    class PolyhedronFace3d;
+    class TriangleMesh;
+
     [[nodiscard]] GEOMETRY_API double DistanceSquared(const SCPoint3d& lhs, const SCPoint3d& rhs);
     [[nodiscard]] GEOMETRY_API double Distance(const SCPoint3d& lhs, const SCPoint3d& rhs);
 

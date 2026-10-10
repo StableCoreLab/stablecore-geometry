@@ -4,6 +4,12 @@
 
 #include "Core/Intersection.h"
 #include "Core/Projection.h"
+#include "Brep/PolyhedronBody.h"
+#include "Brep/PolyhedronFace3d.h"
+#include "Brep/SCBrepBody.h"
+#include "Brep/SCBrepFace.h"
+#include "Geometry3d/ISCCurve3d.h"
+#include "Geometry3d/TriangleMesh.h"
 
 namespace Geometry
 {

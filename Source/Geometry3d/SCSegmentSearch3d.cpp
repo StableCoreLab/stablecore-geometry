@@ -4,6 +4,9 @@
 #include <sstream>
 #include <utility>
 
+#include "Core/Metrics.h"
+#include "Core/Projection.h"
+
 namespace Geometry
 {
     namespace
