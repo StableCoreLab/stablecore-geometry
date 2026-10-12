@@ -3,9 +3,11 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "Geometry3d/ISCSurface.h"
+#include "Geometry3d/Detail/NurbsBasis.h"
 
 namespace Geometry
 {
@@ -28,14 +30,27 @@ namespace Geometry
               knotsU_(std::move(knotsU)),
               knotsV_(std::move(knotsV))
         {
+            weights_.assign(controlPoints_.size(), 1.0);
+        }
+
+        SCNurbsSurface(int degreeU, int degreeV, std::size_t controlPointCountU, std::size_t controlPointCountV,
+                       std::vector<SCPoint3d> controlPoints, std::vector<double> knotsU,
+                       std::vector<double> knotsV, std::vector<double> weights)
+            : degreeU_(degreeU), degreeV_(degreeV), controlPointCountU_(controlPointCountU),
+              controlPointCountV_(controlPointCountV), controlPoints_(std::move(controlPoints)),
+              knotsU_(std::move(knotsU)), knotsV_(std::move(knotsV)), weights_(std::move(weights))
+        {
         }
 
         [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const override
         {
-            if (degreeU_ < 1 || degreeV_ < 1 || controlPointCountU_ < 2 || controlPointCountV_ < 2 ||
+            (void)tolerance;
+            if (controlPointCountU_ == 0 || controlPointCountV_ == 0 ||
+                controlPoints_.size() / controlPointCountU_ != controlPointCountV_ ||
                 controlPoints_.size() != controlPointCountU_ * controlPointCountV_ ||
-                knotsU_.size() != controlPointCountU_ + static_cast<std::size_t>(degreeU_) + 1 ||
-                knotsV_.size() != controlPointCountV_ + static_cast<std::size_t>(degreeV_) + 1)
+                weights_.size() != controlPoints_.size() ||
+                !Detail::ValidKnots(knotsU_, controlPointCountU_, degreeU_) ||
+                !Detail::ValidKnots(knotsV_, controlPointCountV_, degreeV_))
             {
                 return false;
             }
@@ -48,16 +63,9 @@ namespace Geometry
                 }
             }
 
-            for (std::size_t i = 1; i < knotsU_.size(); ++i)
+            for (double weight : weights_)
             {
-                if (knotsU_[i] + tolerance.parameterEpsilon < knotsU_[i - 1])
-                {
-                    return false;
-                }
-            }
-            for (std::size_t i = 1; i < knotsV_.size(); ++i)
-            {
-                if (knotsV_[i] + tolerance.parameterEpsilon < knotsV_[i - 1])
+                if (!std::isfinite(weight) || weight <= 0.0)
                 {
                     return false;
                 }
@@ -80,56 +88,48 @@ namespace Geometry
 
         [[nodiscard]] SCPoint3d PointAt(double u, double v) const override
         {
-            if (!IsValid())
-            {
-                return {};
-            }
-
-            const SCIntervald uRange = URange();
-            const SCIntervald vRange = VRange();
-            const double clampedU = std::clamp(u, uRange.min, uRange.max);
-            const double clampedV = std::clamp(v, vRange.min, vRange.max);
-            double x = 0.0;
-            double y = 0.0;
-            double z = 0.0;
-            for (std::size_t iv = 0; iv < controlPointCountV_; ++iv)
-            {
-                const double basisV = Basis(knotsV_, controlPointCountV_, iv, degreeV_, clampedV);
-                for (std::size_t iu = 0; iu < controlPointCountU_; ++iu)
-                {
-                    const double basisU = Basis(knotsU_, controlPointCountU_, iu, degreeU_, clampedU);
-                    const double weight = basisU * basisV;
-                    const SCPoint3d& point = controlPoints_[iv * controlPointCountU_ + iu];
-                    x += point.x * weight;
-                    y += point.y * weight;
-                    z += point.z * weight;
-                }
-            }
-            return SCPoint3d{x, y, z};
+            return Evaluate(u, v, 0).point;
         }
 
         [[nodiscard]] SCSurfaceEval3d Evaluate(double u, double v, int derivativeOrder = 1) const override
         {
             derivativeOrder = std::clamp(derivativeOrder, 0, 1);
             SCSurfaceEval3d eval{};
-            eval.point = PointAt(u, v);
             eval.derivativeOrder = derivativeOrder;
+            if (!IsValid() || std::isnan(u) || std::isnan(v))
+            {
+                return eval;
+            }
+            const auto bu = Detail::EvaluateNurbsBasis(knotsU_, controlPointCountU_, degreeU_, u);
+            const auto bv = Detail::EvaluateNurbsBasis(knotsV_, controlPointCountV_, degreeV_, v);
+            std::vector<double> activeBasis(controlPoints_.size());
+            for (std::size_t iv = 0; iv < controlPointCountV_; ++iv)
+                for (std::size_t iu = 0; iu < controlPointCountU_; ++iu)
+                    activeBasis[iv * controlPointCountU_ + iu] = bu.value[iu] * bv.value[iv];
+            Detail::NurbsWeightedSum sumU(controlPoints_, weights_, activeBasis);
+            Detail::NurbsWeightedSum sumV(controlPoints_, weights_, activeBasis);
+            for (std::size_t iv = 0; iv < controlPointCountV_; ++iv)
+            {
+                for (std::size_t iu = 0; iu < controlPointCountU_; ++iu)
+                {
+                    const std::size_t index = iv * controlPointCountU_ + iu;
+                    sumU.Add(controlPoints_[index], weights_[index], activeBasis[index],
+                             derivativeOrder >= 1 ? bu.first[iu] * bv.value[iv] : 0.0);
+                    if (derivativeOrder >= 1)
+                        sumV.Add(controlPoints_[index], weights_[index], activeBasis[index],
+                                 bu.value[iu] * bv.first[iv]);
+                }
+            }
+            if (sumU.weight <= 0.0 || !std::isfinite(sumU.weight))
+            {
+                return eval;
+            }
+            const SCVector3d point = sumU.Point();
+            eval.point = SCPoint3d{point.x, point.y, point.z};
             if (derivativeOrder >= 1)
             {
-                const double du =
-                    std::max(URange().Length() / static_cast<double>(std::max<std::size_t>(controlPointCountU_ * 8, 8)),
-                             Geometry::kDefaultEpsilon);
-                const double dv =
-                    std::max(VRange().Length() / static_cast<double>(std::max<std::size_t>(controlPointCountV_ * 8, 8)),
-                             Geometry::kDefaultEpsilon);
-                const double prevU = std::max(URange().min, u - du);
-                const double nextU = std::min(URange().max, u + du);
-                const double prevV = std::max(VRange().min, v - dv);
-                const double nextV = std::min(VRange().max, v + dv);
-                eval.derivativeU =
-                    (PointAt(nextU, v) - PointAt(prevU, v)) / std::max(nextU - prevU, Geometry::kDefaultEpsilon);
-                eval.derivativeV =
-                    (PointAt(u, nextV) - PointAt(u, prevV)) / std::max(nextV - prevV, Geometry::kDefaultEpsilon);
+                eval.derivativeU = sumU.First();
+                eval.derivativeV = sumV.First();
                 eval.normal = Cross(eval.derivativeU, eval.derivativeV);
             }
             return eval;
@@ -185,37 +185,9 @@ namespace Geometry
             return knotsV_;
         }
 
+        [[nodiscard]] const std::vector<double>& Weights() const { return weights_; }
+
     private:
-        [[nodiscard]] static double Basis(
-            const std::vector<double>& knots, std::size_t pointCount, std::size_t index, int degree, double parameter)
-        {
-            if (degree == 0)
-            {
-                const bool inHalfOpen = knots[index] <= parameter && parameter < knots[index + 1];
-                const bool isRightBoundary =
-                    std::abs(parameter - knots[pointCount]) <= Geometry::kDefaultEpsilon && index + 1 == pointCount;
-                return (inHalfOpen || isRightBoundary) ? 1.0 : 0.0;
-            }
-
-            double left = 0.0;
-            const double leftDenom = knots[index + static_cast<std::size_t>(degree)] - knots[index];
-            if (std::abs(leftDenom) > Geometry::kDefaultEpsilon)
-            {
-                left =
-                    ((parameter - knots[index]) / leftDenom) * Basis(knots, pointCount, index, degree - 1, parameter);
-            }
-
-            double right = 0.0;
-            const double rightDenom = knots[index + static_cast<std::size_t>(degree) + 1] - knots[index + 1];
-            if (std::abs(rightDenom) > Geometry::kDefaultEpsilon)
-            {
-                right = ((knots[index + static_cast<std::size_t>(degree) + 1] - parameter) / rightDenom) *
-                        Basis(knots, pointCount, index + 1, degree - 1, parameter);
-            }
-
-            return left + right;
-        }
-
         int degreeU_{1};
         int degreeV_{1};
         std::size_t controlPointCountU_{0};
@@ -223,6 +195,7 @@ namespace Geometry
         std::vector<SCPoint3d> controlPoints_{};
         std::vector<double> knotsU_{0.0, 1.0};
         std::vector<double> knotsV_{0.0, 1.0};
+        std::vector<double> weights_{};
     };
 }  // namespace Geometry
 

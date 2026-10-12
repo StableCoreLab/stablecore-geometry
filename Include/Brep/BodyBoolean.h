@@ -17,6 +17,20 @@ namespace Geometry
         UnsupportedOperation
     };
 
+    // These are supported input configurations, not a promise of general B-rep CSG.
+    struct GEOMETRY_API BodyBooleanCapabilities3d
+    {
+        bool equivalentClosedBodies{true};
+        bool boundsDisjointClosedBodies{true};
+        bool axisAlignedBoxIntersection{true};
+        bool nonCoplanarConvexPolyhedralIntersection{true};
+        bool axisAlignedBoxUnion{true};
+        bool axisAlignedBoxDifferenceWhenSingleBoxOrEmpty{true};
+        bool generalBrepCsg{false};
+    };
+
+    [[nodiscard]] GEOMETRY_API BodyBooleanCapabilities3d GetBodyBooleanCapabilities3d();
+
     struct GEOMETRY_API BodyBooleanOptions3d
     {
         SCGeometryTolerance3d tolerance{};

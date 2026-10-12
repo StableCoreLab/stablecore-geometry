@@ -8,6 +8,8 @@
 #include <vector>
 
 #include "Brep/MeshOps.h"
+#include "Core/Triangulation.h"
+#include "../Detail/PolylineRing2d.h"
 #include "Support/Geometry2d/Predicate2.h"
 
 namespace Geometry
@@ -56,139 +58,6 @@ namespace Geometry
             SCVector3d v{};
             SCVector3d normal{};
         };
-
-        [[nodiscard]] double SignedArea2d(const std::vector<SCPoint2d>& points)
-        {
-            double area = 0.0;
-            for (std::size_t i = 0; i < points.size(); ++i)
-            {
-                const SCPoint2d& a = points[i];
-                const SCPoint2d& b = points[(i + 1) % points.size()];
-                area += a.x * b.y - b.x * a.y;
-            }
-            return 0.5 * area;
-        }
-
-        [[nodiscard]] bool PointInTriangle2d(
-            const SCPoint2d& point, const SCPoint2d& a, const SCPoint2d& b, const SCPoint2d& c, double eps)
-        {
-            const double cross0 = Cross(b - a, point - a);
-            const double cross1 = Cross(c - b, point - b);
-            const double cross2 = Cross(a - c, point - c);
-            const bool hasNegative = cross0 < -eps || cross1 < -eps || cross2 < -eps;
-            const bool hasPositive = cross0 > eps || cross1 > eps || cross2 > eps;
-            return !(hasNegative && hasPositive);
-        }
-
-        [[nodiscard]] bool IsEar(const std::vector<std::size_t>& polygon,
-                                 std::size_t index,
-                                 const std::vector<SCPoint2d>& projected,
-                                 double orientationSign,
-                                 double eps)
-        {
-            const std::size_t count = polygon.size();
-            const std::size_t previous = polygon[(index + count - 1) % count];
-            const std::size_t current = polygon[index];
-            const std::size_t next = polygon[(index + 1) % count];
-            const SCPoint2d& a = projected[previous];
-            const SCPoint2d& b = projected[current];
-            const SCPoint2d& c = projected[next];
-            if (a.AlmostEquals(b, eps) || b.AlmostEquals(c, eps) || a.AlmostEquals(c, eps))
-            {
-                return false;
-            }
-
-            const double corner = Cross(b - a, c - b);
-            if (orientationSign > 0.0 ? (corner <= eps) : (corner >= -eps))
-            {
-                return false;
-            }
-
-            for (std::size_t candidate : polygon)
-            {
-                if (candidate == previous || candidate == current || candidate == next)
-                {
-                    continue;
-                }
-
-                if (projected[candidate].AlmostEquals(a, eps) || projected[candidate].AlmostEquals(b, eps) ||
-                    projected[candidate].AlmostEquals(c, eps))
-                {
-                    continue;
-                }
-
-                if (PointInTriangle2d(projected[candidate], a, b, c, eps))
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        [[nodiscard]] bool TriangulateSimplePolygon(const std::vector<SCPoint2d>& projected,
-                                                    std::vector<TriangleMesh::TriangleIndices>& triangles,
-                                                    double eps)
-        {
-            if (projected.size() < 3)
-            {
-                return false;
-            }
-
-            const double area = SignedArea2d(projected);
-            if (std::abs(area) <= eps)
-            {
-                return false;
-            }
-
-            std::vector<std::size_t> polygon(projected.size());
-            for (std::size_t i = 0; i < polygon.size(); ++i)
-            {
-                polygon[i] = i;
-            }
-
-            if (area < 0.0)
-            {
-                std::reverse(polygon.begin(), polygon.end());
-            }
-
-            const double orientationSign = area >= 0.0 ? 1.0 : -1.0;
-            while (polygon.size() > 3)
-            {
-                bool clipped = false;
-                for (std::size_t i = 0; i < polygon.size(); ++i)
-                {
-                    const std::size_t previous = polygon[(i + polygon.size() - 1) % polygon.size()];
-                    const std::size_t current = polygon[i];
-                    const std::size_t next = polygon[(i + 1) % polygon.size()];
-                    if (projected[previous].AlmostEquals(projected[current], eps) ||
-                        projected[current].AlmostEquals(projected[next], eps))
-                    {
-                        polygon.erase(polygon.begin() + static_cast<std::ptrdiff_t>(i));
-                        clipped = true;
-                        break;
-                    }
-
-                    if (!IsEar(polygon, i, projected, orientationSign, eps))
-                    {
-                        continue;
-                    }
-
-                    triangles.push_back(TriangleMesh::TriangleIndices{previous, current, next});
-                    polygon.erase(polygon.begin() + static_cast<std::ptrdiff_t>(i));
-                    clipped = true;
-                    break;
-                }
-
-                if (!clipped)
-                {
-                    return false;
-                }
-            }
-
-            triangles.push_back(TriangleMesh::TriangleIndices{polygon[0], polygon[1], polygon[2]});
-            return true;
-        }
 
         [[nodiscard]] PlaneBasis BuildPlaneBasis(const std::vector<SCPoint3d>& loopVertices, double eps)
         {
@@ -384,17 +253,18 @@ namespace Geometry
                 projected.push_back(ProjectToPlane(vertex, basis));
             }
 
-            std::vector<TriangleMesh::TriangleIndices> capTriangles;
-            capTriangles.reserve(projected.size() >= 2 ? projected.size() - 2 : 0);
-            if (!TriangulateSimplePolygon(projected, capTriangles, eps))
+            const auto capTriangles = Triangulate(
+                SCPolygon2d(Detail::MakeVertexPreservingRing(projected)), eps);
+            if (!capTriangles)
             {
                 return {false, MeshRepairIssue3d::NonPlanarBoundary, {}};
             }
 
-            for (const TriangleMesh::TriangleIndices& tri : capTriangles)
+            for (const SCTriangleIndex3& tri : *capTriangles)
             {
                 triangles.push_back(TriangleMesh::TriangleIndices{
-                    loop.vertexIndices[tri[0]], loop.vertexIndices[tri[1]], loop.vertexIndices[tri[2]]});
+                    loop.vertexIndices[tri.indices[0]], loop.vertexIndices[tri.indices[1]],
+                    loop.vertexIndices[tri.indices[2]]});
             }
         }
 

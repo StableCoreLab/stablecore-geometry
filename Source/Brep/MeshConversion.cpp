@@ -1,17 +1,12 @@
 #include "Brep/MeshConversion.h"
 
-#include <algorithm>
-#include <cmath>
-#include <limits>
+#include <utility>
 #include <vector>
 
-#include "Core/Intersection.h"
 #include "Core/Projection.h"
-#include "Core/Relation.h"
 #include "Core/ShapeOps.h"
+#include "Core/Triangulation.h"
 #include "Geometry3d/SCPlaneSurface.h"
-#include "Support/Epsilon.h"
-#include "Support/Geometry2d/Predicate2.h"
 
 namespace Geometry
 {
@@ -117,7 +112,7 @@ namespace Geometry
             }
 
             polygon = SCPolygon2d(face.OuterTrim().UvCurve(), std::move(holes));
-            return polygon.IsValid();
+            return true;
         }
 
         [[nodiscard]] SCPoint3d LiftToSurface(const SCPoint2d& uv, const ISCSurface& surface)
@@ -139,380 +134,22 @@ namespace Geometry
             return vertices.size() - 1;
         }
 
-        [[nodiscard]] double SignedArea2d(const std::vector<SCPoint2d>& points)
-        {
-            double area = 0.0;
-            for (std::size_t i = 0; i < points.size(); ++i)
-            {
-                const SCPoint2d& a = points[i];
-                const SCPoint2d& b = points[(i + 1) % points.size()];
-                area += a.x * b.y - b.x * a.y;
-            }
-            return 0.5 * area;
-        }
-
-        [[nodiscard]] bool PointInTriangle2d(
-            const SCPoint2d& point, const SCPoint2d& a, const SCPoint2d& b, const SCPoint2d& c, double eps)
-        {
-            const double cross0 = Cross(b - a, point - a);
-            const double cross1 = Cross(c - b, point - b);
-            const double cross2 = Cross(a - c, point - c);
-            const bool hasNegative = cross0 < -eps || cross1 < -eps || cross2 < -eps;
-            const bool hasPositive = cross0 > eps || cross1 > eps || cross2 > eps;
-            return !(hasNegative && hasPositive);
-        }
-
-        [[nodiscard]] bool IsEar(const std::vector<std::size_t>& polygon,
-                                 std::size_t index,
-                                 const std::vector<SCPoint2d>& projected,
-                                 double orientationSign,
-                                 double eps)
-        {
-            const std::size_t count = polygon.size();
-            const std::size_t previous = polygon[(index + count - 1) % count];
-            const std::size_t current = polygon[index];
-            const std::size_t next = polygon[(index + 1) % count];
-            const SCPoint2d& a = projected[previous];
-            const SCPoint2d& b = projected[current];
-            const SCPoint2d& c = projected[next];
-
-            if (a.AlmostEquals(b, eps) || b.AlmostEquals(c, eps) || a.AlmostEquals(c, eps))
-            {
-                return false;
-            }
-
-            const double corner = Cross(b - a, c - b);
-            if (orientationSign > 0.0 ? (corner <= eps) : (corner >= -eps))
-            {
-                return false;
-            }
-
-            for (std::size_t candidate : polygon)
-            {
-                if (candidate == previous || candidate == current || candidate == next)
-                {
-                    continue;
-                }
-
-                if (projected[candidate].AlmostEquals(a, eps) || projected[candidate].AlmostEquals(b, eps) ||
-                    projected[candidate].AlmostEquals(c, eps))
-                {
-                    continue;
-                }
-
-                if (PointInTriangle2d(projected[candidate], a, b, c, eps))
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        [[nodiscard]] bool TriangulateSimplePolygon(const std::vector<SCPoint2d>& projected,
-                                                    std::vector<TriangleMesh::TriangleIndices>& triangles,
-                                                    double eps)
-        {
-            if (projected.size() < 3)
-            {
-                return false;
-            }
-
-            const double area = SignedArea2d(projected);
-            if (std::abs(area) <= eps)
-            {
-                return false;
-            }
-
-            std::vector<std::size_t> polygon(projected.size());
-            for (std::size_t i = 0; i < polygon.size(); ++i)
-            {
-                polygon[i] = i;
-            }
-
-            if (area < 0.0)
-            {
-                std::reverse(polygon.begin(), polygon.end());
-            }
-
-            const double orientationSign = area >= 0.0 ? 1.0 : -1.0;
-            while (polygon.size() > 3)
-            {
-                bool clipped = false;
-                for (std::size_t i = 0; i < polygon.size(); ++i)
-                {
-                    const std::size_t previous = polygon[(i + polygon.size() - 1) % polygon.size()];
-                    const std::size_t current = polygon[i];
-                    const std::size_t next = polygon[(i + 1) % polygon.size()];
-                    if (projected[previous].AlmostEquals(projected[current], eps) ||
-                        projected[current].AlmostEquals(projected[next], eps))
-                    {
-                        polygon.erase(polygon.begin() + static_cast<std::ptrdiff_t>(i));
-                        clipped = true;
-                        break;
-                    }
-
-                    if (!IsEar(polygon, i, projected, orientationSign, eps))
-                    {
-                        continue;
-                    }
-
-                    triangles.push_back(TriangleMesh::TriangleIndices{previous, current, next});
-                    polygon.erase(polygon.begin() + static_cast<std::ptrdiff_t>(i));
-                    clipped = true;
-                    break;
-                }
-
-                if (!clipped)
-                {
-                    return false;
-                }
-            }
-
-            triangles.push_back(TriangleMesh::TriangleIndices{polygon[0], polygon[1], polygon[2]});
-            return true;
-        }
-
-        [[nodiscard]] std::vector<SCPoint2d> RingPoints(const SCPolyline2d& ring)
+        [[nodiscard]] std::vector<SCPoint2d> FlattenBoundary(const SCPolygon2d& polygon)
         {
             std::vector<SCPoint2d> points;
-            points.reserve(ring.PointCount());
-            for (std::size_t i = 0; i < ring.PointCount(); ++i)
-            {
-                points.push_back(ring.PointAt(i));
-            }
-            return points;
-        }
-
-        void EnsureOrientation(std::vector<SCPoint2d>& points, bool ccw)
-        {
-            if (points.size() < 3)
-            {
-                return;
-            }
-
-            const double area = SignedArea2d(points);
-            if ((ccw && area < 0.0) || (!ccw && area > 0.0))
-            {
-                std::reverse(points.begin(), points.end());
-            }
-        }
-
-        [[nodiscard]] std::vector<SCPoint2d> RemoveAdjacentDuplicates(const std::vector<SCPoint2d>& points, double eps)
-        {
-            std::vector<SCPoint2d> cleaned;
-            cleaned.reserve(points.size());
-            for (const SCPoint2d& point : points)
-            {
-                if (cleaned.empty() || !cleaned.back().AlmostEquals(point, eps))
+            points.reserve(polygon.PointCount());
+            const auto append = [&](const SCPolyline2d& ring) {
+                for (std::size_t i = 0; i < ring.VertexCount(); ++i)
                 {
-                    cleaned.push_back(point);
+                    points.push_back(ring.VertexAt(i));
                 }
-            }
-
-            while (cleaned.size() >= 2 && cleaned.front().AlmostEquals(cleaned.back(), eps))
-            {
-                cleaned.pop_back();
-            }
-            return cleaned;
-        }
-
-        [[nodiscard]] std::size_t RightmostVertexIndex(const std::vector<SCPoint2d>& ring)
-        {
-            std::size_t index = 0;
-            for (std::size_t i = 1; i < ring.size(); ++i)
-            {
-                if (ring[i].x > ring[index].x ||
-                    (std::abs(ring[i].x - ring[index].x) <= Geometry::kMeshConversionDefaultEpsilon &&
-                     ring[i].y < ring[index].y))
-                {
-                    index = i;
-                }
-            }
-            return index;
-        }
-
-        [[nodiscard]] bool IsAllowedBridgeIntersection(const SCSegmentIntersection2d& intersection,
-                                                       const SCPoint2d& bridgeStart,
-                                                       const SCPoint2d& bridgeEnd,
-                                                       double eps)
-        {
-            if (!intersection.HasIntersection())
-            {
-                return true;
-            }
-
-            if (intersection.kind == SCIntersectionKind2d::Overlap)
-            {
-                return false;
-            }
-
-            for (std::size_t i = 0; i < intersection.pointCount; ++i)
-            {
-                const SCPoint2d& point = intersection.points[i].point;
-                if (!point.AlmostEquals(bridgeStart, eps) && !point.AlmostEquals(bridgeEnd, eps))
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        [[nodiscard]] bool IsVisibleBridge(const SCPoint2d& holeVertex,
-                                           const SCPoint2d& polygonVertex,
-                                           const std::vector<SCPoint2d>& currentPolygon,
-                                           const SCPolygon2d& polygon,
-                                           double eps)
-        {
-            const SCLineSegment2d bridge(holeVertex, polygonVertex);
-            if (!bridge.IsValid())
-            {
-                return false;
-            }
-
-            const SCPoint2d midpoint = holeVertex + (polygonVertex - holeVertex) * 0.5;
-            if (LocatePoint(midpoint, polygon, eps) == SCPointContainment2d::Outside)
-            {
-                return false;
-            }
-
-            const SCPoint2d sampleA = holeVertex + (polygonVertex - holeVertex) * 0.25;
-            const SCPoint2d sampleB = holeVertex + (polygonVertex - holeVertex) * 0.75;
-            if (LocatePoint(sampleA, polygon, eps) == SCPointContainment2d::Outside ||
-                LocatePoint(sampleB, polygon, eps) == SCPointContainment2d::Outside)
-            {
-                return false;
-            }
-
-            for (std::size_t i = 0; i < currentPolygon.size(); ++i)
-            {
-                const SCPoint2d& a = currentPolygon[i];
-                const SCPoint2d& b = currentPolygon[(i + 1) % currentPolygon.size()];
-                const SCSegmentIntersection2d intersection = Intersect(bridge, SCLineSegment2d(a, b), eps);
-                if (!IsAllowedBridgeIntersection(intersection, holeVertex, polygonVertex, eps))
-                {
-                    return false;
-                }
-            }
-
-            const SCPolyline2d outer = polygon.OuterRing();
-            for (std::size_t i = 0; i < outer.PointCount(); ++i)
-            {
-                const SCPoint2d a = outer.PointAt(i);
-                const SCPoint2d b = outer.PointAt((i + 1) % outer.PointCount());
-                const SCSegmentIntersection2d intersection = Intersect(bridge, SCLineSegment2d(a, b), eps);
-                if (!IsAllowedBridgeIntersection(intersection, holeVertex, polygonVertex, eps))
-                {
-                    return false;
-                }
-            }
-
-            for (std::size_t h = 0; h < polygon.HoleCount(); ++h)
-            {
-                const SCPolyline2d hole = polygon.HoleAt(h);
-                for (std::size_t i = 0; i < hole.PointCount(); ++i)
-                {
-                    const SCPoint2d a = hole.PointAt(i);
-                    const SCPoint2d b = hole.PointAt((i + 1) % hole.PointCount());
-                    const SCSegmentIntersection2d intersection = Intersect(bridge, SCLineSegment2d(a, b), eps);
-                    if (!IsAllowedBridgeIntersection(intersection, holeVertex, polygonVertex, eps))
-                    {
-                        return false;
-                    }
-                }
-            }
-
-            return true;
-        }
-
-        [[nodiscard]] bool MergeHoleIntoPolygon(const SCPolygon2d& polygon,
-                                                const std::vector<SCPoint2d>& hole,
-                                                std::vector<SCPoint2d>& currentPolygon,
-                                                double eps)
-        {
-            if (hole.size() < 3 || currentPolygon.size() < 3)
-            {
-                return false;
-            }
-
-            const std::size_t holeIndex = RightmostVertexIndex(hole);
-            const SCPoint2d& holeVertex = hole[holeIndex];
-
-            std::size_t outerIndex = currentPolygon.size();
-            double bestDistanceSquared = std::numeric_limits<double>::infinity();
-            for (std::size_t i = 0; i < currentPolygon.size(); ++i)
-            {
-                const SCPoint2d& candidate = currentPolygon[i];
-                const double distanceSquared = (candidate - holeVertex).LengthSquared();
-                if (distanceSquared <= eps * eps)
-                {
-                    continue;
-                }
-
-                if (!IsVisibleBridge(holeVertex, candidate, currentPolygon, polygon, eps))
-                {
-                    continue;
-                }
-
-                if (distanceSquared < bestDistanceSquared)
-                {
-                    bestDistanceSquared = distanceSquared;
-                    outerIndex = i;
-                }
-            }
-
-            if (outerIndex == currentPolygon.size())
-            {
-                return false;
-            }
-
-            std::vector<SCPoint2d> merged;
-            merged.reserve(currentPolygon.size() + hole.size() + 2);
-            for (std::size_t i = 0; i <= outerIndex; ++i)
-            {
-                merged.push_back(currentPolygon[i]);
-            }
-
-            merged.push_back(holeVertex);
-            for (std::size_t step = 1; step < hole.size(); ++step)
-            {
-                merged.push_back(hole[(holeIndex + step) % hole.size()]);
-            }
-            merged.push_back(holeVertex);
-            merged.push_back(currentPolygon[outerIndex]);
-
-            for (std::size_t i = outerIndex + 1; i < currentPolygon.size(); ++i)
-            {
-                merged.push_back(currentPolygon[i]);
-            }
-
-            currentPolygon = RemoveAdjacentDuplicates(merged, eps);
-            return currentPolygon.size() >= 3;
-        }
-
-        [[nodiscard]] bool BuildTriangulationContour(const SCPolygon2d& polygon,
-                                                     std::vector<SCPoint2d>& contour,
-                                                     double eps)
-        {
-            contour = RemoveAdjacentDuplicates(RingPoints(polygon.OuterRing()), eps);
-            EnsureOrientation(contour, true);
-            if (contour.size() < 3)
-            {
-                return false;
-            }
-
+            };
+            append(polygon.OuterRing());
             for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
             {
-                std::vector<SCPoint2d> hole = RemoveAdjacentDuplicates(RingPoints(polygon.HoleAt(i)), eps);
-                EnsureOrientation(hole, false);
-                if (!MergeHoleIntoPolygon(polygon, hole, contour, eps))
-                {
-                    return false;
-                }
+                append(polygon.HoleAt(i));
             }
-
-            return contour.size() >= 3;
+            return points;
         }
 
         [[nodiscard]] SCPoint3d LiftToPlane(const SCPoint2d& point, const SCFaceProjection3d& projectedFace)
@@ -529,17 +166,18 @@ namespace Geometry
         }
 
         const SCFaceProjection3d projectedFace = ProjectFaceToPolygon2d(face, SCGeometryTolerance3d{eps, eps, eps});
-        if (!projectedFace.success || !projectedFace.polygon.IsValid())
+        if (!projectedFace.success)
         {
             return {false, MeshConversionIssue3d::TriangulationFailed, 0, {}};
         }
 
-        std::vector<SCPoint2d> contour;
-        if (!BuildTriangulationContour(projectedFace.polygon, contour, eps))
+        const auto triangulated = Triangulate(projectedFace.polygon, eps);
+        if (!triangulated)
         {
             return {false, MeshConversionIssue3d::TriangulationFailed, 0, {}};
         }
 
+        const std::vector<SCPoint2d> contour = FlattenBoundary(projectedFace.polygon);
         std::vector<SCPoint3d> vertices3d;
         vertices3d.reserve(contour.size());
         for (const SCPoint2d& point : contour)
@@ -548,10 +186,10 @@ namespace Geometry
         }
 
         std::vector<TriangleMesh::TriangleIndices> triangles;
-        triangles.reserve(vertices3d.size() >= 2 ? vertices3d.size() - 2 : 0);
-        if (!TriangulateSimplePolygon(contour, triangles, eps))
+        triangles.reserve(triangulated->size());
+        for (const SCTriangleIndex3& triangle : *triangulated)
         {
-            return {false, MeshConversionIssue3d::TriangulationFailed, 0, {}};
+            triangles.push_back(triangle.indices);
         }
 
         return {true, MeshConversionIssue3d::None, 0, TriangleMesh(vertices3d, std::move(triangles))};
@@ -601,8 +239,8 @@ namespace Geometry
             return {false, MeshConversionIssue3d::TriangulationFailed, 0, {}};
         }
 
-        std::vector<SCPoint2d> contour;
-        if (!BuildTriangulationContour(polygon, contour, eps))
+        const auto triangulated = Triangulate(polygon, eps);
+        if (!triangulated)
         {
             return {false, MeshConversionIssue3d::TriangulationFailed, 0, {}};
         }
@@ -613,6 +251,7 @@ namespace Geometry
             return {false, MeshConversionIssue3d::UnsupportedSurface, 0, {}};
         }
 
+        const std::vector<SCPoint2d> contour = FlattenBoundary(polygon);
         std::vector<SCPoint3d> vertices3d;
         vertices3d.reserve(contour.size());
         for (const SCPoint2d& uv : contour)
@@ -621,10 +260,10 @@ namespace Geometry
         }
 
         std::vector<TriangleMesh::TriangleIndices> triangles;
-        triangles.reserve(vertices3d.size() >= 2 ? vertices3d.size() - 2 : 0);
-        if (!TriangulateSimplePolygon(contour, triangles, eps))
+        triangles.reserve(triangulated->size());
+        for (const SCTriangleIndex3& triangle : *triangulated)
         {
-            return {false, MeshConversionIssue3d::TriangulationFailed, 0, {}};
+            triangles.push_back(triangle.indices);
         }
 
         return {true, MeshConversionIssue3d::None, 0, TriangleMesh(std::move(vertices3d), std::move(triangles))};

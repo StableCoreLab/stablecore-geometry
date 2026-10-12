@@ -6,6 +6,7 @@
 
 #include "Export/GeometryExport.h"
 #include "Geometry2d/SCPolygon2d.h"
+#include "Support/Epsilon.h"
 
 namespace Geometry
 {
@@ -21,5 +22,5 @@ namespace Geometry
     // With holes, indices refer to flattened boundary vertices: outer ring
     // first, followed by HoleAt(0), HoleAt(1), ... .
     [[nodiscard]] GEOMETRY_API std::optional<std::vector<SCTriangleIndex3>>
-    Triangulate(const SCPolygon2d& polygon);
+    Triangulate(const SCPolygon2d& polygon, double tolerance = kDefaultEpsilon);
 }  // namespace Geometry

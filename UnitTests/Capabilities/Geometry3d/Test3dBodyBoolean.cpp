@@ -273,6 +273,18 @@ namespace
     }
 }  // namespace
 
+TEST(BodyBooleanCapabilityTest, PublicCapabilitiesDescribeTheSupportedSubsets)
+{
+    const auto capabilities = Geometry::GetBodyBooleanCapabilities3d();
+    EXPECT_TRUE(capabilities.equivalentClosedBodies);
+    EXPECT_TRUE(capabilities.boundsDisjointClosedBodies);
+    EXPECT_TRUE(capabilities.axisAlignedBoxIntersection);
+    EXPECT_TRUE(capabilities.nonCoplanarConvexPolyhedralIntersection);
+    EXPECT_TRUE(capabilities.axisAlignedBoxUnion);
+    EXPECT_TRUE(capabilities.axisAlignedBoxDifferenceWhenSingleBoxOrEmpty);
+    EXPECT_FALSE(capabilities.generalBrepCsg);
+}
+
 TEST(BodyBooleanCapabilityTest, InvalidInputContractIsStableForEmptyBodies)
 {
     const PolyhedronBody first;

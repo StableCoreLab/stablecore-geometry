@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -38,8 +39,14 @@ namespace Geometry
     class GEOMETRY_API SCKDTree2d
     {
     public:
-        SCKDTree2d() = default;
+        struct Node;
+        SCKDTree2d();
         explicit SCKDTree2d(std::vector<SCKDTreeEntry2d> entries);
+        ~SCKDTree2d();
+        SCKDTree2d(const SCKDTree2d& other);
+        SCKDTree2d& operator=(const SCKDTree2d& other);
+        SCKDTree2d(SCKDTree2d&&) noexcept;
+        SCKDTree2d& operator=(SCKDTree2d&&) noexcept;
 
         void Clear();
         void Add(std::size_t id, const SCPoint2d& point);
@@ -58,12 +65,13 @@ namespace Geometry
         [[nodiscard]] std::string DebugString() const;
 
         [[nodiscard]] const std::vector<SCKDTreeEntry2d>& Entries() const;
-        [[nodiscard]] std::vector<SCKDTreeEntry2d>& Entries();
         [[nodiscard]] const std::vector<SCKDTreeEntry2d>& Data() const;
-        [[nodiscard]] std::vector<SCKDTreeEntry2d>& Data();
 
     private:
+        void Rebuild();
         std::vector<SCKDTreeEntry2d> entries_{};
+        std::unique_ptr<Node> root_{};
+        std::size_t nodeCount_{0};
     };
 
 }  // namespace Geometry

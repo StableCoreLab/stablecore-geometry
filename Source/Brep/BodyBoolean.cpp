@@ -1819,6 +1819,11 @@ namespace Geometry
         }
     }  // namespace
 
+    BodyBooleanCapabilities3d GetBodyBooleanCapabilities3d()
+    {
+        return {};
+    }
+
     BodyBooleanResult3d IntersectBodies(const SCBrepBody& first, const SCBrepBody& second, BodyBooleanOptions3d options)
     {
         return MakeResultForBrepBodies(first, second, options, 'i');

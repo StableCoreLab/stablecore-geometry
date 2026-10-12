@@ -4,6 +4,8 @@
 #include <array>
 
 #include "Core/Relation.h"
+#include "Core/Triangulation.h"
+#include "../Detail/PolylineRing2d.h"
 #include "Brep/PolyhedronBody.h"
 #include "Brep/PolyhedronFace3d.h"
 #include "Brep/SCBrepBody.h"
@@ -777,11 +779,11 @@ namespace Geometry
                 holePoints.push_back(ProjectToLocalPlaneCoordinates(vertex, plane, basis));
             }
             EnsureRingOrientation(holePoints, false);
-            holeRings.emplace_back(std::move(holePoints), SCPolylineClosure::Closed);
+            holeRings.push_back(Detail::MakeVertexPreservingRing(holePoints));
         }
 
-        SCPolygon2d polygon(SCPolyline2d(std::move(outerPoints), SCPolylineClosure::Closed), std::move(holeRings));
-        if (!polygon.IsValid())
+        SCPolygon2d polygon(Detail::MakeVertexPreservingRing(outerPoints), std::move(holeRings));
+        if (!Triangulate(polygon, tolerance.distanceEpsilon))
         {
             return {};
         }

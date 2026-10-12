@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -35,8 +36,14 @@ namespace Geometry
     class GEOMETRY_API SCBoxTree2d
     {
     public:
-        SCBoxTree2d() = default;
+        struct Node;
+        SCBoxTree2d();
         explicit SCBoxTree2d(std::vector<SCBoxTreeEntry2d> entries);
+        ~SCBoxTree2d();
+        SCBoxTree2d(const SCBoxTree2d& other);
+        SCBoxTree2d& operator=(const SCBoxTree2d& other);
+        SCBoxTree2d(SCBoxTree2d&&) noexcept;
+        SCBoxTree2d& operator=(SCBoxTree2d&&) noexcept;
 
         void Clear();
         void Add(std::size_t id, const SCBox2d& box);
@@ -57,12 +64,12 @@ namespace Geometry
         [[nodiscard]] std::string DebugString() const;
 
         [[nodiscard]] const std::vector<SCBoxTreeEntry2d>& Entries() const;
-        [[nodiscard]] std::vector<SCBoxTreeEntry2d>& Entries();
         [[nodiscard]] const std::vector<SCBoxTreeEntry2d>& Data() const;
-        [[nodiscard]] std::vector<SCBoxTreeEntry2d>& Data();
 
     private:
+        void Rebuild();
         std::vector<SCBoxTreeEntry2d> entries_{};
+        std::unique_ptr<Node> root_{};
     };
 
 }  // namespace Geometry

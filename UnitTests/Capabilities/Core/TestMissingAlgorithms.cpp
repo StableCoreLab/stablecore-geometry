@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
+#include <utility>
+#include <vector>
 
 #include "Geometry.h"
 
@@ -143,6 +146,93 @@ TEST(MissingAlgorithmsCapabilityTest, QueryKNearestBreaksEqualDistanceTiesById)
     EXPECT_EQ(hits3d[0].id, 10U);
     EXPECT_EQ(hits3d[1].id, 20U);
     EXPECT_DOUBLE_EQ(hits3d[0].distanceSquared, hits3d[1].distanceSquared);
+}
+
+TEST(MissingAlgorithmsCapabilityTest, BoxTree3dKeepsIncrementalQueriesConsistent)
+{
+    SCBoxTree3d tree;
+    tree.Add(99, SCBox3d{});
+    EXPECT_FALSE(tree.IsValid());
+    for (std::size_t id = 0; id < 12; ++id)
+    {
+        const double x = static_cast<double>(id);
+        tree.Add(id, SCBox3d::FromMinMax({x, 0.0, 0.0}, {x + 0.5, 0.5, 0.5}));
+    }
+    tree.Add(3, SCBox3d::FromMinMax({30.0, 0.0, 0.0}, {30.5, 0.5, 0.5}));
+    EXPECT_TRUE(tree.Remove(3));
+    tree.Update(10, SCBox3d::FromMinMax({-2.0, 0.0, 0.0}, {-1.5, 0.5, 0.5}));
+    tree.Update(99, SCBox3d::FromMinMax({-4.0, 0.0, 0.0}, {-3.5, 0.5, 0.5}));
+    EXPECT_TRUE(tree.IsValid());
+    EXPECT_EQ(tree.QueryContaining({-1.75, 0.25, 0.25}), std::vector<std::size_t>{10});
+    SCBoxTree3d copied = tree;
+    SCBoxTree3d moved = std::move(copied);
+    SCBoxTree3d assigned;
+    assigned = std::move(moved);
+    const auto hits = assigned.QueryKNearest({-2.0, 0.0, 0.0}, 1);
+    ASSERT_EQ(hits.size(), 1U);
+    EXPECT_EQ(hits.front().id, 10U);
+}
+
+TEST(MissingAlgorithmsCapabilityTest, BoxTree3dKnnMatchesIndependentDistanceOracle)
+{
+    SCBoxTree3d tree;
+    std::vector<std::pair<double, std::size_t>> expected;
+    for (std::size_t id = 0; id < 18; ++id)
+    {
+        const double x = static_cast<double>(id % 3) - 1.0;
+        const double y = static_cast<double>((id / 3) % 3) - 1.0;
+        const double z = static_cast<double>(id / 9) - 0.5;
+        tree.Add(id, SCBox3d::FromMinMax({x, y, z}, {x + 0.25, y + 0.25, z + 0.25}));
+        const double dx = std::max({x - 0.1, 0.0, 0.1 - (x + 0.25)});
+        const double dy = std::max({y - 0.2, 0.0, 0.2 - (y + 0.25)});
+        const double dz = std::max({z - 0.3, 0.0, 0.3 - (z + 0.25)});
+        expected.emplace_back(dx * dx + dy * dy + dz * dz, id);
+    }
+    std::sort(expected.begin(), expected.end());
+    for (std::size_t k : {1U, 4U, 9U})
+    {
+        const auto exact = tree.QueryKNearest({0.1, 0.2, 0.3}, k, 0.0);
+        const auto approximate = tree.QueryKNearest({0.1, 0.2, 0.3}, k, 0.25);
+        ASSERT_EQ(exact.size(), k);
+        ASSERT_EQ(approximate.size(), k);
+        for (std::size_t index = 0; index < k; ++index)
+        {
+            EXPECT_EQ(exact[index].id, expected[index].second);
+            EXPECT_DOUBLE_EQ(exact[index].distanceSquared, expected[index].first);
+        }
+        EXPECT_LE(approximate.back().distanceSquared, expected[k - 1].first * 1.25 * 1.25);
+    }
+}
+
+TEST(MissingAlgorithmsCapabilityTest, BoxTree3dAddAcceptsGeometryReferencedFromExistingEntry)
+{
+    SCBoxTree3d tree;
+    const auto box = SCBox3d::FromMinMax({1.0, 1.0, 1.0}, {2.0, 2.0, 2.0});
+    tree.Add(0, box);
+    while (tree.Size() < tree.Entries().capacity())
+    {
+        tree.Add(tree.Size(), box);
+    }
+    tree.Add(99, tree.Entries().front().box);
+    EXPECT_EQ(tree.QueryContaining({1.5, 1.5, 1.5}).size(), tree.Size());
+    ASSERT_NE(tree.Find(99), nullptr);
+    EXPECT_TRUE(tree.Find(99)->box.IsValid());
+}
+
+TEST(MissingAlgorithmsCapabilityTest, BoxTree3dRemovesManyDuplicateIdsInOnePass)
+{
+    SCBoxTree3d tree;
+    tree.Add(1, SCBox3d::FromMinMax({-2.0, 0.0, 0.0}, {-1.0, 1.0, 1.0}));
+    for (std::size_t index = 0; index < 32; ++index)
+    {
+        const double x = static_cast<double>(index);
+        tree.Add(7, SCBox3d::FromMinMax({x, 0.0, 0.0}, {x + 0.5, 1.0, 1.0}));
+    }
+    tree.Add(2, SCBox3d::FromMinMax({40.0, 0.0, 0.0}, {41.0, 1.0, 1.0}));
+    EXPECT_TRUE(tree.Remove(7));
+    EXPECT_EQ(tree.Size(), 2U);
+    EXPECT_EQ(tree.QueryContaining({-1.5, 0.5, 0.5}), std::vector<std::size_t>{1});
+    EXPECT_EQ(tree.QueryContaining({40.5, 0.5, 0.5}), std::vector<std::size_t>{2});
 }
 
 TEST(MissingAlgorithmsCapabilityTest, IntersectExtendedLineArcFindsExtendedHit)
