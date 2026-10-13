@@ -153,5 +153,5 @@ TEST(PolygonTest, SupportsCurvedBoundaryPolygons)
     ASSERT_TRUE(fullCircle.IsValid());
     ASSERT_EQ(Orientation(fullCircleRing), SCRingOrientation2d::CounterClockwise);
     ASSERT_EQ(LocatePoint(SCPoint2d(0.0, 0.0), fullCircle), SCPointContainment2d::Inside);
-    EXPECT_TRUE(Geometry::Centroid(fullCircle).AlmostEquals(SCPoint2d(0.0, 0.0), 1e-12));
+    EXPECT_TRUE(fullCircle.Centroid().AlmostEquals(SCPoint2d(0.0, 0.0), 1e-12));
 }

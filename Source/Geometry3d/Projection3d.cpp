@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <utility>
 
 #include "Core/Relation.h"
 #include "Core/Triangulation.h"
@@ -318,6 +319,23 @@ namespace Geometry
             const double distance = Dot(point - triangle.a, normal) / normalLengthSquared;
             return point - normal * distance;
         }
+
+        template <typename BodyProjection, typename VisitFaces>
+        [[nodiscard]] BodyProjection FindNearestBodyFaceProjection(VisitFaces&& visitFaces)
+        {
+            BodyProjection best{};
+            visitFaces([&](std::size_t faceIndex, auto projection) {
+                if (!projection.success ||
+                    (best.success && projection.distanceSquared >= best.projection.distanceSquared))
+                {
+                    return;
+                }
+                best.success = true;
+                best.faceIndex = faceIndex;
+                best.projection = std::move(projection);
+            });
+            return best;
+        }
     }  // namespace
 
     SCLineProjection3d ProjectPointToLine(const SCPoint3d& point, const SCLine3d& line, const SCGeometryTolerance3d& tolerance)
@@ -595,35 +613,21 @@ namespace Geometry
                                                 const SCBrepBody& body,
                                                 const SCGeometryTolerance3d& tolerance)
     {
-        SCBrepBodyProjection3d best{};
         if (!body.IsValid(tolerance))
         {
-            return best;
+            return {};
         }
-
-        std::size_t faceIndex = 0;
-        for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
-        {
-            const SCBrepShell shell = body.ShellAt(shellIndex);
-            for (std::size_t localFaceIndex = 0; localFaceIndex < shell.FaceCount(); ++localFaceIndex, ++faceIndex)
+        return FindNearestBodyFaceProjection<SCBrepBodyProjection3d>([&](auto&& consider) {
+            std::size_t faceIndex = 0;
+            for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
             {
-                const SCBrepFaceProjection3d projected =
-                    ProjectPointToBrepFace(point, shell.FaceAt(localFaceIndex), tolerance);
-                if (!projected.success)
+                const SCBrepShell& shell = body.ShellAtRef(shellIndex);
+                for (std::size_t localFaceIndex = 0; localFaceIndex < shell.FaceCount(); ++localFaceIndex, ++faceIndex)
                 {
-                    continue;
-                }
-
-                if (!best.success || projected.distanceSquared < best.projection.distanceSquared)
-                {
-                    best.success = true;
-                    best.faceIndex = faceIndex;
-                    best.projection = projected;
+                    consider(faceIndex, ProjectPointToBrepFace(point, shell.FaceAtRef(localFaceIndex), tolerance));
                 }
             }
-        }
-
-        return best;
+        });
     }
 
     SCPolyhedronFaceProjection3d ProjectPointToPolyhedronFace(const SCPoint3d& point,
@@ -684,10 +688,10 @@ namespace Geometry
             }
         };
 
-        updateLoop(face.OuterLoop());
+        updateLoop(face.OuterLoopRef());
         for (std::size_t i = 0; i < face.HoleCount(); ++i)
         {
-            updateLoop(face.HoleAt(i));
+            updateLoop(face.HoleAtRef(i));
         }
         return best;
     }
@@ -696,30 +700,16 @@ namespace Geometry
                                                             const PolyhedronBody& body,
                                                             const SCGeometryTolerance3d& tolerance)
     {
-        SCPolyhedronBodyProjection3d best{};
-        if (!body.IsValid(tolerance.distanceEpsilon))
+        if (!body.IsValid(tolerance))
         {
-            return best;
+            return {};
         }
-
-        for (std::size_t faceIndex = 0; faceIndex < body.FaceCount(); ++faceIndex)
-        {
-            const SCPolyhedronFaceProjection3d projected =
-                ProjectPointToPolyhedronFace(point, body.FaceAt(faceIndex), tolerance);
-            if (!projected.success)
+        return FindNearestBodyFaceProjection<SCPolyhedronBodyProjection3d>([&](auto&& consider) {
+            for (std::size_t faceIndex = 0; faceIndex < body.FaceCount(); ++faceIndex)
             {
-                continue;
+                consider(faceIndex, ProjectPointToPolyhedronFace(point, body.FaceAtRef(faceIndex), tolerance));
             }
-
-            if (!best.success || projected.distanceSquared < best.projection.distanceSquared)
-            {
-                best.success = true;
-                best.faceIndex = faceIndex;
-                best.projection = projected;
-            }
-        }
-
-        return best;
+        });
     }
 
     SCTriangleMeshProjection3d ProjectPointToTriangleMesh(const SCPoint3d& point,
@@ -758,7 +748,7 @@ namespace Geometry
 
         const SCPlane plane = face.SupportPlane();
         const PlaneProjectionBasis basis = BuildPlaneProjectionBasis(plane, tolerance.distanceEpsilon);
-        const PolyhedronLoop3d outerLoop = face.OuterLoop();
+        const PolyhedronLoop3d& outerLoop = face.OuterLoopRef();
         std::vector<SCPoint2d> outerPoints;
         outerPoints.reserve(outerLoop.VertexCount());
         for (const SCPoint3d& vertex : outerLoop.Vertices())
@@ -772,7 +762,7 @@ namespace Geometry
         for (std::size_t i = 0; i < face.HoleCount(); ++i)
         {
             std::vector<SCPoint2d> holePoints;
-            const PolyhedronLoop3d hole = face.HoleAt(i);
+            const PolyhedronLoop3d& hole = face.HoleAtRef(i);
             holePoints.reserve(hole.VertexCount());
             for (const SCPoint3d& vertex : hole.Vertices())
             {

@@ -33,12 +33,12 @@ namespace Geometry
             return ParameterRange().max;
         }
 
-        [[nodiscard]] double StartT() const
+        [[deprecated("Use StartParameter() instead")]] [[nodiscard]] double StartT() const
         {
             return StartParameter();
         }
 
-        [[nodiscard]] double EndT() const
+        [[deprecated("Use EndParameter() instead")]] [[nodiscard]] double EndT() const
         {
             return EndParameter();
         }

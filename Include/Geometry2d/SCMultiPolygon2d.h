@@ -38,8 +38,8 @@ namespace Geometry
 
         [[nodiscard]] const std::vector<SCPolygon2d>& Polygons() const;
         [[nodiscard]] std::vector<SCPolygon2d>& Polygons();
-        [[nodiscard]] const std::vector<SCPolygon2d>& Data() const;
-        [[nodiscard]] std::vector<SCPolygon2d>& Data();
+        [[deprecated("Use Polygons() instead")]] [[nodiscard]] const std::vector<SCPolygon2d>& Data() const;
+        [[deprecated("Use Polygons() instead")]] [[nodiscard]] std::vector<SCPolygon2d>& Data();
 
     private:
         std::vector<SCPolygon2d> polygons_{};

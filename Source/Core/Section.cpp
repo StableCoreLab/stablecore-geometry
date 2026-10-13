@@ -2332,9 +2332,9 @@ namespace Geometry
         return result;
     }
 
-    SCSectionFaceRebuild3d RebuildSectionFaces(const SCPolyhedronSection3d& section, double eps)
+    SCSectionFaceRebuildResult3d RebuildSectionFaces(const SCPolyhedronSection3d& section, double eps)
     {
-        SCSectionFaceRebuild3d result{};
+        SCSectionFaceRebuildResult3d result{};
         if (!section.success)
         {
             result.issue = SCSectionFaceRebuildIssue3d::InvalidSection;
@@ -2385,7 +2385,7 @@ namespace Geometry
 
             std::vector<PolyhedronLoop3d> holes;
             holes.reserve(polygon.HoleCount() + topology.ChildrenOf(polygonIndex).size());
-            SCSectionFaceRebuild3d::FaceMapping mapping{};
+            SCSectionFaceRebuildResult3d::FaceMapping mapping{};
             mapping.outerPolygonIndex = polygonIndex;
             for (std::size_t holeIndex = 0; holeIndex < polygon.HoleCount(); ++holeIndex)
             {
@@ -2427,16 +2427,16 @@ namespace Geometry
         return result;
     }
 
-    SCSectionBrepFaceRebuild3d RebuildSectionBrepFaces(const SCPolyhedronSection3d& section, double eps)
+    SCSectionBrepFaceRebuildResult3d RebuildSectionBrepFaces(const SCPolyhedronSection3d& section, double eps)
     {
-        SCSectionBrepFaceRebuild3d result{};
+        SCSectionBrepFaceRebuildResult3d result{};
         if (!section.success || !IsSectionFrameValid(section, eps))
         {
             result.issue = SCSectionFaceRebuildIssue3d::InvalidSection;
             return result;
         }
 
-        const SCSectionFaceRebuild3d rebuiltFaces = RebuildSectionFaces(section, eps);
+        const SCSectionFaceRebuildResult3d rebuiltFaces = RebuildSectionFaces(section, eps);
         if (!rebuiltFaces.success)
         {
             result.issue = rebuiltFaces.issue;
@@ -2506,16 +2506,16 @@ namespace Geometry
         return result;
     }
 
-    SCSectionBodyRebuild3d RebuildSectionBody(const SCPolyhedronSection3d& section, double eps)
+    SCSectionBodyRebuildResult3d RebuildSectionBody(const SCPolyhedronSection3d& section, double eps)
     {
-        SCSectionBodyRebuild3d result{};
+        SCSectionBodyRebuildResult3d result{};
         if (!section.success || !IsSectionFrameValid(section, eps))
         {
             result.issue = SCSectionBodyRebuildIssue3d::InvalidSection;
             return result;
         }
 
-        const SCSectionFaceRebuild3d rebuiltFaces = RebuildSectionFaces(section, eps);
+        const SCSectionFaceRebuildResult3d rebuiltFaces = RebuildSectionFaces(section, eps);
         if (!rebuiltFaces.success)
         {
             result.issue = SCSectionBodyRebuildIssue3d::FaceRebuildFailed;
@@ -2527,16 +2527,16 @@ namespace Geometry
         return result;
     }
 
-    SCSectionBrepBodyRebuild3d RebuildSectionBrepBody(const SCPolyhedronSection3d& section, double eps)
+    SCSectionBrepBodyRebuildResult3d RebuildSectionBrepBody(const SCPolyhedronSection3d& section, double eps)
     {
-        SCSectionBrepBodyRebuild3d result{};
+        SCSectionBrepBodyRebuildResult3d result{};
         if (!section.success || !IsSectionFrameValid(section, eps))
         {
             result.issue = SCSectionBodyRebuildIssue3d::InvalidSection;
             return result;
         }
 
-        const SCSectionBrepFaceRebuild3d rebuiltFaces = RebuildSectionBrepFaces(section, eps);
+        const SCSectionBrepFaceRebuildResult3d rebuiltFaces = RebuildSectionBrepFaces(section, eps);
         if (!rebuiltFaces.success)
         {
             result.issue = SCSectionBodyRebuildIssue3d::FaceRebuildFailed;
@@ -2628,9 +2628,9 @@ namespace Geometry
         return result;
     }
 
-    SCSectionBrepBodySetRebuild3d RebuildSectionBrepBodies(const SCPolyhedronSection3d& section, double eps)
+    SCSectionBrepBodySetRebuildResult3d RebuildSectionBrepBodies(const SCPolyhedronSection3d& section, double eps)
     {
-        SCSectionBrepBodySetRebuild3d result{};
+        SCSectionBrepBodySetRebuildResult3d result{};
         if (!section.success || !IsSectionFrameValid(section, eps))
         {
             result.issue = SCSectionBodyRebuildIssue3d::InvalidSection;
@@ -2666,7 +2666,7 @@ namespace Geometry
                 }
             }
 
-            const SCSectionBrepBodyRebuild3d rebuilt = RebuildSectionBrepBody(subSection, eps);
+            const SCSectionBrepBodyRebuildResult3d rebuilt = RebuildSectionBrepBody(subSection, eps);
             if (!rebuilt.success)
             {
                 result.issue = rebuilt.issue;
@@ -2684,9 +2684,9 @@ namespace Geometry
         return result;
     }
 
-    SCSectionBodySetRebuild3d RebuildSectionBodies(const SCPolyhedronSection3d& section, double eps)
+    SCSectionBodySetRebuildResult3d RebuildSectionBodies(const SCPolyhedronSection3d& section, double eps)
     {
-        SCSectionBodySetRebuild3d result{};
+        SCSectionBodySetRebuildResult3d result{};
         if (!section.success || !IsSectionFrameValid(section, eps))
         {
             result.issue = SCSectionBodyRebuildIssue3d::InvalidSection;
@@ -2700,7 +2700,7 @@ namespace Geometry
             return result;
         }
 
-        const SCSectionFaceRebuild3d rebuiltFaces = RebuildSectionFaces(section, eps);
+        const SCSectionFaceRebuildResult3d rebuiltFaces = RebuildSectionFaces(section, eps);
         if (!rebuiltFaces.success)
         {
             result.issue = SCSectionBodyRebuildIssue3d::FaceRebuildFailed;
@@ -2772,10 +2772,10 @@ namespace Geometry
         return stream.str();
     }
 
-    SCSectionMeshConversion3d ConvertSectionToTriangleMesh(const SCPolyhedronSection3d& section, double eps)
+    SCSectionMeshConversionResult3d ConvertSectionToTriangleMesh(const SCPolyhedronSection3d& section, double eps)
     {
-        SCSectionMeshConversion3d result{};
-        const SCSectionFaceRebuild3d rebuiltFaces = RebuildSectionFaces(section, eps);
+        SCSectionMeshConversionResult3d result{};
+        const SCSectionFaceRebuildResult3d rebuiltFaces = RebuildSectionFaces(section, eps);
         if (!rebuiltFaces.success)
         {
             result.issue = MeshConversionIssue3d::InvalidFace;
@@ -2807,10 +2807,10 @@ namespace Geometry
         return result;
     }
 
-    SCSectionMeshSetConversion3d ConvertSectionToTriangleMeshes(const SCPolyhedronSection3d& section, double eps)
+    SCSectionMeshSetConversionResult3d ConvertSectionToTriangleMeshes(const SCPolyhedronSection3d& section, double eps)
     {
-        SCSectionMeshSetConversion3d result{};
-        const SCSectionBodySetRebuild3d rebuiltBodies = RebuildSectionBodies(section, eps);
+        SCSectionMeshSetConversionResult3d result{};
+        const SCSectionBodySetRebuildResult3d rebuiltBodies = RebuildSectionBodies(section, eps);
         if (!rebuiltBodies.success)
         {
             result.issue = MeshConversionIssue3d::InvalidFace;
@@ -2876,7 +2876,7 @@ namespace Geometry
             return result;
         }
 
-        const SCSectionFaceRebuild3d rebuiltFaces = RebuildSectionFaces(section, eps);
+        const SCSectionFaceRebuildResult3d rebuiltFaces = RebuildSectionFaces(section, eps);
         if (!rebuiltFaces.success)
         {
             return result;

@@ -5,11 +5,13 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "Export/GeometryExport.h"
 #include "Geometry3d/ISCCurve3d.h"
 #include "Geometry3d/SCLineCurve3d.h"
+#include "Geometry3d/SCBoxTree3d.h"
 #include "Support/Epsilon.h"
 #include "Types/Geometry3d/SCBox3.h"
 #include "Types/Geometry3d/SCLineSegment3d.h"
@@ -85,12 +87,15 @@ namespace Geometry
         [[nodiscard]] std::string DebugString() const;
 
         [[nodiscard]] const std::vector<SCSegmentSearchEntry3d>& Entries() const;
-        [[nodiscard]] std::vector<SCSegmentSearchEntry3d>& Entries();
-        [[nodiscard]] const std::vector<SCSegmentSearchEntry3d>& Data() const;
-        [[nodiscard]] std::vector<SCSegmentSearchEntry3d>& Data();
+        [[deprecated("Use Entries() instead")]] [[nodiscard]] const std::vector<SCSegmentSearchEntry3d>& Data() const;
 
     private:
+        void RebuildIndices();
+
         std::size_t nextId_{0};
         std::vector<SCSegmentSearchEntry3d> entries_{};
+        SCBoxTree3d boxTree_{};
+        std::unordered_map<std::size_t, std::size_t> entryIndices_{};
+        bool hasUntrustedBounds_{false};
     };
 }  // namespace Geometry

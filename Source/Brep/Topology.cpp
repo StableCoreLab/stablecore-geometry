@@ -91,7 +91,7 @@ namespace Geometry
 
         [[nodiscard]] bool TryFindStrictInteriorSample(const SCPolygon2d& polygon, double eps, SCPoint2d& sample)
         {
-            const SCPoint2d centroid = Centroid(polygon);
+            const SCPoint2d centroid = polygon.Centroid();
             if (LocatePoint(centroid, polygon, eps) == SCPointContainment2d::Inside)
             {
                 sample = centroid;

@@ -38,8 +38,12 @@ namespace Geometry
 
     [[nodiscard]] GEOMETRY_API PolyhedronMeshConversion3d ConvertToTriangleMesh(const SCBrepFace& face,
                                                                                 double eps = Geometry::kDefaultEpsilon);
+    [[nodiscard]] GEOMETRY_API PolyhedronMeshConversion3d ConvertToTriangleMesh(
+        const SCBrepFace& face, const SCGeometryTolerance3d& tolerance);
 
     [[nodiscard]] GEOMETRY_API PolyhedronMeshConversion3d ConvertToTriangleMesh(const SCBrepBody& body,
                                                                                 double eps = Geometry::kDefaultEpsilon);
+    [[nodiscard]] GEOMETRY_API PolyhedronMeshConversion3d ConvertToTriangleMesh(
+        const SCBrepBody& body, const SCGeometryTolerance3d& tolerance);
 }  // namespace Geometry
 

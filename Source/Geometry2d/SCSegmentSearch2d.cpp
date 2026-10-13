@@ -38,15 +38,6 @@ namespace Geometry
     {
         return Add(segment.Clone());
     }
-    std::size_t SCSegmentSearch2d::Add(const SCLineSegment2d& segment)
-    {
-        return Add(segment.Clone());
-    }
-    std::size_t SCSegmentSearch2d::Add(const SCArcSegment2d& segment)
-    {
-        return Add(segment.Clone());
-    }
-
     bool SCSegmentSearch2d::Remove(std::size_t id)
     {
         const auto it = std::remove_if(

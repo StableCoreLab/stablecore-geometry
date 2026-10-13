@@ -36,8 +36,8 @@ namespace Geometry
 
         [[nodiscard]] const std::vector<SCPolyline2d>& Polylines() const;
         [[nodiscard]] std::vector<SCPolyline2d>& Polylines();
-        [[nodiscard]] const std::vector<SCPolyline2d>& Data() const;
-        [[nodiscard]] std::vector<SCPolyline2d>& Data();
+        [[deprecated("Use Polylines() instead")]] [[nodiscard]] const std::vector<SCPolyline2d>& Data() const;
+        [[deprecated("Use Polylines() instead")]] [[nodiscard]] std::vector<SCPolyline2d>& Data();
 
     private:
         std::vector<SCPolyline2d> polylines_{};

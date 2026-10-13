@@ -15,10 +15,12 @@
 
 namespace Geometry
 {
+    [[deprecated("Use SCPolygon2d::Perimeter() instead")]]
     [[nodiscard]] GEOMETRY_API double Perimeter(const SCPolygon2d& polygon);
     [[nodiscard]] GEOMETRY_API SCRingOrientation2d Orientation(const SCPolyline2d& ring);
     [[nodiscard]] GEOMETRY_API bool IsClockwise(const SCPolyline2d& ring);
     [[nodiscard]] GEOMETRY_API bool IsCounterClockwise(const SCPolyline2d& ring);
+    [[deprecated("Use SCPolygon2d::Centroid() instead")]]
     [[nodiscard]] GEOMETRY_API SCPoint2d Centroid(const SCPolygon2d& polygon);
 
     [[nodiscard]] GEOMETRY_API SCLineSegment2d Reverse(const SCLineSegment2d& segment);

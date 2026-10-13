@@ -110,4 +110,5 @@ namespace Geometry
     }
 
     using SCVector3d = SCVector3<double>;
+    using SCVector3i = SCVector3<int>;
 }  // namespace Geometry

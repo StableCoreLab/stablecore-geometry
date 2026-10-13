@@ -535,7 +535,7 @@ namespace Geometry
                         return false;
                     }
 
-                    const SCPoint2d samplePoint = Centroid(projectedPolygon);
+                    const SCPoint2d samplePoint = projectedPolygon.Centroid();
                     if (!samplePoint.IsValid() ||
                         LocatePoint(samplePoint, projectedPolygon, eps) == SCPointContainment2d::Outside)
                     {

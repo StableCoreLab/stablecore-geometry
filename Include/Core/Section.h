@@ -390,14 +390,22 @@ namespace Geometry
         }
     };
 
-    using SCSectionBodySetRebuild3d = SCSectionBodySetRebuildResult3d;
-    using SCSectionFaceRebuild3d = SCSectionFaceRebuildResult3d;
-    using SCSectionBodyRebuild3d = SCSectionBodyRebuildResult3d;
-    using SCSectionBrepFaceRebuild3d = SCSectionBrepFaceRebuildResult3d;
-    using SCSectionBrepBodyRebuild3d = SCSectionBrepBodyRebuildResult3d;
-    using SCSectionBrepBodySetRebuild3d = SCSectionBrepBodySetRebuildResult3d;
-    using SCSectionMeshConversion3d = SCSectionMeshConversionResult3d;
-    using SCSectionMeshSetConversion3d = SCSectionMeshSetConversionResult3d;
+    using SCSectionBodySetRebuild3d [[deprecated("Use SCSectionBodySetRebuildResult3d instead")]] =
+        SCSectionBodySetRebuildResult3d;
+    using SCSectionFaceRebuild3d [[deprecated("Use SCSectionFaceRebuildResult3d instead")]] =
+        SCSectionFaceRebuildResult3d;
+    using SCSectionBodyRebuild3d [[deprecated("Use SCSectionBodyRebuildResult3d instead")]] =
+        SCSectionBodyRebuildResult3d;
+    using SCSectionBrepFaceRebuild3d [[deprecated("Use SCSectionBrepFaceRebuildResult3d instead")]] =
+        SCSectionBrepFaceRebuildResult3d;
+    using SCSectionBrepBodyRebuild3d [[deprecated("Use SCSectionBrepBodyRebuildResult3d instead")]] =
+        SCSectionBrepBodyRebuildResult3d;
+    using SCSectionBrepBodySetRebuild3d [[deprecated("Use SCSectionBrepBodySetRebuildResult3d instead")]] =
+        SCSectionBrepBodySetRebuildResult3d;
+    using SCSectionMeshConversion3d [[deprecated("Use SCSectionMeshConversionResult3d instead")]] =
+        SCSectionMeshConversionResult3d;
+    using SCSectionMeshSetConversion3d [[deprecated("Use SCSectionMeshSetConversionResult3d instead")]] =
+        SCSectionMeshSetConversionResult3d;
 
     [[nodiscard]] GEOMETRY_API SCPolyhedronSection3d Section(const PolyhedronBody& body,
                                                            const SCPlane& plane,

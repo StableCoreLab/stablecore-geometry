@@ -50,8 +50,6 @@ namespace Geometry
         void Clear();
         std::size_t Add(std::shared_ptr<const ISCSegment2d> segment);
         std::size_t Add(const ISCSegment2d& segment);
-        std::size_t Add(const SCLineSegment2d& segment);
-        std::size_t Add(const SCArcSegment2d& segment);
         bool Remove(std::size_t id);
 
         [[nodiscard]] std::size_t Size() const;
@@ -73,8 +71,8 @@ namespace Geometry
 
         [[nodiscard]] const std::vector<SCSegmentSearchEntry2d>& Entries() const;
         [[nodiscard]] std::vector<SCSegmentSearchEntry2d>& Entries();
-        [[nodiscard]] const std::vector<SCSegmentSearchEntry2d>& Data() const;
-        [[nodiscard]] std::vector<SCSegmentSearchEntry2d>& Data();
+        [[deprecated("Use Entries() instead")]] [[nodiscard]] const std::vector<SCSegmentSearchEntry2d>& Data() const;
+        [[deprecated("Use Entries() instead")]] [[nodiscard]] std::vector<SCSegmentSearchEntry2d>& Data();
 
     private:
         std::size_t nextId_{0};

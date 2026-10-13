@@ -17,6 +17,7 @@ using Geometry::SCBoxTreeKnnHit2d;
 using Geometry::SCBoxTreeKnnHit3d;
 using Geometry::SCGeometryTolerance3d;
 using Geometry::SCIntersectionKind2d;
+using Geometry::SCIntervald;
 using Geometry::SCArcSegment2d;
 using Geometry::SCLine2d;
 using Geometry::SCLine3d;
@@ -25,7 +26,9 @@ using Geometry::SCLineSegment2d;
 using Geometry::SCLineSegment3d;
 using Geometry::SCPoint2d;
 using Geometry::SCPoint3d;
+using Geometry::SCPointContainment3d;
 using Geometry::SCPolyline2d;
+using Geometry::SCVector3d;
 using Geometry::SCSegmentSearch2d;
 using Geometry::SCSegmentSearch3d;
 using Geometry::SCTangentPoints2d;
@@ -304,6 +307,50 @@ TEST(MissingAlgorithmsCapabilityTest, SegmentSearch3dNearestUsesProvidedToleranc
 
     const auto looseHit = search.Nearest(SCPoint3d{0.0, 1.0, 0.0}, SCGeometryTolerance3d{1e-3, 1e-9, 1e-9});
     EXPECT_FALSE(looseHit.has_value());
+}
+
+TEST(MissingAlgorithmsCapabilityTest, SegmentSearch3dUsesBoxIndexForExactQueries)
+{
+    SCSegmentSearch3d search;
+    for (std::size_t id = 0; id < 32; ++id)
+    {
+        const double x = static_cast<double>(id);
+        search.Add(SCLineSegment3d{SCPoint3d{x, 0.0, 0.0}, SCPoint3d{x + 0.4, 0.0, 0.0}});
+    }
+
+    const SCPoint3d queryPoint{20.2, 0.3, 0.0};
+    const auto nearest = search.Nearest(queryPoint);
+    ASSERT_TRUE(nearest.has_value());
+    EXPECT_EQ(nearest->id, 20U);
+    EXPECT_NEAR(nearest->distanceSquared, 0.09, 1e-12);
+
+    const auto nearestThree = search.QueryKNearest(queryPoint, 3);
+    ASSERT_EQ(nearestThree.size(), 3U);
+    EXPECT_EQ(nearestThree[0].id, 20U);
+    EXPECT_EQ(nearestThree[1].id, 19U);
+    EXPECT_EQ(nearestThree[2].id, 21U);
+
+    const auto within = search.QueryWithinDistance(queryPoint, 0.31);
+    ASSERT_EQ(within.size(), 1U);
+    EXPECT_EQ(within.front().id, 20U);
+
+    const auto intersecting = search.QueryIntersecting(
+        SCBox3d::FromMinMax(SCPoint3d{19.9, -0.1, -0.1}, SCPoint3d{20.1, 0.1, 0.1}));
+    ASSERT_EQ(intersecting.size(), 1U);
+    EXPECT_EQ(intersecting.front(), 20U);
+
+    EXPECT_TRUE(search.Remove(20U));
+    const auto nearestAfterRemove = search.Nearest(queryPoint);
+    ASSERT_TRUE(nearestAfterRemove.has_value());
+    EXPECT_EQ(nearestAfterRemove->id, 19U);
+}
+
+TEST(MissingAlgorithmsCapabilityTest, ThreeDimensionalPointContainmentHasItsOwnEnum)
+{
+    const SCLine3d line = SCLine3d::FromOriginAndDirection(SCPoint3d{}, SCVector3d{1.0, 0.0, 0.0});
+    const SCLineCurve3d curve = SCLineCurve3d::FromLine(line, SCIntervald{0.0, 1.0});
+    const SCPointContainment3d containment = LocatePoint(SCPoint3d{0.5, 0.0, 0.0}, curve);
+    EXPECT_EQ(containment, SCPointContainment3d::OnBoundary);
 }
 
 TEST(MissingAlgorithmsCapabilityTest, PolylineIntersectionReturnsSharedCrossing)

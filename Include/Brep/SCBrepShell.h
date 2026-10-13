@@ -53,6 +53,11 @@ namespace Geometry
             return faces_.at(index);
         }
 
+        [[nodiscard]] const SCBrepFace& FaceAtRef(std::size_t index) const
+        {
+            return faces_.at(index);
+        }
+
         [[nodiscard]] const std::vector<SCBrepFace>& Faces() const
         {
             return faces_;

@@ -36,12 +36,36 @@ namespace Geometry
 
         [[nodiscard]] SCVector2 Normalized(double eps = kDefaultEpsilon) const
         {
-            const auto length = Length();
-            if (length <= eps)
+            SCVector2<LengthType> normalized{};
+            return TryNormalized(normalized, eps)
+                       ? SCVector2{static_cast<T>(normalized.x), static_cast<T>(normalized.y)}
+                       : SCVector2{};
+        }
+
+        template <typename TNormalized = LengthType>
+        [[nodiscard]] bool TryNormalized(SCVector2<TNormalized>& normalized, double eps = kDefaultEpsilon) const
+        {
+            if constexpr (!std::is_floating_point_v<TNormalized>)
             {
-                return SCVector2{};
+                (void)normalized;
+                (void)eps;
+                return false;
             }
-            return *this / length;
+            else
+            {
+                if (!this->IsValid() || !std::isfinite(eps) || eps < 0.0)
+                {
+                    return false;
+                }
+                const LengthType length = Length();
+                if (!std::isfinite(length) || length <= static_cast<LengthType>(eps))
+                {
+                    return false;
+                }
+                normalized = SCVector2<TNormalized>{static_cast<TNormalized>(static_cast<LengthType>(this->x) / length),
+                                                    static_cast<TNormalized>(static_cast<LengthType>(this->y) / length)};
+                return true;
+            }
         }
 
         [[nodiscard]] std::string DebugString() const
@@ -90,6 +114,24 @@ namespace Geometry
     [[nodiscard]] constexpr SCVector2<T> operator-(const SCPoint2<T>& lhs, const SCPoint2<T>& rhs)
     {
         return SCVector2<T>(lhs.x - rhs.x, lhs.y - rhs.y);
+    }
+
+    template <typename TLhs, typename TRhs>
+    [[nodiscard]] constexpr auto Dot(const SCVector2<TLhs>& lhs, const SCVector2<TRhs>& rhs)
+        -> std::common_type_t<TLhs, TRhs>
+    {
+        using ResultType = std::common_type_t<TLhs, TRhs>;
+        return static_cast<ResultType>(lhs.x) * static_cast<ResultType>(rhs.x) +
+               static_cast<ResultType>(lhs.y) * static_cast<ResultType>(rhs.y);
+    }
+
+    template <typename TLhs, typename TRhs>
+    [[nodiscard]] constexpr auto Cross(const SCVector2<TLhs>& lhs, const SCVector2<TRhs>& rhs)
+        -> std::common_type_t<TLhs, TRhs>
+    {
+        using ResultType = std::common_type_t<TLhs, TRhs>;
+        return static_cast<ResultType>(lhs.x) * static_cast<ResultType>(rhs.y) -
+               static_cast<ResultType>(lhs.y) * static_cast<ResultType>(rhs.x);
     }
 
     using SCVector2d = SCVector2<double>;

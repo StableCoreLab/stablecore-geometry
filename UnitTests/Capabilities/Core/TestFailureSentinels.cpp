@@ -178,10 +178,10 @@ TEST(InverseContractTest, ThreeDimensionalInverseRoundTrip)
     EXPECT_NEAR(roundTrip.z, point.z, 1e-12);
 }
 
-TEST(FailureSentinelContractTest, TryNormalizeFailureLeavesCallerOutputUnchanged)
+TEST(FailureSentinelContractTest, TryNormalizedReportsDegenerateInput)
 {
     Geometry::SCVector2d normalized{9.0, 9.0};
-    EXPECT_FALSE(Geometry::TryNormalize(Geometry::SCVector2d{}, normalized));
+    EXPECT_FALSE(Geometry::SCVector2d{}.TryNormalized(normalized));
     EXPECT_DOUBLE_EQ(normalized.x, 9.0);
     EXPECT_DOUBLE_EQ(normalized.y, 9.0);
 }

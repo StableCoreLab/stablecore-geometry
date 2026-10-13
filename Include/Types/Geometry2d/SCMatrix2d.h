@@ -24,6 +24,11 @@ namespace Geometry
             return SCMatrix2d{1.0, 0.0, 0.0, 1.0};
         }
 
+        [[nodiscard]] static constexpr SCMatrix2d FromRows(const SCVector2d& row0, const SCVector2d& row1)
+        {
+            return SCMatrix2d{row0.x, row0.y, row1.x, row1.y};
+        }
+
         // 2D rotation matrix (counterclockwise positive).
         [[nodiscard]] static SCMatrix2d Rotation(double angleRadians)
         {
@@ -40,6 +45,13 @@ namespace Geometry
         [[nodiscard]] double Determinant() const
         {
             return m00 * m11 - m01 * m10;
+        }
+
+        [[nodiscard]] bool AlmostEquals(const SCMatrix2d& other, double eps = kDefaultEpsilon) const
+        {
+            return std::isfinite(eps) && eps >= 0.0 && std::abs(m00 - other.m00) <= eps &&
+                   std::abs(m01 - other.m01) <= eps && std::abs(m10 - other.m10) <= eps &&
+                   std::abs(m11 - other.m11) <= eps;
         }
 
         [[nodiscard]] bool IsInvertible(double eps = kDefaultEpsilon) const
@@ -87,6 +99,9 @@ namespace Geometry
             stream << "SCMatrix2d{[" << m00 << ", " << m01 << "], [" << m10 << ", " << m11 << "]}";
             return stream.str();
         }
+
+        [[nodiscard]] constexpr bool operator==(const SCMatrix2d& other) const = default;
+        [[nodiscard]] constexpr bool operator!=(const SCMatrix2d& other) const = default;
     };
 
     [[nodiscard]] inline SCMatrix2d operator*(const SCMatrix2d& lhs, const SCMatrix2d& rhs)

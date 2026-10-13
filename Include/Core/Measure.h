@@ -98,12 +98,18 @@ namespace Geometry
 
     [[nodiscard]] GEOMETRY_API double Area(const SCTriangle3d& triangle);
     [[nodiscard]] GEOMETRY_API double Area(const PolyhedronFace3d& face, const SCGeometryTolerance3d& tolerance = {});
-    [[nodiscard]] GEOMETRY_API double Area(const SCBrepFace& face, double eps = Geometry::kDefaultEpsilon);
+    [[nodiscard]] GEOMETRY_API double Area(const SCBrepFace& face, const SCGeometryTolerance3d& tolerance = {});
+    [[deprecated("Use the overload taking SCGeometryTolerance3d")]]
+    [[nodiscard]] GEOMETRY_API double Area(const SCBrepFace& face, double eps);
     [[nodiscard]] GEOMETRY_API double Area(const TriangleMesh& mesh);
 
     [[nodiscard]] GEOMETRY_API double Volume(const TriangleMesh& mesh);
-    [[nodiscard]] GEOMETRY_API double Volume(const PolyhedronBody& body, double eps = Geometry::kDefaultEpsilon);
-    [[nodiscard]] GEOMETRY_API double Volume(const SCBrepBody& body, double eps = Geometry::kDefaultEpsilon);
+    [[nodiscard]] GEOMETRY_API double Volume(const PolyhedronBody& body, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API double Volume(const SCBrepBody& body, const SCGeometryTolerance3d& tolerance = {});
+    [[deprecated("Use the overload taking SCGeometryTolerance3d")]]
+    [[nodiscard]] GEOMETRY_API double Volume(const PolyhedronBody& body, double eps);
+    [[deprecated("Use the overload taking SCGeometryTolerance3d")]]
+    [[nodiscard]] GEOMETRY_API double Volume(const SCBrepBody& body, double eps);
 
     [[nodiscard]] GEOMETRY_API SCBox3d Bounds(const ISCCurve3d& curve);
     [[nodiscard]] GEOMETRY_API SCBox3d Bounds(const ISCSurface& surface);

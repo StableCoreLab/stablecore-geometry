@@ -93,4 +93,5 @@ namespace Geometry
     }
 
     using SCPoint3d = SCPoint3<double>;
+    using SCPoint3i = SCPoint3<int>;
 }  // namespace Geometry

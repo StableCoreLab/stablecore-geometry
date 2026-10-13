@@ -26,6 +26,13 @@ namespace Geometry
         Inside
     };
 
+    enum class SCPointContainment3d
+    {
+        Outside,
+        OnBoundary,
+        Inside
+    };
+
     enum class SCPointPlaneSide3d
     {
         Below,
@@ -52,25 +59,25 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API SCPointPlaneSide3d LocatePoint(const SCPoint3d& point,
                                                             const SCPlane& plane,
                                                             const SCGeometryTolerance3d& tolerance = {});
-    [[nodiscard]] GEOMETRY_API SCPointContainment2d LocatePoint(const SCPoint3d& point,
+    [[nodiscard]] GEOMETRY_API SCPointContainment3d LocatePoint(const SCPoint3d& point,
                                                               const ISCCurve3d& curve,
                                                               const SCGeometryTolerance3d& tolerance = {});
-    [[nodiscard]] GEOMETRY_API SCPointContainment2d LocatePoint(const SCPoint3d& point,
+    [[nodiscard]] GEOMETRY_API SCPointContainment3d LocatePoint(const SCPoint3d& point,
                                                               const SCCurveOnSurface& curveOnSurface,
                                                               const SCGeometryTolerance3d& tolerance = {});
-    [[nodiscard]] GEOMETRY_API SCPointContainment2d LocatePoint(const SCPoint3d& point,
+    [[nodiscard]] GEOMETRY_API SCPointContainment3d LocatePoint(const SCPoint3d& point,
                                                               const PolyhedronFace3d& face,
                                                               const SCGeometryTolerance3d& tolerance = {});
-    [[nodiscard]] GEOMETRY_API SCPointContainment2d LocatePoint(const SCPoint3d& point,
+    [[nodiscard]] GEOMETRY_API SCPointContainment3d LocatePoint(const SCPoint3d& point,
                                                               const PolyhedronBody& body,
                                                               const SCGeometryTolerance3d& tolerance = {});
-    [[nodiscard]] GEOMETRY_API SCPointContainment2d LocatePoint(const SCPoint3d& point,
+    [[nodiscard]] GEOMETRY_API SCPointContainment3d LocatePoint(const SCPoint3d& point,
                                                               const SCBrepFace& face,
                                                               const SCGeometryTolerance3d& tolerance = {});
-    [[nodiscard]] GEOMETRY_API SCPointContainment2d LocatePoint(const SCPoint3d& point,
+    [[nodiscard]] GEOMETRY_API SCPointContainment3d LocatePoint(const SCPoint3d& point,
                                                               const SCBrepBody& body,
                                                               const SCGeometryTolerance3d& tolerance = {});
-    [[nodiscard]] GEOMETRY_API SCPointContainment2d LocatePoint(const SCPoint3d& point,
+    [[nodiscard]] GEOMETRY_API SCPointContainment3d LocatePoint(const SCPoint3d& point,
                                                               const TriangleMesh& mesh,
                                                               const SCGeometryTolerance3d& tolerance = {});
 

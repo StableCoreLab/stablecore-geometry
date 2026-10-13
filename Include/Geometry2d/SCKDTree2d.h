@@ -65,7 +65,7 @@ namespace Geometry
         [[nodiscard]] std::string DebugString() const;
 
         [[nodiscard]] const std::vector<SCKDTreeEntry2d>& Entries() const;
-        [[nodiscard]] const std::vector<SCKDTreeEntry2d>& Data() const;
+        [[deprecated("Use Entries() instead")]] [[nodiscard]] const std::vector<SCKDTreeEntry2d>& Data() const;
 
     private:
         void Rebuild();

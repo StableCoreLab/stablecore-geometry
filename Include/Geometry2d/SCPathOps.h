@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "Export/GeometryExport.h"
 #include "Geometry2d/SCLineSegment2d.h"
 #include "Geometry2d/SCMultiPolygon2d.h"
@@ -17,8 +19,19 @@ namespace Geometry
         SCMultiPolygon2d right{};
     };
 
+    struct GEOMETRY_API SCPolygonCutParts2d
+    {
+        SCMultiPolygon2d left{};
+        SCMultiPolygon2d right{};
+    };
+
     [[nodiscard]] GEOMETRY_API SCPolyline2d SubPolyline(const SCPolyline2d& polyline, double startLength, double endLength);
 
+    [[nodiscard]] GEOMETRY_API std::optional<SCPolygonCutParts2d> CutPolygonParts(
+        const SCPolygon2d& polygon,
+        const SCLineSegment2d& cutter,
+        double eps = Geometry::kDefaultEpsilon);
+    [[deprecated("Use CutPolygonParts() and its optional result")]]
     [[nodiscard]] GEOMETRY_API SCPolygonCutResult2d CutPolygon(const SCPolygon2d& polygon,
                                                                const SCLineSegment2d& cutter,
                                                                double eps = Geometry::kDefaultEpsilon);

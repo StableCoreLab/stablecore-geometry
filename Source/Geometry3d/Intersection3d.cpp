@@ -4,6 +4,8 @@
 #include <array>
 #include <cmath>
 #include <set>
+#include <type_traits>
+#include <utility>
 
 #include "Core/Projection.h"
 #include "Core/Relation.h"
@@ -222,6 +224,39 @@ namespace Geometry
             const SCPointContainment2d containment = LocatePoint(SCPoint2d{u, v}, polygon, eps);
             onBoundary = containment == SCPointContainment2d::OnBoundary;
             return containment == SCPointContainment2d::Inside || onBoundary;
+        }
+
+        template <typename BodyIntersection, typename VisitFaces>
+        [[nodiscard]] BodyIntersection IntersectLineWithBodyFaces(const SCGeometryTolerance3d& tolerance,
+                                                                  VisitFaces&& visitFaces)
+        {
+            BodyIntersection result{};
+            using Hit = typename std::decay_t<decltype(result.hits)>::value_type;
+            std::vector<std::pair<std::size_t, Hit>> collected;
+            std::set<std::pair<long long, std::size_t>> dedup;
+            const auto collect = [&](std::size_t faceIndex, Hit hit) {
+                if (!hit.intersects)
+                {
+                    return;
+                }
+                const long long bucket = static_cast<long long>(std::llround(
+                    hit.lineParameter / std::max(tolerance.parameterEpsilon, Geometry::kIntersectionDefaultEpsilon)));
+                if (dedup.emplace(bucket, faceIndex).second)
+                {
+                    collected.emplace_back(faceIndex, std::move(hit));
+                }
+            };
+            visitFaces(collect);
+            std::sort(collected.begin(), collected.end(), [](const auto& lhs, const auto& rhs) {
+                return lhs.second.lineParameter < rhs.second.lineParameter;
+            });
+            for (auto& [faceIndex, hit] : collected)
+            {
+                result.faceIndices.push_back(faceIndex);
+                result.hits.push_back(std::move(hit));
+            }
+            result.intersects = !result.hits.empty();
+            return result;
         }
 
         [[nodiscard]] bool PointInTriangle3d(const SCPoint3d& point, const SCTriangle3d& triangle, double eps)
@@ -707,59 +742,29 @@ namespace Geometry
 
     SCLineBrepBodyIntersection3d Intersect(const SCLine3d& line, const SCBrepBody& body, const SCGeometryTolerance3d& tolerance)
     {
-        SCLineBrepBodyIntersection3d result{};
         if (!line.IsValid(tolerance.distanceEpsilon) || !body.IsValid(tolerance))
         {
-            return result;
+            return {};
         }
-
-        std::vector<std::pair<std::size_t, SCLineBrepFaceIntersection3d>> collected;
-        std::set<std::pair<long long, std::size_t>> dedup;
-        std::size_t faceIndex = 0;
-        for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
-        {
-            const SCBrepShell shell = body.ShellAt(shellIndex);
-            for (std::size_t localFaceIndex = 0; localFaceIndex < shell.FaceCount(); ++localFaceIndex, ++faceIndex)
-            {
-                const SCLineBrepFaceIntersection3d hit = Intersect(line, shell.FaceAt(localFaceIndex), tolerance);
-                if (!hit.intersects)
+        return IntersectLineWithBodyFaces<SCLineBrepBodyIntersection3d>(
+            tolerance, [&](auto&& collect) {
+                std::size_t faceIndex = 0;
+                for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
                 {
-                    continue;
+                    const SCBrepShell& shell = body.ShellAtRef(shellIndex);
+                    for (std::size_t localFaceIndex = 0; localFaceIndex < shell.FaceCount(); ++localFaceIndex, ++faceIndex)
+                    {
+                        collect(faceIndex, Intersect(line, shell.FaceAtRef(localFaceIndex), tolerance));
+                    }
                 }
-
-                const long long bucket = static_cast<long long>(std::llround(
-                    hit.lineParameter / std::max(tolerance.parameterEpsilon, Geometry::kIntersectionDefaultEpsilon)));
-                if (!dedup.emplace(bucket, faceIndex).second)
-                {
-                    continue;
-                }
-
-                collected.emplace_back(faceIndex, hit);
-            }
-        }
-
-        std::sort(collected.begin(),
-                  collected.end(),
-                  [](const std::pair<std::size_t, SCLineBrepFaceIntersection3d>& lhs,
-                     const std::pair<std::size_t, SCLineBrepFaceIntersection3d>& rhs) {
-                      return lhs.second.lineParameter < rhs.second.lineParameter;
-                  });
-
-        for (const auto& [hitFaceIndex, hit] : collected)
-        {
-            result.faceIndices.push_back(hitFaceIndex);
-            result.hits.push_back(hit);
-        }
-
-        result.intersects = !result.hits.empty();
-        return result;
+            });
     }
 
     SCLinePolyhedronFaceIntersection3d Intersect(const SCLine3d& line,
                                                const PolyhedronFace3d& face,
                                                const SCGeometryTolerance3d& tolerance)
     {
-        if (!line.IsValid(tolerance.distanceEpsilon) || !face.IsValid(tolerance.distanceEpsilon))
+        if (!line.IsValid(tolerance.distanceEpsilon) || !face.IsValid(tolerance))
         {
             return {};
         }
@@ -798,47 +803,17 @@ namespace Geometry
                                                const PolyhedronBody& body,
                                                const SCGeometryTolerance3d& tolerance)
     {
-        SCLinePolyhedronBodyIntersection3d result{};
-        if (!line.IsValid(tolerance.distanceEpsilon) || !body.IsValid(tolerance.distanceEpsilon))
+        if (!line.IsValid(tolerance.distanceEpsilon) || !body.IsValid(tolerance))
         {
-            return result;
+            return {};
         }
-
-        std::vector<std::pair<std::size_t, SCLinePolyhedronFaceIntersection3d>> collected;
-        std::set<std::pair<long long, std::size_t>> dedup;
-        for (std::size_t faceIndex = 0; faceIndex < body.FaceCount(); ++faceIndex)
-        {
-            const SCLinePolyhedronFaceIntersection3d hit = Intersect(line, body.FaceAt(faceIndex), tolerance);
-            if (!hit.intersects)
-            {
-                continue;
-            }
-
-            const long long bucket = static_cast<long long>(std::llround(
-                hit.lineParameter / std::max(tolerance.parameterEpsilon, Geometry::kIntersectionDefaultEpsilon)));
-            if (!dedup.emplace(bucket, faceIndex).second)
-            {
-                continue;
-            }
-
-            collected.emplace_back(faceIndex, hit);
-        }
-
-        std::sort(collected.begin(),
-                  collected.end(),
-                  [](const std::pair<std::size_t, SCLinePolyhedronFaceIntersection3d>& lhs,
-                     const std::pair<std::size_t, SCLinePolyhedronFaceIntersection3d>& rhs) {
-                      return lhs.second.lineParameter < rhs.second.lineParameter;
-                  });
-
-        for (const auto& [hitFaceIndex, hit] : collected)
-        {
-            result.faceIndices.push_back(hitFaceIndex);
-            result.hits.push_back(hit);
-        }
-
-        result.intersects = !result.hits.empty();
-        return result;
+        return IntersectLineWithBodyFaces<SCLinePolyhedronBodyIntersection3d>(
+            tolerance, [&](auto&& collect) {
+                for (std::size_t faceIndex = 0; faceIndex < body.FaceCount(); ++faceIndex)
+                {
+                    collect(faceIndex, Intersect(line, body.FaceAtRef(faceIndex), tolerance));
+                }
+            });
     }
 
     SCLineTriangleMeshIntersection3d Intersect(const SCLine3d& line,

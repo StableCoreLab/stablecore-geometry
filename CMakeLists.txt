@@ -176,6 +176,9 @@ target_compile_features(${SCGEOMETRY_TARGET} PUBLIC cxx_std_20)
 if (MSVC)
     target_compile_options(${SCGEOMETRY_TARGET} PRIVATE /MP)
 endif()
+target_compile_options(${SCGEOMETRY_TARGET} INTERFACE
+    $<$<CXX_COMPILER_ID:MSVC>:/utf-8>
+)
 
 # The library exports its own symbols while every consumer of the shared target
 # imports them.  Keeping these definitions on their respective usage sides is

@@ -1,7 +1,9 @@
 #include "Geometry3d/SCSegmentSearch3d.h"
 
 #include <algorithm>
+#include <cmath>
 #include <sstream>
+#include <unordered_set>
 #include <utility>
 
 #include "Core/Metrics.h"
@@ -16,6 +18,20 @@ namespace Geometry
             const SCLine3d line = SCLine3d::FromOriginAndDirection(segment.startPoint, segment.endPoint - segment.startPoint);
             return std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(line, SCIntervald{0.0, 1.0}));
         }
+
+        [[nodiscard]] bool Encloses(const SCBox3d& outer, const SCBox3d& inner)
+        {
+            if (!outer.IsValid() || !inner.IsValid())
+            {
+                return false;
+            }
+            const SCPoint3d& outerMin = outer.MinPoint();
+            const SCPoint3d& outerMax = outer.MaxPoint();
+            const SCPoint3d& innerMin = inner.MinPoint();
+            const SCPoint3d& innerMax = inner.MaxPoint();
+            return outerMin.x <= innerMin.x && outerMin.y <= innerMin.y && outerMin.z <= innerMin.z &&
+                   innerMax.x <= outerMax.x && innerMax.y <= outerMax.y && innerMax.z <= outerMax.z;
+        }
     }  // namespace
 
     SCSegmentSearch3d::SCSegmentSearch3d(std::vector<SCSegmentSearchEntry3d> entries) : entries_(std::move(entries))
@@ -24,11 +40,35 @@ namespace Geometry
         {
             nextId_ = std::max(nextId_, entry.id + 1);
         }
+        RebuildIndices();
+    }
+
+    void SCSegmentSearch3d::RebuildIndices()
+    {
+        boxTree_.Clear();
+        entryIndices_.clear();
+        hasUntrustedBounds_ = false;
+        for (std::size_t index = 0; index < entries_.size(); ++index)
+        {
+            const auto& entry = entries_[index];
+            if (entry.curve != nullptr && !Encloses(entry.box, entry.curve->Bounds()))
+            {
+                hasUntrustedBounds_ = true;
+            }
+            if (!entryIndices_.try_emplace(entry.id, index).second)
+            {
+                hasUntrustedBounds_ = true;
+            }
+            boxTree_.Add(entry.id, entry.box);
+        }
     }
 
     void SCSegmentSearch3d::Clear()
     {
         entries_.clear();
+        boxTree_.Clear();
+        entryIndices_.clear();
+        hasUntrustedBounds_ = false;
         nextId_ = 0;
     }
 
@@ -36,7 +76,16 @@ namespace Geometry
     {
         const std::size_t id = nextId_++;
         const SCBox3d box = curve != nullptr ? curve->Bounds() : SCBox3d{};
+        if (curve != nullptr && !box.IsValid())
+        {
+            hasUntrustedBounds_ = true;
+        }
         entries_.push_back(SCSegmentSearchEntry3d{id, std::move(curve), box});
+        if (!entryIndices_.emplace(id, entries_.size() - 1).second)
+        {
+            hasUntrustedBounds_ = true;
+        }
+        boxTree_.Add(id, box);
         return id;
     }
 
@@ -64,6 +113,7 @@ namespace Geometry
             return false;
         }
         entries_.erase(it, entries_.end());
+        RebuildIndices();
         return true;
     }
 
@@ -96,37 +146,60 @@ namespace Geometry
 
     const SCSegmentSearchEntry3d* SCSegmentSearch3d::Find(std::size_t id) const
     {
-        const auto it = std::find_if(
-            entries_.begin(), entries_.end(), [id](const SCSegmentSearchEntry3d& entry) { return entry.id == id; });
-        return it == entries_.end() ? nullptr : &*it;
+        const auto it = entryIndices_.find(id);
+        return it == entryIndices_.end() ? nullptr : &entries_[it->second];
     }
 
     std::vector<std::size_t> SCSegmentSearch3d::QueryIntersecting(const SCBox3d& box, double eps) const
     {
-        std::vector<std::size_t> result;
-        for (const auto& entry : entries_)
+        if (entryIndices_.size() != entries_.size())
         {
-            if (Intersects(entry.box, box, eps))
+            std::vector<std::size_t> result;
+            for (const auto& entry : entries_)
             {
-                result.push_back(entry.id);
+                if (Intersects(entry.box, box, eps))
+                {
+                    result.push_back(entry.id);
+                }
             }
+            return result;
         }
+        std::vector<std::size_t> result = boxTree_.Query(box, eps);
+        std::sort(result.begin(), result.end(), [this](std::size_t lhs, std::size_t rhs) {
+            return entryIndices_.at(lhs) < entryIndices_.at(rhs);
+        });
+        result.erase(std::unique(result.begin(), result.end()), result.end());
         return result;
     }
 
     std::vector<std::size_t> SCSegmentSearch3d::QueryIntersecting(const ISCCurve3d& curve, double eps) const
     {
-        std::vector<std::size_t> result;
-        const SCBox3d queryBox = curve.Bounds();
-        for (const auto& entry : entries_)
-        {
-            if (Intersects(entry.box, queryBox, eps))
-            {
-                result.push_back(entry.id);
-            }
-        }
-        return result;
+        return QueryIntersecting(curve.Bounds(), eps);
     }
+
+    namespace
+    {
+        [[nodiscard]] SCBox3d MakeSearchBox(const SCPoint3d& point, double radius)
+        {
+            return SCBox3d::FromMinMax(SCPoint3d{point.x - radius, point.y - radius, point.z - radius},
+                                       SCPoint3d{point.x + radius, point.y + radius, point.z + radius});
+        }
+
+        [[nodiscard]] std::vector<std::size_t> OrderIndicesByEntry(
+            const std::vector<std::size_t>& ids,
+            const std::unordered_map<std::size_t, std::size_t>& indices)
+        {
+            std::vector<std::size_t> ordered;
+            ordered.reserve(ids.size());
+            for (const std::size_t id : ids)
+            {
+                ordered.push_back(indices.at(id));
+            }
+            std::sort(ordered.begin(), ordered.end());
+            ordered.erase(std::unique(ordered.begin(), ordered.end()), ordered.end());
+            return ordered;
+        }
+    }  // namespace
 
     std::vector<SCSegmentSearchHit3d> SCSegmentSearch3d::QueryWithinDistance(const SCPoint3d& point, double maxDistance) const
     {
@@ -138,9 +211,51 @@ namespace Geometry
                                                                               const SCGeometryTolerance3d& tolerance) const
     {
         std::vector<SCSegmentSearchHit3d> result;
-        const double maxDistanceSquared = maxDistance * maxDistance;
-        for (const auto& entry : entries_)
+        if (std::isnan(maxDistance) || maxDistance < 0.0)
         {
+            return result;
+        }
+        const double maxDistanceSquared = maxDistance * maxDistance;
+        std::vector<std::size_t> candidateIndices;
+        if (hasUntrustedBounds_)
+        {
+            candidateIndices.reserve(entries_.size());
+            for (std::size_t index = 0; index < entries_.size(); ++index)
+            {
+                candidateIndices.push_back(index);
+            }
+        }
+        else if (std::isfinite(maxDistance))
+        {
+            const SCBox3d queryBox = MakeSearchBox(point, maxDistance);
+            if (queryBox.IsValid())
+            {
+                candidateIndices = OrderIndicesByEntry(boxTree_.Query(queryBox, tolerance.boxPadding), entryIndices_);
+            }
+            else
+            {
+                candidateIndices.reserve(entries_.size());
+                for (std::size_t index = 0; index < entries_.size(); ++index)
+                {
+                    candidateIndices.push_back(index);
+                }
+            }
+        }
+        else
+        {
+            candidateIndices.reserve(entries_.size());
+            for (std::size_t index = 0; index < entries_.size(); ++index)
+            {
+                candidateIndices.push_back(index);
+            }
+        }
+        for (const std::size_t index : candidateIndices)
+        {
+            const auto& entry = entries_[index];
+            if (entry.curve == nullptr)
+            {
+                continue;
+            }
             const auto projection = ProjectPointToCurve(point, *entry.curve, tolerance);
             if (!projection.success || projection.distanceSquared > maxDistanceSquared)
             {
@@ -161,25 +276,8 @@ namespace Geometry
     std::optional<SCSegmentSearchHit3d> SCSegmentSearch3d::Nearest(const SCPoint3d& point,
                                                                    const SCGeometryTolerance3d& tolerance) const
     {
-        std::optional<SCSegmentSearchHit3d> best;
-        for (const auto& entry : entries_)
-        {
-            const auto projection = ProjectPointToCurve(point, *entry.curve, tolerance);
-            if (!projection.success)
-            {
-                continue;
-            }
-
-            if (!best || projection.distanceSquared < best->distanceSquared)
-            {
-                best = SCSegmentSearchHit3d{entry.id,
-                                            projection.point,
-                                            projection.distanceSquared,
-                                            projection.parameter,
-                                            entry.curve->ParameterRange().Contains(projection.parameter)};
-            }
-        }
-        return best;
+        const auto hits = QueryKNearest(point, 1, std::numeric_limits<double>::max(), tolerance);
+        return hits.empty() ? std::nullopt : std::optional<SCSegmentSearchHit3d>{hits.front()};
     }
 
     std::vector<SCSegmentSearchHit3d> SCSegmentSearch3d::QueryKNearest(const SCPoint3d& point,
@@ -195,46 +293,102 @@ namespace Geometry
                                                                        const SCGeometryTolerance3d& tolerance) const
     {
         std::vector<SCSegmentSearchHit3d> hits;
-        if (!(maxDistance >= 0.0))
+        if (k == 0 || std::isnan(maxDistance) || maxDistance < 0.0)
         {
             return hits;
         }
 
         const double maxDistanceSquared = maxDistance * maxDistance;
-        hits.reserve(entries_.size());
-        for (const auto& entry : entries_)
+        std::unordered_set<std::size_t> projectedIds;
+        std::size_t candidateCount = std::min(k, entries_.size());
+        if (candidateCount == 0)
         {
-            const auto projection = ProjectPointToCurve(point, *entry.curve, tolerance);
-            if (!projection.success || projection.distanceSquared > maxDistanceSquared)
-            {
-                continue;
-            }
-
-            hits.push_back(SCSegmentSearchHit3d{entry.id,
-                                                projection.point,
-                                                projection.distanceSquared,
-                                                projection.parameter,
-                                                entry.curve->ParameterRange().Contains(projection.parameter)});
+            return hits;
         }
 
-        if (k < hits.size())
-        {
-            std::nth_element(hits.begin(), hits.begin() + static_cast<std::ptrdiff_t>(k), hits.end(), [](const auto& lhs, const auto& rhs) {
-                if (lhs.distanceSquared != rhs.distanceSquared)
-                {
-                    return lhs.distanceSquared < rhs.distanceSquared;
-                }
-                return lhs.id < rhs.id;
-            });
-            hits.resize(k);
-        }
-
-        std::sort(hits.begin(), hits.end(), [](const auto& lhs, const auto& rhs) {
+        const auto compareHits = [](const auto& lhs, const auto& rhs) {
             if (lhs.distanceSquared != rhs.distanceSquared)
             {
                 return lhs.distanceSquared < rhs.distanceSquared;
             }
             return lhs.id < rhs.id;
+        };
+
+        if (hasUntrustedBounds_)
+        {
+            hits.reserve(entries_.size());
+            for (const auto& entry : entries_)
+            {
+                if (entry.curve == nullptr)
+                {
+                    continue;
+                }
+                const auto projection = ProjectPointToCurve(point, *entry.curve, tolerance);
+                if (!projection.success || projection.distanceSquared > maxDistanceSquared)
+                {
+                    continue;
+                }
+                hits.push_back(SCSegmentSearchHit3d{entry.id,
+                                                    projection.point,
+                                                    projection.distanceSquared,
+                                                    projection.parameter,
+                                                    entry.curve->ParameterRange().Contains(projection.parameter)});
+            }
+            std::sort(hits.begin(), hits.end(), compareHits);
+            if (hits.size() > k)
+            {
+                hits.resize(k);
+            }
+            return hits;
+        }
+
+        for (;;)
+        {
+            const auto boxHits = boxTree_.QueryKNearest(point, candidateCount, 0.0);
+            for (const SCBoxTreeKnnHit3d& boxHit : boxHits)
+            {
+                if (!projectedIds.insert(boxHit.id).second)
+                {
+                    continue;
+                }
+                const auto* entry = Find(boxHit.id);
+                if (entry == nullptr || entry->curve == nullptr)
+                {
+                    continue;
+                }
+                const auto projection = ProjectPointToCurve(point, *entry->curve, tolerance);
+                if (!projection.success || projection.distanceSquared > maxDistanceSquared)
+                {
+                    continue;
+                }
+                hits.push_back(SCSegmentSearchHit3d{entry->id,
+                                                    projection.point,
+                                                    projection.distanceSquared,
+                                                    projection.parameter,
+                                                    entry->curve->ParameterRange().Contains(projection.parameter)});
+            }
+
+            if (hits.size() > k)
+            {
+                std::nth_element(hits.begin(), hits.begin() + static_cast<std::ptrdiff_t>(k - 1), hits.end(), compareHits);
+                hits.resize(k);
+            }
+
+            const auto worstHit = std::max_element(hits.begin(), hits.end(), [](const auto& lhs, const auto& rhs) {
+                return lhs.distanceSquared < rhs.distanceSquared;
+            });
+            if (boxHits.size() < candidateCount || candidateCount == entries_.size() ||
+                (hits.size() >= k && boxHits.back().distanceSquared > worstHit->distanceSquared))
+            {
+                break;
+            }
+            const std::size_t doubled = candidateCount > entries_.size() / 2 ? entries_.size() : candidateCount * 2;
+            candidateCount = std::max(candidateCount + 1, doubled);
+        }
+
+        std::sort(hits.begin(), hits.end(), [](const auto& lhs, const auto& rhs) {
+            return lhs.distanceSquared == rhs.distanceSquared ? lhs.id < rhs.id
+                                                                : lhs.distanceSquared < rhs.distanceSquared;
         });
         return hits;
     }
@@ -252,17 +406,7 @@ namespace Geometry
         return entries_;
     }
 
-    std::vector<SCSegmentSearchEntry3d>& SCSegmentSearch3d::Entries()
-    {
-        return entries_;
-    }
-
     const std::vector<SCSegmentSearchEntry3d>& SCSegmentSearch3d::Data() const
-    {
-        return Entries();
-    }
-
-    std::vector<SCSegmentSearchEntry3d>& SCSegmentSearch3d::Data()
     {
         return Entries();
     }

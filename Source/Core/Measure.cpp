@@ -213,15 +213,24 @@ namespace Geometry
         return std::abs(projection.polygon.Area());
     }
 
-    double Area(const SCBrepFace& face, double eps)
+    double Area(const SCBrepFace& face, const SCGeometryTolerance3d& tolerance)
     {
-        const PolyhedronMeshConversion3d conversion = ConvertToTriangleMesh(face, eps);
+        if (!tolerance.IsValid())
+        {
+            return 0.0;
+        }
+        const PolyhedronMeshConversion3d conversion = ConvertToTriangleMesh(face, tolerance);
         if (!conversion.success)
         {
             return 0.0;
         }
 
         return conversion.mesh.SurfaceArea();
+    }
+
+    double Area(const SCBrepFace& face, double eps)
+    {
+        return Area(face, SCGeometryTolerance3d{eps, eps, eps, eps});
     }
 
     double Area(const TriangleMesh& mesh)
@@ -245,9 +254,13 @@ namespace Geometry
         return std::abs(signedVolume);
     }
 
-    double Volume(const PolyhedronBody& body, double eps)
+    double Volume(const PolyhedronBody& body, const SCGeometryTolerance3d& tolerance)
     {
-        const PolyhedronMeshConversion3d conversion = ConvertToTriangleMesh(body, eps);
+        if (!tolerance.IsValid())
+        {
+            return 0.0;
+        }
+        const PolyhedronMeshConversion3d conversion = ConvertToTriangleMesh(body, tolerance.distanceEpsilon);
         if (!conversion.success)
         {
             return 0.0;
@@ -256,15 +269,29 @@ namespace Geometry
         return Volume(conversion.mesh);
     }
 
-    double Volume(const SCBrepBody& body, double eps)
+    double Volume(const SCBrepBody& body, const SCGeometryTolerance3d& tolerance)
     {
-        const PolyhedronMeshConversion3d conversion = ConvertToTriangleMesh(body, eps);
+        if (!tolerance.IsValid())
+        {
+            return 0.0;
+        }
+        const PolyhedronMeshConversion3d conversion = ConvertToTriangleMesh(body, tolerance);
         if (!conversion.success)
         {
             return 0.0;
         }
 
         return Volume(conversion.mesh);
+    }
+
+    double Volume(const PolyhedronBody& body, double eps)
+    {
+        return Volume(body, SCGeometryTolerance3d{eps, eps, eps, eps});
+    }
+
+    double Volume(const SCBrepBody& body, double eps)
+    {
+        return Volume(body, SCGeometryTolerance3d{eps, eps, eps, eps});
     }
 
     SCBox3d Bounds(const ISCCurve3d& curve)

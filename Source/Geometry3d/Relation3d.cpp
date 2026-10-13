@@ -13,6 +13,42 @@
 
 namespace Geometry
 {
+    namespace
+    {
+        const SCVector3d kContainmentProbeDirection{1.0, 0.3713906763541037, 0.52999894000318};
+
+        template <typename ProjectBody, typename IntersectBody>
+        [[nodiscard]] SCPointContainment3d LocatePointInClosedBody(const SCPoint3d& point,
+                                                                   const SCGeometryTolerance3d& tolerance,
+                                                                   ProjectBody&& projectBody,
+                                                                   IntersectBody&& intersectBody)
+        {
+            const auto projection = projectBody();
+            if (projection.success &&
+                projection.projection.distanceSquared <= tolerance.distanceEpsilon * tolerance.distanceEpsilon)
+            {
+                return SCPointContainment3d::OnBoundary;
+            }
+
+            const SCLine3d probe = SCLine3d::FromOriginAndDirection(point, kContainmentProbeDirection);
+            const auto intersections = intersectBody(probe);
+            if (!intersections.intersects)
+            {
+                return SCPointContainment3d::Outside;
+            }
+
+            std::size_t crossingCount = 0;
+            for (const auto& hit : intersections.hits)
+            {
+                if (hit.lineParameter > tolerance.parameterEpsilon)
+                {
+                    ++crossingCount;
+                }
+            }
+            return (crossingCount % 2 == 1) ? SCPointContainment3d::Inside : SCPointContainment3d::Outside;
+        }
+    }  // namespace
+
     SCPointPlaneSide3d LocatePoint(const SCPoint3d& point, const SCPlane& plane, const SCGeometryTolerance3d& tolerance)
     {
         if (!plane.IsValid(tolerance.distanceEpsilon))
@@ -32,177 +68,142 @@ namespace Geometry
         return SCPointPlaneSide3d::OnPlane;
     }
 
-    SCPointContainment2d LocatePoint(const SCPoint3d& point, const ISCCurve3d& curve, const SCGeometryTolerance3d& tolerance)
+    SCPointContainment3d LocatePoint(const SCPoint3d& point, const ISCCurve3d& curve, const SCGeometryTolerance3d& tolerance)
     {
         if (!curve.IsValid(tolerance))
         {
-            return SCPointContainment2d::Outside;
+            return SCPointContainment3d::Outside;
         }
 
         const SCCurveProjection3d projection = ProjectPointToCurve(point, curve, tolerance);
         if (!projection.success)
         {
-            return SCPointContainment2d::Outside;
+            return SCPointContainment3d::Outside;
         }
 
         return projection.distanceSquared <= tolerance.distanceEpsilon * tolerance.distanceEpsilon
-                   ? SCPointContainment2d::OnBoundary
-                   : SCPointContainment2d::Outside;
+                   ? SCPointContainment3d::OnBoundary
+                   : SCPointContainment3d::Outside;
     }
 
-    SCPointContainment2d LocatePoint(const SCPoint3d& point,
+    SCPointContainment3d LocatePoint(const SCPoint3d& point,
                                    const SCCurveOnSurface& curveOnSurface,
                                    const SCGeometryTolerance3d& tolerance)
     {
         if (!curveOnSurface.IsValid(tolerance))
         {
-            return SCPointContainment2d::Outside;
+            return SCPointContainment3d::Outside;
         }
 
         const SCCurveOnSurfaceProjection3d projection = ProjectPointToCurveOnSurface(point, curveOnSurface, tolerance);
         if (!projection.success)
         {
-            return SCPointContainment2d::Outside;
+            return SCPointContainment3d::Outside;
         }
 
         return projection.distanceSquared <= tolerance.distanceEpsilon * tolerance.distanceEpsilon
-                   ? SCPointContainment2d::OnBoundary
-                   : SCPointContainment2d::Outside;
+                   ? SCPointContainment3d::OnBoundary
+                   : SCPointContainment3d::Outside;
     }
 
-    SCPointContainment2d LocatePoint(const SCPoint3d& point,
+    SCPointContainment3d LocatePoint(const SCPoint3d& point,
                                    const PolyhedronFace3d& face,
                                    const SCGeometryTolerance3d& tolerance)
     {
-        if (!face.IsValid(tolerance.distanceEpsilon))
+        if (!face.IsValid(tolerance))
         {
-            return SCPointContainment2d::Outside;
+            return SCPointContainment3d::Outside;
         }
 
         if (LocatePoint(point, face.SupportPlane(), tolerance) != SCPointPlaneSide3d::OnPlane)
         {
-            return SCPointContainment2d::Outside;
+            return SCPointContainment3d::Outside;
         }
 
         const SCFaceProjection3d projection = ProjectFaceToPolygon2d(face, tolerance);
         if (!projection.success)
         {
-            return SCPointContainment2d::Outside;
+            return SCPointContainment3d::Outside;
         }
 
         const SCVector3d delta = point - projection.origin;
-        return LocatePoint(SCPoint2d{Dot(delta, projection.uAxis), Dot(delta, projection.vAxis)},
-                           projection.polygon,
-                           tolerance.distanceEpsilon);
+        const SCPointContainment2d containment = LocatePoint(SCPoint2d{Dot(delta, projection.uAxis), Dot(delta, projection.vAxis)},
+                                                               projection.polygon,
+                                                               tolerance.distanceEpsilon);
+        return containment == SCPointContainment2d::Inside
+                   ? SCPointContainment3d::Inside
+                   : (containment == SCPointContainment2d::OnBoundary ? SCPointContainment3d::OnBoundary
+                                                                     : SCPointContainment3d::Outside);
     }
 
-    SCPointContainment2d LocatePoint(const SCPoint3d& point,
+    SCPointContainment3d LocatePoint(const SCPoint3d& point,
                                    const PolyhedronBody& body,
                                    const SCGeometryTolerance3d& tolerance)
     {
-        if (!body.IsValid(tolerance.distanceEpsilon))
+        if (!tolerance.IsValid() || !body.IsValid(tolerance))
         {
-            return SCPointContainment2d::Outside;
+            return SCPointContainment3d::Outside;
         }
-
-        const SCPolyhedronBodyProjection3d projection = ProjectPointToPolyhedronBody(point, body, tolerance);
-        if (projection.success &&
-            projection.projection.distanceSquared <= tolerance.distanceEpsilon * tolerance.distanceEpsilon)
-        {
-            return SCPointContainment2d::OnBoundary;
-        }
-
-        const SCLine3d probe = SCLine3d::FromOriginAndDirection(point, SCVector3d{1.0, 0.3713906763541037, 0.52999894000318});
-        const SCLinePolyhedronBodyIntersection3d intersections = Intersect(probe, body, tolerance);
-        if (!intersections.intersects)
-        {
-            return SCPointContainment2d::Outside;
-        }
-
-        std::size_t crossingCount = 0;
-        for (const SCLinePolyhedronFaceIntersection3d& hit : intersections.hits)
-        {
-            if (hit.lineParameter > tolerance.parameterEpsilon)
-            {
-                ++crossingCount;
-            }
-        }
-
-        return (crossingCount % 2 == 1) ? SCPointContainment2d::Inside : SCPointContainment2d::Outside;
+        return LocatePointInClosedBody(
+            point,
+            tolerance,
+            [&] { return ProjectPointToPolyhedronBody(point, body, tolerance); },
+            [&](const SCLine3d& probe) { return Intersect(probe, body, tolerance); });
     }
 
-    SCPointContainment2d LocatePoint(const SCPoint3d& point, const SCBrepFace& face, const SCGeometryTolerance3d& tolerance)
+    SCPointContainment3d LocatePoint(const SCPoint3d& point, const SCBrepFace& face, const SCGeometryTolerance3d& tolerance)
     {
         if (!face.IsValid(tolerance) || face.SupportSurface() == nullptr)
         {
-            return SCPointContainment2d::Outside;
+            return SCPointContainment3d::Outside;
         }
 
         const SCBrepFaceProjection3d projection = ProjectPointToBrepFace(point, face, tolerance);
         if (!projection.success || projection.distanceSquared > tolerance.distanceEpsilon * tolerance.distanceEpsilon)
         {
-            return SCPointContainment2d::Outside;
+            return SCPointContainment3d::Outside;
         }
 
         if (projection.onBoundary)
         {
-            return SCPointContainment2d::OnBoundary;
+            return SCPointContainment3d::OnBoundary;
         }
 
-        return projection.onTrimmedFace ? SCPointContainment2d::Inside : SCPointContainment2d::Outside;
+        return projection.onTrimmedFace ? SCPointContainment3d::Inside : SCPointContainment3d::Outside;
     }
 
-    SCPointContainment2d LocatePoint(const SCPoint3d& point, const SCBrepBody& body, const SCGeometryTolerance3d& tolerance)
+    SCPointContainment3d LocatePoint(const SCPoint3d& point, const SCBrepBody& body, const SCGeometryTolerance3d& tolerance)
     {
         if (!body.IsValid(tolerance))
         {
-            return SCPointContainment2d::Outside;
+            return SCPointContainment3d::Outside;
         }
 
-        const SCBrepBodyProjection3d projection = ProjectPointToBrepBody(point, body, tolerance);
-        if (projection.success &&
-            projection.projection.distanceSquared <= tolerance.distanceEpsilon * tolerance.distanceEpsilon)
-        {
-            return SCPointContainment2d::OnBoundary;
-        }
-
-        const SCLine3d probe = SCLine3d::FromOriginAndDirection(point, SCVector3d{1.0, 0.3713906763541037, 0.52999894000318});
-        const SCLineBrepBodyIntersection3d intersections = Intersect(probe, body, tolerance);
-        if (!intersections.intersects)
-        {
-            return SCPointContainment2d::Outside;
-        }
-
-        std::size_t crossingCount = 0;
-        for (const SCLineBrepFaceIntersection3d& hit : intersections.hits)
-        {
-            if (hit.lineParameter > tolerance.parameterEpsilon)
-            {
-                ++crossingCount;
-            }
-        }
-
-        return (crossingCount % 2 == 1) ? SCPointContainment2d::Inside : SCPointContainment2d::Outside;
+        return LocatePointInClosedBody(
+            point,
+            tolerance,
+            [&] { return ProjectPointToBrepBody(point, body, tolerance); },
+            [&](const SCLine3d& probe) { return Intersect(probe, body, tolerance); });
     }
 
-    SCPointContainment2d LocatePoint(const SCPoint3d& point, const TriangleMesh& mesh, const SCGeometryTolerance3d& tolerance)
+    SCPointContainment3d LocatePoint(const SCPoint3d& point, const TriangleMesh& mesh, const SCGeometryTolerance3d& tolerance)
     {
         if (!mesh.IsValid(tolerance.distanceEpsilon))
         {
-            return SCPointContainment2d::Outside;
+            return SCPointContainment3d::Outside;
         }
 
         const SCTriangleMeshProjection3d projection = ProjectPointToTriangleMesh(point, mesh, tolerance);
         if (projection.success && projection.distanceSquared <= tolerance.distanceEpsilon * tolerance.distanceEpsilon)
         {
-            return SCPointContainment2d::OnBoundary;
+            return SCPointContainment3d::OnBoundary;
         }
 
-        const SCLine3d probe = SCLine3d::FromOriginAndDirection(point, SCVector3d{1.0, 0.3713906763541037, 0.52999894000318});
+        const SCLine3d probe = SCLine3d::FromOriginAndDirection(point, kContainmentProbeDirection);
         const SCLineTriangleMeshIntersection3d intersections = Intersect(probe, mesh, tolerance);
         if (!intersections.intersects)
         {
-            return SCPointContainment2d::Outside;
+            return SCPointContainment3d::Outside;
         }
 
         std::size_t crossingCount = 0;
@@ -214,7 +215,7 @@ namespace Geometry
             }
         }
 
-        return (crossingCount % 2 == 1) ? SCPointContainment2d::Inside : SCPointContainment2d::Outside;
+        return (crossingCount % 2 == 1) ? SCPointContainment3d::Inside : SCPointContainment3d::Outside;
     }
 
     bool IsParallel(const SCVector3d& first, const SCVector3d& second, const SCGeometryTolerance3d& tolerance)

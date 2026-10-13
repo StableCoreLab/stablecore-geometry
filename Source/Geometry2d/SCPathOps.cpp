@@ -6,6 +6,7 @@
 #include <limits>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "../Detail/ArrangementVertices2d.h"
@@ -940,40 +941,61 @@ namespace Geometry
         return ClipPolylineLength(polyline, startLength, endLength);
     }
 
-    SCPolygonCutResult2d CutPolygon(const SCPolygon2d& polygon, const SCLineSegment2d& cutter, double eps)
+    namespace
     {
-        SCPolygonCutResult2d result;
-
-        if (!polygon.IsValid())
+        [[nodiscard]] SCPolygonCutResult2d ComputePolygonCut(const SCPolygon2d& polygon,
+                                                              const SCLineSegment2d& cutter,
+                                                              double eps)
         {
-            return result;
-        }
-
-        if (polygon.HoleCount() > 0)
-        {
-            const SCPolygon2d leftClip = BuildHalfPlaneClipPolygon(polygon, cutter, true, eps);
-            const SCPolygon2d rightClip = BuildHalfPlaneClipPolygon(polygon, cutter, false, eps);
-            if (!leftClip.IsValid() || !rightClip.IsValid())
+            SCPolygonCutResult2d result;
+            if (!polygon.IsValid())
             {
                 return result;
             }
 
-            result.left = Intersect(polygon, leftClip, eps);
-            result.right = Intersect(polygon, rightClip, eps);
-            result.success = !result.left.IsEmpty() && !result.right.IsEmpty();
-            return result;
-        }
+            if (polygon.HoleCount() > 0)
+            {
+                const SCPolygon2d leftClip = BuildHalfPlaneClipPolygon(polygon, cutter, true, eps);
+                const SCPolygon2d rightClip = BuildHalfPlaneClipPolygon(polygon, cutter, false, eps);
+                if (!leftClip.IsValid() || !rightClip.IsValid())
+                {
+                    return result;
+                }
 
-        const SCPolygon2d left = ClipPolygonHalfPlane(polygon, cutter, true);
-        const SCPolygon2d right = ClipPolygonHalfPlane(polygon, cutter, false);
-        if (!left.IsValid() || !right.IsValid())
-        {
+                result.left = Intersect(polygon, leftClip, eps);
+                result.right = Intersect(polygon, rightClip, eps);
+                result.success = !result.left.IsEmpty() && !result.right.IsEmpty();
+                return result;
+            }
+
+            const SCPolygon2d left = ClipPolygonHalfPlane(polygon, cutter, true);
+            const SCPolygon2d right = ClipPolygonHalfPlane(polygon, cutter, false);
+            if (!left.IsValid() || !right.IsValid())
+            {
+                return result;
+            }
+            result.success = true;
+            result.left.Add(SCPolygon2d(left));
+            result.right.Add(SCPolygon2d(right));
             return result;
         }
-        result.success = true;
-        result.left.Add(SCPolygon2d(left));
-        result.right.Add(SCPolygon2d(right));
-        return result;
+    }  // namespace
+
+    std::optional<SCPolygonCutParts2d> CutPolygonParts(const SCPolygon2d& polygon,
+                                                       const SCLineSegment2d& cutter,
+                                                       double eps)
+    {
+        SCPolygonCutResult2d result = ComputePolygonCut(polygon, cutter, eps);
+        if (!result.success)
+        {
+            return std::nullopt;
+        }
+        return SCPolygonCutParts2d{std::move(result.left), std::move(result.right)};
+    }
+
+    SCPolygonCutResult2d CutPolygon(const SCPolygon2d& polygon, const SCLineSegment2d& cutter, double eps)
+    {
+        return ComputePolygonCut(polygon, cutter, eps);
     }
 
     SCMultiPolygon2d BuildMultiPolygonByLines(const SCMultiPolyline2d& polylines, double eps)

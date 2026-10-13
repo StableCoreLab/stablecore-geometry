@@ -73,16 +73,12 @@ TEST(PointVectorTest, CoversPointAndVectorContracts)
     EXPECT_TRUE(SCVector2d(3.0, 4.0).AlmostEquals(SCVector2d(3.0 + 1e-10, 4.0 - 1e-10), 1e-9));
 
     SCVector2d normalized;
-    const bool normalizedOk = TryNormalize(SCVector2d(3.0, 4.0), normalized);
-    ASSERT_TRUE(normalizedOk);
+    ASSERT_TRUE(SCVector2d(3.0, 4.0).TryNormalized(normalized));
     ASSERT_LT(std::abs(normalized.x - 0.6), 1e-12);
     ASSERT_LT(std::abs(normalized.y - 0.8), 1e-12);
     ASSERT_LT(std::abs(normalized.Length() - 1.0), 1e-12);
 
-    SCVector2d zeroNormalized(7.0, 9.0);
-    const bool zeroOk = TryNormalize(SCVector2d(1e-12, 0.0), zeroNormalized);
-    ASSERT_FALSE(zeroOk);
-    ASSERT_EQ(zeroNormalized, SCVector2d(7.0, 9.0));
+    EXPECT_FALSE(SCVector2d(1e-12, 0.0).TryNormalized(normalized));
 
 }
 

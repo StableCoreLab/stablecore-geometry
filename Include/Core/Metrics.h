@@ -21,6 +21,7 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API double Distance(const SCPoint2d& point, const SCArcSegment2d& segment);
     [[nodiscard]] GEOMETRY_API double Distance(const SCPoint2d& point, const ISCSegment2d& segment);
 
+    [[deprecated("Use SCPolyline2d::Bounds() instead")]]
     [[nodiscard]] GEOMETRY_API SCBox2d Bounds(const SCPolyline2d& polyline);
 
     [[nodiscard]] GEOMETRY_API bool Contains(const SCBox2d& box,

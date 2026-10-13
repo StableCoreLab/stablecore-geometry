@@ -50,28 +50,28 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
 {
     const SCPolygon2d square(SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}, SCPoint2d{4.0, 4.0}, SCPoint2d{0.0, 4.0}},
                                       SCPolylineClosure::Closed));
-    const auto cut = CutPolygon(square, SCLineSegment2d(SCPoint2d{2.0, -1.0}, SCPoint2d{2.0, 5.0}));
-    ASSERT_TRUE(cut.success);
-    ASSERT_EQ(cut.left.Count(), 1);
-    ASSERT_EQ(cut.right.Count(), 1);
-    EXPECT_NEAR(cut.left[0].Area(), 8.0, 1e-9);
-    EXPECT_NEAR(cut.right[0].Area(), 8.0, 1e-9);
+    const auto cut = CutPolygonParts(square, SCLineSegment2d(SCPoint2d{2.0, -1.0}, SCPoint2d{2.0, 5.0}));
+    ASSERT_TRUE(cut.has_value());
+    ASSERT_EQ(cut->left.Count(), 1);
+    ASSERT_EQ(cut->right.Count(), 1);
+    EXPECT_NEAR(cut->left[0].Area(), 8.0, 1e-9);
+    EXPECT_NEAR(cut->right[0].Area(), 8.0, 1e-9);
 
     const SCPolygon2d donut(SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{8.0, 0.0}, SCPoint2d{8.0, 8.0}, SCPoint2d{0.0, 8.0}},
                                      SCPolylineClosure::Closed),
                           {SCPolyline2d({SCPoint2d{3.0, 3.0}, SCPoint2d{3.0, 5.0}, SCPoint2d{5.0, 5.0}, SCPoint2d{5.0, 3.0}},
                                       SCPolylineClosure::Closed)});
-    const auto donutCut = CutPolygon(donut, SCLineSegment2d(SCPoint2d{4.0, -2.0}, SCPoint2d{4.0, 10.0}));
-    ASSERT_TRUE(donutCut.success);
+    const auto donutCut = CutPolygonParts(donut, SCLineSegment2d(SCPoint2d{4.0, -2.0}, SCPoint2d{4.0, 10.0}));
+    ASSERT_TRUE(donutCut.has_value());
     double leftArea = 0.0;
     double rightArea = 0.0;
-    for (std::size_t i = 0; i < donutCut.left.Count(); ++i)
+    for (std::size_t i = 0; i < donutCut->left.Count(); ++i)
     {
-        leftArea += donutCut.left[i].Area();
+        leftArea += donutCut->left[i].Area();
     }
-    for (std::size_t i = 0; i < donutCut.right.Count(); ++i)
+    for (std::size_t i = 0; i < donutCut->right.Count(); ++i)
     {
-        rightArea += donutCut.right[i].Area();
+        rightArea += donutCut->right[i].Area();
     }
     EXPECT_NEAR(leftArea, 30.0, 1e-6);
     EXPECT_NEAR(rightArea, 30.0, 1e-6);

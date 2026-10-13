@@ -339,7 +339,7 @@ namespace Geometry
 
         [[nodiscard]] SCPoint2d PrimaryReferencePoint(const SCPolygon2d& polygon, double eps)
         {
-            const SCPoint2d centroid = Centroid(polygon);
+            const SCPoint2d centroid = polygon.Centroid();
             if (LocatePoint(centroid, polygon, eps) != SCPointContainment2d::Outside)
             {
                 return centroid;
@@ -379,7 +379,7 @@ namespace Geometry
                 const SCPolygon2d& candidate = polygons[i];
                 double score = candidate.Area();
                 const SCPointContainment2d referenceContainment = LocatePoint(reference, candidate, eps);
-                const SCPointContainment2d candidateContainment = LocatePoint(Centroid(candidate), source, eps);
+                const SCPointContainment2d candidateContainment = LocatePoint(candidate.Centroid(), source, eps);
                 const PolygonContainment2d relation = Relate(candidate, source, eps);
                 if (outward)
                 {

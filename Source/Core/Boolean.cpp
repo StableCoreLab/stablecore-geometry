@@ -1098,7 +1098,7 @@ namespace Geometry
                 }
             };
 
-            accumulate(Centroid(face));
+            accumulate(face.Centroid());
             accumulate(sample);
 
             const double scale = ComputePolygonScale(face);
@@ -1342,7 +1342,7 @@ namespace Geometry
 
         [[nodiscard]] SCPoint2d SampleFacePoint(const SCPolygon2d& polygon, double eps)
         {
-            const SCPoint2d centroid = Centroid(polygon);
+            const SCPoint2d centroid = polygon.Centroid();
             if (LocatePoint(centroid, polygon, eps) == SCPointContainment2d::Inside)
             {
                 return centroid;

@@ -72,6 +72,7 @@ using Geometry::SCPlaneSurface;
 using Geometry::SCPoint2d;
 using Geometry::SCPoint3d;
 using Geometry::SCPointContainment2d;
+using Geometry::SCPointContainment3d;
 using Geometry::SCPolygon2d;
 using Geometry::PolyhedronBody;
 using Geometry::PolyhedronFace3d;
@@ -96,19 +97,19 @@ using Geometry::RebuildSectionBrepFaces;
 using Geometry::RebuildSectionFaces;
 using Geometry::SCRuledSurface;
 using Geometry::Section;
-using Geometry::SCSectionBodyRebuild3d;
+using Geometry::SCSectionBodyRebuildResult3d;
 using Geometry::SCSectionBodyRebuildIssue3d;
-using Geometry::SCSectionBodySetRebuild3d;
-using Geometry::SCSectionBrepBodyRebuild3d;
-using Geometry::SCSectionBrepBodySetRebuild3d;
-using Geometry::SCSectionBrepFaceRebuild3d;
+using Geometry::SCSectionBodySetRebuildResult3d;
+using Geometry::SCSectionBrepBodyRebuildResult3d;
+using Geometry::SCSectionBrepBodySetRebuildResult3d;
+using Geometry::SCSectionBrepFaceRebuildResult3d;
 using Geometry::SCSectionComponents3d;
 using Geometry::SCSectionContentKind3d;
-using Geometry::SCSectionFaceRebuild3d;
+using Geometry::SCSectionFaceRebuildResult3d;
 using Geometry::SCSectionFaceRebuildIssue3d;
 using Geometry::SCSectionIssue3d;
-using Geometry::SCSectionMeshConversion3d;
-using Geometry::SCSectionMeshSetConversion3d;
+using Geometry::SCSectionMeshConversionResult3d;
+using Geometry::SCSectionMeshSetConversionResult3d;
 using Geometry::SCSectionTopology3d;
 using Geometry::SCSectionValidation3d;
 using Geometry::SCSectionValidationIssue3d;
@@ -224,6 +225,20 @@ TEST(GeometryTest, CoversTwoDimensionalPrimitives)
     EXPECT_TRUE(polygon.Bounds().AlmostEquals(SCBox2d::FromMinMax(SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 4.0}), 1e-12));
     ASSERT_EQ(polygon.DebugString().find("SCPolygon2d{holeCount=1"), 0);
 
+}
+
+TEST(GeometryTest, ThreeDimensionalIntegerPrimitivesFollowTheTemplatedFamily)
+{
+    const SCPoint3i minimum{1, 2, 3};
+    const SCPoint3i maximum{4, 6, 8};
+    SCBox3i box = SCBox3i::FromMinMax(minimum, maximum);
+    EXPECT_TRUE(box.IsValid());
+    EXPECT_EQ(box.Width(), 3.0);
+    EXPECT_EQ(box.Height(), 4.0);
+    EXPECT_EQ(box.Depth(), 5.0);
+    EXPECT_EQ(box.Center(), SCPoint3d(2.5, 4.0, 5.5));
+    EXPECT_TRUE(box.AlmostEquals(SCBox3i::FromMinMax(minimum, maximum)));
+    EXPECT_TRUE((SCVector3i{1, 2, 3} + SCVector3i{2, 3, 4}) == SCVector3i(3, 5, 7));
 }
 
 TEST(GeometryTest, CoversThreeDimensionalCapabilities)
@@ -342,8 +357,8 @@ TEST(GeometryTest, CoversThreeDimensionalCapabilities)
     ASSERT_TRUE(planeCurveIntersection.IsValid());
     EXPECT_NEAR(planeCurveIntersection.curveParameter, 0.0, 1e-12);
     ASSERT_TRUE(planeCurveIntersection.point.AlmostEquals(SCPoint3d{0.0, 0.0, 0.0}, 1e-12));
-    ASSERT_EQ(LocatePoint(SCPoint3d{0.5, 0.0, 0.0}, lowerRail), SCPointContainment2d::OnBoundary);
-    ASSERT_EQ(LocatePoint(SCPoint3d{0.5, 1.0, 0.0}, lowerRail), SCPointContainment2d::Outside);
+    ASSERT_EQ(LocatePoint(SCPoint3d{0.5, 0.0, 0.0}, lowerRail), SCPointContainment3d::OnBoundary);
+    ASSERT_EQ(LocatePoint(SCPoint3d{0.5, 1.0, 0.0}, lowerRail), SCPointContainment3d::Outside);
     const SCRuledSurface ruledSurface = SCRuledSurface::FromCurves(lowerRail, upperRail);
     ASSERT_TRUE(ruledSurface.IsValid());
     ASSERT_NE(ruledSurface.FirstCurve(), nullptr);
@@ -396,8 +411,8 @@ TEST(GeometryTest, CoversThreeDimensionalCapabilities)
     ASSERT_TRUE(planeCurveOnSurfaceIntersection.IsValid());
     ASSERT_TRUE(planeCurveOnSurfaceIntersection.uv.AlmostEquals(SCPoint2d{-2.0, -3.0}, 1e-12));
     ASSERT_TRUE(planeCurveOnSurfaceIntersection.point.AlmostEquals(SCPoint3d{-2.0, -3.0, 5.0}, 1e-12));
-    ASSERT_EQ(LocatePoint(SCPoint3d{0.0, -1.0, 5.0}, curveOnSurface), SCPointContainment2d::OnBoundary);
-    ASSERT_EQ(LocatePoint(SCPoint3d{0.0, -1.0, 6.0}, curveOnSurface), SCPointContainment2d::Outside);
+    ASSERT_EQ(LocatePoint(SCPoint3d{0.0, -1.0, 5.0}, curveOnSurface), SCPointContainment3d::OnBoundary);
+    ASSERT_EQ(LocatePoint(SCPoint3d{0.0, -1.0, 6.0}, curveOnSurface), SCPointContainment3d::Outside);
 
     const auto planeSurfaceProjection = ProjectPointToSurface(SCPoint3d{0.5, -1.0, 8.0}, planeSurface);
     ASSERT_TRUE(planeSurfaceProjection.success);
@@ -477,7 +492,7 @@ TEST(GeometryTest, CoversTriangleMeshCapabilities)
     ASSERT_TRUE(meshProjection.IsValid());
     ASSERT_TRUE(meshProjection.point.AlmostEquals(SCPoint3d{0.0, 0.0, 1.0}, 1e-12));
     EXPECT_NEAR(Distance(SCPoint3d{1.0, 1.0, 3.0}, mesh), std::sqrt(6.0), 1e-12);
-    ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 0.0}, mesh), SCPointContainment2d::Outside);
+    ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 0.0}, mesh), SCPointContainment3d::Outside);
     const auto meshLineIntersection =
         Intersect(SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 1.0, 3.0}, SCVector3d{0.0, 0.0, -1.0}), mesh);
     ASSERT_FALSE(meshLineIntersection.intersects);
@@ -559,9 +574,9 @@ TEST(GeometryTest, CoversTriangleMeshCapabilities)
     ASSERT_TRUE(IsManifoldTriangleMesh(tetraMesh));
     ASSERT_TRUE(IsConsistentlyOrientedTriangleMesh(tetraMesh));
     EXPECT_NEAR(Volume(tetraMesh), 1.0 / 6.0, 1e-12);
-    ASSERT_EQ(LocatePoint(SCPoint3d{0.1, 0.1, 0.1}, tetraMesh), SCPointContainment2d::Inside);
-    ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 1.0}, tetraMesh), SCPointContainment2d::Outside);
-    ASSERT_EQ(LocatePoint(SCPoint3d{0.0, 0.2, 0.2}, tetraMesh), SCPointContainment2d::OnBoundary);
+    ASSERT_EQ(LocatePoint(SCPoint3d{0.1, 0.1, 0.1}, tetraMesh), SCPointContainment3d::Inside);
+    ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 1.0}, tetraMesh), SCPointContainment3d::Outside);
+    ASSERT_EQ(LocatePoint(SCPoint3d{0.0, 0.2, 0.2}, tetraMesh), SCPointContainment3d::OnBoundary);
     const TriangleMeshRepair3d repairedTetraMesh = OrientTriangleMeshConsistently(tetraMesh);
     ASSERT_TRUE(repairedTetraMesh.success);
     ASSERT_EQ(repairedTetraMesh.issue, MeshRepairIssue3d::None);
@@ -751,9 +766,9 @@ TEST(GeometryTest, CoversPolyhedronAndBrepCapabilities)
     ASSERT_TRUE(faceMesh.mesh.IsValid());
     ASSERT_EQ(faceMesh.mesh.TriangleCount(), 2);
     EXPECT_NEAR(faceMesh.mesh.SurfaceArea(), 4.0, 1e-12);
-    ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 0.0}, face), SCPointContainment2d::Inside);
-    ASSERT_EQ(LocatePoint(SCPoint3d{2.0, 1.0, 0.0}, face), SCPointContainment2d::OnBoundary);
-    ASSERT_EQ(LocatePoint(SCPoint3d{3.0, 1.0, 0.0}, face), SCPointContainment2d::Outside);
+    ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 0.0}, face), SCPointContainment3d::Inside);
+    ASSERT_EQ(LocatePoint(SCPoint3d{2.0, 1.0, 0.0}, face), SCPointContainment3d::OnBoundary);
+    ASSERT_EQ(LocatePoint(SCPoint3d{3.0, 1.0, 0.0}, face), SCPointContainment3d::Outside);
     const auto polyFaceProjection = ProjectPointToPolyhedronFace(SCPoint3d{1.0, 1.0, 3.0}, face);
     ASSERT_TRUE(polyFaceProjection.success);
     ASSERT_TRUE(polyFaceProjection.IsValid());
@@ -785,7 +800,7 @@ TEST(GeometryTest, CoversPolyhedronAndBrepCapabilities)
     ASSERT_EQ(polyBodyLineIntersection.hits.size(), 1);
     ASSERT_EQ(polyBodyLineIntersection.faceIndices[0], 0);
     ASSERT_TRUE(polyBodyLineIntersection.hits[0].point.AlmostEquals(SCPoint3d{1.0, 1.0, 0.0}, 1e-12));
-    ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 0.0}, body), SCPointContainment2d::OnBoundary);
+    ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 0.0}, body), SCPointContainment3d::OnBoundary);
 
     const PolyhedronFace3d holedFace(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}),
                                      outerLoop,
@@ -898,9 +913,9 @@ TEST(GeometryTest, CoversPolyhedronAndBrepCapabilities)
     ASSERT_FALSE(brepFaceLineIntersection.onBoundary);
     EXPECT_NEAR(brepFaceLineIntersection.lineParameter, 3.0, 1e-12);
     ASSERT_TRUE(brepFaceLineIntersection.point.AlmostEquals(SCPoint3d{1.0, 1.0, 5.0}, 1e-12));
-    ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 5.0}, brepFace), SCPointContainment2d::Inside);
-    ASSERT_EQ(LocatePoint(SCPoint3d{2.0, 1.0, 5.0}, brepFace), SCPointContainment2d::OnBoundary);
-    ASSERT_EQ(LocatePoint(SCPoint3d{3.0, 1.0, 5.0}, brepFace), SCPointContainment2d::Outside);
+    ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 5.0}, brepFace), SCPointContainment3d::Inside);
+    ASSERT_EQ(LocatePoint(SCPoint3d{2.0, 1.0, 5.0}, brepFace), SCPointContainment3d::OnBoundary);
+    ASSERT_EQ(LocatePoint(SCPoint3d{3.0, 1.0, 5.0}, brepFace), SCPointContainment3d::Outside);
     const auto brepBodyLineIntersection =
         Intersect(SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 1.0, 8.0}, SCVector3d{0.0, 0.0, -1.0}), brepBody);
     ASSERT_TRUE(brepBodyLineIntersection.intersects);
@@ -909,8 +924,8 @@ TEST(GeometryTest, CoversPolyhedronAndBrepCapabilities)
     ASSERT_EQ(brepBodyLineIntersection.hits.size(), 1);
     ASSERT_EQ(brepBodyLineIntersection.faceIndices[0], 0);
     ASSERT_TRUE(brepBodyLineIntersection.hits[0].point.AlmostEquals(SCPoint3d{1.0, 1.0, 5.0}, 1e-12));
-    ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 5.0}, brepBody), SCPointContainment2d::OnBoundary);
-    ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 8.0}, brepBody), SCPointContainment2d::Outside);
+    ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 5.0}, brepBody), SCPointContainment3d::OnBoundary);
+    ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 8.0}, brepBody), SCPointContainment3d::Outside);
     const auto brepFaceProjectionInside = ProjectPointToBrepFace(SCPoint3d{1.0, 1.0, 8.0}, brepFace);
     ASSERT_TRUE(brepFaceProjectionInside.success);
     ASSERT_TRUE(brepFaceProjectionInside.IsValid());
@@ -1050,9 +1065,9 @@ TEST(GeometryTest, CoversSectionRebuildCapabilities)
 {
     const PolyhedronBody cubeBody = Geometry::Test::BuildUnitCubeBody();
     ASSERT_TRUE(cubeBody.IsValid());
-    ASSERT_EQ(LocatePoint(SCPoint3d{0.5, 0.5, 0.5}, cubeBody), SCPointContainment2d::Inside);
-    ASSERT_EQ(LocatePoint(SCPoint3d{1.5, 0.5, 0.5}, cubeBody), SCPointContainment2d::Outside);
-    ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 0.5, 0.5}, cubeBody), SCPointContainment2d::OnBoundary);
+    ASSERT_EQ(LocatePoint(SCPoint3d{0.5, 0.5, 0.5}, cubeBody), SCPointContainment3d::Inside);
+    ASSERT_EQ(LocatePoint(SCPoint3d{1.5, 0.5, 0.5}, cubeBody), SCPointContainment3d::Outside);
+    ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 0.5, 0.5}, cubeBody), SCPointContainment3d::OnBoundary);
     const SCPolyhedronSection3d middleSection =
         Section(cubeBody, SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.5}, SCVector3d{0.0, 0.0, 1.0}));
     ASSERT_TRUE(middleSection.success);
@@ -1080,12 +1095,12 @@ TEST(GeometryTest, CoversSectionRebuildCapabilities)
     ASSERT_EQ(middleSection.polygons.size(), 1);
     EXPECT_NEAR(middleSection.polygons[0].Area(), 1.0, 1e-12);
     EXPECT_NEAR(middleSection.origin.z, 0.5, 1e-12);
-    const SCSectionFaceRebuild3d rebuiltMiddleFaces = RebuildSectionFaces(middleSection);
+    const SCSectionFaceRebuildResult3d rebuiltMiddleFaces = RebuildSectionFaces(middleSection);
     ASSERT_TRUE(rebuiltMiddleFaces.success);
     ASSERT_EQ(rebuiltMiddleFaces.issue, SCSectionFaceRebuildIssue3d::None);
     ASSERT_TRUE(rebuiltMiddleFaces.IsValid());
     ASSERT_EQ(rebuiltMiddleFaces.faces.size(), 1);
-    const SCSectionBrepFaceRebuild3d rebuiltMiddleBrepFaces = RebuildSectionBrepFaces(middleSection);
+    const SCSectionBrepFaceRebuildResult3d rebuiltMiddleBrepFaces = RebuildSectionBrepFaces(middleSection);
     ASSERT_TRUE(rebuiltMiddleBrepFaces.success);
     ASSERT_TRUE(rebuiltMiddleBrepFaces.IsValid());
     ASSERT_EQ(rebuiltMiddleBrepFaces.faces.size(), 1);
@@ -1093,31 +1108,31 @@ TEST(GeometryTest, CoversSectionRebuildCapabilities)
     const auto rebuiltMiddleMesh = ConvertToTriangleMesh(rebuiltMiddleFaces.faces[0]);
     ASSERT_TRUE(rebuiltMiddleMesh.success);
     EXPECT_NEAR(rebuiltMiddleMesh.mesh.SurfaceArea(), 1.0, 1e-12);
-    const SCSectionBodyRebuild3d rebuiltMiddleBody = RebuildSectionBody(middleSection);
+    const SCSectionBodyRebuildResult3d rebuiltMiddleBody = RebuildSectionBody(middleSection);
     ASSERT_TRUE(rebuiltMiddleBody.success);
     ASSERT_EQ(rebuiltMiddleBody.issue, SCSectionBodyRebuildIssue3d::None);
     ASSERT_TRUE(rebuiltMiddleBody.IsValid());
     ASSERT_EQ(rebuiltMiddleBody.body.FaceCount(), 1);
-    const SCSectionBrepBodyRebuild3d rebuiltMiddleBrepBody = RebuildSectionBrepBody(middleSection);
+    const SCSectionBrepBodyRebuildResult3d rebuiltMiddleBrepBody = RebuildSectionBrepBody(middleSection);
     ASSERT_TRUE(rebuiltMiddleBrepBody.success);
     ASSERT_TRUE(rebuiltMiddleBrepBody.IsValid());
     ASSERT_EQ(rebuiltMiddleBrepBody.body.FaceCount(), 1);
-    const SCSectionBrepBodySetRebuild3d rebuiltMiddleBrepBodies = RebuildSectionBrepBodies(middleSection);
+    const SCSectionBrepBodySetRebuildResult3d rebuiltMiddleBrepBodies = RebuildSectionBrepBodies(middleSection);
     ASSERT_TRUE(rebuiltMiddleBrepBodies.success);
     ASSERT_TRUE(rebuiltMiddleBrepBodies.IsValid());
     ASSERT_EQ(rebuiltMiddleBrepBodies.bodies.size(), 1);
     ASSERT_EQ(rebuiltMiddleBrepBodies.rootPolygonIndices.size(), 1);
-    const SCSectionBodySetRebuild3d rebuiltMiddleBodies = RebuildSectionBodies(middleSection);
+    const SCSectionBodySetRebuildResult3d rebuiltMiddleBodies = RebuildSectionBodies(middleSection);
     ASSERT_TRUE(rebuiltMiddleBodies.success);
     ASSERT_TRUE(rebuiltMiddleBodies.IsValid());
     ASSERT_EQ(rebuiltMiddleBodies.bodies.size(), 1);
     ASSERT_EQ(rebuiltMiddleBodies.rootPolygonIndices.size(), 1);
     ASSERT_EQ(rebuiltMiddleBodies.rootPolygonIndices[0], 0);
-    const SCSectionMeshConversion3d middleSectionMesh = ConvertSectionToTriangleMesh(middleSection);
+    const SCSectionMeshConversionResult3d middleSectionMesh = ConvertSectionToTriangleMesh(middleSection);
     ASSERT_TRUE(middleSectionMesh.success);
     ASSERT_TRUE(middleSectionMesh.IsValid());
     EXPECT_NEAR(middleSectionMesh.mesh.SurfaceArea(), 1.0, 1e-12);
-    const SCSectionMeshSetConversion3d middleSectionMeshes = ConvertSectionToTriangleMeshes(middleSection);
+    const SCSectionMeshSetConversionResult3d middleSectionMeshes = ConvertSectionToTriangleMeshes(middleSection);
     ASSERT_TRUE(middleSectionMeshes.success);
     ASSERT_TRUE(middleSectionMeshes.IsValid());
     ASSERT_EQ(middleSectionMeshes.meshes.size(), 1);
@@ -1141,7 +1156,7 @@ TEST(GeometryTest, CoversSectionRebuildCapabilities)
     ASSERT_EQ(coplanarSection.contours.size(), 1);
     ASSERT_EQ(coplanarSection.polygons.size(), 1);
     EXPECT_NEAR(coplanarSection.polygons[0].Area(), 1.0, 1e-12);
-    const SCSectionFaceRebuild3d rebuiltCoplanarFaces = RebuildSectionFaces(coplanarSection);
+    const SCSectionFaceRebuildResult3d rebuiltCoplanarFaces = RebuildSectionFaces(coplanarSection);
     ASSERT_TRUE(rebuiltCoplanarFaces.success);
     ASSERT_EQ(rebuiltCoplanarFaces.faces.size(), 1);
 
@@ -1162,28 +1177,28 @@ TEST(GeometryTest, CoversSectionRebuildCapabilities)
     ASSERT_TRUE(edgeOnlyComponents.IsValid());
     ASSERT_TRUE(edgeOnlyComponents.components.empty());
     ASSERT_EQ(ClassifySectionContent(edgeOnlySection), SCSectionContentKind3d::Curve);
-    const SCSectionFaceRebuild3d rebuiltEdgeOnlyFaces = RebuildSectionFaces(edgeOnlySection);
+    const SCSectionFaceRebuildResult3d rebuiltEdgeOnlyFaces = RebuildSectionFaces(edgeOnlySection);
     ASSERT_TRUE(rebuiltEdgeOnlyFaces.success);
     ASSERT_TRUE(rebuiltEdgeOnlyFaces.faces.empty());
-    const SCSectionBrepFaceRebuild3d rebuiltEdgeOnlyBrepFaces = RebuildSectionBrepFaces(edgeOnlySection);
+    const SCSectionBrepFaceRebuildResult3d rebuiltEdgeOnlyBrepFaces = RebuildSectionBrepFaces(edgeOnlySection);
     ASSERT_TRUE(rebuiltEdgeOnlyBrepFaces.success);
     ASSERT_TRUE(rebuiltEdgeOnlyBrepFaces.faces.empty());
-    const SCSectionBodyRebuild3d rebuiltEdgeOnlyBody = RebuildSectionBody(edgeOnlySection);
+    const SCSectionBodyRebuildResult3d rebuiltEdgeOnlyBody = RebuildSectionBody(edgeOnlySection);
     ASSERT_TRUE(rebuiltEdgeOnlyBody.success);
     ASSERT_TRUE(rebuiltEdgeOnlyBody.body.IsEmpty());
-    const SCSectionBrepBodyRebuild3d rebuiltEdgeOnlyBrepBody = RebuildSectionBrepBody(edgeOnlySection);
+    const SCSectionBrepBodyRebuildResult3d rebuiltEdgeOnlyBrepBody = RebuildSectionBrepBody(edgeOnlySection);
     ASSERT_TRUE(rebuiltEdgeOnlyBrepBody.success);
     ASSERT_TRUE(rebuiltEdgeOnlyBrepBody.body.IsEmpty());
-    const SCSectionBrepBodySetRebuild3d rebuiltEdgeOnlyBrepBodies = RebuildSectionBrepBodies(edgeOnlySection);
+    const SCSectionBrepBodySetRebuildResult3d rebuiltEdgeOnlyBrepBodies = RebuildSectionBrepBodies(edgeOnlySection);
     ASSERT_TRUE(rebuiltEdgeOnlyBrepBodies.success);
     ASSERT_TRUE(rebuiltEdgeOnlyBrepBodies.bodies.empty());
-    const SCSectionBodySetRebuild3d rebuiltEdgeOnlyBodies = RebuildSectionBodies(edgeOnlySection);
+    const SCSectionBodySetRebuildResult3d rebuiltEdgeOnlyBodies = RebuildSectionBodies(edgeOnlySection);
     ASSERT_TRUE(rebuiltEdgeOnlyBodies.success);
     ASSERT_TRUE(rebuiltEdgeOnlyBodies.bodies.empty());
-    const SCSectionMeshConversion3d edgeOnlySectionMesh = ConvertSectionToTriangleMesh(edgeOnlySection);
+    const SCSectionMeshConversionResult3d edgeOnlySectionMesh = ConvertSectionToTriangleMesh(edgeOnlySection);
     ASSERT_TRUE(edgeOnlySectionMesh.success);
     ASSERT_TRUE(edgeOnlySectionMesh.mesh.IsEmpty());
-    const SCSectionMeshSetConversion3d edgeOnlySectionMeshes = ConvertSectionToTriangleMeshes(edgeOnlySection);
+    const SCSectionMeshSetConversionResult3d edgeOnlySectionMeshes = ConvertSectionToTriangleMeshes(edgeOnlySection);
     ASSERT_TRUE(edgeOnlySectionMeshes.success);
     ASSERT_TRUE(edgeOnlySectionMeshes.meshes.empty());
 
@@ -1208,7 +1223,7 @@ TEST(GeometryTest, CoversSectionRebuildCapabilities)
             SCPoint2d{3.0, 1.0},
         },
         SCPolylineClosure::Closed)));
-    const SCSectionFaceRebuild3d rebuiltMergedFaces = RebuildSectionFaces(nestedSection);
+    const SCSectionFaceRebuildResult3d rebuiltMergedFaces = RebuildSectionFaces(nestedSection);
     ASSERT_TRUE(rebuiltMergedFaces.success);
     ASSERT_TRUE(rebuiltMergedFaces.IsValid());
     ASSERT_EQ(rebuiltMergedFaces.faces.size(), 1);
@@ -1232,29 +1247,29 @@ TEST(GeometryTest, CoversSectionRebuildCapabilities)
     const auto rebuiltMergedMesh = ConvertToTriangleMesh(rebuiltMergedFaces.faces[0]);
     ASSERT_TRUE(rebuiltMergedMesh.success);
     EXPECT_NEAR(rebuiltMergedMesh.mesh.SurfaceArea(), 12.0, 1e-12);
-    const SCSectionBodyRebuild3d rebuiltMergedBody = RebuildSectionBody(nestedSection);
+    const SCSectionBodyRebuildResult3d rebuiltMergedBody = RebuildSectionBody(nestedSection);
     ASSERT_TRUE(rebuiltMergedBody.success);
     ASSERT_EQ(rebuiltMergedBody.body.FaceCount(), 1);
-    const SCSectionBrepFaceRebuild3d rebuiltMergedBrepFaces = RebuildSectionBrepFaces(nestedSection);
+    const SCSectionBrepFaceRebuildResult3d rebuiltMergedBrepFaces = RebuildSectionBrepFaces(nestedSection);
     ASSERT_TRUE(rebuiltMergedBrepFaces.success);
     ASSERT_EQ(rebuiltMergedBrepFaces.faces.size(), 1);
     ASSERT_EQ(rebuiltMergedBrepFaces.faces[0].HoleCount(), 1);
-    const SCSectionBrepBodyRebuild3d rebuiltMergedBrepBody = RebuildSectionBrepBody(nestedSection);
+    const SCSectionBrepBodyRebuildResult3d rebuiltMergedBrepBody = RebuildSectionBrepBody(nestedSection);
     ASSERT_TRUE(rebuiltMergedBrepBody.success);
     ASSERT_EQ(rebuiltMergedBrepBody.body.FaceCount(), 1);
-    const SCSectionBrepBodySetRebuild3d rebuiltMergedBrepBodies = RebuildSectionBrepBodies(nestedSection);
+    const SCSectionBrepBodySetRebuildResult3d rebuiltMergedBrepBodies = RebuildSectionBrepBodies(nestedSection);
     ASSERT_TRUE(rebuiltMergedBrepBodies.success);
     ASSERT_EQ(rebuiltMergedBrepBodies.bodies.size(), 1);
     ASSERT_EQ(rebuiltMergedBrepBodies.rootPolygonIndices.size(), 1);
-    const SCSectionBodySetRebuild3d rebuiltMergedBodies = RebuildSectionBodies(nestedSection);
+    const SCSectionBodySetRebuildResult3d rebuiltMergedBodies = RebuildSectionBodies(nestedSection);
     ASSERT_TRUE(rebuiltMergedBodies.success);
     ASSERT_EQ(rebuiltMergedBodies.bodies.size(), 1);
     ASSERT_EQ(rebuiltMergedBodies.rootPolygonIndices.size(), 1);
     ASSERT_EQ(rebuiltMergedBodies.rootPolygonIndices[0], 0);
-    const SCSectionMeshConversion3d rebuiltMergedSectionMesh = ConvertSectionToTriangleMesh(nestedSection);
+    const SCSectionMeshConversionResult3d rebuiltMergedSectionMesh = ConvertSectionToTriangleMesh(nestedSection);
     ASSERT_TRUE(rebuiltMergedSectionMesh.success);
     EXPECT_NEAR(rebuiltMergedSectionMesh.mesh.SurfaceArea(), 12.0, 1e-12);
-    const SCSectionMeshSetConversion3d rebuiltMergedSectionMeshes = ConvertSectionToTriangleMeshes(nestedSection);
+    const SCSectionMeshSetConversionResult3d rebuiltMergedSectionMeshes = ConvertSectionToTriangleMeshes(nestedSection);
     ASSERT_TRUE(rebuiltMergedSectionMeshes.success);
     ASSERT_EQ(rebuiltMergedSectionMeshes.meshes.size(), 1);
     ASSERT_EQ(rebuiltMergedSectionMeshes.rootPolygonIndices.size(), 1);
@@ -1290,7 +1305,7 @@ TEST(GeometryTest, CoversSectionRebuildCapabilities)
     ASSERT_EQ(disjointAreaComponents.components.size(), 2);
     ASSERT_EQ(disjointAreaComponents.components[0].polygonIndices.size(), 1);
     ASSERT_EQ(disjointAreaComponents.components[1].polygonIndices.size(), 1);
-    const SCSectionBodySetRebuild3d rebuiltDisjointBodies = RebuildSectionBodies(disjointAreaSection);
+    const SCSectionBodySetRebuildResult3d rebuiltDisjointBodies = RebuildSectionBodies(disjointAreaSection);
     ASSERT_TRUE(rebuiltDisjointBodies.success);
     ASSERT_TRUE(rebuiltDisjointBodies.IsValid());
     ASSERT_EQ(rebuiltDisjointBodies.bodies.size(), 2);
@@ -1299,13 +1314,13 @@ TEST(GeometryTest, CoversSectionRebuildCapabilities)
     ASSERT_EQ(rebuiltDisjointBodies.rootPolygonIndices.size(), 2);
     ASSERT_EQ(rebuiltDisjointBodies.rootPolygonIndices[0], 0);
     ASSERT_EQ(rebuiltDisjointBodies.rootPolygonIndices[1], 1);
-    const SCSectionBrepBodySetRebuild3d rebuiltDisjointBrepBodies = RebuildSectionBrepBodies(disjointAreaSection);
+    const SCSectionBrepBodySetRebuildResult3d rebuiltDisjointBrepBodies = RebuildSectionBrepBodies(disjointAreaSection);
     ASSERT_TRUE(rebuiltDisjointBrepBodies.success);
     ASSERT_EQ(rebuiltDisjointBrepBodies.bodies.size(), 2);
     ASSERT_EQ(rebuiltDisjointBrepBodies.rootPolygonIndices.size(), 2);
     ASSERT_EQ(rebuiltDisjointBrepBodies.rootPolygonIndices[0], 0);
     ASSERT_EQ(rebuiltDisjointBrepBodies.rootPolygonIndices[1], 1);
-    const SCSectionMeshSetConversion3d rebuiltDisjointMeshes = ConvertSectionToTriangleMeshes(disjointAreaSection);
+    const SCSectionMeshSetConversionResult3d rebuiltDisjointMeshes = ConvertSectionToTriangleMeshes(disjointAreaSection);
     ASSERT_TRUE(rebuiltDisjointMeshes.success);
     ASSERT_TRUE(rebuiltDisjointMeshes.IsValid());
     ASSERT_EQ(rebuiltDisjointMeshes.meshes.size(), 2);

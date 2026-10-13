@@ -1,8 +1,8 @@
 #include "Geometry2d/SCPolyline2d.h"
 
-#include <cassert>
 #include <memory>
 #include <sstream>
+#include <stdexcept>
 #include <utility>
 
 #include "Geometry2d/SCArcSegment2d.h"
@@ -210,7 +210,10 @@ namespace Geometry
 
     SCPoint2d SCPolyline2d::VertexAt(std::size_t index) const
     {
-        assert(index < VertexCount());
+        if (index >= VertexCount())
+        {
+            throw std::out_of_range("SCPolyline2d::VertexAt index out of range");
+        }
         if (impl_->segments.empty())
         {
             return SCPoint2d{};
@@ -320,13 +323,13 @@ namespace Geometry
 
     std::unique_ptr<ISCSegment2d> SCPolyline2d::SegmentAt(std::size_t index) const
     {
-        assert(index < impl_->segments.size());
-        if (index >= impl_->segments.size() || impl_->segments[index] == nullptr)
+        const auto& segment = impl_->segments.at(index);
+        if (segment == nullptr)
         {
             return nullptr;
         }
 
-        return impl_->segments[index]->Clone();
+        return segment->Clone();
     }
 
     SCBox2d SCPolyline2d::Bounds() const

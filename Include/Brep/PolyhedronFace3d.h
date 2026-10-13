@@ -9,6 +9,7 @@
 #include "Brep/PolyhedronLoop3d.h"
 #include "Export/GeometryExport.h"
 #include "Types/Geometry3d/SCBox3.h"
+#include "Types/Geometry3d/SCGeometryTypes3d.h"
 #include "Types/Geometry3d/SCPlane.h"
 
 namespace Geometry
@@ -25,7 +26,69 @@ namespace Geometry
         {
         }
 
-        [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
+        [[deprecated("Use IsValid(const SCGeometryTolerance3d&)")]]
+        [[nodiscard]] bool IsValid(double eps) const
+        {
+            return IsValidWithDistanceEpsilon(eps);
+        }
+
+        [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const
+        {
+            return tolerance.IsValid() && IsValidWithDistanceEpsilon(tolerance.distanceEpsilon);
+        }
+
+        [[nodiscard]] SCPlane SupportPlane() const
+        {
+            return supportPlane_;
+        }
+
+        [[nodiscard]] PolyhedronLoop3d OuterLoop() const
+        {
+            return outerLoop_;
+        }
+
+        [[nodiscard]] const PolyhedronLoop3d& OuterLoopRef() const
+        {
+            return outerLoop_;
+        }
+
+        [[nodiscard]] std::size_t HoleCount() const
+        {
+            return holes_.size();
+        }
+
+        [[nodiscard]] PolyhedronLoop3d HoleAt(std::size_t index) const
+        {
+            return holes_.at(index);
+        }
+
+        [[nodiscard]] const PolyhedronLoop3d& HoleAtRef(std::size_t index) const
+        {
+            return holes_.at(index);
+        }
+
+        [[nodiscard]] SCBox3d Bounds() const
+        {
+            SCBox3d bounds = outerLoop_.Bounds();
+            for (const PolyhedronLoop3d& hole : holes_)
+            {
+                for (const SCPoint3d& vertex : hole.Vertices())
+                {
+                    bounds.ExpandToInclude(vertex);
+                }
+            }
+            return bounds;
+        }
+
+        [[nodiscard]] std::string DebugString() const
+        {
+            std::ostringstream stream;
+            stream << "PolyhedronFace3d{holeCount=" << HoleCount() << "}";
+            return stream.str();
+        }
+
+    private:
+        [[nodiscard]] bool IsValidWithDistanceEpsilon(double eps) const
         {
             if (!supportPlane_.IsValid(eps) || !outerLoop_.IsValid(eps))
             {
@@ -58,48 +121,6 @@ namespace Geometry
 
             return true;
         }
-
-        [[nodiscard]] SCPlane SupportPlane() const
-        {
-            return supportPlane_;
-        }
-
-        [[nodiscard]] PolyhedronLoop3d OuterLoop() const
-        {
-            return outerLoop_;
-        }
-
-        [[nodiscard]] std::size_t HoleCount() const
-        {
-            return holes_.size();
-        }
-
-        [[nodiscard]] PolyhedronLoop3d HoleAt(std::size_t index) const
-        {
-            return holes_.at(index);
-        }
-
-        [[nodiscard]] SCBox3d Bounds() const
-        {
-            SCBox3d bounds = outerLoop_.Bounds();
-            for (const PolyhedronLoop3d& hole : holes_)
-            {
-                for (const SCPoint3d& vertex : hole.Vertices())
-                {
-                    bounds.ExpandToInclude(vertex);
-                }
-            }
-            return bounds;
-        }
-
-        [[nodiscard]] std::string DebugString() const
-        {
-            std::ostringstream stream;
-            stream << "PolyhedronFace3d{holeCount=" << HoleCount() << "}";
-            return stream.str();
-        }
-
-    private:
         SCPlane supportPlane_{};
         PolyhedronLoop3d outerLoop_{};
         std::vector<PolyhedronLoop3d> holes_{};

@@ -70,7 +70,7 @@ TEST(CoreAlgorithmsTest, CoversCurrentCapabilities)
         {SCPoint2d{1.0, 1.0}, SCPoint2d{1.0, 3.0}, SCPoint2d{3.0, 3.0}, SCPoint2d{3.0, 1.0}}, SCPolylineClosure::Closed);
     const SCPolygon2d polygon(ccwRing, {holeRing});
     EXPECT_NEAR(polygon.Area(), 12.0, 1e-12);
-    EXPECT_TRUE(Centroid(polygon).AlmostEquals(SCPoint2d{2.0, 2.0}, 1e-12));
+    EXPECT_TRUE(polygon.Centroid().AlmostEquals(SCPoint2d{2.0, 2.0}, 1e-12));
     ASSERT_EQ(Orientation(ccwRing), SCRingOrientation2d::CounterClockwise);
     ASSERT_TRUE(IsCounterClockwise(ccwRing));
     ASSERT_TRUE(IsClockwise(holeRing));

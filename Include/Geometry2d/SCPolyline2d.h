@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -37,6 +38,10 @@ namespace Geometry
         [[nodiscard]] SCPoint2d PointAt(std::size_t index) const;
         [[nodiscard]] SCPoint2d PointAt(int index) const
         {
+            if (index < 0)
+            {
+                throw std::out_of_range("SCPolyline2d::PointAt index out of range");
+            }
             return PointAt(static_cast<std::size_t>(index));
         }
         [[nodiscard]] SCPoint2d PointAt(double parameter) const;

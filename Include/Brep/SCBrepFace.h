@@ -63,6 +63,14 @@ namespace Geometry
             return true;
         }
 
+        [[deprecated("Use IsValid(const SCGeometryTolerance3d&)")]]
+        [[nodiscard]] bool IsValid(double eps) const
+        {
+            SCGeometryTolerance3d tolerance;
+            tolerance.distanceEpsilon = eps;
+            return IsValid(tolerance);
+        }
+
         [[nodiscard]] const ISCSurface* SupportSurface() const
         {
             return supportSurface_.get();
@@ -73,12 +81,22 @@ namespace Geometry
             return outerLoop_;
         }
 
+        [[nodiscard]] const SCBrepLoop& OuterLoopRef() const
+        {
+            return outerLoop_;
+        }
+
         [[nodiscard]] std::size_t HoleCount() const
         {
             return holes_.size();
         }
 
         [[nodiscard]] SCBrepLoop HoleAt(std::size_t index) const
+        {
+            return holes_.at(index);
+        }
+
+        [[nodiscard]] const SCBrepLoop& HoleAtRef(std::size_t index) const
         {
             return holes_.at(index);
         }

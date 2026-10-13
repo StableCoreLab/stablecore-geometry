@@ -42,24 +42,6 @@ namespace Geometry
         }
     }
 
-    template <typename TLhs, typename TRhs>
-    [[nodiscard]] constexpr auto Dot(const SCVector2<TLhs>& lhs, const SCVector2<TRhs>& rhs)
-        -> std::common_type_t<TLhs, TRhs>
-    {
-        using ResultType = std::common_type_t<TLhs, TRhs>;
-        return static_cast<ResultType>(lhs.x) * static_cast<ResultType>(rhs.x) +
-               static_cast<ResultType>(lhs.y) * static_cast<ResultType>(rhs.y);
-    }
-
-    template <typename TLhs, typename TRhs>
-    [[nodiscard]] constexpr auto Cross(const SCVector2<TLhs>& lhs, const SCVector2<TRhs>& rhs)
-        -> std::common_type_t<TLhs, TRhs>
-    {
-        using ResultType = std::common_type_t<TLhs, TRhs>;
-        return static_cast<ResultType>(lhs.x) * static_cast<ResultType>(rhs.y) -
-               static_cast<ResultType>(lhs.y) * static_cast<ResultType>(rhs.x);
-    }
-
     template <typename T>
     [[nodiscard]] constexpr bool IsEqual(T lhs, T rhs, double eps = kDefaultEpsilon)
     {

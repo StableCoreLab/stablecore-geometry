@@ -21,7 +21,10 @@ namespace Geometry
     template <typename T>
     struct SCVector3;
 
-    struct SCBox3d;
+    template <typename T>
+    class SCBox3;
+
+    using SCBox3d = SCBox3<double>;
 
     struct SCIntervald;
 

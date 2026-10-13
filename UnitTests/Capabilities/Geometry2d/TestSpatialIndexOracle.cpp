@@ -75,7 +75,7 @@ TEST(SpatialIndexOracleTest, BoxTreeKNearestMatchesBruteForceAndMutationsAreImme
 TEST(SpatialIndexOracleTest, IncrementalBoxTreesKeepQueriesConsistentAfterRemovalAndMove)
 {
     static_assert(std::is_const_v<std::remove_reference_t<decltype(std::declval<Geometry::SCBoxTree2d&>().Entries())>>);
-    static_assert(std::is_const_v<std::remove_reference_t<decltype(std::declval<Geometry::SCBoxTree2d&>().Data())>>);
+    static_assert(std::is_const_v<std::remove_reference_t<decltype(std::declval<Geometry::SCBoxTree2d&>().Entries())>>);
 
     Geometry::SCBoxTree2d tree;
     for (std::size_t id = 0; id < 12; ++id)

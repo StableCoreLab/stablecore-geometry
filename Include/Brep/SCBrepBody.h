@@ -79,6 +79,14 @@ namespace Geometry
             return true;
         }
 
+        [[deprecated("Use IsValid(const SCGeometryTolerance3d&)")]]
+        [[nodiscard]] bool IsValid(double eps) const
+        {
+            SCGeometryTolerance3d tolerance;
+            tolerance.distanceEpsilon = eps;
+            return IsValid(tolerance);
+        }
+
         [[nodiscard]] std::size_t VertexCount() const
         {
             return vertices_.size();
@@ -115,6 +123,11 @@ namespace Geometry
         }
 
         [[nodiscard]] SCBrepShell ShellAt(std::size_t index) const
+        {
+            return shells_.at(index);
+        }
+
+        [[nodiscard]] const SCBrepShell& ShellAtRef(std::size_t index) const
         {
             return shells_.at(index);
         }

@@ -25,21 +25,27 @@ namespace Geometry
             return faces_.empty();
         }
 
-        [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
+        [[deprecated("Use IsValid(const SCGeometryTolerance3d&)")]]
+        [[nodiscard]] bool IsValid(double eps) const
         {
-            if (faces_.empty())
+            SCGeometryTolerance3d tolerance;
+            tolerance.distanceEpsilon = eps;
+            return IsValid(tolerance);
+        }
+
+        [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const
+        {
+            if (!tolerance.IsValid() || faces_.empty())
             {
                 return false;
             }
-
             for (const PolyhedronFace3d& face : faces_)
             {
-                if (!face.IsValid(eps))
+                if (!face.IsValid(tolerance))
                 {
                     return false;
                 }
             }
-
             return true;
         }
 
@@ -49,6 +55,11 @@ namespace Geometry
         }
 
         [[nodiscard]] PolyhedronFace3d FaceAt(std::size_t index) const
+        {
+            return faces_.at(index);
+        }
+
+        [[nodiscard]] const PolyhedronFace3d& FaceAtRef(std::size_t index) const
         {
             return faces_.at(index);
         }
