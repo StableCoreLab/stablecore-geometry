@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "Core/Metrics.h"
+#include "../Detail/GeometryContainerOps.h"
 #include "Support/Geometry2d/Predicate2.h"
 
 namespace Geometry
@@ -363,24 +364,17 @@ namespace Geometry
 
     std::size_t SCKDTree2d::Size() const
     {
-        return entries_.size();
+        return Detail::ContainerCount(entries_);
     }
 
     bool SCKDTree2d::IsEmpty() const
     {
-        return entries_.empty();
+        return Detail::ContainerIsEmpty(entries_);
     }
 
     bool SCKDTree2d::IsValid() const
     {
-        for (const auto& entry : entries_)
-        {
-            if (!entry.IsValid())
-            {
-                return false;
-            }
-        }
-        return true;
+        return Detail::ContainerIsValid(entries_);
     }
 
     bool SCKDTree2d::Contains(std::size_t id) const
@@ -390,9 +384,7 @@ namespace Geometry
 
     const SCKDTreeEntry2d* SCKDTree2d::Find(std::size_t id) const
     {
-        const auto it =
-            std::find_if(entries_.begin(), entries_.end(), [id](const SCKDTreeEntry2d& entry) { return entry.id == id; });
-        return it == entries_.end() ? nullptr : &*it;
+        return Detail::FindEntryById(entries_, id);
     }
 
     std::vector<std::size_t> SCKDTree2d::Query(const SCPoint2d& point, double eps) const

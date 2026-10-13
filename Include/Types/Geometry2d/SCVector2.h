@@ -5,16 +5,18 @@
 
 #include "Support/Epsilon.h"
 #include "Types/Geometry2d/SCPoint2.h"
+#include "Types/SCGeometryScalar.h"
 
 namespace Geometry
 {
     template <typename T>
-    using SCVectorLengthType = std::conditional_t<std::is_floating_point_v<T>, T, double>;
+    using SCVectorLengthType = SCGeometryScalarType<T>;
 
     template <typename T>
     struct SCVector2 : SCVec2Storage<T>
     {
         using SCVec2Storage<T>::SCVec2Storage;
+        using SCVec2Storage<T>::AlmostEquals;
         using LengthType = SCVectorLengthType<T>;
 
         [[nodiscard]] static constexpr SCVector2 FromXY(T xValue, T yValue)

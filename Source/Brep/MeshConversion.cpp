@@ -9,53 +9,12 @@
 #include "Core/ShapeOps.h"
 #include "Core/Triangulation.h"
 #include "Geometry3d/SCPlaneSurface.h"
+#include "LoopGeometry.h"
 
 namespace Geometry
 {
     namespace
     {
-        [[nodiscard]] bool AppendLoopVerticesFromBrepLoop(const SCBrepBody& body,
-                                                          const SCBrepLoop& loop,
-                                                          std::vector<SCPoint3d>& vertices,
-                                                          double eps)
-        {
-            vertices.clear();
-            if (!loop.IsValid())
-            {
-                return false;
-            }
-
-            vertices.reserve(loop.CoedgeCount());
-            for (std::size_t i = 0; i < loop.CoedgeCount(); ++i)
-            {
-                const SCBrepCoedge coedge = loop.CoedgeAt(i);
-                if (coedge.EdgeIndex() >= body.EdgeCount())
-                {
-                    return false;
-                }
-
-                const SCBrepEdge edge = body.EdgeAt(coedge.EdgeIndex());
-                const std::size_t vertexIndex = coedge.Reversed() ? edge.EndVertexIndex() : edge.StartVertexIndex();
-                if (vertexIndex >= body.VertexCount())
-                {
-                    return false;
-                }
-
-                const SCPoint3d point = body.VertexAt(vertexIndex).Point();
-                if (vertices.empty() || !vertices.back().AlmostEquals(point, eps))
-                {
-                    vertices.push_back(point);
-                }
-            }
-
-            while (vertices.size() >= 2 && vertices.front().AlmostEquals(vertices.back(), eps))
-            {
-                vertices.pop_back();
-            }
-
-            return vertices.size() >= 3;
-        }
-
         [[nodiscard]] bool BuildPolyhedronFaceFromBrepFace(const SCBrepBody& body,
                                                            const SCBrepFace& face,
                                                            PolyhedronFace3d& polyFace,
@@ -74,7 +33,7 @@ namespace Geometry
             }
 
             std::vector<SCPoint3d> outerVertices;
-            if (!AppendLoopVerticesFromBrepLoop(body, face.OuterLoop(), outerVertices, eps))
+            if (!Detail::AppendLoopVertices(body, face.OuterLoop(), outerVertices, eps))
             {
                 return false;
             }
@@ -84,7 +43,7 @@ namespace Geometry
             for (std::size_t i = 0; i < face.HoleCount(); ++i)
             {
                 std::vector<SCPoint3d> holeVertices;
-                if (!AppendLoopVerticesFromBrepLoop(body, face.HoleAt(i), holeVertices, eps))
+                if (!Detail::AppendLoopVertices(body, face.HoleAt(i), holeVertices, eps))
                 {
                     return false;
                 }

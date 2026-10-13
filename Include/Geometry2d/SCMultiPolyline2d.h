@@ -16,7 +16,8 @@ namespace Geometry
         explicit SCMultiPolyline2d(std::vector<SCPolyline2d> polylines);
         SCMultiPolyline2d(std::initializer_list<SCPolyline2d> polylines);
 
-        [[nodiscard]] std::size_t Count() const;
+        [[nodiscard]] std::size_t Size() const;
+        [[deprecated("Use Size() instead")]] [[nodiscard]] std::size_t Count() const;
         [[nodiscard]] bool IsEmpty() const;
         [[nodiscard]] bool IsValid() const;
 

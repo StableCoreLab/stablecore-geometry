@@ -17,7 +17,8 @@ namespace Geometry
         explicit SCMultiPolygon2d(std::vector<SCPolygon2d> polygons);
         SCMultiPolygon2d(std::initializer_list<SCPolygon2d> polygons);
 
-        [[nodiscard]] std::size_t Count() const;
+        [[nodiscard]] std::size_t Size() const;
+        [[deprecated("Use Size() instead")]] [[nodiscard]] std::size_t Count() const;
         [[nodiscard]] bool IsEmpty() const;
         [[nodiscard]] bool IsValid() const;
 

@@ -1,11 +1,10 @@
 #pragma once
 
-#include <cmath>
-#include <sstream>
+#include <array>
 #include <string>
-#include <type_traits>
 
 #include "Support/Epsilon.h"
+#include "Types/SCVecStorageOps.h"
 
 namespace Geometry
 {
@@ -31,31 +30,18 @@ namespace Geometry
 
         [[nodiscard]] constexpr bool IsValid() const
         {
-            if constexpr (std::is_floating_point_v<T>)
-            {
-                return std::isfinite(x) && std::isfinite(y);
-            }
-
-            return true;
+            return Detail::CoordinateStorageIsValid(std::array<T, 2>{x, y});
         }
 
         [[nodiscard]] constexpr bool AlmostEquals(const SCVec2Storage& other, double eps = kDefaultEpsilon) const
         {
-            if constexpr (std::is_floating_point_v<T>)
-            {
-                return std::abs(static_cast<double>(x - other.x)) <= eps &&
-                       std::abs(static_cast<double>(y - other.y)) <= eps;
-            }
-
-            (void)eps;
-            return *this == other;
+            return Detail::CoordinateStorageAlmostEquals(
+                std::array<T, 2>{x, y}, std::array<T, 2>{other.x, other.y}, eps);
         }
 
         [[nodiscard]] std::string DebugString(const char* typeName) const
         {
-            std::ostringstream stream;
-            stream << typeName << "{x=" << x << ", y=" << y << "}";
-            return stream.str();
+            return Detail::CoordinateStorageDebugString(typeName, std::array<T, 2>{x, y});
         }
 
         [[nodiscard]] constexpr bool operator==(const SCVec2Storage& other) const = default;
@@ -66,6 +52,7 @@ namespace Geometry
     struct SCPoint2 : SCVec2Storage<T>
     {
         using SCVec2Storage<T>::SCVec2Storage;
+        using SCVec2Storage<T>::AlmostEquals;
 
         [[nodiscard]] static constexpr SCPoint2 FromXY(T xValue, T yValue)
         {

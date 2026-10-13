@@ -279,7 +279,7 @@ namespace Geometry
                     BuildMultiPolygonByLines(boundaries, std::max(eps, Geometry::kBooleanRebuildFallbackEpsilon));
                 SCPolygon2d best;
                 double bestArea = 0.0;
-                for (std::size_t i = 0; i < rebuilt.Count(); ++i)
+                for (std::size_t i = 0; i < rebuilt.Size(); ++i)
                 {
                     if (!rebuilt[i].IsValid())
                     {
@@ -331,7 +331,7 @@ namespace Geometry
                 fallback.Add(MakeAxisAlignedBoxPolygon(subjectBox));
                 return fallback;
             }
-            if (overlap.Count() != 1)
+            if (overlap.Size() != 1)
             {
                 return {};
             }
@@ -416,7 +416,7 @@ namespace Geometry
 
         void AppendMultiPolygonBoundaries(const SCMultiPolygon2d& polygons, SCMultiPolyline2d& boundaries)
         {
-            for (std::size_t polygonIndex = 0; polygonIndex < polygons.Count(); ++polygonIndex)
+            for (std::size_t polygonIndex = 0; polygonIndex < polygons.Size(); ++polygonIndex)
             {
                 AppendPolygonBoundaries(polygons[polygonIndex], boundaries);
             }
@@ -424,7 +424,7 @@ namespace Geometry
 
         void AppendPolygons(const SCMultiPolygon2d& source, SCMultiPolygon2d& destination)
         {
-            for (std::size_t polygonIndex = 0; polygonIndex < source.Count(); ++polygonIndex)
+            for (std::size_t polygonIndex = 0; polygonIndex < source.Size(); ++polygonIndex)
             {
                 destination.Add(SCPolygon2d(source[polygonIndex]));
             }
@@ -433,7 +433,7 @@ namespace Geometry
         [[nodiscard]] double TotalArea(const SCMultiPolygon2d& polygons)
         {
             double total = 0.0;
-            for (std::size_t polygonIndex = 0; polygonIndex < polygons.Count(); ++polygonIndex)
+            for (std::size_t polygonIndex = 0; polygonIndex < polygons.Size(); ++polygonIndex)
             {
                 total += std::abs(polygons[polygonIndex].Area());
             }

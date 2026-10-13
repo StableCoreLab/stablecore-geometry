@@ -275,6 +275,157 @@ namespace
         EXPECT_TRUE(intersection.point.AlmostEquals(projection.point, 1e-4));
     }
 
+    TEST(NurbsNumericsTest, SmallScaleCurveProjectionAndIntersectionRefineBetweenSeeds)
+    {
+        constexpr double length = 1e-5;
+        const SCNurbsCurve3d curve(1, {{0.0, 0.0, 0.0}, {length, 0.0, 0.0}},
+                                   {0.0, 0.0, 1.0, 1.0});
+        const SCPoint3d source{length * 0.25, length, 0.0};
+        const SCPoint3d expected{length * 0.25, 0.0, 0.0};
+        ASSERT_TRUE(curve.IsValid());
+
+        const auto projection = ProjectPointToCurve(source, curve);
+        ASSERT_TRUE(projection.success);
+        EXPECT_NEAR(projection.parameter, 0.25, 1e-10);
+        EXPECT_TRUE(projection.point.AlmostEquals(expected, 1e-12));
+
+        const auto intersection = Intersect(
+            SCLine3d::FromOriginAndDirection(source, SCVector3d{0.0, -1.0, 0.0}), curve);
+        ASSERT_TRUE(intersection.intersects);
+        EXPECT_NEAR(intersection.curveParameter, 0.25, 1e-10);
+        EXPECT_TRUE(intersection.point.AlmostEquals(expected, 1e-12));
+    }
+
+    TEST(NurbsNumericsTest, LineCurveIntersectionAcceptsValidSmallDirection)
+    {
+        constexpr double directionScale = 1e-7;
+        const SCNurbsCurve3d curve(1, {{0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}},
+                                   {0.0, 0.0, 1.0, 1.0});
+        const SCLine3d line = SCLine3d::FromOriginAndDirection(
+            SCPoint3d{0.25, -directionScale, 0.0}, SCVector3d{0.0, directionScale, 0.0});
+        ASSERT_TRUE(curve.IsValid());
+        ASSERT_TRUE(line.IsValid());
+
+        const auto intersection = Intersect(line, curve);
+        ASSERT_TRUE(intersection.intersects);
+        EXPECT_NEAR(intersection.lineParameter, 1.0, 1e-10);
+        EXPECT_NEAR(intersection.curveParameter, 0.25, 1e-10);
+        EXPECT_TRUE(intersection.point.AlmostEquals(SCPoint3d{0.25, 0.0, 0.0}, 1e-12));
+    }
+
+    TEST(NurbsNumericsTest, ShallowTangentCurvePlaneIntersectionRefinesBetweenSeeds)
+    {
+        constexpr double height = 1e-10;
+        const SCNurbsCurve3d curve(2,
+            {{0.0, 0.0, height * 0.0625},
+             {0.5, 0.0, -height * 0.1875},
+             {1.0, 0.0, height * 0.5625}},
+            {0.0, 0.0, 0.0, 1.0, 1.0, 1.0});
+        const Geometry::SCPlane plane = Geometry::SCPlane::FromPointAndNormal(
+            SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0});
+        Geometry::SCGeometryTolerance3d tolerance;
+        tolerance.distanceEpsilon = 1e-18;
+        ASSERT_TRUE(curve.IsValid(tolerance));
+
+        const auto intersection = Intersect(plane, curve, tolerance);
+        ASSERT_TRUE(intersection.intersects);
+        EXPECT_NEAR(intersection.curveParameter, 0.25, 1e-4);
+        EXPECT_LE(std::abs(intersection.point.z), tolerance.distanceEpsilon);
+    }
+
+    TEST(NurbsNumericsTest, CurvePlaneBisectionDoesNotReportPointOutsideTolerance)
+    {
+        constexpr double parameterSpan = 1e8;
+        const SCNurbsCurve3d curve(1,
+            {{0.0, 0.0, -parameterSpan / 7.0},
+             {parameterSpan, 0.0, parameterSpan * 6.0 / 7.0}},
+            {0.0, 0.0, parameterSpan, parameterSpan});
+        const Geometry::SCPlane plane = Geometry::SCPlane::FromPointAndNormal(
+            SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0});
+        Geometry::SCGeometryTolerance3d tolerance;
+        tolerance.distanceEpsilon = 1e-30;
+        ASSERT_TRUE(curve.IsValid(tolerance));
+
+        const auto intersection = Intersect(plane, curve, tolerance);
+        if (intersection.intersects)
+        {
+            EXPECT_LE(std::abs(plane.SignedDistanceTo(intersection.point, tolerance.distanceEpsilon)),
+                      tolerance.distanceEpsilon);
+        }
+    }
+
+    TEST(NurbsNumericsTest, SmallScaleSurfaceProjectionRefinesWithinPlanarPatch)
+    {
+        for (const double width : {1e-3, 1e-5})
+        {
+            const SCNurbsSurface surface(1, 1, 2, 2,
+                {{0.0, 0.0, 0.0}, {width, 0.0, 0.0},
+                 {0.0, width, 0.0}, {width, width, 0.0}},
+                {0.0, 0.0, 1.0, 1.0}, {0.0, 0.0, 1.0, 1.0});
+            const SCPoint3d expected{width * 0.25, width * 0.75, 0.0};
+            ASSERT_TRUE(surface.IsValid());
+
+            const auto projection = ProjectPointToSurface(
+                SCPoint3d{expected.x, expected.y, width}, surface);
+            ASSERT_TRUE(projection.success);
+            EXPECT_NEAR(projection.u, 0.25, 1e-10);
+            EXPECT_NEAR(projection.v, 0.75, 1e-10);
+            EXPECT_TRUE(projection.point.AlmostEquals(expected, 1e-12));
+        }
+    }
+
+    TEST(NurbsNumericsTest, BilinearSaddleProjectionDoesNotStopAtStationaryCenter)
+    {
+        const SCNurbsSurface surface(1, 1, 2, 2,
+            {{0.0, 0.0, 2.0}, {1.0, 0.0, -2.0},
+             {0.0, 1.0, -2.0}, {1.0, 1.0, 2.0}},
+            {0.0, 0.0, 1.0, 1.0}, {0.0, 0.0, 1.0, 1.0});
+        ASSERT_TRUE(surface.IsValid());
+
+        const auto projection = ProjectPointToSurface(SCPoint3d{0.5, 0.5, 2.0}, surface);
+        ASSERT_TRUE(projection.success);
+        EXPECT_LT(projection.distanceSquared, 0.6);
+        EXPECT_TRUE(projection.point.AlmostEquals(surface.PointAt(projection.u, projection.v), 1e-12));
+    }
+
+    TEST(NurbsNumericsTest, DegenerateSurfaceProjectionUsesPointOnlyRefinement)
+    {
+        const SCNurbsSurface surface(1, 1, 2, 2,
+            {{0.0, 0.0, 0.0}, {1.0, 0.0, 0.0},
+             {0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}},
+            {0.0, 0.0, 1.0, 1.0}, {0.0, 0.0, 1.0, 1.0});
+        ASSERT_TRUE(surface.IsValid());
+
+        const auto projection = ProjectPointToSurface(SCPoint3d{0.75, 1.0, 0.0}, surface);
+        ASSERT_TRUE(projection.success);
+        EXPECT_NEAR(projection.u, 0.75, 1e-10);
+        EXPECT_TRUE(projection.point.AlmostEquals(SCPoint3d{0.75, 0.0, 0.0}, 1e-12));
+    }
+
+    TEST(NurbsNumericsTest, SmallScaleNonPlanarSurfaceIntersectionRefinesBetweenSeeds)
+    {
+        constexpr double width = 1e-5;
+        const SCNurbsSurface surface(1, 1, 2, 2,
+            {{0.0, 0.0, 0.0}, {width, 0.0, 0.0},
+             {0.0, width, 0.0}, {width, width, width * 0.2}},
+            {0.0, 0.0, 1.0, 1.0}, {0.0, 0.0, 1.0, 1.0});
+        constexpr double expectedU = 0.37;
+        constexpr double expectedV = 0.63;
+        const SCPoint3d expected = surface.PointAt(expectedU, expectedV);
+        Geometry::SCGeometryTolerance3d tolerance;
+        tolerance.distanceEpsilon = 1e-15;
+        ASSERT_TRUE(surface.IsValid(tolerance));
+
+        const auto intersection = Intersect(
+            SCLine3d::FromOriginAndDirection(
+                SCPoint3d{expected.x, expected.y, width}, SCVector3d{0.0, 0.0, -1.0}),
+            surface, tolerance);
+        ASSERT_TRUE(intersection.intersects);
+        EXPECT_NEAR(intersection.u, expectedU, 1e-10);
+        EXPECT_NEAR(intersection.v, expectedV, 1e-10);
+        EXPECT_TRUE(intersection.point.AlmostEquals(expected, 1e-14));
+    }
+
     TEST(NurbsNumericsTest, InvalidNurbsInputsFailProjectionAndIntersectionWithoutPartialResults)
     {
         const SCNurbsCurve3d invalidCurve(1, {SCPoint3d{0.0, 0.0, 0.0}, SCPoint3d{1.0, 0.0, 0.0}}, {0.0, 0.0, 1.0});

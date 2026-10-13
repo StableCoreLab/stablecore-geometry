@@ -9,6 +9,8 @@
 #include <sstream>
 #include <utility>
 
+#include "../Detail/GeometryContainerOps.h"
+
 namespace Geometry
 {
     SCSegmentSearch2d::SCSegmentSearch2d(std::vector<SCSegmentSearchEntry2d> entries) : entries_(std::move(entries))
@@ -52,22 +54,15 @@ namespace Geometry
 
     std::size_t SCSegmentSearch2d::Size() const
     {
-        return entries_.size();
+        return Detail::ContainerCount(entries_);
     }
     bool SCSegmentSearch2d::IsEmpty() const
     {
-        return entries_.empty();
+        return Detail::ContainerIsEmpty(entries_);
     }
     bool SCSegmentSearch2d::IsValid() const
     {
-        for (const auto& entry : entries_)
-        {
-            if (!entry.IsValid())
-            {
-                return false;
-            }
-        }
-        return true;
+        return Detail::ContainerIsValid(entries_);
     }
 
     bool SCSegmentSearch2d::Contains(std::size_t id) const
@@ -77,9 +72,7 @@ namespace Geometry
 
     const SCSegmentSearchEntry2d* SCSegmentSearch2d::Find(std::size_t id) const
     {
-        const auto it = std::find_if(
-            entries_.begin(), entries_.end(), [id](const SCSegmentSearchEntry2d& entry) { return entry.id == id; });
-        return it == entries_.end() ? nullptr : &*it;
+        return Detail::FindEntryById(entries_, id);
     }
 
     std::vector<std::size_t> SCSegmentSearch2d::QueryIntersecting(const SCBox2d& box, double eps) const

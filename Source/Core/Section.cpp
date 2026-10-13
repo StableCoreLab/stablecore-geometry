@@ -929,7 +929,7 @@ namespace Geometry
                         for (std::size_t second = first + 1; second < input.size(); ++second)
                         {
                             const SCMultiPolygon2d unioned = Union(input[first], input[second], mergeEps);
-                            if (unioned.Count() != 1)
+                            if (unioned.Size() != 1)
                             {
                                 continue;
                             }
@@ -958,7 +958,7 @@ namespace Geometry
             };
 
             SCMultiPolygon2d collapsed = collapseByUnion(merged);
-            if (collapsed.Count() < merged.size())
+            if (collapsed.Size() < merged.size())
             {
                 return collapsed;
             }
@@ -1278,7 +1278,7 @@ namespace Geometry
             }
 
             SCMultiPolygon2d result(std::move(rebuilt));
-            if (result.Count() < merged.size())
+            if (result.Size() < merged.size())
             {
                 return result;
             }
@@ -1480,8 +1480,8 @@ namespace Geometry
             }
 
             std::vector<SCPolygon2d> polygons;
-            polygons.reserve(merged.Count());
-            for (std::size_t i = 0; i < merged.Count(); ++i)
+            polygons.reserve(merged.Size());
+            for (std::size_t i = 0; i < merged.Size(); ++i)
             {
                 polygons.push_back(NormalizePolygonOrientation(merged.PolygonAt(i)));
             }
@@ -2365,7 +2365,7 @@ namespace Geometry
         const PolygonTopology2d topology = BuildPolygonTopology(polygons, eps);
         result.faces.reserve(section.polygons.size());
         result.mappings.reserve(section.polygons.size());
-        for (std::size_t polygonIndex = 0; polygonIndex < polygons.Count(); ++polygonIndex)
+        for (std::size_t polygonIndex = 0; polygonIndex < polygons.Size(); ++polygonIndex)
         {
             if ((PolygonDepth(topology, polygonIndex) % 2) != 0)
             {

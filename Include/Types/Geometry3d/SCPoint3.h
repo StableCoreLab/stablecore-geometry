@@ -1,11 +1,10 @@
 #pragma once
 
-#include <cmath>
-#include <sstream>
+#include <array>
 #include <string>
-#include <type_traits>
 
 #include "Support/Epsilon.h"
+#include "Types/SCVecStorageOps.h"
 
 namespace Geometry
 {
@@ -33,31 +32,18 @@ namespace Geometry
 
         [[nodiscard]] constexpr bool IsValid() const
         {
-            if constexpr (std::is_floating_point_v<T>)
-            {
-                return std::isfinite(x) && std::isfinite(y) && std::isfinite(z);
-            }
-            return true;
+            return Detail::CoordinateStorageIsValid(std::array<T, 3>{x, y, z});
         }
 
         [[nodiscard]] constexpr bool AlmostEquals(const SCVec3Storage& other, double eps = kDefaultEpsilon) const
         {
-            if constexpr (std::is_floating_point_v<T>)
-            {
-                return std::abs(static_cast<double>(x - other.x)) <= eps &&
-                       std::abs(static_cast<double>(y - other.y)) <= eps &&
-                       std::abs(static_cast<double>(z - other.z)) <= eps;
-            }
-
-            (void)eps;
-            return *this == other;
+            return Detail::CoordinateStorageAlmostEquals(
+                std::array<T, 3>{x, y, z}, std::array<T, 3>{other.x, other.y, other.z}, eps);
         }
 
         [[nodiscard]] std::string DebugString(const char* typeName) const
         {
-            std::ostringstream stream;
-            stream << typeName << "{x=" << x << ", y=" << y << ", z=" << z << "}";
-            return stream.str();
+            return Detail::CoordinateStorageDebugString(typeName, std::array<T, 3>{x, y, z});
         }
 
         [[nodiscard]] constexpr bool operator==(const SCVec3Storage& other) const = default;
@@ -68,6 +54,7 @@ namespace Geometry
     struct SCPoint3 : SCVec3Storage<T>
     {
         using SCVec3Storage<T>::SCVec3Storage;
+        using SCVec3Storage<T>::AlmostEquals;
 
         [[nodiscard]] static constexpr SCPoint3 FromXYZ(T xValue, T yValue, T zValue)
         {

@@ -2,10 +2,14 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
+#include <limits>
 #include <utility>
+#include <vector>
 
 #include "Core/Relation.h"
 #include "Core/Triangulation.h"
+#include "../Detail/ParametricSeeds.h"
 #include "../Detail/PolylineRing2d.h"
 #include "Brep/PolyhedronBody.h"
 #include "Brep/PolyhedronFace3d.h"
@@ -14,6 +18,9 @@
 #include "Brep/SCBrepFace.h"
 #include "Brep/SCBrepVertex.h"
 #include "Geometry3d/SCLineCurve3d.h"
+#include "Geometry3d/SCNurbsCurve3d.h"
+#include "Geometry3d/SCNurbsSurface.h"
+#include "Geometry3d/SCOffsetSurface.h"
 #include "Geometry3d/SCPlaneSurface.h"
 #include "Geometry3d/TriangleMesh.h"
 #include "Support/Epsilon.h"
@@ -93,41 +100,99 @@ namespace Geometry
             double bestU = std::clamp(u, uRange.min, uRange.max);
             double bestV = std::clamp(v, vRange.min, vRange.max);
             double bestDistanceSquared = DistanceSquaredToSurfacePoint(point, surface, bestU, bestV);
+            bool usePointOnlyRefinement = dynamic_cast<const SCOffsetSurface*>(&surface) != nullptr;
 
-            double stepU = std::max(uRange.Length() * 0.25, tolerance.parameterEpsilon);
-            double stepV = std::max(vRange.Length() * 0.25, tolerance.parameterEpsilon);
-
-            for (int iteration = 0; iteration < 16; ++iteration)
+            for (int iteration = 0; iteration < 32 && !usePointOnlyRefinement; ++iteration)
             {
-                bool improved = false;
-                for (const double du : std::array<double, 3>{-stepU, 0.0, stepU})
+                const SCSurfaceEval3d eval = surface.Evaluate(bestU, bestV, 1);
+                if (eval.derivativeOrder < 1 || !eval.point.IsValid() ||
+                    !eval.derivativeU.IsValid() || !eval.derivativeV.IsValid() ||
+                    eval.normal.Length() <= tolerance.distanceEpsilon)
                 {
-                    for (const double dv : std::array<double, 3>{-stepV, 0.0, stepV})
+                    usePointOnlyRefinement = true;
+                    break;
+                }
+
+                const SCVector3d residual = eval.point - point;
+                const double uu = Dot(eval.derivativeU, eval.derivativeU);
+                const double uv = Dot(eval.derivativeU, eval.derivativeV);
+                const double vv = Dot(eval.derivativeV, eval.derivativeV);
+                const double uGradient = Dot(eval.derivativeU, residual);
+                const double vGradient = Dot(eval.derivativeV, residual);
+                const double determinantScale = uu * vv;
+                const double determinant = determinantScale - uv * uv;
+                if (!std::isfinite(determinant) ||
+                    determinant <= std::max(tolerance.parameterEpsilon, std::numeric_limits<double>::epsilon()) *
+                                       determinantScale)
+                {
+                    usePointOnlyRefinement = true;
+                    break;
+                }
+
+                const double deltaU = (-uGradient * vv + vGradient * uv) / determinant;
+                const double deltaV = (-vGradient * uu + uGradient * uv) / determinant;
+                if (!std::isfinite(deltaU) || !std::isfinite(deltaV))
+                {
+                    usePointOnlyRefinement = true;
+                    break;
+                }
+
+                bool improved = false;
+                for (double scale = 1.0; scale >= 1.0 / 128.0; scale *= 0.5)
+                {
+                    const double candidateU = std::clamp(bestU + scale * deltaU, uRange.min, uRange.max);
+                    const double candidateV = std::clamp(bestV + scale * deltaV, vRange.min, vRange.max);
+                    const double candidateDistanceSquared =
+                        DistanceSquaredToSurfacePoint(point, surface, candidateU, candidateV);
+                    if (candidateDistanceSquared < bestDistanceSquared)
                     {
-                        const double candidateU = std::clamp(bestU + du, uRange.min, uRange.max);
-                        const double candidateV = std::clamp(bestV + dv, vRange.min, vRange.max);
-                        const double candidateDistanceSquared =
-                            DistanceSquaredToSurfacePoint(point, surface, candidateU, candidateV);
-                        if (candidateDistanceSquared + tolerance.distanceEpsilon * tolerance.distanceEpsilon <
-                            bestDistanceSquared)
-                        {
-                            bestU = candidateU;
-                            bestV = candidateV;
-                            bestDistanceSquared = candidateDistanceSquared;
-                            improved = true;
-                        }
+                        bestU = candidateU;
+                        bestV = candidateV;
+                        bestDistanceSquared = candidateDistanceSquared;
+                        improved = true;
+                        break;
                     }
                 }
-
                 if (!improved)
                 {
-                    stepU *= 0.5;
-                    stepV *= 0.5;
-                }
-
-                if (stepU <= tolerance.parameterEpsilon && stepV <= tolerance.parameterEpsilon)
-                {
+                    usePointOnlyRefinement = true;
                     break;
+                }
+            }
+
+            if (usePointOnlyRefinement)
+            {
+                double stepU = std::max(uRange.Length() * 0.25, tolerance.parameterEpsilon);
+                double stepV = std::max(vRange.Length() * 0.25, tolerance.parameterEpsilon);
+                for (int iteration = 0; iteration < 64; ++iteration)
+                {
+                    bool improved = false;
+                    for (const double du : std::array<double, 3>{-stepU, 0.0, stepU})
+                    {
+                        for (const double dv : std::array<double, 3>{-stepV, 0.0, stepV})
+                        {
+                            const double candidateU = std::clamp(bestU + du, uRange.min, uRange.max);
+                            const double candidateV = std::clamp(bestV + dv, vRange.min, vRange.max);
+                            const double candidateDistanceSquared =
+                                DistanceSquaredToSurfacePoint(point, surface, candidateU, candidateV);
+                            if (candidateDistanceSquared < bestDistanceSquared)
+                            {
+                                bestU = candidateU;
+                                bestV = candidateV;
+                                bestDistanceSquared = candidateDistanceSquared;
+                                improved = true;
+                            }
+                        }
+                    }
+                    if (!improved)
+                    {
+                        stepU *= 0.5;
+                        stepV *= 0.5;
+                    }
+                    if (stepU <= tolerance.parameterEpsilon && stepV <= tolerance.parameterEpsilon)
+                    {
+                        break;
+                    }
                 }
             }
 
@@ -224,34 +289,91 @@ namespace Geometry
             double bestParameter = std::clamp(initialParameter, range.min, range.max);
             SCPoint3d bestPoint = curve.PointAt(bestParameter);
             double bestDistanceSquared = (point - bestPoint).LengthSquared();
-            double step = std::max(range.Length() * 0.25, tolerance.parameterEpsilon);
+            bool usePointOnlyRefinement = false;
 
-            for (int iteration = 0; iteration < 16; ++iteration)
+            for (int iteration = 0; iteration < 32; ++iteration)
             {
-                bool improved = false;
-                for (const double dt : std::array<double, 3>{-step, 0.0, step})
+                const SCCurveEval3d eval = curve.Evaluate(bestParameter, 2);
+                if (!eval.IsValid() || eval.derivativeOrder < 1)
                 {
-                    const double candidateParameter = std::clamp(bestParameter + dt, range.min, range.max);
+                    usePointOnlyRefinement = true;
+                    break;
+                }
+
+                const SCVector3d residual = eval.point - point;
+                const double gradient = Dot(residual, eval.firstDerivative);
+                const double tangentSquared = Dot(eval.firstDerivative, eval.firstDerivative);
+                const double curvatureTerm = eval.derivativeOrder >= 2
+                                                 ? Dot(residual, eval.secondDerivative)
+                                                 : 0.0;
+                const double hessian = tangentSquared + curvatureTerm;
+                const double hessianScale = tangentSquared + std::abs(curvatureTerm);
+                const double denominator = hessian > std::numeric_limits<double>::epsilon() * hessianScale
+                                               ? hessian
+                                               : tangentSquared;
+                if (!std::isfinite(denominator) || denominator <= 0.0)
+                {
+                    usePointOnlyRefinement = true;
+                    break;
+                }
+
+                const double delta = -gradient / denominator;
+                if (!std::isfinite(delta))
+                {
+                    usePointOnlyRefinement = true;
+                    break;
+                }
+
+                bool improved = false;
+                for (double scale = 1.0; scale >= 1.0 / 128.0; scale *= 0.5)
+                {
+                    const double candidateParameter =
+                        std::clamp(bestParameter + scale * delta, range.min, range.max);
                     const SCPoint3d candidatePoint = curve.PointAt(candidateParameter);
                     const double candidateDistanceSquared = (point - candidatePoint).LengthSquared();
-                    if (candidateDistanceSquared + tolerance.distanceEpsilon * tolerance.distanceEpsilon <
-                        bestDistanceSquared)
+                    if (candidateDistanceSquared < bestDistanceSquared)
                     {
                         bestParameter = candidateParameter;
                         bestPoint = candidatePoint;
                         bestDistanceSquared = candidateDistanceSquared;
                         improved = true;
+                        break;
                     }
                 }
-
                 if (!improved)
                 {
-                    step *= 0.5;
-                }
-
-                if (step <= tolerance.parameterEpsilon)
-                {
+                    usePointOnlyRefinement = true;
                     break;
+                }
+            }
+
+            if (usePointOnlyRefinement)
+            {
+                double step = std::max(range.Length() * 0.25, tolerance.parameterEpsilon);
+                for (int iteration = 0; iteration < 64; ++iteration)
+                {
+                    bool improved = false;
+                    for (const double dt : std::array<double, 2>{-step, step})
+                    {
+                        const double candidateParameter = std::clamp(bestParameter + dt, range.min, range.max);
+                        const SCPoint3d candidatePoint = curve.PointAt(candidateParameter);
+                        const double candidateDistanceSquared = (point - candidatePoint).LengthSquared();
+                        if (candidateDistanceSquared < bestDistanceSquared)
+                        {
+                            bestParameter = candidateParameter;
+                            bestPoint = candidatePoint;
+                            bestDistanceSquared = candidateDistanceSquared;
+                            improved = true;
+                        }
+                    }
+                    if (!improved)
+                    {
+                        step *= 0.5;
+                    }
+                    if (step <= tolerance.parameterEpsilon)
+                    {
+                        break;
+                    }
                 }
             }
 
@@ -375,27 +497,34 @@ namespace Geometry
             return {};
         }
 
-        constexpr std::size_t sampleCount = 17;
-        double bestParameter = range.min;
-        SCPoint3d bestPoint = curve.PointAt(bestParameter);
-        double bestDistanceSquared = (point - bestPoint).LengthSquared();
-        for (std::size_t i = 0; i < sampleCount; ++i)
+        std::vector<double> parameterBoundaries{range.min, range.max};
+        if (const auto* nurbsCurve = dynamic_cast<const SCNurbsCurve3d*>(&curve))
         {
-            const double parameter = i + 1 == sampleCount ? range.max
-                                                          : range.min + range.Length() * static_cast<double>(i) /
-                                                                            static_cast<double>(sampleCount - 1);
-            const SCPoint3d candidatePoint = curve.PointAt(parameter);
-            const double candidateDistanceSquared = (point - candidatePoint).LengthSquared();
-            if (candidateDistanceSquared < bestDistanceSquared)
+            auto nurbsBoundaries = Detail::KnotSpanBoundaries(
+                range, nurbsCurve->Knots(), nurbsCurve->Degree(), nurbsCurve->ControlPoints().size());
+            if (nurbsBoundaries.size() >= 2)
             {
-                bestParameter = parameter;
-                bestPoint = candidatePoint;
-                bestDistanceSquared = candidateDistanceSquared;
+                parameterBoundaries = std::move(nurbsBoundaries);
+            }
+        }
+        const SCBox3d curveBounds = curve.Bounds();
+        const double curveScale = curveBounds.IsValid()
+                                      ? (curveBounds.MaxPoint() - curveBounds.MinPoint()).Length()
+                                      : tolerance.distanceEpsilon;
+        const std::vector<double> parameterSeeds = Detail::AdaptiveCurveParameterSeeds(
+            curve, std::move(parameterBoundaries), std::max(tolerance.distanceEpsilon * 4.0, curveScale * 1e-3));
+
+        SCBrepEdgeProjection3d best{};
+        for (const double parameter : parameterSeeds)
+        {
+            const SCBrepEdgeProjection3d refined = RefineCurveProjection(point, curve, parameter, tolerance);
+            if (refined.success && (!best.success || refined.distanceSquared < best.distanceSquared))
+            {
+                best = refined;
             }
         }
 
-        const SCBrepEdgeProjection3d refined = RefineCurveProjection(point, curve, bestParameter, tolerance);
-        return {refined.success, refined.point, refined.parameter, refined.distanceSquared};
+        return {best.success, best.point, best.parameter, best.distanceSquared};
     }
 
     SCCurveOnSurfaceProjection3d ProjectPointToCurveOnSurface(const SCPoint3d& point,
@@ -478,32 +607,80 @@ namespace Geometry
             return {true, surfacePoint, u, v, (point - surfacePoint).LengthSquared()};
         }
 
-        const std::size_t sampleCountU = 9;
-        const std::size_t sampleCountV = 9;
-        double bestU = uRange.min;
-        double bestV = vRange.min;
-        double bestDistanceSquared = DistanceSquaredToSurfacePoint(point, surface, bestU, bestV);
-        for (std::size_t ui = 0; ui < sampleCountU; ++ui)
+        std::vector<double> uBoundaries{uRange.min, uRange.max};
+        std::vector<double> vBoundaries{vRange.min, vRange.max};
+        if (const auto* nurbsSurface = dynamic_cast<const SCNurbsSurface*>(&surface))
         {
-            const double u = ui + 1 == sampleCountU ? uRange.max
-                                                    : uRange.min + uRange.Length() * static_cast<double>(ui) /
-                                                                       static_cast<double>(sampleCountU - 1);
-            for (std::size_t vi = 0; vi < sampleCountV; ++vi)
+            auto nurbsUBoundaries = Detail::KnotSpanBoundaries(
+                uRange, nurbsSurface->KnotsU(), nurbsSurface->DegreeU(), nurbsSurface->ControlPointCountU());
+            auto nurbsVBoundaries = Detail::KnotSpanBoundaries(
+                vRange, nurbsSurface->KnotsV(), nurbsSurface->DegreeV(), nurbsSurface->ControlPointCountV());
+            if (nurbsUBoundaries.size() >= 2 && nurbsVBoundaries.size() >= 2)
             {
-                const double v = vi + 1 == sampleCountV ? vRange.max
-                                                        : vRange.min + vRange.Length() * static_cast<double>(vi) /
-                                                                           static_cast<double>(sampleCountV - 1);
-                const double distanceSquared = DistanceSquaredToSurfacePoint(point, surface, u, v);
-                if (distanceSquared < bestDistanceSquared)
+                uBoundaries = std::move(nurbsUBoundaries);
+                vBoundaries = std::move(nurbsVBoundaries);
+            }
+        }
+        const SCBox3d surfaceBounds = surface.Bounds();
+        const double surfaceScale = surfaceBounds.IsValid()
+                                        ? (surfaceBounds.MaxPoint() - surfaceBounds.MinPoint()).Length()
+                                        : tolerance.distanceEpsilon;
+        const std::vector<Detail::SurfaceParameterSeed> surfaceSeeds = Detail::AdaptiveSurfaceParameterSeeds(
+            surface, std::move(uBoundaries), std::move(vBoundaries),
+            std::max(tolerance.distanceEpsilon * 4.0, surfaceScale * 1e-2));
+
+        SCSurfaceProjection3d best{};
+        if (surfaceSeeds.empty())
+        {
+            return best;
+        }
+
+        bool pointOnlyRefinement = dynamic_cast<const SCOffsetSurface*>(&surface) != nullptr;
+        if (!pointOnlyRefinement)
+        {
+            const SCSurfaceEval3d initialEval = surface.Evaluate(surfaceSeeds.front().u, surfaceSeeds.front().v, 1);
+            pointOnlyRefinement = initialEval.derivativeOrder < 1 || !initialEval.point.IsValid() ||
+                                  !initialEval.derivativeU.IsValid() || !initialEval.derivativeV.IsValid() ||
+                                  initialEval.normal.Length() <= tolerance.distanceEpsilon;
+        }
+        const auto considerSeed = [&](const Detail::SurfaceParameterSeed& seed) {
+            const SCSurfaceProjection3d refined = RefineSurfaceProjection(point, surface, seed.u, seed.v, tolerance);
+            if (refined.success && (!best.success || refined.distanceSquared < best.distanceSquared))
+            {
+                best = refined;
+            }
+        };
+
+        if (pointOnlyRefinement)
+        {
+            std::vector<std::pair<double, std::size_t>> rankedSeeds;
+            rankedSeeds.reserve(surfaceSeeds.size());
+            for (std::size_t index = 0; index < surfaceSeeds.size(); ++index)
+            {
+                const auto& seed = surfaceSeeds[index];
+                const double distanceSquared = DistanceSquaredToSurfacePoint(point, surface, seed.u, seed.v);
+                if (std::isfinite(distanceSquared))
                 {
-                    bestU = u;
-                    bestV = v;
-                    bestDistanceSquared = distanceSquared;
+                    rankedSeeds.emplace_back(distanceSquared, index);
                 }
+            }
+            constexpr std::size_t kMaxPointOnlyRefinements = 16;
+            const std::size_t refinementCount = std::min(kMaxPointOnlyRefinements, rankedSeeds.size());
+            std::partial_sort(rankedSeeds.begin(), rankedSeeds.begin() + refinementCount, rankedSeeds.end());
+            for (std::size_t i = 0; i < refinementCount; ++i)
+            {
+                considerSeed(surfaceSeeds[rankedSeeds[i].second]);
+            }
+        }
+        else
+        {
+            for (const Detail::SurfaceParameterSeed& seed : surfaceSeeds)
+            {
+                considerSeed(seed);
             }
         }
 
-        return RefineSurfaceProjection(point, surface, bestU, bestV, tolerance);
+        return best;
     }
 
     SCBrepFaceProjection3d ProjectPointToBrepFace(const SCPoint3d& point,
@@ -558,42 +735,11 @@ namespace Geometry
             return {};
         }
 
-        if (const auto* lineCurve = dynamic_cast<const SCLineCurve3d*>(edge.Curve()))
-        {
-            const SCLineProjection3d lineProjection = ProjectPointToLine(point, lineCurve->Line(), tolerance);
-            const SCIntervald range = lineCurve->ParameterRange();
-            const double parameter = std::clamp(lineProjection.parameter, range.min, range.max);
-            const SCPoint3d projectedPoint = lineCurve->PointAt(parameter);
-            return {true, parameter, projectedPoint, (point - projectedPoint).LengthSquared()};
-        }
-
-        const ISCCurve3d& curve = *edge.Curve();
-        const SCIntervald range = curve.ParameterRange();
-        if (!range.IsValid())
-        {
-            return {};
-        }
-
-        constexpr std::size_t sampleCount = 17;
-        double bestParameter = range.min;
-        SCPoint3d bestPoint = curve.PointAt(bestParameter);
-        double bestDistanceSquared = (point - bestPoint).LengthSquared();
-        for (std::size_t i = 0; i < sampleCount; ++i)
-        {
-            const double parameter = i + 1 == sampleCount ? range.max
-                                                          : range.min + range.Length() * static_cast<double>(i) /
-                                                                            static_cast<double>(sampleCount - 1);
-            const SCPoint3d candidatePoint = curve.PointAt(parameter);
-            const double candidateDistanceSquared = (point - candidatePoint).LengthSquared();
-            if (candidateDistanceSquared < bestDistanceSquared)
-            {
-                bestParameter = parameter;
-                bestPoint = candidatePoint;
-                bestDistanceSquared = candidateDistanceSquared;
-            }
-        }
-
-        return RefineCurveProjection(point, curve, bestParameter, tolerance);
+        const SCCurveProjection3d curveProjection = ProjectPointToCurve(point, *edge.Curve(), tolerance);
+        return {curveProjection.success,
+                curveProjection.parameter,
+                curveProjection.point,
+                curveProjection.distanceSquared};
     }
 
     SCBrepVertexProjection3d ProjectPointToBrepVertex(const SCPoint3d& point,

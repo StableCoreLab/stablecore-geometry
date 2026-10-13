@@ -294,7 +294,7 @@ namespace Geometry
         {
             SCPolygon2d best;
             double bestArea = 0.0;
-            for (std::size_t i = 0; i < polygons.Count(); ++i)
+            for (std::size_t i = 0; i < polygons.Size(); ++i)
             {
                 if (!polygons[i].IsValid())
                 {
@@ -317,7 +317,7 @@ namespace Geometry
             for (double candidateEps : epsCandidates)
             {
                 const SCMultiPolygon2d rebuilt = BuildMultiPolygonByLines(boundaries, candidateEps);
-                if (rebuilt.Count() == 1 && rebuilt[0].IsValid())
+                if (rebuilt.Size() == 1 && rebuilt[0].IsValid())
                 {
                     return rebuilt[0];
                 }
@@ -335,7 +335,7 @@ namespace Geometry
         [[nodiscard]] SCMultiPolyline2d SimplifyBoundaryPolylines(const SCMultiPolyline2d& boundaries, double eps)
         {
             SCMultiPolyline2d simplifiedBoundaries;
-            for (std::size_t boundaryIndex = 0; boundaryIndex < boundaries.Count(); ++boundaryIndex)
+            for (std::size_t boundaryIndex = 0; boundaryIndex < boundaries.Size(); ++boundaryIndex)
             {
                 const SCPolyline2d boundary = boundaries[boundaryIndex];
                 std::vector<SCPoint2d> points;
@@ -367,7 +367,7 @@ namespace Geometry
         [[nodiscard]] std::vector<RawSegment> CollectRawSegments(const SCMultiPolyline2d& polylines, double eps)
         {
             std::vector<RawSegment> segments;
-            for (std::size_t i = 0; i < polylines.Count(); ++i)
+            for (std::size_t i = 0; i < polylines.Size(); ++i)
             {
                 CollectRawSegments(polylines[i], segments, eps);
             }

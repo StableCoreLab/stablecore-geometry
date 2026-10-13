@@ -172,7 +172,7 @@ namespace Geometry
     bool PolygonTopology2d::Build(const SCMultiPolygon2d& polygons, double eps)
     {
         polygons_.Clear();
-        for (std::size_t i = 0; i < polygons.Count(); ++i)
+        for (std::size_t i = 0; i < polygons.Size(); ++i)
         {
             SCPolygon2d normalized = NormalizePolygonByLines(polygons[i], eps);
             if (!normalized.IsValid())
@@ -183,13 +183,13 @@ namespace Geometry
         }
         nodes_.clear();
         roots_.clear();
-        nodes_.resize(polygons_.Count());
-        for (std::size_t i = 0; i < polygons_.Count(); ++i)
+        nodes_.resize(polygons_.Size());
+        for (std::size_t i = 0; i < polygons_.Size(); ++i)
         {
             nodes_[i].polygonIndex = i;
             std::size_t bestParent = static_cast<std::size_t>(-1);
             double bestArea = 0.0;
-            for (std::size_t j = 0; j < polygons_.Count(); ++j)
+            for (std::size_t j = 0; j < polygons_.Size(); ++j)
             {
                 if (i == j)
                 {
@@ -228,7 +228,7 @@ namespace Geometry
 
     std::size_t PolygonTopology2d::Count() const
     {
-        return polygons_.Count();
+        return polygons_.Size();
     }
     bool PolygonTopology2d::IsEmpty() const
     {
@@ -236,7 +236,7 @@ namespace Geometry
     }
     bool PolygonTopology2d::IsValid() const
     {
-        return nodes_.size() == polygons_.Count();
+        return nodes_.size() == polygons_.Size();
     }
     const SCMultiPolygon2d& PolygonTopology2d::Polygons() const
     {

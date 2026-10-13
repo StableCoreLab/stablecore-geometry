@@ -3,6 +3,8 @@
 #include <sstream>
 #include <utility>
 
+#include "../Detail/GeometryContainerOps.h"
+
 namespace Geometry
 {
     SCMultiPolyline2d::SCMultiPolyline2d(std::vector<SCPolyline2d> polylines) : polylines_(std::move(polylines))
@@ -13,27 +15,24 @@ namespace Geometry
     {
     }
 
+    std::size_t SCMultiPolyline2d::Size() const
+    {
+        return Detail::ContainerCount(polylines_);
+    }
+
     std::size_t SCMultiPolyline2d::Count() const
     {
-        return polylines_.size();
+        return Size();
     }
 
     bool SCMultiPolyline2d::IsEmpty() const
     {
-        return polylines_.empty();
+        return Detail::ContainerIsEmpty(polylines_);
     }
 
     bool SCMultiPolyline2d::IsValid() const
     {
-        for (const auto& polyline : polylines_)
-        {
-            if (!polyline.IsValid())
-            {
-                return false;
-            }
-        }
-
-        return true;
+        return Detail::ContainerIsValid(polylines_);
     }
 
     void SCMultiPolyline2d::Clear()
@@ -99,7 +98,7 @@ namespace Geometry
     std::string SCMultiPolyline2d::DebugString() const
     {
         std::ostringstream stream;
-        stream << "SCMultiPolyline2d{count=" << Count() << ", pointCount=" << PointCount()
+        stream << "SCMultiPolyline2d{count=" << Size() << ", pointCount=" << PointCount()
                << ", segmentCount=" << SegmentCount() << ", valid=" << (IsValid() ? "true" : "false")
                << ", bounds=" << Bounds().DebugString() << "}";
         return stream.str();

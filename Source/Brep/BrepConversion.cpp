@@ -14,6 +14,7 @@
 
 #include "Geometry3d/SCLineCurve3d.h"
 #include "Geometry3d/SCPlaneSurface.h"
+#include "LoopGeometry.h"
 #include "Types/Geometry3d/SCLine3d.h"
 #include "Support/Epsilon.h"
 
@@ -359,49 +360,6 @@ namespace Geometry
             return true;
         }
 
-        [[nodiscard]] bool AppendLoopVerticesFromBody(const SCBrepBody& body,
-                                                      const SCBrepLoop& loop,
-                                                      std::vector<SCPoint3d>& vertices,
-                                                      double eps)
-        {
-            vertices.clear();
-            if (!loop.IsValid())
-            {
-                return false;
-            }
-
-            vertices.reserve(loop.CoedgeCount());
-            for (std::size_t i = 0; i < loop.CoedgeCount(); ++i)
-            {
-                const SCBrepCoedge coedge = loop.CoedgeAt(i);
-                if (coedge.EdgeIndex() >= body.EdgeCount())
-                {
-                    return false;
-                }
-
-                const SCBrepEdge edge = body.EdgeAt(coedge.EdgeIndex());
-                const std::size_t vertexIndex = coedge.Reversed() ? edge.EndVertexIndex() : edge.StartVertexIndex();
-                if (vertexIndex >= body.VertexCount())
-                {
-                    return false;
-                }
-
-                const SCPoint3d point = body.VertexAt(vertexIndex).Point();
-                if (vertices.empty() || !vertices.back().AlmostEquals(point, Geometry::kLoopCleanupEpsilon))
-                {
-                    vertices.push_back(point);
-                }
-            }
-
-            while (vertices.size() >= 2 &&
-                   vertices.front().AlmostEquals(vertices.back(), Geometry::kLoopCleanupEpsilon))
-            {
-                vertices.pop_back();
-            }
-
-            return vertices.size() >= 3;
-        }
-
         [[nodiscard]] bool AppendLoopVerticesFromBrepTopology(const std::vector<SCBrepVertex>& vertices,
                                                               const std::vector<SCBrepEdge>& edges,
                                                               const SCBrepLoop& loop,
@@ -479,7 +437,7 @@ namespace Geometry
             }
 
             std::vector<SCPoint3d> outerVertices;
-            if (!AppendLoopVerticesFromBody(body, face.OuterLoop(), outerVertices, eps))
+            if (!Detail::AppendLoopVertices(body, face.OuterLoop(), outerVertices, eps))
             {
                 return false;
             }
@@ -489,7 +447,7 @@ namespace Geometry
             for (std::size_t i = 0; i < face.HoleCount(); ++i)
             {
                 std::vector<SCPoint3d> holeVertices;
-                if (!AppendLoopVerticesFromBody(body, face.HoleAt(i), holeVertices, eps))
+                if (!Detail::AppendLoopVertices(body, face.HoleAt(i), holeVertices, eps))
                 {
                     return false;
                 }
@@ -499,17 +457,6 @@ namespace Geometry
             polyFace = PolyhedronFace3d(
                 planeSurface->SupportPlane(), PolyhedronLoop3d(std::move(outerVertices)), std::move(holes));
             return polyFace.IsValid(eps);
-        }
-
-        [[nodiscard]] SCPoint2d ProjectPointToPlaneUv(const SCPoint3d& point, const SCPlaneSurface& planeSurface)
-        {
-            const SCPlane plane = planeSurface.SupportPlane();
-            const SCVector3d delta = point - plane.origin;
-            const SCVector3d uAxis = planeSurface.UAxis();
-            const SCVector3d vAxis = planeSurface.VAxis();
-            const double uDenom = std::max(uAxis.LengthSquared(), Geometry::kPlaneProjectionEpsilon);
-            const double vDenom = std::max(vAxis.LengthSquared(), Geometry::kPlaneProjectionEpsilon);
-            return SCPoint2d{Dot(delta, uAxis) / uDenom, Dot(delta, vAxis) / vDenom};
         }
 
         [[nodiscard]] bool AppendBrepLoopFromPolyLoop(const PolyhedronLoop3d& polyLoop,
@@ -2057,7 +2004,7 @@ namespace Geometry
 
                     for (const SCPoint3d& point : outerLoopVertices)
                     {
-                        outerUv.push_back(ProjectPointToPlaneUv(point, planeSurface));
+                        outerUv.push_back(Detail::ProjectPointToPlaneUv(point, planeSurface));
                     }
                 } catch (const std::exception&)
                 {
@@ -2123,7 +2070,7 @@ namespace Geometry
 
                             for (const SCPoint3d& point : holeLoopVertices)
                             {
-                        holeUv.push_back(ProjectPointToPlaneUv(point, planeSurface));
+                        holeUv.push_back(Detail::ProjectPointToPlaneUv(point, planeSurface));
                             }
                         } catch (const std::exception&)
                         {

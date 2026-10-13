@@ -7,11 +7,12 @@
 
 #include "Support/Epsilon.h"
 #include "Types/Geometry2d/SCPoint2.h"
+#include "Types/SCGeometryScalar.h"
 
 namespace Geometry
 {
     template <typename T>
-    using SCBoxMeasureType = std::conditional_t<std::is_floating_point_v<T>, T, double>;
+    using SCBoxMeasureType = SCGeometryScalarType<T>;
 
     template <typename T>
     class SCBox2

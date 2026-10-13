@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "Brep/BrepConversion.h"
+#include "LoopGeometry.h"
 #include "Core/Measure.h"
 #include "Geometry3d/SCLineCurve3d.h"
 #include "Geometry3d/SCPlaneSurface.h"
@@ -48,10 +49,6 @@ namespace Geometry
         }
 
         [[nodiscard]] bool BoundsLexicographicallyLess(const SCBox3d& first, const SCBox3d& second, double epsilon);
-        [[nodiscard]] bool AppendLoopVerticesFromBody(const SCBrepBody& body,
-                                                      const SCBrepLoop& loop,
-                                                      std::vector<SCPoint3d>& vertices,
-                                                      double epsilon);
 
         [[nodiscard]] bool IsClosedManifoldSingleShell(const SCBrepBody& body, const double epsilon)
         {
@@ -154,7 +151,7 @@ namespace Geometry
         {
             const auto loopLiesOnPlane = [&](const SCBrepLoop& loop, const SCPlane& plane) {
                 std::vector<SCPoint3d> vertices;
-                if (!AppendLoopVerticesFromBody(body, loop, vertices, epsilon))
+                if (!Detail::AppendLoopVertices(body, loop, vertices, epsilon))
                 {
                     return false;
                 }
@@ -241,7 +238,7 @@ namespace Geometry
                 const auto* planeSurface = dynamic_cast<const SCPlaneSurface*>(face.SupportSurface());
                 std::vector<SCPoint3d> outerVertices;
                 if (planeSurface == nullptr || face.HoleCount() != 0 ||
-                    !AppendLoopVerticesFromBody(body, face.OuterLoop(), outerVertices, epsilon))
+                    !Detail::AppendLoopVertices(body, face.OuterLoop(), outerVertices, epsilon))
                 {
                     return false;
                 }
@@ -616,48 +613,6 @@ namespace Geometry
             return NearlyEqual(value, minValue, epsilon) || NearlyEqual(value, maxValue, epsilon);
         }
 
-        [[nodiscard]] bool AppendLoopVerticesFromBody(const SCBrepBody& body,
-                                                      const SCBrepLoop& loop,
-                                                      std::vector<SCPoint3d>& vertices,
-                                                      double epsilon)
-        {
-            vertices.clear();
-            if (!loop.IsValid())
-            {
-                return false;
-            }
-
-            vertices.reserve(loop.CoedgeCount());
-            for (std::size_t i = 0; i < loop.CoedgeCount(); ++i)
-            {
-                const SCBrepCoedge coedge = loop.CoedgeAt(i);
-                if (coedge.EdgeIndex() >= body.EdgeCount())
-                {
-                    return false;
-                }
-
-                const SCBrepEdge edge = body.EdgeAt(coedge.EdgeIndex());
-                const std::size_t vertexIndex = coedge.Reversed() ? edge.EndVertexIndex() : edge.StartVertexIndex();
-                if (vertexIndex >= body.VertexCount())
-                {
-                    return false;
-                }
-
-                const SCPoint3d point = body.VertexAt(vertexIndex).Point();
-                if (vertices.empty() || !vertices.back().AlmostEquals(point, epsilon))
-                {
-                    vertices.push_back(point);
-                }
-            }
-
-            while (vertices.size() >= 2 && vertices.front().AlmostEquals(vertices.back(), epsilon))
-            {
-                vertices.pop_back();
-            }
-
-            return vertices.size() >= 3;
-        }
-
         [[nodiscard]] bool PointCyclesAreEquivalent(const std::vector<SCPoint3d>& first,
                                                      const std::vector<SCPoint3d>& second,
                                                      const double epsilon)
@@ -695,8 +650,8 @@ namespace Geometry
         {
             std::vector<SCPoint3d> firstVertices;
             std::vector<SCPoint3d> secondVertices;
-            return AppendLoopVerticesFromBody(first, firstLoop, firstVertices, epsilon) &&
-                   AppendLoopVerticesFromBody(second, secondLoop, secondVertices, epsilon) &&
+            return Detail::AppendLoopVertices(first, firstLoop, firstVertices, epsilon) &&
+                   Detail::AppendLoopVertices(second, secondLoop, secondVertices, epsilon) &&
                    PointCyclesAreEquivalent(firstVertices, secondVertices, epsilon);
         }
 
@@ -824,7 +779,7 @@ namespace Geometry
             }
 
             std::vector<SCPoint3d> outerVertices;
-            if (!AppendLoopVerticesFromBody(body, face.OuterLoop(), outerVertices, epsilon) ||
+            if (!Detail::AppendLoopVertices(body, face.OuterLoop(), outerVertices, epsilon) ||
                 outerVertices.size() != 4)
             {
                 return false;

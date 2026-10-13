@@ -130,9 +130,9 @@ namespace Geometry
         [[nodiscard]] LineNetworkAnalysis2d AnalyzeLineNetwork(const SCMultiPolyline2d& lines, double epsilon)
         {
             LineNetworkAnalysis2d analysis;
-            analysis.diagnostics.inputPolylineCount = lines.Count();
+            analysis.diagnostics.inputPolylineCount = lines.Size();
 
-            for (std::size_t lineIndex = 0; lineIndex < lines.Count(); ++lineIndex)
+            for (std::size_t lineIndex = 0; lineIndex < lines.Size(); ++lineIndex)
             {
                 const SCPolyline2d& line = lines[lineIndex];
                 if (!line.IsValid() || line.PointCount() < 2)
@@ -553,7 +553,7 @@ namespace Geometry
             }
 
             SCMultiPolygon2d polygons = BuildMultiPolygonByLines(BuildSegmentPolylines(prunedSegments), options.epsilon);
-            if (polygons.Count() > 0)
+            if (polygons.Size() > 0)
             {
                 return polygons;
             }
@@ -824,7 +824,7 @@ namespace Geometry
     SCSearchPolyResult2d SearchPolygons(const SCMultiPolyline2d& lines, SCSearchPolyOptions2d options)
     {
         SCSearchPolyResult2d result;
-        if (options.epsilon <= 0.0 || lines.Count() == 0)
+        if (options.epsilon <= 0.0 || lines.Size() == 0)
         {
             result.issue = SCSearchPolyIssue2d::InvalidInput;
             return result;
@@ -833,18 +833,18 @@ namespace Geometry
         const LineNetworkAnalysis2d analysis = AnalyzeLineNetwork(lines, options.epsilon);
         result.diagnostics = analysis.diagnostics;
         result.polygons = BuildMultiPolygonByLines(lines, options.epsilon);
-        if (result.polygons.Count() == 0)
+        if (result.polygons.Size() == 0)
         {
             result.polygons = TryBuildPolygonsWithBranchCleanupFallback(analysis, options);
         }
-        if (result.polygons.Count() == 0)
+        if (result.polygons.Size() == 0)
         {
             result.issue = SCSearchPolyIssue2d::NoClosedPolygonFound;
             return result;
         }
 
-        result.candidates.reserve(result.polygons.Count());
-        for (std::size_t index = 0; index < result.polygons.Count(); ++index)
+        result.candidates.reserve(result.polygons.Size());
+        for (std::size_t index = 0; index < result.polygons.Size(); ++index)
         {
             if (result.polygons[index].IsValid())
             {

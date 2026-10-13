@@ -132,7 +132,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsSuccess() const
         {
-            return issue == SCSearchPolyIssue2d::None && polygons.Count() > 0;
+            return issue == SCSearchPolyIssue2d::None && polygons.Size() > 0;
         }
     };
 

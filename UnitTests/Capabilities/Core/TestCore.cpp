@@ -142,6 +142,13 @@ TEST(GeometryTest, CoversTwoDimensionalPrimitives)
     EXPECT_NEAR(offset.Length(), 5.0, 1e-12);
     ASSERT_EQ(a + offset, b);
     ASSERT_EQ(b - offset, a);
+    const SCVector2d zeroVector{0.0, 0.0};
+    EXPECT_TRUE(a.AlmostEquals(zeroVector));
+    EXPECT_TRUE(zeroVector.AlmostEquals(a));
+    const SCPoint3d coordinates{1.0, 2.0, 3.0};
+    const SCVector3d components{1.0, 2.0, 3.0};
+    EXPECT_TRUE(coordinates.AlmostEquals(components));
+    EXPECT_TRUE(components.AlmostEquals(coordinates));
 
     const SCLineSegment2d line = SCLineSegment2d::FromEndpoints(a, b);
     ASSERT_TRUE(line.IsValid());
@@ -177,6 +184,17 @@ TEST(GeometryTest, CoversTwoDimensionalPrimitives)
     const auto projection = ProjectPointToSegment(SCPoint2d{3.0, 1.0}, a, b);
     const SCSegmentProjection2d expectedProjection{SCPoint2d{1.56, 2.08}, 0.52, 3.24, true};
     EXPECT_TRUE(projection.AlmostEquals(expectedProjection, 1e-12));
+
+    const auto clampedEndpoint = ProjectPointToSegment(SCPoint2d{5.0, 0.0},
+                                                       SCPoint2d{0.0, 0.0}, SCPoint2d{2.0, 0.0}, true);
+    EXPECT_TRUE(clampedEndpoint.point.AlmostEquals(SCPoint2d{2.0, 0.0}));
+    EXPECT_DOUBLE_EQ(clampedEndpoint.parameter, 1.0);
+    EXPECT_TRUE(clampedEndpoint.isOnSegment);
+
+    const auto unboundedEndpoint = ProjectPointToSegment(SCPoint2d{5.0, 0.0},
+                                                         SCPoint2d{0.0, 0.0}, SCPoint2d{2.0, 0.0}, false);
+    EXPECT_DOUBLE_EQ(unboundedEndpoint.parameter, 2.5);
+    EXPECT_FALSE(unboundedEndpoint.isOnSegment);
 
     const SCBox2d boxA = SCBox2d::FromMinMax(SCPoint2d{0.0, 0.0}, SCPoint2d{2.0, 2.0});
     const SCBox2d boxB = SCBox2d::FromMinMax(SCPoint2d{1.0, 1.0}, SCPoint2d{3.0, 3.0});

@@ -109,8 +109,8 @@ namespace Geometry
     SCMultiPolyline2d Translate(const SCMultiPolyline2d& polylines, const SCVector2d& offset)
     {
         std::vector<SCPolyline2d> result;
-        result.reserve(polylines.Count());
-        for (std::size_t i = 0; i < polylines.Count(); ++i)
+        result.reserve(polylines.Size());
+        for (std::size_t i = 0; i < polylines.Size(); ++i)
         {
             result.push_back(Translate(polylines[i], offset));
         }
@@ -120,8 +120,8 @@ namespace Geometry
     SCMultiPolygon2d Translate(const SCMultiPolygon2d& polygons, const SCVector2d& offset)
     {
         std::vector<SCPolygon2d> result;
-        result.reserve(polygons.Count());
-        for (std::size_t i = 0; i < polygons.Count(); ++i)
+        result.reserve(polygons.Size());
+        for (std::size_t i = 0; i < polygons.Size(); ++i)
         {
             result.push_back(Translate(polygons[i], offset));
         }

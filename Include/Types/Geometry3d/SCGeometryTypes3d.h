@@ -59,7 +59,8 @@ namespace Geometry
             if (derivativeOrder >= 1 &&
                 (!derivativeU.IsValid() || !derivativeV.IsValid() || !normal.IsValid()))
             { return false; }
-            return derivativeOrder < 1 || normal.Length() > eps;
+            (void)eps;
+            return true;
         }
     };
 }

@@ -3,6 +3,8 @@
 #include <sstream>
 #include <utility>
 
+#include "../Detail/GeometryContainerOps.h"
+
 namespace Geometry
 {
     SCMultiPolygon2d::SCMultiPolygon2d(std::vector<SCPolygon2d> polygons) : polygons_(std::move(polygons))
@@ -13,27 +15,24 @@ namespace Geometry
     {
     }
 
+    std::size_t SCMultiPolygon2d::Size() const
+    {
+        return Detail::ContainerCount(polygons_);
+    }
+
     std::size_t SCMultiPolygon2d::Count() const
     {
-        return polygons_.size();
+        return Size();
     }
 
     bool SCMultiPolygon2d::IsEmpty() const
     {
-        return polygons_.empty();
+        return Detail::ContainerIsEmpty(polygons_);
     }
 
     bool SCMultiPolygon2d::IsValid() const
     {
-        for (const auto& polygon : polygons_)
-        {
-            if (!polygon.IsValid())
-            {
-                return false;
-            }
-        }
-
-        return true;
+        return Detail::ContainerIsValid(polygons_);
     }
 
     void SCMultiPolygon2d::Clear()
@@ -109,7 +108,7 @@ namespace Geometry
     std::string SCMultiPolygon2d::DebugString() const
     {
         std::ostringstream stream;
-        stream << "SCMultiPolygon2d{count=" << Count() << ", pointCount=" << PointCount()
+        stream << "SCMultiPolygon2d{count=" << Size() << ", pointCount=" << PointCount()
                << ", segmentCount=" << SegmentCount() << ", holeCount=" << HoleCount()
                << ", valid=" << (IsValid() ? "true" : "false") << ", bounds=" << Bounds().DebugString() << "}";
         return stream.str();

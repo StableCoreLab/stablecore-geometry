@@ -5,16 +5,18 @@
 #include <type_traits>
 
 #include "Types/Geometry3d/SCPoint3.h"
+#include "Types/SCGeometryScalar.h"
 
 namespace Geometry
 {
     template <typename T>
-    using SCVectorLengthType3 = std::conditional_t<std::is_floating_point_v<T>, T, double>;
+    using SCVectorLengthType3 = SCGeometryScalarType<T>;
 
     template <typename T>
     struct SCVector3 : SCVec3Storage<T>
     {
         using SCVec3Storage<T>::SCVec3Storage;
+        using SCVec3Storage<T>::AlmostEquals;
         using LengthType = SCVectorLengthType3<T>;
 
         [[nodiscard]] static constexpr SCVector3 FromXYZ(T xValue, T yValue, T zValue)

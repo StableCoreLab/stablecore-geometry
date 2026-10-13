@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "Brep/MeshRepair.h"
+#include "LoopGeometry.h"
 #include "Core/Relation.h"
 #include "Core/ShapeOps.h"
 #include "Core/Validation.h"
@@ -36,59 +37,6 @@ namespace Geometry
 
         namespace TrimBackfill
         {
-            [[nodiscard]] bool AppendLoopVertices(const SCBrepBody& body,
-                                                  const SCBrepLoop& loop,
-                                                  std::vector<SCPoint3d>& vertices,
-                                                  double eps)
-            {
-                vertices.clear();
-                if (!loop.IsValid())
-                {
-                    return false;
-                }
-
-                vertices.reserve(loop.CoedgeCount());
-                for (std::size_t i = 0; i < loop.CoedgeCount(); ++i)
-                {
-                    const SCBrepCoedge coedge = loop.CoedgeAt(i);
-                    if (coedge.EdgeIndex() >= body.EdgeCount())
-                    {
-                        return false;
-                    }
-
-                    const SCBrepEdge edge = body.EdgeAt(coedge.EdgeIndex());
-                    const std::size_t vertexIndex = coedge.Reversed() ? edge.EndVertexIndex() : edge.StartVertexIndex();
-                    if (vertexIndex >= body.VertexCount())
-                    {
-                        return false;
-                    }
-
-                    const SCPoint3d point = body.VertexAt(vertexIndex).Point();
-                    if (vertices.empty() || !vertices.back().AlmostEquals(point, eps))
-                    {
-                        vertices.push_back(point);
-                    }
-                }
-
-                while (vertices.size() >= 2 && vertices.front().AlmostEquals(vertices.back(), eps))
-                {
-                    vertices.pop_back();
-                }
-
-                return vertices.size() >= 3;
-            }
-
-            [[nodiscard]] SCPoint2d ProjectPointToPlaneUv(const SCPoint3d& point, const SCPlaneSurface& planeSurface)
-            {
-                const SCPlane plane = planeSurface.SupportPlane();
-                const SCVector3d delta = point - plane.origin;
-                const SCVector3d uAxis = planeSurface.UAxis();
-                const SCVector3d vAxis = planeSurface.VAxis();
-                const double uDenom = std::max(uAxis.LengthSquared(), Geometry::kHealingDefaultEpsilon);
-                const double vDenom = std::max(vAxis.LengthSquared(), Geometry::kHealingDefaultEpsilon);
-                return SCPoint2d{Dot(delta, uAxis) / uDenom, Dot(delta, vAxis) / vDenom};
-            }
-
             [[nodiscard]] bool BuildTrimFromLoop(const SCBrepBody& body,
                                                  const SCBrepLoop& loop,
                                                   const SCPlaneSurface& planeSurface,
@@ -96,7 +44,7 @@ namespace Geometry
                                                   double eps)
             {
                 std::vector<SCPoint3d> loopVertices;
-                if (!AppendLoopVertices(body, loop, loopVertices, eps))
+                if (!Detail::AppendLoopVertices(body, loop, loopVertices, eps))
                 {
                     return false;
                 }
@@ -105,7 +53,7 @@ namespace Geometry
                 uvPoints.reserve(loopVertices.size());
                 for (const SCPoint3d& point : loopVertices)
                 {
-                    uvPoints.push_back(ProjectPointToPlaneUv(point, planeSurface));
+                    uvPoints.push_back(Detail::ProjectPointToPlaneUv(point, planeSurface));
                 }
 
                 trim = SCCurveOnSurface(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()),
@@ -519,7 +467,7 @@ namespace Geometry
                     uvPoints.reserve(loopVertices.size());
                     for (const SCPoint3d& point : loopVertices)
                     {
-                        uvPoints.push_back(TrimBackfill::ProjectPointToPlaneUv(point, planeSurface));
+                        uvPoints.push_back(Detail::ProjectPointToPlaneUv(point, planeSurface));
                     }
 
                     const SCPolyline2d uvRing(std::move(uvPoints), SCPolylineClosure::Closed);

@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "Core/Metrics.h"
+#include "../Detail/BoxTreeCore.h"
 
 namespace Geometry
 {
@@ -25,76 +26,40 @@ namespace Geometry
 
     namespace
     {
-        [[nodiscard]] double CenterCoordinate(const SCBox3d& box, int axis)
+        struct BoxTree3dTraits
         {
-            const SCPoint3d center = box.Center();
-            return axis == 0 ? center.x : (axis == 1 ? center.y : center.z);
-        }
-
-        [[nodiscard]] SCBox3d ComputeBounds(const std::vector<SCBoxTreeEntry3d>& entries,
-                                            const std::vector<std::size_t>& indices)
-        {
-            SCBox3d bounds;
-            for (std::size_t index : indices)
+            static constexpr int AxisCount = 3;
+            static SCBox3d EmptyBox() { return {}; }
+            static void ExpandBounds(SCBox3d& bounds, const SCBox3d& box)
             {
-                bounds.ExpandToInclude(entries[index].box.MinPoint());
-                bounds.ExpandToInclude(entries[index].box.MaxPoint());
+                bounds.ExpandToInclude(box.MinPoint());
+                bounds.ExpandToInclude(box.MaxPoint());
             }
-            return bounds;
-        }
+            static double CenterCoordinate(const SCBox3d& box, int axis)
+            {
+                const SCPoint3d center = box.Center();
+                return axis == 0 ? center.x : (axis == 1 ? center.y : center.z);
+            }
+            static double DistanceSquared(const SCPoint3d& point, const SCBox3d& box)
+            {
+                return Geometry::DistanceSquared(point, box);
+            }
+            static bool Intersects(const SCBox3d& lhs, const SCBox3d& rhs, double eps)
+            {
+                return Geometry::Intersects(lhs, rhs, eps);
+            }
+            static bool Contains(const SCBox3d& box, const SCPoint3d& point, double eps)
+            {
+                return Geometry::Contains(box, point, eps);
+            }
+        };
 
         [[nodiscard]] std::unique_ptr<SCBoxTree3d::Node> BuildBoxTree(const std::vector<SCBoxTreeEntry3d>& entries,
-                                                            std::vector<std::size_t> indices,
-                                                            int depth)
+                                                                      std::vector<std::size_t> indices,
+                                                                      int depth)
         {
-            if (indices.empty())
-            {
-                return {};
-            }
-
-            auto node = std::make_unique<SCBoxTree3d::Node>();
-            node->bounds = ComputeBounds(entries, indices);
-            if (indices.size() <= 4)
-            {
-                node->leafIndices = std::move(indices);
-                return node;
-            }
-
-            const int axis = depth % 3;
-            std::sort(indices.begin(), indices.end(), [&entries, axis](std::size_t lhs, std::size_t rhs) {
-                return CenterCoordinate(entries[lhs].box, axis) < CenterCoordinate(entries[rhs].box, axis);
-            });
-
-            const std::size_t mid = indices.size() / 2;
-            std::vector<std::size_t> leftIndices(indices.begin(), indices.begin() + static_cast<std::ptrdiff_t>(mid));
-            std::vector<std::size_t> rightIndices(indices.begin() + static_cast<std::ptrdiff_t>(mid), indices.end());
-            node->left = BuildBoxTree(entries, std::move(leftIndices), depth + 1);
-            node->right = BuildBoxTree(entries, std::move(rightIndices), depth + 1);
-            return node;
-        }
-
-        void ExpandBounds(SCBox3d& bounds, const SCBox3d& box)
-        {
-            bounds.ExpandToInclude(box.MinPoint());
-            bounds.ExpandToInclude(box.MaxPoint());
-        }
-
-        void RefreshBounds(SCBoxTree3d::Node& node, const std::vector<SCBoxTreeEntry3d>& entries)
-        {
-            node.bounds = {};
-            if (node.IsLeaf())
-            {
-                node.bounds = ComputeBounds(entries, node.leafIndices);
-                return;
-            }
-            if (node.left && node.left->bounds.IsValid())
-            {
-                ExpandBounds(node.bounds, node.left->bounds);
-            }
-            if (node.right && node.right->bounds.IsValid())
-            {
-                ExpandBounds(node.bounds, node.right->bounds);
-            }
+            return Detail::BuildBoxTree<SCBoxTree3d::Node, SCBoxTreeEntry3d, BoxTree3dTraits>(
+                entries, std::move(indices), depth);
         }
 
         [[nodiscard]] int InsertIndex(std::unique_ptr<SCBoxTree3d::Node>& node,
@@ -102,39 +67,8 @@ namespace Geometry
                                       std::size_t index,
                                       int depth)
         {
-            if (!node)
-            {
-                auto newNode = std::make_unique<SCBoxTree3d::Node>();
-                newNode->leafIndices.push_back(index);
-                RefreshBounds(*newNode, entries);
-                node = std::move(newNode);
-                return depth;
-            }
-            int insertedDepth = depth;
-            if (node->IsLeaf())
-            {
-                if (node->leafIndices.size() == 4)
-                {
-                    auto indices = node->leafIndices;
-                    indices.push_back(index);
-                    auto replacement = BuildBoxTree(entries, std::move(indices), depth);
-                    node = std::move(replacement);
-                    insertedDepth = depth + 1;
-                }
-                else
-                {
-                    node->leafIndices.push_back(index);
-                }
-            }
-            else
-            {
-                const double leftDistance = DistanceSquared(entries[index].box.Center(), node->left->bounds);
-                const double rightDistance = DistanceSquared(entries[index].box.Center(), node->right->bounds);
-                insertedDepth = InsertIndex(leftDistance <= rightDistance ? node->left : node->right,
-                                            entries, index, depth + 1);
-            }
-            RefreshBounds(*node, entries);
-            return insertedDepth;
+            return Detail::InsertBoxTreeIndex<SCBoxTree3d::Node, SCBoxTreeEntry3d, BoxTree3dTraits>(
+                node, entries, index, depth);
         }
 
         [[nodiscard]] bool FindIndexPath(std::unique_ptr<SCBoxTree3d::Node>& node,
@@ -142,199 +76,23 @@ namespace Geometry
                                          const SCBox3d& box,
                                          std::vector<std::unique_ptr<SCBoxTree3d::Node>*>& path)
         {
-            if (!node || !Intersects(node->bounds, box, 0.0))
-            {
-                return false;
-            }
-            path.push_back(&node);
-            if (node->IsLeaf())
-            {
-                if (std::find(node->leafIndices.begin(), node->leafIndices.end(), index) != node->leafIndices.end())
-                {
-                    return true;
-                }
-            }
-            else if (FindIndexPath(node->left, index, box, path) || FindIndexPath(node->right, index, box, path))
-            {
-                return true;
-            }
-            path.pop_back();
-            return false;
+            return Detail::FindBoxTreeIndexPath<SCBoxTree3d::Node, SCBox3d, BoxTree3dTraits>(node, index, box, path);
         }
 
         void RefreshPath(const std::vector<std::unique_ptr<SCBoxTree3d::Node>*>& path,
                          const std::vector<SCBoxTreeEntry3d>& entries,
                          bool prune)
         {
-            for (auto it = path.rbegin(); it != path.rend(); ++it)
-            {
-                auto& node = **it;
-                if (prune && node->IsLeaf() && node->leafIndices.empty())
-                {
-                    node.reset();
-                }
-                else if (prune && !node->IsLeaf() && (!node->left || !node->right))
-                {
-                    node = std::move(node->left ? node->left : node->right);
-                }
-                if (node)
-                {
-                    RefreshBounds(*node, entries);
-                }
-            }
+            Detail::RefreshBoxTreePath<SCBoxTree3d::Node, SCBoxTreeEntry3d, BoxTree3dTraits>(path, entries, prune);
         }
 
         void RemapIndices(std::unique_ptr<SCBoxTree3d::Node>& node,
                           const std::vector<SCBoxTreeEntry3d>& entries,
                           const std::vector<std::size_t>& mapping)
         {
-            if (!node)
-            {
-                return;
-            }
-            if (node->IsLeaf())
-            {
-                auto& indices = node->leafIndices;
-                std::size_t retained = 0;
-                for (std::size_t index : indices)
-                {
-                    if (mapping[index] != mapping.size())
-                    {
-                        indices[retained++] = mapping[index];
-                    }
-                }
-                indices.resize(retained);
-                if (indices.empty())
-                {
-                    node.reset();
-                    return;
-                }
-            }
-            else
-            {
-                RemapIndices(node->left, entries, mapping);
-                RemapIndices(node->right, entries, mapping);
-                if (!node->left || !node->right)
-                {
-                    node = std::move(node->left ? node->left : node->right);
-                }
-            }
-            if (node)
-            {
-                RefreshBounds(*node, entries);
-            }
+            Detail::RemapBoxTreeIndices<SCBoxTree3d::Node, SCBoxTreeEntry3d, BoxTree3dTraits>(node, entries, mapping);
         }
 
-        void QueryBox(const SCBoxTree3d::Node* node,
-                      const std::vector<SCBoxTreeEntry3d>& entries,
-                      const SCBox3d& box,
-                      double eps,
-                      std::vector<std::size_t>& result)
-        {
-            if (node == nullptr || !Intersects(node->bounds, box, eps))
-            {
-                return;
-            }
-
-            if (node->IsLeaf())
-            {
-                for (std::size_t index : node->leafIndices)
-                {
-                    if (Intersects(entries[index].box, box, eps))
-                    {
-                        result.push_back(entries[index].id);
-                    }
-                }
-                return;
-            }
-
-            QueryBox(node->left.get(), entries, box, eps, result);
-            QueryBox(node->right.get(), entries, box, eps, result);
-        }
-
-        void QueryPoint(const SCBoxTree3d::Node* node,
-                        const std::vector<SCBoxTreeEntry3d>& entries,
-                        const SCPoint3d& point,
-                        double eps,
-                        std::vector<std::size_t>& result)
-        {
-            if (node == nullptr || !Contains(node->bounds, point, eps))
-            {
-                return;
-            }
-
-            if (node->IsLeaf())
-            {
-                for (std::size_t index : node->leafIndices)
-                {
-                    if (Contains(entries[index].box, point, eps))
-                    {
-                        result.push_back(entries[index].id);
-                    }
-                }
-                return;
-            }
-
-            QueryPoint(node->left.get(), entries, point, eps, result);
-            QueryPoint(node->right.get(), entries, point, eps, result);
-        }
-
-        [[nodiscard]] bool CompareHits(const SCBoxTreeKnnHit3d& lhs, const SCBoxTreeKnnHit3d& rhs)
-        {
-            return lhs.distanceSquared == rhs.distanceSquared ? lhs.id < rhs.id
-                                                                : lhs.distanceSquared < rhs.distanceSquared;
-        }
-
-        void QueryKnn(const SCBoxTree3d::Node* node,
-                      const std::vector<SCBoxTreeEntry3d>& entries,
-                      const SCPoint3d& point,
-                      std::size_t k,
-                      double eps,
-                      std::vector<SCBoxTreeKnnHit3d>& hits)
-        {
-            if (node == nullptr || k == 0)
-            {
-                return;
-            }
-            if (hits.size() >= k)
-            {
-                const double factor = 1.0 + std::max(0.0, eps);
-                const double lowerBound = DistanceSquared(point, node->bounds);
-                if (lowerBound != hits.front().distanceSquared &&
-                    lowerBound * factor * factor > hits.front().distanceSquared)
-                {
-                    return;
-                }
-            }
-            if (node->IsLeaf())
-            {
-                for (std::size_t index : node->leafIndices)
-                {
-                    const auto& entry = entries[index];
-                    SCBoxTreeKnnHit3d hit{entry.id, entry.box, DistanceSquared(point, entry.box)};
-                    if (hits.size() < k)
-                    {
-                        hits.push_back(hit);
-                        std::push_heap(hits.begin(), hits.end(), CompareHits);
-                    }
-                    else if (CompareHits(hit, hits.front()))
-                    {
-                        std::pop_heap(hits.begin(), hits.end(), CompareHits);
-                        hits.back() = hit;
-                        std::push_heap(hits.begin(), hits.end(), CompareHits);
-                    }
-                }
-                return;
-            }
-            const auto* first = node->left.get();
-            const auto* second = node->right.get();
-            if (DistanceSquared(point, second->bounds) < DistanceSquared(point, first->bounds))
-            {
-                std::swap(first, second);
-            }
-            QueryKnn(first, entries, point, k, eps, hits);
-            QueryKnn(second, entries, point, k, eps, hits);
-        }
     }  // namespace
 
     SCBoxTree3d::SCBoxTree3d() = default;
@@ -517,14 +275,14 @@ namespace Geometry
     std::vector<std::size_t> SCBoxTree3d::Query(const SCBox3d& box, double eps) const
     {
         std::vector<std::size_t> result;
-        QueryBox(root_.get(), entries_, box, eps, result);
+        Detail::QueryBoxTree<Node, SCBoxTreeEntry3d, SCBox3d, BoxTree3dTraits>(root_.get(), entries_, box, eps, result);
         return result;
     }
 
     std::vector<std::size_t> SCBoxTree3d::QueryContaining(const SCPoint3d& point, double eps) const
     {
         std::vector<std::size_t> result;
-        QueryPoint(root_.get(), entries_, point, eps, result);
+        Detail::QueryPointTree<Node, SCBoxTreeEntry3d, SCPoint3d, BoxTree3dTraits>(root_.get(), entries_, point, eps, result);
         return result;
     }
 
@@ -532,8 +290,9 @@ namespace Geometry
     {
         std::vector<SCBoxTreeKnnHit3d> hits;
         hits.reserve(std::min(k, entries_.size()));
-        QueryKnn(root_.get(), entries_, point, k, eps, hits);
-        std::sort(hits.begin(), hits.end(), CompareHits);
+        Detail::QueryBoxTreeKnn<Node, SCBoxTreeEntry3d, SCPoint3d, SCBoxTreeKnnHit3d, BoxTree3dTraits>(
+            root_.get(), entries_, point, k, eps, hits);
+        std::sort(hits.begin(), hits.end(), Detail::CompareBoxTreeHits<SCBoxTreeKnnHit3d>);
         return hits;
     }
 

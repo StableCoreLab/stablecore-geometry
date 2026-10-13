@@ -258,10 +258,10 @@ namespace Geometry
                                        const SCOffsetOptions2d& options,
                                        SCMultiPolyline2d& output)
         {
-            const std::size_t before = output.Count();
+            const std::size_t before = output.Size();
             const SCPolyline2d primary = Offset(ring, signedDistance, options);
             AppendOffsetRing(primary, output);
-            if (output.Count() > before)
+            if (output.Size() > before)
             {
                 return;
             }
@@ -269,7 +269,7 @@ namespace Geometry
             const SCPolyline2d reversed = Reverse(ring);
             const SCPolyline2d reverseFallback = Offset(reversed, -signedDistance, options);
             AppendOffsetRing(reverseFallback, output);
-            if (output.Count() > before)
+            if (output.Size() > before)
             {
                 return;
             }
@@ -324,7 +324,7 @@ namespace Geometry
             }
 
             SCMultiPolyline2d reversedRings;
-            for (std::size_t i = 0; i < rings.Count(); ++i)
+            for (std::size_t i = 0; i < rings.Size(); ++i)
             {
                 reversedRings.Add(Reverse(rings[i]));
             }
@@ -374,7 +374,7 @@ namespace Geometry
             const bool outward = distance >= 0.0;
             std::size_t bestIndex = 0;
             double bestScore = -1.0;
-            for (std::size_t i = 0; i < polygons.Count(); ++i)
+            for (std::size_t i = 0; i < polygons.Size(); ++i)
             {
                 const SCPolygon2d& candidate = polygons[i];
                 double score = candidate.Area();
@@ -444,7 +444,7 @@ namespace Geometry
         {
             SCPolygon2d best;
             double bestArea = 0.0;
-            for (std::size_t i = 0; i < polygons.Count(); ++i)
+            for (std::size_t i = 0; i < polygons.Size(); ++i)
             {
                 if (!polygons[i].IsValid())
                 {
@@ -514,7 +514,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsPointInsideAnyPolygon(const SCPoint2d& point, const SCMultiPolygon2d& polygons, double eps)
         {
-            for (std::size_t i = 0; i < polygons.Count(); ++i)
+            for (std::size_t i = 0; i < polygons.Size(); ++i)
             {
                 if (LocatePoint(point, polygons[i], eps) != SCPointContainment2d::Outside)
                 {
@@ -536,7 +536,7 @@ namespace Geometry
             const SCPoint2d candidateReference = PrimaryReferencePoint(candidate, eps);
             std::size_t bestIndex = static_cast<std::size_t>(-1);
             double bestScore = -1e100;
-            for (std::size_t i = 0; i < sources.Count(); ++i)
+            for (std::size_t i = 0; i < sources.Size(); ++i)
             {
                 const SCPolygon2d& source = sources[i];
                 if (!source.IsValid())
@@ -590,7 +590,7 @@ namespace Geometry
 
             const bool outward = distance >= 0.0;
             SCMultiPolygon2d repaired;
-            for (std::size_t i = 0; i < candidates.Count(); ++i)
+            for (std::size_t i = 0; i < candidates.Size(); ++i)
             {
                 const SCPolygon2d& candidate = candidates[i];
                 if (!candidate.IsValid())
@@ -620,7 +620,7 @@ namespace Geometry
                 if (outward)
                 {
                     bool related = false;
-                    for (std::size_t sourceIndex = 0; sourceIndex < sources.Count(); ++sourceIndex)
+                    for (std::size_t sourceIndex = 0; sourceIndex < sources.Size(); ++sourceIndex)
                     {
                         const PolygonContainment2d relation = Relate(recovered, sources[sourceIndex], eps);
                         if (relation != PolygonContainment2d::Disjoint)
@@ -646,11 +646,11 @@ namespace Geometry
             // For outward offsets, keep at least one related result per source
             // polygon to avoid rare semantic-flip shrink where a source
             // component disappears.
-            for (std::size_t sourceIndex = 0; sourceIndex < sources.Count(); ++sourceIndex)
+            for (std::size_t sourceIndex = 0; sourceIndex < sources.Size(); ++sourceIndex)
             {
                 const SCPolygon2d& source = sources[sourceIndex];
                 bool represented = false;
-                for (std::size_t candidateIndex = 0; candidateIndex < repaired.Count(); ++candidateIndex)
+                for (std::size_t candidateIndex = 0; candidateIndex < repaired.Size(); ++candidateIndex)
                 {
                     if (Relate(repaired[candidateIndex], source, eps) != PolygonContainment2d::Disjoint)
                     {
@@ -798,7 +798,7 @@ namespace Geometry
     SCMultiPolyline2d Offset(const SCMultiPolyline2d& polylines, double distance, SCOffsetOptions2d options)
     {
         SCMultiPolyline2d result;
-        for (std::size_t i = 0; i < polylines.Count(); ++i)
+        for (std::size_t i = 0; i < polylines.Size(); ++i)
         {
             SCPolyline2d offset = Offset(polylines[i], distance, options);
             if (offset.PointCount() >= 2)
@@ -813,7 +813,7 @@ namespace Geometry
     {
         SCMultiPolyline2d offsetRings;
         SCMultiPolygon2d normalizedSources;
-        for (std::size_t i = 0; i < polygons.Count(); ++i)
+        for (std::size_t i = 0; i < polygons.Size(); ++i)
         {
             SCPolygon2d source = NormalizePolygonByLines(polygons[i], Geometry::kOffsetDefaultEpsilon);
             if (!source.IsValid())

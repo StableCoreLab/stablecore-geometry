@@ -94,10 +94,7 @@ namespace Geometry
         box.ExpandToInclude(StartPoint());
         box.ExpandToInclude(EndPoint());
 
-        constexpr double kCriticalAngles[] = {
-            0.0, std::numbers::pi_v<double> * 0.5, std::numbers::pi_v<double>, std::numbers::pi_v<double> * 1.5};
-
-        for (double angle : kCriticalAngles)
+        for (double angle : Geometry::kArcBoundsCriticalAngles)
         {
             if (IsAngleOnArc(angle))
             {
