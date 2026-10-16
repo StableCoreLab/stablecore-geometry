@@ -10,6 +10,7 @@
 #include "Core/Measure.h"
 #include "Geometry3d/SCLineCurve3d.h"
 #include "Geometry3d/SCNurbsCurve3d.h"
+#include "Geometry3d/SCNurbsSurface.h"
 #include "Geometry3d/SCPlaneSurface.h"
 #include "support/Fixtures3d.h"
 
@@ -282,6 +283,13 @@ TEST(BodyBooleanCapabilityTest, PublicCapabilitiesDescribeTheSupportedSubsets)
     EXPECT_TRUE(capabilities.nonCoplanarConvexPolyhedralIntersection);
     EXPECT_TRUE(capabilities.axisAlignedBoxUnion);
     EXPECT_TRUE(capabilities.axisAlignedBoxDifferenceWhenSingleBoxOrEmpty);
+    EXPECT_TRUE(capabilities.coplanarSupportPlaneOperations);
+    EXPECT_FALSE(capabilities.nonPlanarSupportSurfaces);
+    EXPECT_FALSE(capabilities.nonConvexBodies);
+    EXPECT_FALSE(capabilities.multiShellBodies);
+    EXPECT_FALSE(capabilities.curvedBoundaries);
+    EXPECT_FALSE(capabilities.generalUnion);
+    EXPECT_FALSE(capabilities.generalDifference);
     EXPECT_FALSE(capabilities.generalBrepCsg);
 }
 
@@ -335,6 +343,31 @@ TEST(BodyBooleanCapabilityTest, NonManifoldBrepInputReturnsInvalidInputEvenWhenC
     ExpectInvalidInput(DifferenceBodies(nonManifold, converted.body));
 }
 
+TEST(BodyBooleanCapabilityTest, ValidMultiShellBrepReturnsUnsupportedOperation)
+{
+    const auto converted = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
+    ASSERT_TRUE(converted.success);
+    const Geometry::SCBrepShell shell = converted.body.ShellAt(0);
+    const Geometry::SCBrepBody multiShell(converted.body.Vertices(), converted.body.Edges(), {shell, shell});
+
+    ASSERT_TRUE(multiShell.IsValid());
+    ExpectUnsupportedOperation(IntersectBodies(multiShell, converted.body));
+    ExpectUnsupportedOperation(UnionBodies(multiShell, converted.body));
+    ExpectUnsupportedOperation(DifferenceBodies(multiShell, converted.body));
+}
+
+TEST(BodyBooleanCapabilityTest, OperateOnShellsOptionReturnsUnsupportedOperation)
+{
+    const auto converted = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
+    ASSERT_TRUE(converted.success);
+
+    BodyBooleanOptions3d options;
+    options.operateOnShells = true;
+    ExpectUnsupportedOperation(IntersectBodies(converted.body, converted.body, options));
+    ExpectUnsupportedOperation(UnionBodies(converted.body, converted.body, options));
+    ExpectUnsupportedOperation(DifferenceBodies(converted.body, converted.body, options));
+}
+
 TEST(BodyBooleanCapabilityTest, CurvedBrepEdgeReturnsUnsupportedInsteadOfUsingItsChord)
 {
     const auto converted = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
@@ -353,6 +386,50 @@ TEST(BodyBooleanCapabilityTest, CurvedBrepEdgeReturnsUnsupportedInsteadOfUsingIt
     ExpectUnsupportedOperation(IntersectBodies(curvedBody, converted.body));
     ExpectUnsupportedOperation(UnionBodies(curvedBody, converted.body));
     ExpectUnsupportedOperation(DifferenceBodies(curvedBody, converted.body));
+}
+
+TEST(BodyBooleanCapabilityTest, NonPlanarSupportSurfaceReturnsUnsupportedOperation)
+{
+    const auto converted = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
+    ASSERT_TRUE(converted.success);
+    const Geometry::SCBrepShell shell = converted.body.ShellAt(0);
+    std::vector<Geometry::SCBrepFace> faces = shell.Faces();
+    const Geometry::SCBrepFace original = faces.front();
+    auto nonPlanarSurface = std::make_shared<Geometry::SCNurbsSurface>(
+        1, 1, 2, 2,
+        std::vector<SCPoint3d>{SCPoint3d{0.0, 0.0, 0.0}, SCPoint3d{1.0, 0.0, 0.0},
+                               SCPoint3d{0.0, 1.0, 0.25}, SCPoint3d{1.0, 1.0, 0.0}},
+        std::vector<double>{0.0, 0.0, 1.0, 1.0}, std::vector<double>{0.0, 0.0, 1.0, 1.0});
+    faces.front() = Geometry::SCBrepFace(std::move(nonPlanarSurface), original.OuterLoop(), original.HoleLoops(),
+                                         original.OuterTrim(), original.HoleTrims());
+    const Geometry::SCBrepBody nonPlanarBody(converted.body.Vertices(), converted.body.Edges(),
+                                             {Geometry::SCBrepShell(std::move(faces), true)});
+
+    ASSERT_TRUE(nonPlanarBody.IsValid());
+    ExpectUnsupportedOperation(IntersectBodies(nonPlanarBody, converted.body));
+    ExpectUnsupportedOperation(UnionBodies(nonPlanarBody, converted.body));
+    ExpectUnsupportedOperation(DifferenceBodies(nonPlanarBody, converted.body));
+}
+
+TEST(BodyBooleanCapabilityTest, OpenCurvedBrepReturnsInvalidInputBeforeUnsupportedFeatureCheck)
+{
+    const auto converted = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
+    ASSERT_TRUE(converted.success);
+    std::vector<Geometry::SCBrepEdge> edges = converted.body.Edges();
+    const Geometry::SCBrepEdge original = edges.front();
+    const SCPoint3d start = converted.body.VertexAt(original.StartVertexIndex()).Point();
+    const SCPoint3d end = converted.body.VertexAt(original.EndVertexIndex()).Point();
+    edges.front() = Geometry::SCBrepEdge(
+        std::make_shared<Geometry::SCNurbsCurve3d>(
+            1, std::vector<SCPoint3d>{start, end}, std::vector<double>{0.0, 0.0, 1.0, 1.0}),
+        original.StartVertexIndex(), original.EndVertexIndex());
+    const Geometry::SCBrepShell openShell(converted.body.ShellAt(0).Faces(), false);
+    const Geometry::SCBrepBody openCurvedBody(converted.body.Vertices(), std::move(edges), {openShell});
+
+    ASSERT_TRUE(openCurvedBody.IsValid());
+    ExpectInvalidInput(IntersectBodies(openCurvedBody, converted.body));
+    ExpectInvalidInput(UnionBodies(openCurvedBody, converted.body));
+    ExpectInvalidInput(DifferenceBodies(openCurvedBody, converted.body));
 }
 
 TEST(BodyBooleanCapabilityTest, EdgeCurveEndpointMismatchReturnsInvalidInput)
@@ -898,6 +975,21 @@ TEST(BodyBooleanCapabilityTest, FaceTouchingLShapeBrepUnionPreservesTopologyAndV
     ASSERT_EQ(result.body.ShellCount(), 1U);
     EXPECT_TRUE(result.body.ShellAt(0).IsClosed());
     EXPECT_NEAR(Geometry::Volume(result.body), 3.0, 1e-9);
+}
+
+TEST(BodyBooleanCapabilityTest, NonConvexBrepInputReturnsUnsupportedOperation)
+{
+    const auto first = ConvertToBrepBody(BuildAxisAlignedBoxBody(0.0, 0.0, 0.0, 2.0, 1.0, 1.0));
+    const auto second = ConvertToBrepBody(BuildAxisAlignedBoxBody(0.0, 1.0, 0.0, 1.0, 2.0, 1.0));
+    ASSERT_TRUE(first.success);
+    ASSERT_TRUE(second.success);
+
+    const auto lShape = UnionBodies(first.body, second.body);
+    ASSERT_EQ(lShape.issue, BodyBooleanIssue3d::None);
+    ASSERT_TRUE(lShape.IsSuccess());
+    ExpectUnsupportedOperation(IntersectBodies(lShape.body, first.body));
+    ExpectUnsupportedOperation(UnionBodies(lShape.body, first.body));
+    ExpectUnsupportedOperation(DifferenceBodies(lShape.body, first.body));
 }
 
 TEST(BodyBooleanCapabilityTest, RotatedBoxIntersectionReturnsExplicitUnsupportedOperation)

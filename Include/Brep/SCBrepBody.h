@@ -61,7 +61,7 @@ namespace Geometry
 
                 for (const SCBrepFace& face : shell.Faces())
                 {
-                    if (!LoopReferencesAreValid(face.OuterLoop()))
+                    if (!LoopReferencesAreValid(face.OuterLoopRef()))
                     {
                         return false;
                     }
@@ -117,7 +117,17 @@ namespace Geometry
             return vertices_.at(index);
         }
 
+        [[nodiscard]] const SCBrepVertex& VertexAtRef(std::size_t index) const
+        {
+            return vertices_.at(index);
+        }
+
         [[nodiscard]] SCBrepEdge EdgeAt(std::size_t index) const
+        {
+            return edges_.at(index);
+        }
+
+        [[nodiscard]] const SCBrepEdge& EdgeAtRef(std::size_t index) const
         {
             return edges_.at(index);
         }

@@ -21,6 +21,8 @@ namespace
     using Geometry::SCGeometryOperationState;
     using Geometry::SCPoint3d;
 
+    constexpr Geometry::SCVector3d kContainmentProbeRay{1.0, 0.3713906763541037, 0.52999894000318};
+
     TEST(GeometryEvidenceTest, StableParametersAndDimensionalThresholdsKeepExtremeScales)
     {
         using namespace Geometry::Detail;
@@ -465,7 +467,7 @@ namespace
     {
         using namespace Geometry;
         const auto cube=Geometry::Test::BuildUnitCubeBody();
-        const SCVector3d ray{1,0.3713906763541037,0.52999894000318};
+        const SCVector3d ray=kContainmentProbeRay;
         for (const auto& item : {
             std::pair{SCPoint3d{0,0,0}-ray,SCPointContainment3d::Outside},
             std::pair{SCPoint3d{1,1,1}-ray*0.5,SCPointContainment3d::Inside},
@@ -499,7 +501,7 @@ namespace
         }
         const TriangleMesh mesh(std::move(vertices),std::move(triangles));
         ASSERT_TRUE(mesh.IsValid());
-        const SCVector3d ray{1,0.3713906763541037,0.52999894000318};
+        const SCVector3d ray=kContainmentProbeRay;
         for (const auto& item:{
             std::pair{SCPoint3d{0,0,0}-ray,SCPointContainment3d::Outside},
             std::pair{SCPoint3d{1,1,1}-ray*0.5,SCPointContainment3d::Inside},

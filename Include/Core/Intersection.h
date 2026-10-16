@@ -3,7 +3,7 @@
 #include "Core/GeometryEvidence.h"
 #include "Core/GeometryTypes.h"
 
-#include "Geometry2d/SCLine2d.h"
+#include "Types/Geometry2d/SCLine2d.h"
 #include "Core/Results.h"
 #include "Export/GeometryExport.h"
 #include "Geometry2d/SCArcSegment2d.h"

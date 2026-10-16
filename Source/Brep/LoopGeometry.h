@@ -27,20 +27,20 @@ namespace Geometry::Detail
         vertices.reserve(loop.CoedgeCount());
         for (std::size_t i = 0; i < loop.CoedgeCount(); ++i)
         {
-            const SCBrepCoedge coedge = loop.CoedgeAt(i);
+            const SCBrepCoedge& coedge = loop.CoedgeAtRef(i);
             if (coedge.EdgeIndex() >= body.EdgeCount())
             {
                 return false;
             }
 
-            const SCBrepEdge edge = body.EdgeAt(coedge.EdgeIndex());
+            const SCBrepEdge& edge = body.EdgeAtRef(coedge.EdgeIndex());
             const std::size_t vertexIndex = coedge.Reversed() ? edge.EndVertexIndex() : edge.StartVertexIndex();
             if (vertexIndex >= body.VertexCount())
             {
                 return false;
             }
 
-            const SCPoint3d point = body.VertexAt(vertexIndex).Point();
+            const SCPoint3d point = body.VertexAtRef(vertexIndex).Point();
             if (vertices.empty() || !vertices.back().AlmostEquals(point, epsilon))
             {
                 vertices.push_back(point);

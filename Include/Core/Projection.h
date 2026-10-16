@@ -4,7 +4,7 @@
 #include "Core/GeometryTypes.h"
 #include "Export/GeometryExport.h"
 #include "Geometry2d/SCArcSegment2d.h"
-#include "Geometry2d/SCLine2d.h"
+#include "Types/Geometry2d/SCLine2d.h"
 #include "Geometry2d/SCLineSegment2d.h"
 #include "Geometry2d/SCPolygon2d.h"
 #include "Geometry2d/ISCSegment2d.h"

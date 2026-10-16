@@ -1,5 +1,7 @@
 
 #include <gtest/gtest.h>
+#include <type_traits>
+#include <utility>
 
 #include "Geometry.h"
 #include "Support/Fixtures3d.h"
@@ -33,9 +35,38 @@ using Geometry::ReplaceOuterLoop;
 using Geometry::ReplaceShell;
 using Geometry::Section;
 using SectionBodyRebuild3d = Geometry::SCSectionBodyRebuild3d;
+
+static_assert(std::is_same_v<decltype(std::declval<const SCBrepLoop&>().CoedgeAtRef(0)), const SCBrepCoedge&>);
+static_assert(std::is_same_v<decltype(std::declval<const SCBrepBody&>().VertexAtRef(0)), const Geometry::SCBrepVertex&>);
+static_assert(std::is_same_v<decltype(std::declval<const SCBrepBody&>().EdgeAtRef(0)), const Geometry::SCBrepEdge&>);
+static_assert(std::is_same_v<decltype(std::declval<const SCBrepBody&>().ShellAtRef(0)), const SCBrepShell&>);
+static_assert(std::is_same_v<decltype(std::declval<const SCBrepShell&>().FaceAtRef(0)), const SCBrepFace&>);
+static_assert(std::is_same_v<decltype(std::declval<const SCBrepFace&>().OuterLoopRef()), const SCBrepLoop&>);
+static_assert(std::is_same_v<decltype(std::declval<const SCBrepFace&>().HoleAtRef(0)), const SCBrepLoop&>);
 using SectionBodySetRebuild3d = Geometry::SCSectionBodySetRebuild3d;
 using SectionBrepBodyRebuild3d = Geometry::SCSectionBrepBodyRebuild3d;
 using SectionBrepBodySetRebuild3d = Geometry::SCSectionBrepBodySetRebuild3d;
+
+TEST(Brep3dCapabilityTest, ReadOnlyTopologyAccessorsReferenceOwnedElements)
+{
+    const SCBrepFace face(std::make_shared<Geometry::SCPlaneSurface>(Geometry::Test::BuildFinitePlaneSurfaceAtZ5()),
+                          Geometry::Test::BuildPlanarBrepOuterLoop(),
+                          {Geometry::Test::BuildPlanarBrepOuterLoop()});
+    const SCBrepShell shell({face});
+    const SCBrepBody body(Geometry::Test::BuildPlanarBrepVerticesAtZ5(), Geometry::Test::BuildPlanarBrepEdgesAtZ5(),
+                          {shell});
+
+    EXPECT_EQ(&body.VertexAtRef(0), &body.Vertices().front());
+    EXPECT_EQ(&body.EdgeAtRef(0), &body.Edges().front());
+    EXPECT_EQ(&body.ShellAtRef(0), &body.Shells().front());
+    EXPECT_EQ(&body.ShellAtRef(0).FaceAtRef(0), &body.Shells().front().Faces().front());
+    EXPECT_EQ(&body.ShellAtRef(0).FaceAtRef(0).OuterLoopRef(),
+              &body.Shells().front().Faces().front().OuterLoopRef());
+    EXPECT_EQ(&body.ShellAtRef(0).FaceAtRef(0).HoleAtRef(0),
+              &body.Shells().front().Faces().front().HoleLoops().front());
+    EXPECT_EQ(&body.ShellAtRef(0).FaceAtRef(0).OuterLoopRef().CoedgeAtRef(0),
+              &body.Shells().front().Faces().front().OuterLoopRef().Coedges().front());
+}
 using Geometry::SCVector3d;
 
 namespace

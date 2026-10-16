@@ -45,7 +45,7 @@
 #include "Geometry2d/SCBoxTree2d.h"
 #include "Geometry2d/SCCircle2d.h"
 #include "Geometry2d/SCEllipse2d.h"
-#include "Geometry2d/SCLine2d.h"
+#include "Types/Geometry2d/SCLine2d.h"
 #include "Geometry2d/SCKDTree2d.h"
 #include "Geometry2d/SCLineSegment2d.h"
 #include "Geometry2d/SCMultiPolygon2d.h"

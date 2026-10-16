@@ -60,7 +60,7 @@ namespace Geometry
                 return false;
             }
 
-            const SCBrepShell shell = body.ShellAt(0);
+            const SCBrepShell& shell = body.ShellAtRef(0);
             if (!shell.IsClosed())
             {
                 return false;
@@ -83,7 +83,7 @@ namespace Geometry
                         return false;
                     }
 
-                    const SCBrepEdge edge = body.EdgeAt(coedge.EdgeIndex());
+                    const SCBrepEdge& edge = body.EdgeAtRef(coedge.EdgeIndex());
                     const std::size_t start = coedge.Reversed() ? edge.EndVertexIndex() : edge.StartVertexIndex();
                     const std::size_t end = coedge.Reversed() ? edge.StartVertexIndex() : edge.EndVertexIndex();
                     if (start >= body.VertexCount() || end >= body.VertexCount() || start == end ||
@@ -104,7 +104,7 @@ namespace Geometry
             };
             for (const SCBrepFace& face : shell.Faces())
             {
-                if (!validateLoop(face.OuterLoop()))
+                if (!validateLoop(face.OuterLoopRef()))
                 {
                     return false;
                 }
@@ -140,8 +140,8 @@ namespace Geometry
                 const SCPoint3d curveStart = edge.Curve()->PointAt(edge.Curve()->StartParameter());
                 const SCPoint3d curveEnd = edge.Curve()->PointAt(edge.Curve()->EndParameter());
                 if (!curveStart.IsValid() || !curveEnd.IsValid() ||
-                    !curveStart.AlmostEquals(body.VertexAt(edge.StartVertexIndex()).Point(), epsilon) ||
-                    !curveEnd.AlmostEquals(body.VertexAt(edge.EndVertexIndex()).Point(), epsilon))
+                    !curveStart.AlmostEquals(body.VertexAtRef(edge.StartVertexIndex()).Point(), epsilon) ||
+                    !curveEnd.AlmostEquals(body.VertexAtRef(edge.EndVertexIndex()).Point(), epsilon))
                 {
                     return false;
                 }
@@ -176,7 +176,7 @@ namespace Geometry
                     SCGeometryTolerance3d planeTolerance{};
                     planeTolerance.distanceEpsilon = epsilon;
                     if (!Detail::TryActualPlane(*planeSurface, planeTolerance, plane)) return false;
-                    if (!loopLiesOnPlane(face.OuterLoop(), plane))
+                    if (!loopLiesOnPlane(face.OuterLoopRef(), plane))
                     {
                         return false;
                     }
@@ -202,6 +202,21 @@ namespace Geometry
             return std::all_of(body.Edges().begin(), body.Edges().end(), [](const SCBrepEdge& edge) {
                 return IsStraightBrepEdge(edge);
             });
+        }
+
+        [[nodiscard]] bool HasOnlyPlanarSupportSurfaces(const SCBrepBody& body)
+        {
+            for (const SCBrepShell& shell : body.Shells())
+            {
+                for (const SCBrepFace& face : shell.Faces())
+                {
+                    if (dynamic_cast<const SCPlaneSurface*>(face.SupportSurface()) == nullptr)
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
 
         [[nodiscard]] BodyBooleanResult3d MakeSingleBodyResult(SCBrepBody body, const char* message)
@@ -236,20 +251,20 @@ namespace Geometry
             }
 
             BooleanSolid3d candidate;
-            const SCBrepShell shell = body.ShellAt(0);
+            const SCBrepShell& shell = body.ShellAtRef(0);
             candidate.planes.reserve(shell.FaceCount());
             for (const SCBrepFace& face : shell.Faces())
             {
                 const auto* planeSurface = dynamic_cast<const SCPlaneSurface*>(face.SupportSurface());
                 std::vector<SCPoint3d> outerVertices;
                 if (planeSurface == nullptr || face.HoleCount() != 0 ||
-                    !Detail::AppendLoopVertices(body, face.OuterLoop(), outerVertices, epsilon))
+                    !Detail::AppendLoopVertices(body, face.OuterLoopRef(), outerVertices, epsilon))
                 {
                     return false;
                 }
-                for (const SCBrepCoedge& coedge : face.OuterLoop().Coedges())
+                for (const SCBrepCoedge& coedge : face.OuterLoopRef().Coedges())
                 {
-                    if (coedge.EdgeIndex() >= body.EdgeCount() || !IsStraightBrepEdge(body.EdgeAt(coedge.EdgeIndex())))
+                    if (coedge.EdgeIndex() >= body.EdgeCount() || !IsStraightBrepEdge(body.EdgeAtRef(coedge.EdgeIndex())))
                     {
                         return false;
                     }
@@ -705,7 +720,7 @@ namespace Geometry
         {
             if (!FaceSupportsAreGeometricallyEquivalent(firstFace, secondFace, distanceEpsilon, angleEpsilon) ||
                 !LoopsAreGeometricallyEquivalent(
-                    first, firstFace.OuterLoop(), second, secondFace.OuterLoop(), distanceEpsilon) ||
+                    first, firstFace.OuterLoopRef(), second, secondFace.OuterLoopRef(), distanceEpsilon) ||
                 firstFace.HoleCount() != secondFace.HoleCount())
             {
                 return false;
@@ -718,7 +733,7 @@ namespace Geometry
                 for (std::size_t index = 0; index < secondFace.HoleCount(); ++index)
                 {
                     if (!matched[index] && LoopsAreGeometricallyEquivalent(
-                                               first, firstHole, second, secondFace.HoleAt(index), distanceEpsilon))
+                                               first, firstHole, second, secondFace.HoleAtRef(index), distanceEpsilon))
                     {
                         matched[index] = true;
                         found = true;
@@ -782,7 +797,7 @@ namespace Geometry
         [[nodiscard]] bool FaceMatchesAxisAlignedBox(
             const SCBrepBody& body, const SCBrepFace& face, const SCBox3d& box, double epsilon, int& axis, bool& onMaxSide)
         {
-            if (face.HoleCount() != 0 || face.OuterLoop().CoedgeCount() != 4)
+            if (face.HoleCount() != 0 || face.OuterLoopRef().CoedgeCount() != 4)
             {
                 return false;
             }
@@ -794,7 +809,7 @@ namespace Geometry
             }
 
             std::vector<SCPoint3d> outerVertices;
-            if (!Detail::AppendLoopVertices(body, face.OuterLoop(), outerVertices, epsilon) ||
+            if (!Detail::AppendLoopVertices(body, face.OuterLoopRef(), outerVertices, epsilon) ||
                 outerVertices.size() != 4)
             {
                 return false;
@@ -888,12 +903,12 @@ namespace Geometry
             }
 
             std::array<bool, 6> seenFaces{};
-            const SCBrepShell shell = body.ShellAt(0);
+            const SCBrepShell& shell = body.ShellAtRef(0);
             for (std::size_t faceIndex = 0; faceIndex < shell.FaceCount(); ++faceIndex)
             {
                 int axis = -1;
                 bool onMaxSide = false;
-                if (!FaceMatchesAxisAlignedBox(body, shell.FaceAt(faceIndex), box, epsilon, axis, onMaxSide))
+                if (!FaceMatchesAxisAlignedBox(body, shell.FaceAtRef(faceIndex), box, epsilon, axis, onMaxSide))
                 {
                     return false;
                 }
@@ -1022,7 +1037,7 @@ namespace Geometry
         [[nodiscard]] bool FaceMatchesAxisAlignedBox(
             const PolyhedronFace3d& face, const SCBox3d& box, double epsilon, int& axis, bool& onMaxSide)
         {
-            if (face.HoleCount() != 0 || face.OuterLoop().VertexCount() != 4)
+            if (face.HoleCount() != 0 || face.OuterLoopRef().VertexCount() != 4)
             {
                 return false;
             }
@@ -1053,7 +1068,7 @@ namespace Geometry
                 return false;
             }
 
-            const double faceCoordinate = CoordinateAt(face.OuterLoop().VertexAt(0), axis);
+            const double faceCoordinate = CoordinateAt(face.OuterLoopRef().VertexAt(0), axis);
             const bool onMinSide = NearlyEqual(faceCoordinate, BoxMinAt(box, axis), epsilon);
             onMaxSide = NearlyEqual(faceCoordinate, BoxMaxAt(box, axis), epsilon);
             if (onMinSide == onMaxSide)
@@ -1070,7 +1085,7 @@ namespace Geometry
             const int otherAxis0 = (axis + 1) % 3;
             const int otherAxis1 = (axis + 2) % 3;
             std::array<bool, 4> seenCorners{};
-            for (const SCPoint3d& vertex : face.OuterLoop().Vertices())
+            for (const SCPoint3d& vertex : face.OuterLoopRef().Vertices())
             {
                 if (!NearlyEqual(CoordinateAt(vertex, axis), faceCoordinate, epsilon))
                 {
@@ -1118,7 +1133,7 @@ namespace Geometry
             {
                 int axis = -1;
                 bool onMaxSide = false;
-                if (!FaceMatchesAxisAlignedBox(body.FaceAt(faceIndex), box, epsilon, axis, onMaxSide))
+                if (!FaceMatchesAxisAlignedBox(body.FaceAtRef(faceIndex), box, epsilon, axis, onMaxSide))
                 {
                     return false;
                 }
@@ -1400,7 +1415,7 @@ namespace Geometry
             const PolyhedronBrepBodyConversion3d converted =
                 ConvertToBrepBody(PolyhedronBody(std::move(faces)), epsilon);
             if (!converted.success || !converted.body.IsValid() || converted.body.ShellCount() != 1 ||
-                !converted.body.ShellAt(0).IsClosed())
+                !converted.body.ShellAtRef(0).IsClosed())
             {
                 return false;
             }
@@ -1744,15 +1759,24 @@ namespace Geometry
         {
             const double epsilon = ResolveTolerance(options);
             if (!options.tolerance.IsValid() || !HasFaces(first) || !HasFaces(second) ||
-                !IsClosedManifoldSingleShell(first, epsilon) ||
-                !IsClosedManifoldSingleShell(second, epsilon) || !HasConsistentEdgeEndpoints(first, epsilon) ||
+                !first.IsValid(options.tolerance) || !second.IsValid(options.tolerance) ||
+                !HasConsistentEdgeEndpoints(first, epsilon) ||
                 !HasConsistentEdgeEndpoints(second, epsilon) ||
                 !HasPlanarFaceBoundariesConsistentWithSupport(first, epsilon) ||
                 !HasPlanarFaceBoundariesConsistentWithSupport(second, epsilon))
             {
                 return MakeInvalidInputResult();
             }
-            if (!HasOnlyStraightEdges(first) || !HasOnlyStraightEdges(second))
+            if (options.operateOnShells || first.ShellCount() != 1 || second.ShellCount() != 1)
+            {
+                return MakeUnsupportedResult();
+            }
+            if (!IsClosedManifoldSingleShell(first, epsilon) || !IsClosedManifoldSingleShell(second, epsilon))
+            {
+                return MakeInvalidInputResult();
+            }
+            if (!HasOnlyPlanarSupportSurfaces(first) || !HasOnlyPlanarSupportSurfaces(second) ||
+                !HasOnlyStraightEdges(first) || !HasOnlyStraightEdges(second))
             {
                 return MakeUnsupportedResult();
             }
@@ -1795,7 +1819,16 @@ namespace Geometry
 
     BodyBooleanCapabilities3d GetBodyBooleanCapabilities3d()
     {
-        return {};
+        BodyBooleanCapabilities3d capabilities;
+        capabilities.coplanarSupportPlaneOperations = true;
+        capabilities.nonPlanarSupportSurfaces = false;
+        capabilities.nonConvexBodies = false;
+        capabilities.multiShellBodies = false;
+        capabilities.curvedBoundaries = false;
+        capabilities.generalUnion = false;
+        capabilities.generalDifference = false;
+        capabilities.generalBrepCsg = false;
+        return capabilities;
     }
 
     BodyBooleanResult3d IntersectBodies(const SCBrepBody& first, const SCBrepBody& second, BodyBooleanOptions3d options)

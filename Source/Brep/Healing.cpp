@@ -80,7 +80,7 @@ namespace Geometry
                 SCCurveOnSurface outerTrim = face.OuterTrim();
                 if (!outerTrim.IsValid(SCGeometryTolerance3d{eps, eps, eps}))
                 {
-                    if (!BuildTrimFromLoop(body, face.OuterLoop(), *planeSurface, outerTrim, eps))
+                    if (!BuildTrimFromLoop(body, face.OuterLoopRef(), *planeSurface, outerTrim, eps))
                     {
                         return false;
                     }
@@ -103,14 +103,14 @@ namespace Geometry
                         continue;
                     }
 
-                    if (!BuildTrimFromLoop(body, face.HoleAt(i), *planeSurface, holeTrims[i], eps))
+                    if (!BuildTrimFromLoop(body, face.HoleAtRef(i), *planeSurface, holeTrims[i], eps))
                     {
                         return false;
                     }
                 }
 
                 healedFace = SCBrepFace(std::shared_ptr<ISCSurface>(face.SupportSurface()->Clone().release()),
-                                      face.OuterLoop(),
+                                      face.OuterLoopRef(),
                                       std::vector<SCBrepLoop>(face.HoleLoops().begin(), face.HoleLoops().end()),
                                       std::move(outerTrim),
                                       std::move(holeTrims));
@@ -124,7 +124,7 @@ namespace Geometry
             std::map<std::size_t, std::size_t> edgeUseCount;
             for (const SCBrepFace& face : shell.Faces())
             {
-                for (const SCBrepCoedge& coedge : face.OuterLoop().Coedges())
+                for (const SCBrepCoedge& coedge : face.OuterLoopRef().Coedges())
                 {
                     ++edgeUseCount[coedge.EdgeIndex()];
                 }
@@ -192,7 +192,7 @@ namespace Geometry
             {
                 for (const SCBrepFace& face : shell.Faces())
                 {
-                    AccumulateLoopEdgeUseCounts(face.OuterLoop(), edgeUseCount);
+                    AccumulateLoopEdgeUseCounts(face.OuterLoopRef(), edgeUseCount);
                     for (const SCBrepLoop& hole : face.HoleLoops())
                     {
                         AccumulateLoopEdgeUseCounts(hole, edgeUseCount);
@@ -210,7 +210,7 @@ namespace Geometry
                     return false;
                 }
 
-                const SCBrepEdge edge = body.EdgeAt(coedge.EdgeIndex());
+                const SCBrepEdge& edge = body.EdgeAtRef(coedge.EdgeIndex());
                 startVertexIndex = coedge.Reversed() ? edge.EndVertexIndex() : edge.StartVertexIndex();
                 endVertexIndex = coedge.Reversed() ? edge.StartVertexIndex() : edge.EndVertexIndex();
                 return startVertexIndex < body.VertexCount() && endVertexIndex < body.VertexCount();
@@ -271,7 +271,7 @@ namespace Geometry
                         return false;
                     }
 
-                    AppendUniqueLoopVertexIndices(body, face.OuterLoop(), vertexIndices);
+                    AppendUniqueLoopVertexIndices(body, face.OuterLoopRef(), vertexIndices);
                     for (const SCBrepLoop& hole : face.HoleLoops())
                     {
                         AppendUniqueLoopVertexIndices(body, hole, vertexIndices);
@@ -289,10 +289,10 @@ namespace Geometry
                 bool foundPlane = false;
                 for (std::size_t i = 0; i < vertexIndices.size() && !foundPlane; ++i)
                 {
-                    origin = body.VertexAt(vertexIndices[i]).Point();
+                    origin = body.VertexAtRef(vertexIndices[i]).Point();
                     for (std::size_t j = i + 1; j < vertexIndices.size() && !foundPlane; ++j)
                     {
-                        firstPoint = body.VertexAt(vertexIndices[j]).Point();
+                        firstPoint = body.VertexAtRef(vertexIndices[j]).Point();
                         if (origin.AlmostEquals(firstPoint, eps))
                         {
                             continue;
@@ -300,7 +300,7 @@ namespace Geometry
 
                         for (std::size_t k = j + 1; k < vertexIndices.size(); ++k)
                         {
-                            secondPoint = body.VertexAt(vertexIndices[k]).Point();
+                            secondPoint = body.VertexAtRef(vertexIndices[k]).Point();
                             const SCVector3d computedNormal = Cross(firstPoint - origin, secondPoint - origin);
                             if (computedNormal.Length() <= eps)
                             {
@@ -318,7 +318,7 @@ namespace Geometry
                             bool allCoplanar = true;
                             for (const std::size_t vertexIndex : vertexIndices)
                             {
-                                if (std::abs(shellPlane.SignedDistanceTo(body.VertexAt(vertexIndex).Point(), eps)) >
+                                if (std::abs(shellPlane.SignedDistanceTo(body.VertexAtRef(vertexIndex).Point(), eps)) >
                                     planeTolerance)
                                 {
                                     allCoplanar = false;
@@ -392,7 +392,7 @@ namespace Geometry
 
                 for (const SCBrepFace& face : shell.Faces())
                 {
-                    if (!collectBoundaryFromLoop(face.OuterLoop()))
+                    if (!collectBoundaryFromLoop(face.OuterLoopRef()))
                     {
                         return false;
                     }
@@ -449,7 +449,7 @@ namespace Geometry
                         const BoundaryHalfEdge& halfEdge = halfEdges[currentIndex];
                         visited[currentIndex] = true;
                         loopCoedges.push_back(halfEdge.coedge);
-                        loopVertices.push_back(body.VertexAt(halfEdge.startVertexIndex).Point());
+                                loopVertices.push_back(body.VertexAtRef(halfEdge.startVertexIndex).Point());
 
                         if (halfEdge.endVertexIndex == startVertexIndex)
                         {
@@ -740,7 +740,7 @@ namespace Geometry
 
                 for (const SCBrepFace& face : shell.Faces())
                 {
-                    appendBoundaryEdgesFromLoop(face.OuterLoop());
+                    appendBoundaryEdgesFromLoop(face.OuterLoopRef());
                     for (const SCBrepLoop& hole : face.HoleLoops())
                     {
                         appendBoundaryEdgesFromLoop(hole);
@@ -779,13 +779,13 @@ namespace Geometry
                         }
 
                         boundaryGeometryEdgeKeys.push_back(MakeBoundaryGeometryEdgeKey(
-                            body.VertexAt(startVertexIndex).Point(), body.VertexAt(endVertexIndex).Point(), eps));
+                            body.VertexAtRef(startVertexIndex).Point(), body.VertexAtRef(endVertexIndex).Point(), eps));
                     }
                 };
 
                 for (const SCBrepFace& face : shell.Faces())
                 {
-                    appendBoundaryEdgesFromLoop(face.OuterLoop());
+                    appendBoundaryEdgesFromLoop(face.OuterLoopRef());
                     for (const SCBrepLoop& hole : face.HoleLoops())
                     {
                         appendBoundaryEdgesFromLoop(hole);
@@ -824,13 +824,13 @@ namespace Geometry
                         }
 
                         boundaryGeometrySegments.push_back(BoundaryGeometrySegment{
-                            body.VertexAt(startVertexIndex).Point(), body.VertexAt(endVertexIndex).Point()});
+                            body.VertexAtRef(startVertexIndex).Point(), body.VertexAtRef(endVertexIndex).Point()});
                     }
                 };
 
                 for (const SCBrepFace& face : shell.Faces())
                 {
-                    appendBoundaryEdgesFromLoop(face.OuterLoop());
+                    appendBoundaryEdgesFromLoop(face.OuterLoopRef());
                     for (const SCBrepLoop& hole : face.HoleLoops())
                     {
                         appendBoundaryEdgesFromLoop(hole);
@@ -885,7 +885,7 @@ namespace Geometry
             {
                 for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
                 {
-                    const SCBrepShell shell = body.ShellAt(shellIndex);
+                    const SCBrepShell& shell = body.ShellAtRef(shellIndex);
                     if (!shell.IsClosed())
                     {
                         return true;
@@ -893,7 +893,7 @@ namespace Geometry
 
                     for (std::size_t faceIndex = 0; faceIndex < shell.FaceCount(); ++faceIndex)
                     {
-                        const SCBrepFace face = shell.FaceAt(faceIndex);
+                        const SCBrepFace& face = shell.FaceAtRef(faceIndex);
                         if (!face.OuterTrim().IsValid(tolerance) || face.HoleTrims().size() != face.HoleCount())
                         {
                             return true;
@@ -918,7 +918,7 @@ namespace Geometry
                 reversed.reserve(loop.CoedgeCount());
                 for (std::size_t i = 0; i < loop.CoedgeCount(); ++i)
                 {
-                    const SCBrepCoedge coedge = loop.CoedgeAt(loop.CoedgeCount() - 1 - i);
+                    const SCBrepCoedge& coedge = loop.CoedgeAtRef(loop.CoedgeCount() - 1 - i);
                     reversed.emplace_back(coedge.EdgeIndex(), !coedge.Reversed());
                 }
                 return SCBrepLoop(std::move(reversed));
@@ -943,7 +943,7 @@ namespace Geometry
                 std::vector<std::vector<BoundaryGeometrySegment>> shellBoundaryGeometrySegments(body.ShellCount());
                 for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
                 {
-                    const SCBrepShell shell = body.ShellAt(shellIndex);
+                    const SCBrepShell& shell = body.ShellAtRef(shellIndex);
                     if (shell.IsClosed())
                     {
                         continue;
@@ -958,14 +958,14 @@ namespace Geometry
                 std::vector<bool> competing(body.ShellCount(), false);
                 for (std::size_t first = 0; first < body.ShellCount(); ++first)
                 {
-                    if (body.ShellAt(first).IsClosed())
+                    if (body.ShellAtRef(first).IsClosed())
                     {
                         continue;
                     }
 
                     for (std::size_t second = first + 1; second < body.ShellCount(); ++second)
                     {
-                        if (body.ShellAt(second).IsClosed())
+                        if (body.ShellAtRef(second).IsClosed())
                         {
                             continue;
                         }
@@ -1045,7 +1045,7 @@ namespace Geometry
                 std::vector<bool> shellSupportMismatch(body.ShellCount(), false);
                 for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
                 {
-                    const SCBrepShell shell = body.ShellAt(shellIndex);
+                    const SCBrepShell& shell = body.ShellAtRef(shellIndex);
                     if (!shell.IsClosed())
                     {
                         ++openShellCount;
@@ -1080,7 +1080,7 @@ namespace Geometry
 
                 for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
                 {
-                    const SCBrepShell shell = body.ShellAt(shellIndex);
+                    const SCBrepShell& shell = body.ShellAtRef(shellIndex);
                     if (shell.IsClosed())
                     {
                         repairedShells.push_back(shell);
@@ -1093,7 +1093,7 @@ namespace Geometry
                     bool hasInteriorSharedEdge = false;
                     for (std::size_t faceIndex = 0; faceIndex < shell.FaceCount() && eligible; ++faceIndex)
                     {
-                        const SCBrepFace face = shell.FaceAt(faceIndex);
+                        const SCBrepFace& face = shell.FaceAtRef(faceIndex);
                         if (dynamic_cast<const SCPlaneSurface*>(face.SupportSurface()) == nullptr)
                         {
                             eligible = false;
@@ -1179,10 +1179,10 @@ namespace Geometry
                     closedFaces.reserve(shell.FaceCount() * 2);
                     for (std::size_t faceIndex = 0; faceIndex < shell.FaceCount(); ++faceIndex)
                     {
-                        const SCBrepFace frontFace = shell.FaceAt(faceIndex);
+                        const SCBrepFace& frontFace = shell.FaceAtRef(faceIndex);
                         closedFaces.push_back(frontFace);
 
-                        const SCBrepLoop reversedOuter = ReversedLoop(frontFace.OuterLoop());
+                        const SCBrepLoop reversedOuter = ReversedLoop(frontFace.OuterLoopRef());
                         const std::vector<SCBrepLoop> reversedHoles = ReversedLoops(frontFace.HoleLoops());
                         SCBrepFace backFace(std::shared_ptr<ISCSurface>(frontFace.SupportSurface()->Clone().release()),
                                           reversedOuter,
@@ -1275,14 +1275,14 @@ namespace Geometry
         healedShells.reserve(body.ShellCount());
         for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
         {
-            const SCBrepShell shell = body.ShellAt(shellIndex);
+            const SCBrepShell& shell = body.ShellAtRef(shellIndex);
             std::vector<SCBrepFace> healedFaces;
             healedFaces.reserve(shell.FaceCount());
             for (std::size_t faceIndex = 0; faceIndex < shell.FaceCount(); ++faceIndex)
             {
                 SCBrepFace healedFace{};
                 if (!TrimBackfill::BuildHealedFace(
-                        body, shell.FaceAt(faceIndex), healedFace, tolerance.distanceEpsilon))
+                        body, shell.FaceAtRef(faceIndex), healedFace, tolerance.distanceEpsilon))
                 {
                     return {false, HealingIssue3d::RepairFailed, {}};
                 }

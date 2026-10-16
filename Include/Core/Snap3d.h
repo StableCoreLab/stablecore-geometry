@@ -3,6 +3,7 @@
 #include <span>
 
 #include "Core/GeometryTypesPrimitives.h"
+#include "Core/Geometry3dResults.h"
 #include "Export/GeometryExport.h"
 #include "Geometry3d/ISCCurve3d.h"
 #include "Geometry3d/SCLineCurve3d.h"
@@ -11,20 +12,7 @@
 
 namespace Geometry
 {
-    struct GEOMETRY_API SCSnapResult3d
-    {
-        bool snapped{false};
-        SCPoint3d point{};
-        double distanceSquared{0.0};
-        std::size_t segmentIndex{0};
-        double parameter{0.0};
-
-        [[nodiscard]] bool IsValid() const
-        {
-            return !snapped || point.IsValid();
-        }
-    };
-
+    // 3D snap result is declared in Geometry3dResults.h.
     [[nodiscard]] GEOMETRY_API SCSnapResult3d SnapPointToSegments3d(const SCPoint3d& point,
                                                                     std::span<const ISCCurve3d* const> curves,
                                                                     double maxDistance,

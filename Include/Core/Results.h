@@ -5,6 +5,7 @@
 
 #include "Core/GeometryTypesPrimitives.h"
 #include "Core/GeometryTypes.h"
+#include "Core/Geometry2dResults.h"
 #include "Export/GeometryExport.h"
 #include "Geometry2d/ISCSegment2d.h"
 #include "Support/Epsilon.h"
@@ -118,20 +119,7 @@ namespace Geometry
         }
     };
 
-    struct GEOMETRY_API SCClosestPoints2d
-    {
-        SCPoint2d firstPoint{};
-        SCPoint2d secondPoint{};
-        double parameterOnFirst{0.0};
-        double parameterOnSecond{0.0};
-        double distanceSquared{0.0};
-
-        [[nodiscard]] bool IsValid() const
-        {
-            return firstPoint.IsValid() && secondPoint.IsValid() && distanceSquared >= 0.0;
-        }
-    };
-
+    // 2D auxiliary results are declared in Geometry2dResults.h.
     struct GEOMETRY_API SCAxisSample2d
     {
         SCPoint2d point{};
@@ -182,19 +170,7 @@ namespace Geometry
         SCSegmentSplit2d& operator=(const SCSegmentSplit2d&) = delete;
     };
 
-    struct GEOMETRY_API SCSnapResult2d
-    {
-        bool snapped{false};
-        SCPoint2d point{};
-        double distanceSquared{0.0};
-        std::size_t segmentIndex{0};
-        double parameter{0.0};
-
-        [[nodiscard]] bool IsValid() const
-        {
-            return !snapped || point.IsValid();
-        }
-    };
+    // 2D snap result is declared in Geometry2dResults.h.
 }  // namespace Geometry
 
 

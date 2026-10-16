@@ -29,6 +29,10 @@ namespace Geometry
         using Evidence = SCGeometryEvidenceState;
         using Reason = SCGeometryFailureReason;
 
+        // All body and mesh containment queries use this deterministic probe ray.
+        constexpr double kContainmentProbeDirectionY = 0.3713906763541037;
+        constexpr double kContainmentProbeDirectionZ = 0.52999894000318;
+
         template <typename Result>
         void Unknown(Result& result, Reason reason)
         {
@@ -851,8 +855,8 @@ namespace Geometry
                 const auto dy=RayAdd(RayScalar(p.y),RayScalar(-origin.y));
                 const auto dz=RayAdd(RayScalar(p.z),RayScalar(-origin.z));
                 return std::array<RayExpansion,2>{
-                    RayAdd(dy,RayNegate(RayMultiply(dx,RayScalar(0.3713906763541037)))),
-                    RayAdd(dz,RayNegate(RayMultiply(dx,RayScalar(0.52999894000318))))};
+                    RayAdd(dy,RayNegate(RayMultiply(dx,RayScalar(kContainmentProbeDirectionY)))),
+                    RayAdd(dz,RayNegate(RayMultiply(dx,RayScalar(kContainmentProbeDirectionZ))))};
             };
             bool inside = false;
             for (std::size_t i=0; i<vertices.size(); ++i) {
@@ -1038,6 +1042,9 @@ namespace Geometry
             return result;
         }
 
+        // Shared boundary: this classifier aggregates projection, ray-hit, closure,
+        // half-open ownership and parity evidence. Model adapters provide the data;
+        // model-specific projection, intersection, Boolean and mesh conversion stay outside.
         template <typename Projection, typename Intersections, typename BoundaryOwner, typename BoundaryResolver>
         SCPointContainment3dWithStatus ClassifyBody(const SCPoint3d& point, const Projection& projection,
             const Intersections& intersections, bool closed, const SCGeometryTolerance3d& tolerance,
@@ -1167,7 +1174,7 @@ namespace Geometry
         if (projection.payloadValid && Close(point,projection.payload.projection.point,tolerance.distanceEpsilon))
             result=Classification(SCPointContainment3d::OnBoundary,true);
         else {
-            const auto line=SCLine3d::FromOriginAndDirection(point,{1.0,0.3713906763541037,0.52999894000318});
+            const auto line=SCLine3d::FromOriginAndDirection(point,{1.0,kContainmentProbeDirectionY,kContainmentProbeDirectionZ});
             const auto hits=IntersectLineBrepBodyWithStatus(line,body,tolerance);
             std::vector<std::vector<RayLoop>> loops;
             if (body.ShellCount()==1)
@@ -1191,7 +1198,7 @@ namespace Geometry
     {
         if (!tolerance.IsValid() || !point.IsValid() || !body.IsValid(tolerance)) return {};
         const auto projection=ProjectPointToPolyhedronBodyWithStatus(point,body,tolerance);
-        const auto line=SCLine3d::FromOriginAndDirection(point,{1.0,0.3713906763541037,0.52999894000318});
+        const auto line=SCLine3d::FromOriginAndDirection(point,{1.0,kContainmentProbeDirectionY,kContainmentProbeDirectionZ});
         const auto hits=IntersectLinePolyhedronBodyWithStatus(line,body,tolerance);
         const auto loops=PolyhedronRayLoops(body);
         const auto incidence=BuildRayIncidence(loops);
@@ -1212,7 +1219,7 @@ namespace Geometry
         const auto projection=ProjectPointToTriangleMeshWithStatus(point,mesh,tolerance);
         if (projection.payloadValid && Close(point,projection.payload.point,tolerance.distanceEpsilon))
             return Classification(SCPointContainment3d::OnBoundary,true);
-        const auto line=SCLine3d::FromOriginAndDirection(point,{1.0,0.3713906763541037,0.52999894000318});
+        const auto line=SCLine3d::FromOriginAndDirection(point,{1.0,kContainmentProbeDirectionY,kContainmentProbeDirectionZ});
         const auto hits=IntersectLineTriangleMeshWithStatus(line,mesh,tolerance);
         // 仅作共享分类器的数据视图，不构造另一个公共操作结果。
         struct MeshProjectionView {

@@ -33,7 +33,7 @@ namespace Geometry
             }
 
             std::vector<SCPoint3d> outerVertices;
-            if (!Detail::AppendLoopVertices(body, face.OuterLoop(), outerVertices, eps))
+            if (!Detail::AppendLoopVertices(body, face.OuterLoopRef(), outerVertices, eps))
             {
                 return false;
             }
@@ -43,7 +43,7 @@ namespace Geometry
             for (std::size_t i = 0; i < face.HoleCount(); ++i)
             {
                 std::vector<SCPoint3d> holeVertices;
-                if (!Detail::AppendLoopVertices(body, face.HoleAt(i), holeVertices, eps))
+                if (!Detail::AppendLoopVertices(body, face.HoleAtRef(i), holeVertices, eps))
                 {
                     return false;
                 }
@@ -269,7 +269,7 @@ namespace Geometry
         MeshVertexLookup vertexLookup;
         for (std::size_t i = 0; i < body.FaceCount(); ++i)
         {
-            const PolyhedronMeshConversion3d converted = ConvertToTriangleMesh(body.FaceAt(i), eps);
+            const PolyhedronMeshConversion3d converted = ConvertToTriangleMesh(body.FaceAtRef(i), eps);
             if (!converted.success)
             {
                 return {false, converted.issue, i, {}};

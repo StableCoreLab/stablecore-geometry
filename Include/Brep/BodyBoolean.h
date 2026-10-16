@@ -27,6 +27,13 @@ namespace Geometry
         bool axisAlignedBoxUnion{true};
         bool axisAlignedBoxDifferenceWhenSingleBoxOrEmpty{true};
         bool generalBrepCsg{false};
+        bool coplanarSupportPlaneOperations{true};
+        bool nonPlanarSupportSurfaces{false};
+        bool nonConvexBodies{false};
+        bool multiShellBodies{false};
+        bool curvedBoundaries{false};
+        bool generalUnion{false};
+        bool generalDifference{false};
     };
 
     [[nodiscard]] GEOMETRY_API BodyBooleanCapabilities3d GetBodyBooleanCapabilities3d();

@@ -375,7 +375,7 @@ namespace Geometry
             loopVertices.reserve(loop.CoedgeCount());
             for (std::size_t i = 0; i < loop.CoedgeCount(); ++i)
             {
-                const SCBrepCoedge coedge = loop.CoedgeAt(i);
+                const SCBrepCoedge& coedge = loop.CoedgeAtRef(i);
                 if (coedge.EdgeIndex() >= edges.size())
                 {
                     return false;
@@ -438,7 +438,7 @@ namespace Geometry
             }
 
             std::vector<SCPoint3d> outerVertices;
-            if (!Detail::AppendLoopVertices(body, face.OuterLoop(), outerVertices, eps))
+            if (!Detail::AppendLoopVertices(body, face.OuterLoopRef(), outerVertices, eps))
             {
                 return false;
             }
@@ -448,7 +448,7 @@ namespace Geometry
             for (std::size_t i = 0; i < face.HoleCount(); ++i)
             {
                 std::vector<SCPoint3d> holeVertices;
-                if (!Detail::AppendLoopVertices(body, face.HoleAt(i), holeVertices, eps))
+            if (!Detail::AppendLoopVertices(body, face.HoleAtRef(i), holeVertices, eps))
                 {
                     return false;
                 }
@@ -1118,13 +1118,13 @@ namespace Geometry
                             PolyhedronFace3d(refitPlane, std::move(projectedOuter), std::move(projectedHoles));
                         if (!repairedFace.IsValid(faceValidityEps))
                         {
-                            std::vector<SCPoint3d> reversedOuterVertices = repairedFace.OuterLoop().Vertices();
+                            std::vector<SCPoint3d> reversedOuterVertices = repairedFace.OuterLoopRef().Vertices();
                             std::reverse(reversedOuterVertices.begin(), reversedOuterVertices.end());
                             std::vector<PolyhedronLoop3d> reversedProjectedHoles;
                             reversedProjectedHoles.reserve(repairedFace.HoleCount());
                             for (std::size_t holeIndex = 0; holeIndex < repairedFace.HoleCount(); ++holeIndex)
                             {
-                                std::vector<SCPoint3d> reversedHoleVertices = repairedFace.HoleAt(holeIndex).Vertices();
+                                std::vector<SCPoint3d> reversedHoleVertices = repairedFace.HoleAtRef(holeIndex).Vertices();
                                 std::reverse(reversedHoleVertices.begin(), reversedHoleVertices.end());
                                 reversedProjectedHoles.emplace_back(std::move(reversedHoleVertices));
                             }
@@ -1390,7 +1390,7 @@ namespace Geometry
 
                 FaceLoopRepresentativeIds repairedIds;
                 PolyhedronFace3d repairedFace{};
-                if (!BuildFaceWithRefitSupportPlane(body.FaceAt(faceIndex),
+                if (!BuildFaceWithRefitSupportPlane(body.FaceAtRef(faceIndex),
                                                     repairedFace,
                                                     eps,
                                                     preferredOuterVertices,
@@ -1398,7 +1398,7 @@ namespace Geometry
                                                     sourceHoleIds,
                                                     sourceRepresentativeIds != nullptr ? &repairedIds : nullptr))
                 {
-                    if (!BuildFaceWithRefitSupportPlane(body.FaceAt(faceIndex),
+                    if (!BuildFaceWithRefitSupportPlane(body.FaceAtRef(faceIndex),
                                                         repairedFace,
                                                         eps,
                                                         emptyPreferredOuterVertices,
@@ -1595,10 +1595,10 @@ namespace Geometry
         std::size_t faceIndex = 0;
         for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
         {
-            const SCBrepShell shell = body.ShellAt(shellIndex);
+            const SCBrepShell& shell = body.ShellAtRef(shellIndex);
             for (std::size_t localFaceIndex = 0; localFaceIndex < shell.FaceCount(); ++localFaceIndex, ++faceIndex)
             {
-                const SCBrepFace face = shell.FaceAt(localFaceIndex);
+                const SCBrepFace& face = shell.FaceAtRef(localFaceIndex);
                 BrepFaceConversion3d converted = ConvertToPolyhedronFace(face, eps);
                 if (!converted.success)
                 {
@@ -2150,7 +2150,7 @@ namespace Geometry
                             return false;
                         }
 
-                        const SCBrepLoop outerLoop = face.OuterLoop();
+                        const SCBrepLoop& outerLoop = face.OuterLoopRef();
                         if (outerLoop.CoedgeCount() != 4)
                         {
                             return false;
@@ -2158,7 +2158,7 @@ namespace Geometry
 
                         for (std::size_t i = 0; i < outerLoop.CoedgeCount(); ++i)
                         {
-                            const SCBrepCoedge coedge = outerLoop.CoedgeAt(i);
+                            const SCBrepCoedge& coedge = outerLoop.CoedgeAtRef(i);
                             if (coedge.EdgeIndex() >= edges.size())
                             {
                                 return false;

@@ -45,6 +45,11 @@ namespace Geometry
             return coedges_.at(index);
         }
 
+        [[nodiscard]] const SCBrepCoedge& CoedgeAtRef(std::size_t index) const
+        {
+            return coedges_.at(index);
+        }
+
         [[nodiscard]] const std::vector<SCBrepCoedge>& Coedges() const
         {
             return coedges_;
