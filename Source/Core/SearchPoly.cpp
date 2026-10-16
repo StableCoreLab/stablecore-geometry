@@ -411,9 +411,8 @@ namespace Geometry
             }
 
             const SCVector2d direction = boundaryEdge.endPoint - boundaryEdge.startPoint;
-            const double length = direction.Length();
-            const double lengthSquared = direction.LengthSquared();
-            if (length <= epsilon || lengthSquared <= epsilon * epsilon)
+            const double length = std::hypot(direction.x,direction.y);
+            if (!std::isfinite(length) || length <= epsilon)
             {
                 return false;
             }
@@ -427,16 +426,20 @@ namespace Geometry
                     continue;
                 }
 
-                const double startOffset =
-                    std::abs(Cross(direction, inputSegment.startPoint - boundaryEdge.startPoint));
-                const double endOffset = std::abs(Cross(direction, inputSegment.endPoint - boundaryEdge.startPoint));
-                if (startOffset > epsilon * length || endOffset > epsilon * length)
+                const auto unit=direction/length;
+                const auto startDelta=inputSegment.startPoint-boundaryEdge.startPoint;
+                const auto endDelta=inputSegment.endPoint-boundaryEdge.startPoint;
+                const double startOffset=std::abs(Cross(unit,startDelta));
+                const double endOffset=std::abs(Cross(unit,endDelta));
+                if (!std::isfinite(startOffset) || !std::isfinite(endOffset) ||
+                    startOffset > epsilon || endOffset > epsilon)
                 {
                     continue;
                 }
 
-                double t0 = Dot(inputSegment.startPoint - boundaryEdge.startPoint, direction) / lengthSquared;
-                double t1 = Dot(inputSegment.endPoint - boundaryEdge.startPoint, direction) / lengthSquared;
+                double t0 = Dot(startDelta, unit) / length;
+                double t1 = Dot(endDelta, unit) / length;
+                if (!std::isfinite(t0) || !std::isfinite(t1)) return false;
                 if (t1 < t0)
                 {
                     std::swap(t0, t1);

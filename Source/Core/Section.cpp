@@ -1,4 +1,5 @@
 #include "Core/Section.h"
+#include "../Detail/AffinePlaneGeometry.h"
 
 #include <algorithm>
 #include <array>
@@ -2202,7 +2203,8 @@ namespace Geometry
                     continue;
                 }
 
-                const SCPlane facePlane = planeSurface->SupportPlane();
+                SCPlane facePlane;
+                if (!Detail::TryActualPlane(*planeSurface, tolerance, facePlane)) return {};
                 const SCVector3d faceNormal = facePlane.UnitNormal(tolerance.distanceEpsilon);
                 const SCVector3d sectionNormal = plane.UnitNormal(tolerance.distanceEpsilon);
                 const bool normalsParallel = Cross(faceNormal, sectionNormal).Length() <= tolerance.angleEpsilon &&

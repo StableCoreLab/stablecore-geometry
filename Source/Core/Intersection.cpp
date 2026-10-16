@@ -175,7 +175,7 @@ namespace Geometry
             }
 
             const SCVector2d fromCenter = point - arc.center;
-            if (fromCenter.LengthSquared() <= eps * eps)
+            if (std::hypot(fromCenter.x,fromCenter.y) <= eps)
             {
                 return ArcProjectionCandidate{arc.StartPoint(), 0.0};
             }
@@ -723,13 +723,12 @@ namespace Geometry
             }
 
             const SCVector2d centerDelta = second.center - first.center;
-            const double distanceSquared = Dot(centerDelta, centerDelta);
-            if (distanceSquared <= eps * eps)
+            const double distance = std::hypot(centerDelta.x, centerDelta.y);
+            if (!std::isfinite(distance) || distance <= eps)
             {
                 return MakeNoIntersection();
             }
 
-            const double distance = std::sqrt(distanceSquared);
             if (distance > first.radius + second.radius + eps ||
                 distance < std::abs(first.radius - second.radius) - eps)
             {
@@ -737,14 +736,16 @@ namespace Geometry
             }
 
             const double a =
-                (first.radius * first.radius - second.radius * second.radius + distanceSquared) / (2.0 * distance);
-            const double hSquared = first.radius * first.radius - a * a;
-            if (hSquared < -eps)
+                0.5 * (distance + (first.radius-second.radius) * (first.radius/distance+second.radius/distance));
+            const double ratio = a/first.radius;
+            const double hSquared = (1.0-ratio)*(1.0+ratio);
+            if (!std::isfinite(a) || !std::isfinite(hSquared) ||
+                (hSquared < 0 && std::abs(a)-first.radius > eps))
             {
                 return MakeNoIntersection();
             }
 
-            const double h = hSquared <= 0.0 ? 0.0 : std::sqrt(hSquared);
+            const double h = hSquared <= 0.0 ? 0.0 : first.radius*std::sqrt(hSquared);
             const SCVector2d unit = centerDelta / distance;
             const SCPoint2d basePoint = MakePoint(first.center.x + a * unit.x, first.center.y + a * unit.y);
             const SCVector2d perpendicular{-unit.y, unit.x};
@@ -844,13 +845,12 @@ namespace Geometry
             }
 
             const SCVector2d centerDelta = second.center - first.center;
-            const double distanceSquared = Dot(centerDelta, centerDelta);
-            if (distanceSquared <= eps * eps)
+            const double distance = std::hypot(centerDelta.x, centerDelta.y);
+            if (!std::isfinite(distance) || distance <= eps)
             {
                 return result;
             }
 
-            const double distance = std::sqrt(distanceSquared);
             if (distance > first.radius + second.radius + eps ||
                 distance < std::abs(first.radius - second.radius) - eps)
             {
@@ -858,14 +858,16 @@ namespace Geometry
             }
 
             const double a =
-                (first.radius * first.radius - second.radius * second.radius + distanceSquared) / (2.0 * distance);
-            const double hSquared = first.radius * first.radius - a * a;
-            if (hSquared < -eps)
+                0.5 * (distance + (first.radius-second.radius) * (first.radius/distance+second.radius/distance));
+            const double ratio = a/first.radius;
+            const double hSquared = (1.0-ratio)*(1.0+ratio);
+            if (!std::isfinite(a) || !std::isfinite(hSquared) ||
+                (hSquared < 0 && std::abs(a)-first.radius > eps))
             {
                 return result;
             }
 
-            const double h = hSquared <= 0.0 ? 0.0 : std::sqrt(hSquared);
+            const double h = hSquared <= 0.0 ? 0.0 : first.radius*std::sqrt(hSquared);
             const SCVector2d unit = centerDelta / distance;
             const SCPoint2d basePoint = MakePoint(first.center.x + a * unit.x, first.center.y + a * unit.y);
             const SCVector2d perpendicular{-unit.y, unit.x};
@@ -963,7 +965,7 @@ namespace Geometry
 
             const SCSegmentProjection2d centerProjection = ProjectPointToLineSegmentLocal(arc.center, line, true);
             const SCVector2d fromCenter = centerProjection.point - arc.center;
-            if (fromCenter.LengthSquared() > eps * eps)
+            if (std::hypot(fromCenter.x,fromCenter.y) > eps)
             {
                 const double angle = std::atan2(fromCenter.y, fromCenter.x);
                 if (IsAngleOnArc(arc, angle, eps))
@@ -1030,12 +1032,12 @@ namespace Geometry
         [[nodiscard]] double LineParameterAtPoint(const SCLine2d& line, const SCPoint2d& point, double eps)
         {
             const SCVector2d delta = point - line.origin;
-            const double denominator = Dot(line.direction, line.direction);
-            if (denominator <= eps * eps)
+            const double length = std::hypot(line.direction.x,line.direction.y);
+            if (!std::isfinite(length) || length <= eps)
             {
                 return 0.0;
             }
-            return Dot(delta, line.direction) / denominator;
+            return Dot(delta, line.direction/length) / length;
         }
 
         [[nodiscard]] SCLineIntersection2d MakeNoLineIntersection()

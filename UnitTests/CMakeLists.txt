@@ -21,6 +21,17 @@ add_library(${SCGEOMETRY_PUBLIC_HEADERS_COMPILE_TARGET} OBJECT
 target_link_libraries(${SCGEOMETRY_PUBLIC_HEADERS_COMPILE_TARGET} PRIVATE ${SCGEOMETRY_TARGET})
 SCGeometryConfigureTarget(${SCGEOMETRY_PUBLIC_HEADERS_COMPILE_TARGET})
 
+# 每个状态 API 头独立成为翻译单元，避免伞头掩盖缺失依赖。
+foreach(SCGEOMETRY_STATUS_HEADER GeometryEvidence Projection Intersection Measure Relation)
+    set(SCGEOMETRY_STATUS_HEADER_TARGET "SCGeometryHeader${SCGEOMETRY_STATUS_HEADER}Compile")
+    add_library(${SCGEOMETRY_STATUS_HEADER_TARGET} OBJECT
+        ${CMAKE_CURRENT_SOURCE_DIR}/Support/EvidencePublicHeaderCompile.cpp)
+    target_compile_definitions(${SCGEOMETRY_STATUS_HEADER_TARGET} PRIVATE
+        "SCGEOMETRY_HEADER_UNDER_TEST=\"Core/${SCGEOMETRY_STATUS_HEADER}.h\"")
+    target_link_libraries(${SCGEOMETRY_STATUS_HEADER_TARGET} PRIVATE ${SCGEOMETRY_TARGET})
+    SCGeometryConfigureTarget(${SCGEOMETRY_STATUS_HEADER_TARGET})
+endforeach()
+
 add_executable(${SCGEOMETRY_CAPABILITY_TESTS_TARGET}
     ${SCGEOMETRY_CAPABILITY_TEST_SOURCES}
     ${SCGEOMETRY_ROOT_DIR}/Source/Detail/TriangulateContours2d.cpp
@@ -30,7 +41,11 @@ target_include_directories(${SCGEOMETRY_CAPABILITY_TESTS_TARGET} PRIVATE ${CMAKE
 SCGeometryConfigureTarget(${SCGEOMETRY_CAPABILITY_TESTS_TARGET})
 SCGeometryConfigurePerformance(${SCGEOMETRY_CAPABILITY_TESTS_TARGET})
 SCCopyRuntimeDependenciesToTarget(${SCGEOMETRY_CAPABILITY_TESTS_TARGET} ${SCGEOMETRY_TARGET})
-gtest_discover_tests(${SCGEOMETRY_CAPABILITY_TESTS_TARGET})
+# 多配置工程必须在测试前按 CTEST_CONFIGURATION_TYPE 发现，避免最后一次构建
+# 覆盖共享测试清单而令 -C Debug 实际执行 RelWithDebInfo 程序。
+gtest_discover_tests(${SCGEOMETRY_CAPABILITY_TESTS_TARGET} DISCOVERY_MODE PRE_TEST DISCOVERY_TIMEOUT 60)
+set_property(DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/Support/PerformanceTestProperties.cmake")
 
 add_executable(${SCGEOMETRY_GAP_TESTS_TARGET} ${SCGEOMETRY_GAP_TEST_SOURCES})
 target_link_libraries(${SCGEOMETRY_GAP_TESTS_TARGET} PRIVATE ${SCGEOMETRY_TARGET} GTest::gtest GTest::gtest_main)
@@ -38,7 +53,7 @@ target_include_directories(${SCGEOMETRY_GAP_TESTS_TARGET} PRIVATE ${CMAKE_CURREN
 SCGeometryConfigureTarget(${SCGEOMETRY_GAP_TESTS_TARGET})
 SCGeometryConfigurePerformance(${SCGEOMETRY_GAP_TESTS_TARGET})
 SCCopyRuntimeDependenciesToTarget(${SCGEOMETRY_GAP_TESTS_TARGET} ${SCGEOMETRY_TARGET})
-gtest_discover_tests(${SCGEOMETRY_GAP_TESTS_TARGET})
+gtest_discover_tests(${SCGEOMETRY_GAP_TESTS_TARGET} DISCOVERY_MODE PRE_TEST DISCOVERY_TIMEOUT 60)
 
 # This validates the installed CMake package, rather than only the build-tree
 # target used by the GTest executables above.

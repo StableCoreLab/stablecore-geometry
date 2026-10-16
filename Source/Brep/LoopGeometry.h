@@ -1,15 +1,18 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 #include "Brep/SCBrepBody.h"
 #include "Brep/SCBrepLoop.h"
+#include "../Detail/AffinePlaneGeometry.h"
 #include "Geometry3d/SCPlaneSurface.h"
 #include "Support/Epsilon.h"
 
 namespace Geometry::Detail
 {
+    enum class PlaneUvPurpose { VerifyOriginalVertex, ApproximateRepair };
     [[nodiscard]] inline bool AppendLoopVertices(const SCBrepBody& body,
                                                  const SCBrepLoop& loop,
                                                  std::vector<SCPoint3d>& vertices,
@@ -52,14 +55,26 @@ namespace Geometry::Detail
         return vertices.size() >= 3;
     }
 
-    [[nodiscard]] inline SCPoint2d ProjectPointToPlaneUv(const SCPoint3d& point, const SCPlaneSurface& planeSurface)
+    [[nodiscard]] inline bool ProjectPointToPlaneUv(const SCPoint3d& point,
+                                                   const SCPlaneSurface& planeSurface,
+                                                   SCPoint2d& uv,
+                                                   double epsilon,
+                                                   PlaneUvPurpose purpose = PlaneUvPurpose::VerifyOriginalVertex)
     {
-        const SCPlane plane = planeSurface.SupportPlane();
-        const SCVector3d delta = point - plane.origin;
-        const SCVector3d uAxis = planeSurface.UAxis();
-        const SCVector3d vAxis = planeSurface.VAxis();
-        const double uDenom = std::max(uAxis.LengthSquared(), Geometry::kPlaneProjectionEpsilon);
-        const double vDenom = std::max(vAxis.LengthSquared(), Geometry::kPlaneProjectionEpsilon);
-        return SCPoint2d{Dot(delta, uAxis) / uDenom, Dot(delta, vAxis) / vDenom};
+        SCGeometryTolerance3d tolerance{};
+        tolerance.distanceEpsilon = epsilon;
+        if (!tolerance.IsValid() || !TryAffinePlaneUv(planeSurface, point, tolerance, uv))
+        {
+            return false;
+        }
+        const SCPoint3d reconstructed = planeSurface.PointAt(uv.x, uv.y);
+        if (!reconstructed.IsValid())
+        {
+            return false;
+        }
+        if (purpose == PlaneUvPurpose::ApproximateRepair) return uv.IsValid();
+        const double residual = std::hypot(point.x-reconstructed.x, point.y-reconstructed.y,
+                                           point.z-reconstructed.z);
+        return std::isfinite(residual) && residual <= epsilon;
     }
 }  // namespace Geometry::Detail

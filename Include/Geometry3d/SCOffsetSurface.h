@@ -2,7 +2,9 @@
 
 #include <cmath>
 #include <memory>
+#include <limits>
 
+#include "Geometry3d/Detail/SurfaceNumerics.h"
 #include "Geometry3d/ISCSurface.h"
 
 namespace Geometry
@@ -43,9 +45,19 @@ namespace Geometry
                 return {};
             }
 
+            const SCPoint3d basePoint = baseSurface_->PointAt(u, v);
+            if (!basePoint.IsValid() || offsetDistance_ == 0.0)
+            {
+                return basePoint;
+            }
             const SCSurfaceEval3d eval = baseSurface_->Evaluate(u, v, 1);
-            const SCVector3d unitNormal = eval.normal.Normalized(Geometry::kDefaultEpsilon);
-            return baseSurface_->PointAt(u, v) + unitNormal * offsetDistance_;
+            SCVector3d unitNormal;
+            if (!Detail::TryUnitVector(eval.normal, unitNormal))
+            {
+                const double invalid = std::numeric_limits<double>::quiet_NaN();
+                return {invalid, invalid, invalid};
+            }
+            return basePoint + unitNormal * offsetDistance_;
         }
 
         [[nodiscard]] SCSurfaceEval3d Evaluate(double u, double v, int derivativeOrder = 1) const override

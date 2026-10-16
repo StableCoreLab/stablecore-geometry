@@ -35,7 +35,8 @@ namespace Geometry
     {
         if constexpr (std::is_floating_point_v<T>)
         {
-            return vector.LengthSquared() <= eps * eps;
+            return std::isfinite(eps) && eps >= 0 && std::isfinite(vector.x) && std::isfinite(vector.y) &&
+                std::hypot(vector.x, vector.y) <= eps;
         } else
         {
             return vector.x == T{} && vector.y == T{};

@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "Geometry3d/ISCSurface.h"
+#include "Geometry3d/Detail/SurfaceNumerics.h"
 #include "Types/Geometry3d/SCPlane.h"
 
 namespace Geometry
@@ -29,14 +30,12 @@ namespace Geometry
                 return false;
             }
 
-            if (uAxis_.Length() <= tolerance.distanceEpsilon || vAxis_.Length() <= tolerance.distanceEpsilon)
+            SCVector3d unitNormal, unitU, unitV;
+            if (!Detail::TryUnitVector(plane_.normal, unitNormal) ||
+                !Detail::TryUnitVector(uAxis_, unitU) || !Detail::TryUnitVector(vAxis_, unitV))
             {
                 return false;
             }
-
-            const SCVector3d unitNormal = plane_.UnitNormal(tolerance.distanceEpsilon);
-            const SCVector3d unitU = uAxis_.Normalized(tolerance.distanceEpsilon);
-            const SCVector3d unitV = vAxis_.Normalized(tolerance.distanceEpsilon);
             return std::abs(Dot(unitU, unitNormal)) <= tolerance.angleEpsilon &&
                    std::abs(Dot(unitV, unitNormal)) <= tolerance.angleEpsilon &&
                    std::abs(Dot(unitU, unitV)) <= tolerance.angleEpsilon;

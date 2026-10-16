@@ -1,6 +1,8 @@
 #include "Brep/BodyBoolean.h"
 
 #include <algorithm>
+#include <numeric>
+#include "Support/StableNumerics.h"
 #include <array>
 #include <cmath>
 #include <utility>
@@ -170,7 +172,10 @@ namespace Geometry
                         continue;
                     }
 
-                    const SCPlane plane = planeSurface->SupportPlane();
+                    SCPlane plane;
+                    SCGeometryTolerance3d planeTolerance{};
+                    planeTolerance.distanceEpsilon = epsilon;
+                    if (!Detail::TryActualPlane(*planeSurface, planeTolerance, plane)) return false;
                     if (!loopLiesOnPlane(face.OuterLoop(), plane))
                     {
                         return false;
@@ -250,12 +255,16 @@ namespace Geometry
                     }
                 }
 
-                const SCVector3d normal = planeSurface->SupportPlane().UnitNormal(epsilon);
+                SCPlane actualPlane;
+                SCGeometryTolerance3d planeTolerance{};
+                planeTolerance.distanceEpsilon = epsilon;
+                if (!Detail::TryActualPlane(*planeSurface, planeTolerance, actualPlane)) return false;
+                const SCVector3d normal = actualPlane.normal;
                 if (!normal.IsValid())
                 {
                     return false;
                 }
-                candidate.planes.push_back(SCPlane::FromPointAndNormal(planeSurface->SupportPlane().origin, normal));
+                candidate.planes.push_back(SCPlane::FromPointAndNormal(actualPlane.origin, normal));
                 for (const SCPoint3d& vertex : outerVertices)
                 {
                     if (!vertex.IsValid())
@@ -449,8 +458,9 @@ namespace Geometry
             }
 
             const PolyhedronBrepBodyConversion3d converted = ConvertToBrepBody(PolyhedronBody(std::move(faces)), epsilon);
-            if (!converted.success || !IsClosedManifoldSingleShell(converted.body, epsilon) ||
-                Geometry::Volume(converted.body, epsilon) <= epsilon * epsilon * epsilon)
+            if (!converted.success || !IsClosedManifoldSingleShell(converted.body, epsilon)) return false;
+            const auto smallVolume=Detail::MagnitudeWithinPower(Geometry::Volume(converted.body, epsilon),epsilon,3);
+            if (!smallVolume || *smallVolume)
             {
                 return false;
             }
@@ -498,10 +508,11 @@ namespace Geometry
 
         [[nodiscard]] bool NearlyEqualScaled(double left, double right, double epsilon)
         {
+            if (!std::isfinite(left) || !std::isfinite(right) || !std::isfinite(epsilon) || epsilon<0) return false;
+            if (left==right) return true;
             const double scale = std::max(std::abs(left), std::abs(right));
-            const double absoluteTolerance = epsilon * epsilon * epsilon;
-            const double relativeTolerance = epsilon * scale;
-            return std::abs(left - right) <= std::max(absoluteTolerance, relativeTolerance);
+            const auto absolute=Detail::MagnitudeWithinPower(std::abs(left-right),epsilon,3);
+            return (absolute && *absolute) || std::abs(left/scale-right/scale)<=epsilon;
         }
 
         [[nodiscard]] bool BoundsEqual(const SCBox3d& left, const SCBox3d& right, double epsilon)
@@ -672,8 +683,12 @@ namespace Geometry
                 return false;
             }
 
-            const SCPlane firstPlane = firstPlaneSurface->SupportPlane();
-            const SCPlane secondPlane = secondPlaneSurface->SupportPlane();
+            SCPlane firstPlane, secondPlane;
+            SCGeometryTolerance3d planeTolerance{};
+            planeTolerance.distanceEpsilon = distanceEpsilon;
+            planeTolerance.angleEpsilon = angleEpsilon;
+            if (!Detail::TryActualPlane(*firstPlaneSurface, planeTolerance, firstPlane) ||
+                !Detail::TryActualPlane(*secondPlaneSurface, planeTolerance, secondPlane)) return false;
             const SCVector3d firstNormal = firstPlane.UnitNormal(distanceEpsilon);
             const SCVector3d secondNormal = secondPlane.UnitNormal(distanceEpsilon);
             return firstNormal.IsValid() && secondNormal.IsValid() &&
@@ -785,7 +800,11 @@ namespace Geometry
                 return false;
             }
 
-            const SCVector3d unitNormal = planeSurface->SupportPlane().UnitNormal(epsilon);
+            SCPlane actualPlane;
+            SCGeometryTolerance3d planeTolerance{};
+            planeTolerance.distanceEpsilon = epsilon;
+            if (!Detail::TryActualPlane(*planeSurface, planeTolerance, actualPlane)) return false;
+            const SCVector3d unitNormal = actualPlane.normal;
             if (!unitNormal.IsValid())
             {
                 return false;
@@ -1255,7 +1274,7 @@ namespace Geometry
                     for (std::size_t iz = 0; iz < zCount; ++iz)
                     {
                         const SCPoint3d center{
-                            0.5 * (x[ix] + x[ix + 1]), 0.5 * (y[iy] + y[iy + 1]), 0.5 * (z[iz] + z[iz + 1])};
+                            std::midpoint(x[ix], x[ix + 1]), std::midpoint(y[iy], y[iy + 1]), std::midpoint(z[iz], z[iz + 1])};
                         const std::size_t index = cellIndex(ix, iy, iz);
                         occupied[index] =
                             ContainsPoint(first, center, epsilon) || ContainsPoint(second, center, epsilon);

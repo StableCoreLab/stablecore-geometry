@@ -27,6 +27,17 @@
 #include "Core/Boolean.h"
 #include "Core/Editing.h"
 #include "Core/GeometryApi.h"
+#include "Core/GeometryEvidence.h"
+#include <type_traits>
+#include <cstddef>
+
+template <typename T>
+constexpr bool HasGeometryResultContract =
+    std::is_same_v<decltype(T::state), Geometry::SCGeometryOperationState> &&
+    std::is_same_v<decltype(T::payloadValid), bool> &&
+    std::is_same_v<decltype(T::evidence), Geometry::SCGeometryEvidenceStatus> &&
+    offsetof(T,state)<offsetof(T,payloadValid) &&
+    offsetof(T,payloadValid)<offsetof(T,payload) && offsetof(T,payload)<offsetof(T,evidence);
 #include "Core/GeometryTypes.h"
 #include "Core/GeometryTypesFwd.h"
 #include "Core/GeometryTypesPrimitives.h"
@@ -102,3 +113,33 @@
 #include "Types/Geometry3d/SCVector3.h"
 
 static_assert(true);
+
+static_assert(HasGeometryResultContract<Geometry::SCLinePlaneIntersection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCPlanePlaneIntersection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCLineBrepEdgeIntersection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCLineBrepVertexIntersection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCPlaneBrepEdgeIntersection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCPlaneBrepVertexIntersection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCLineSurfaceIntersection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCLineCurveIntersection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCLineCurveOnSurfaceIntersection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCPlaneCurveIntersection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCPlaneCurveOnSurfaceIntersection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCLinePolyhedronFaceIntersection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCLineBrepFaceIntersection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCLineBrepBodyIntersection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCLinePolyhedronBodyIntersection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCLineTriangleMeshIntersection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCBrepVertexProjection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCBrepFaceProjection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCPolyhedronFaceProjection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCBrepBodyProjection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCPolyhedronBodyProjection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCCurveProjection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCCurveOnSurfaceProjection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCSurfaceProjection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCBrepEdgeProjection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCTriangleMeshProjection3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCPointContainment3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCPointPlaneSide3dWithStatus>);
+static_assert(HasGeometryResultContract<Geometry::SCDistanceResult3dWithStatus>);

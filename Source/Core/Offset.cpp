@@ -1,6 +1,7 @@
 #include "Core/Offset.h"
 
 #include <algorithm>
+#include <numeric>
 #include <cmath>
 #include <cstddef>
 #include <memory>
@@ -350,7 +351,7 @@ namespace Geometry
             {
                 const SCPoint2d start = outer.PointAt(i);
                 const SCPoint2d end = outer.PointAt((i + 1) % outer.PointCount());
-                const SCPoint2d midpoint{0.5 * (start.x + end.x), 0.5 * (start.y + end.y)};
+                const SCPoint2d midpoint{std::midpoint(start.x, end.x), std::midpoint(start.y, end.y)};
                 if (LocatePoint(midpoint, polygon, eps) != SCPointContainment2d::Outside)
                 {
                     return midpoint;

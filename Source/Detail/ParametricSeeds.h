@@ -8,10 +8,17 @@
 
 #include "Geometry3d/ISCCurve3d.h"
 #include "Geometry3d/ISCSurface.h"
+#include "SurfaceProjectionSolver.h"
 #include "Types/Geometry3d/SCIntervald.h"
 
 namespace Geometry::Detail
 {
+    [[nodiscard]] inline SCPoint3d ParameterSeedMidpoint(const SCPoint3d& a,const SCPoint3d& b)
+    { return {std::lerp(a.x,b.x,0.5),std::lerp(a.y,b.y,0.5),std::lerp(a.z,b.z,0.5)}; }
+
+    [[nodiscard]] inline double ParameterSeedNorm(const SCVector3d& v)
+    { return std::hypot(v.x,v.y,v.z); }
+
     [[nodiscard]] inline std::vector<double> KnotSpanBoundaries(const SCIntervald& range,
                                                                  const std::vector<double>& knots,
                                                                  int degree,
@@ -61,7 +68,7 @@ namespace Geometry::Detail
         boundaries.erase(std::unique(boundaries.begin(), boundaries.end()), boundaries.end());
         if (boundaries.size() < 2)
         {
-            return {0.5 * (range.min + range.max)};
+            return {std::lerp(range.min, range.max, 0.5)};
         }
         if (boundaries.front() > range.min)
         {
@@ -78,24 +85,21 @@ namespace Geometry::Detail
 
         if (cellCount > maxSeedCount / 3)
         {
-            const std::size_t samplesPerCell = maxSeedCount >= 3 ? 3 : 1;
-            const std::size_t sampleCellCount = maxSeedCount / samplesPerCell;
+            seeds.push_back(range.min);
+            if (maxSeedCount >= 2)
+            {
+                seeds.push_back(range.max);
+            }
+            const std::size_t sampleCellCount = (maxSeedCount - seeds.size()) / 3;
             for (std::size_t sample = 0; sample < sampleCellCount; ++sample)
             {
                 const std::size_t cell = std::min(
                     cellCount - 1, ((2 * sample + 1) * cellCount) / (2 * sampleCellCount));
                 const double t0 = boundaries[cell];
                 const double t1 = boundaries[cell + 1];
-                if (samplesPerCell == 3)
-                {
-                    seeds.push_back(t0);
-                    seeds.push_back(0.5 * (t0 + t1));
-                    seeds.push_back(t1);
-                }
-                else
-                {
-                    seeds.push_back(0.5 * (t0 + t1));
-                }
+                seeds.push_back(t0);
+                seeds.push_back(std::lerp(t0, t1, 0.5));
+                seeds.push_back(t1);
             }
             std::sort(seeds.begin(), seeds.end());
             seeds.erase(std::unique(seeds.begin(), seeds.end()), seeds.end());
@@ -109,29 +113,56 @@ namespace Geometry::Detail
                                    double t1,
                                    int depth,
                                    std::size_t& leafCount) -> void {
-            const double tm = 0.5 * (t0 + t1);
+            const double tm = std::lerp(t0, t1, 0.5);
+            const SCPoint3d p0 = curve.PointAt(t0);
+            const SCPoint3d pm = curve.PointAt(tm);
+            const SCPoint3d p1 = curve.PointAt(t1);
             const SCCurveEval3d e0 = curve.Evaluate(t0, 1);
             const SCCurveEval3d em = curve.Evaluate(tm, 1);
             const SCCurveEval3d e1 = curve.Evaluate(t1, 1);
-            if (!e0.IsValid() || !em.IsValid() || !e1.IsValid())
+            if (!e0.IsValid() || !em.IsValid() || !e1.IsValid() ||
+                e0.derivativeOrder < 1 || em.derivativeOrder < 1 || e1.derivativeOrder < 1 ||
+                e0.point != p0 || em.point != pm || e1.point != p1)
             {
+                if (depth == 0 && depth < maxDepth && leafBudget >= 2 && tm > t0 && tm < t1)
+                {
+                    ++leafCount;
+                    self(self, t0, tm, depth + 1, leafCount);
+                    self(self, tm, t1, depth + 1, leafCount);
+                    return;
+                }
+                if (depth < maxDepth && tm > t0 && tm < t1 && leafCount + 1 <= leafBudget &&
+                    p0.IsValid() && pm.IsValid() && p1.IsValid() &&
+                    ParameterSeedNorm(pm-ParameterSeedMidpoint(p0,p1)) > flatnessTolerance)
+                {
+                    ++leafCount;
+                    self(self, t0, tm, depth + 1, leafCount);
+                    self(self, tm, t1, depth + 1, leafCount);
+                    return;
+                }
+                seeds.push_back(t0);
                 seeds.push_back(tm);
+                seeds.push_back(t1);
+                if (depth == 0 && perCellSeedBudget >= 5)
+                {
+                    seeds.push_back(std::lerp(t0, tm, 0.5));
+                    seeds.push_back(std::lerp(tm, t1, 0.5));
+                }
                 return;
             }
 
-            const SCPoint3d chordMidpoint = e0.point + (e1.point - e0.point) * 0.5;
-            const double flatnessSquared = (em.point - chordMidpoint).LengthSquared();
-            const double tangentLength0 = e0.firstDerivative.Length();
-            const double tangentLength1 = e1.firstDerivative.Length();
+            const SCPoint3d chordMidpoint = ParameterSeedMidpoint(p0,p1);
+            const double flatness = ParameterSeedNorm(pm-chordMidpoint);
+            SCVector3d tangent0,tangent1;
             bool tangentTurn = false;
-            if (tangentLength0 > 0.0 && tangentLength1 > 0.0)
+            if (TryUnitVector(e0.firstDerivative,tangent0) && TryUnitVector(e1.firstDerivative,tangent1))
             {
-                const double tangentCosine = Dot(e0.firstDerivative, e1.firstDerivative) /
-                                             (tangentLength0 * tangentLength1);
+                const double tangentCosine = Dot(tangent0,tangent1);
                 tangentTurn = tangentCosine < 0.9659258262890683;
             }
 
-            if (depth < maxDepth && (flatnessSquared > flatnessTolerance * flatnessTolerance || tangentTurn))
+            if (depth < maxDepth && tm > t0 && tm < t1 &&
+                (flatness > flatnessTolerance || tangentTurn))
             {
                 if (leafCount + 1 <= leafBudget)
                 {
@@ -171,8 +202,14 @@ namespace Geometry::Detail
         std::vector<double> vBoundaries,
         double flatnessTolerance,
         int maxDepth = 4,
-        std::size_t maxSeedCount = 256)
+        std::size_t maxSeedCount = 256,
+        SurfaceSearchBudget* budget = nullptr)
     {
+        const auto positionAt = [&](double u, double v) {
+            if (budget != nullptr && !budget->Consume(0))
+                return SCPoint3d{std::numeric_limits<double>::quiet_NaN(), 0.0, 0.0};
+            return surface.PointAt(u, v);
+        };
         const SCIntervald uRange = surface.URange();
         const SCIntervald vRange = surface.VRange();
         if (!uRange.IsValid() || !vRange.IsValid())
@@ -233,8 +270,8 @@ namespace Geometry::Detail
                 {
                     const std::size_t vi =
                         std::min(vCellCount - 1, ((2 * vSample + 1) * vCellCount) / (2 * vSamples));
-                    seeds.push_back({0.5 * (uBoundaries[ui] + uBoundaries[ui + 1]),
-                                     0.5 * (vBoundaries[vi] + vBoundaries[vi + 1])});
+                    seeds.push_back({std::lerp(uBoundaries[ui], uBoundaries[ui + 1], 0.5),
+                                     std::lerp(vBoundaries[vi], vBoundaries[vi + 1], 0.5)});
                 }
             }
             return seeds;
@@ -250,26 +287,26 @@ namespace Geometry::Detail
                                    int depth,
                                    std::size_t leafBudget,
                                    std::size_t& leafCount) -> void {
-            const double um = 0.5 * (u0 + u1);
-            const double vm = 0.5 * (v0 + v1);
-            const SCPoint3d p00 = surface.PointAt(u0, v0);
-            const SCPoint3d p10 = surface.PointAt(u1, v0);
-            const SCPoint3d p01 = surface.PointAt(u0, v1);
-            const SCPoint3d p11 = surface.PointAt(u1, v1);
-            const SCPoint3d pm = surface.PointAt(um, vm);
-            const SCPoint3d pu0 = surface.PointAt(um, v0);
-            const SCPoint3d pu1 = surface.PointAt(um, v1);
-            const SCPoint3d pv0 = surface.PointAt(u0, vm);
-            const SCPoint3d pv1 = surface.PointAt(u1, vm);
-            const SCPoint3d bilinearCenter = p00 + ((p10 - p00) + (p01 - p00) + (p11 - p00)) * 0.25;
-            const double flatnessSquared = std::max({(pm - bilinearCenter).LengthSquared(),
-                                                     (pu0 - (p00 + (p10 - p00) * 0.5)).LengthSquared(),
-                                                     (pu1 - (p01 + (p11 - p01) * 0.5)).LengthSquared(),
-                                                     (pv0 - (p00 + (p01 - p00) * 0.5)).LengthSquared(),
-                                                     (pv1 - (p10 + (p11 - p10) * 0.5)).LengthSquared()});
-            const double twistSquared = ((p11 - p10) - (p01 - p00)).LengthSquared();
+            const double um = std::lerp(u0, u1, 0.5);
+            const double vm = std::lerp(v0, v1, 0.5);
+            const SCPoint3d p00 = positionAt(u0, v0);
+            const SCPoint3d p10 = positionAt(u1, v0);
+            const SCPoint3d p01 = positionAt(u0, v1);
+            const SCPoint3d p11 = positionAt(u1, v1);
+            const SCPoint3d pm = positionAt(um, vm);
+            const SCPoint3d pu0 = positionAt(um, v0);
+            const SCPoint3d pu1 = positionAt(um, v1);
+            const SCPoint3d pv0 = positionAt(u0, vm);
+            const SCPoint3d pv1 = positionAt(u1, vm);
+            const SCPoint3d bilinearCenter = ParameterSeedMidpoint(ParameterSeedMidpoint(p00,p10),ParameterSeedMidpoint(p01,p11));
+            const double flatness = std::max({ParameterSeedNorm(pm-bilinearCenter),
+                ParameterSeedNorm(pu0-ParameterSeedMidpoint(p00,p10)),
+                ParameterSeedNorm(pu1-ParameterSeedMidpoint(p01,p11)),
+                ParameterSeedNorm(pv0-ParameterSeedMidpoint(p00,p01)),
+                ParameterSeedNorm(pv1-ParameterSeedMidpoint(p10,p11))});
+            const double twist = ParameterSeedNorm((p11-p10)-(p01-p00));
             if (depth < maxDepth && leafCount + 3 <= leafBudget &&
-                std::max(flatnessSquared, twistSquared) > flatnessTolerance * flatnessTolerance)
+                std::max(flatness, twist) > flatnessTolerance)
             {
                 leafCount += 3;
                 self(self, u0, v0, um, vm, depth + 1, leafBudget, leafCount);
@@ -301,7 +338,8 @@ namespace Geometry::Detail
         }
         if (seeds.empty())
         {
-            seeds.push_back({0.5 * (uRange.min + uRange.max), 0.5 * (vRange.min + vRange.max)});
+            seeds.push_back({std::lerp(uRange.min, uRange.max, 0.5),
+                             std::lerp(vRange.min, vRange.max, 0.5)});
         }
         std::sort(seeds.begin(), seeds.end(), [](const SurfaceParameterSeed& lhs, const SurfaceParameterSeed& rhs) {
             return std::tie(lhs.u, lhs.v) < std::tie(rhs.u, rhs.v);

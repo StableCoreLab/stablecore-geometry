@@ -15,20 +15,21 @@ namespace Geometry
                                                           double eps)
         {
             SCTangentPoints2d result{};
-            if (!(radius > 0.0) || !point.IsValid() || !center.IsValid())
+            if (!(radius > 0.0) || !std::isfinite(radius) || !std::isfinite(eps) || eps<0 ||
+                !point.IsValid() || !center.IsValid())
             {
                 return result;
             }
 
             const SCVector2d delta = point - center;
-            const double distanceSquared = delta.LengthSquared();
-            if (distanceSquared <= eps * eps)
+            const double distance = std::hypot(delta.x,delta.y);
+            if (!std::isfinite(distance)) return result;
+            if (distance <= eps)
             {
                 result.pointInsideCircle = true;
                 return result;
             }
 
-            const double distance = std::sqrt(distanceSquared);
             if (distance < radius - eps)
             {
                 result.pointInsideCircle = true;

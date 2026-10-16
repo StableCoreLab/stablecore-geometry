@@ -1,4 +1,5 @@
 #include "Core/Triangulation.h"
+#include "Support/StableNumerics.h"
 
 #include <algorithm>
 #include <cmath>
@@ -98,7 +99,8 @@ namespace Geometry
                     return false;
                 }
             }
-            if (std::abs(RingArea(ring)) <= eps * eps) return false;
+            const auto smallArea=Detail::MagnitudeWithinPower(std::abs(RingArea(ring)),eps,2);
+            if (!smallArea || *smallArea) return false;
             for (std::size_t i = 0; i < ring.VertexCount(); ++i)
             {
                 if (EdgeIntersection(ring.VertexAt(i), ring.VertexAt((i + 1) % ring.VertexCount()),
@@ -246,8 +248,9 @@ namespace Geometry
             double best = std::numeric_limits<double>::infinity();
             for (std::size_t i = 0; i < contour.size(); ++i)
             {
-                const double distance = (contour[i].point - hole[h].point).LengthSquared();
-                if (distance <= eps * eps || distance >= best || !Visible(hole[h].point, contour[i].point, contour, polygon, eps)) continue;
+                const auto delta=contour[i].point-hole[h].point;
+                const double distance = std::hypot(delta.x,delta.y);
+                if (!std::isfinite(distance) || distance <= eps || distance >= best || !Visible(hole[h].point, contour[i].point, contour, polygon, eps)) continue;
                 best = distance; outer = i;
             }
             if (outer == contour.size()) return false;

@@ -53,7 +53,12 @@ namespace Geometry
                 uvPoints.reserve(loopVertices.size());
                 for (const SCPoint3d& point : loopVertices)
                 {
-                    uvPoints.push_back(Detail::ProjectPointToPlaneUv(point, planeSurface));
+                    SCPoint2d uv;
+                    if (!Detail::ProjectPointToPlaneUv(point, planeSurface, uv, eps, Detail::PlaneUvPurpose::ApproximateRepair))
+                    {
+                        return false;
+                    }
+                    uvPoints.push_back(uv);
                 }
 
                 trim = SCCurveOnSurface(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()),
@@ -254,7 +259,9 @@ namespace Geometry
                         return false;
                     }
 
-                    const SCVector3d faceNormal = facePlaneSurface->SupportPlane().UnitNormal(eps);
+                    SCPlane actualFacePlane;
+                    if (!Detail::TryActualPlane(*facePlaneSurface,tolerance,actualFacePlane)) return false;
+                    const SCVector3d faceNormal=actualFacePlane.normal;
                     if (!hasReferenceNormal)
                     {
                         referenceNormal = faceNormal;
@@ -467,7 +474,12 @@ namespace Geometry
                     uvPoints.reserve(loopVertices.size());
                     for (const SCPoint3d& point : loopVertices)
                     {
-                        uvPoints.push_back(Detail::ProjectPointToPlaneUv(point, planeSurface));
+                        SCPoint2d uv;
+                        if (!Detail::ProjectPointToPlaneUv(point, planeSurface, uv, eps, Detail::PlaneUvPurpose::ApproximateRepair))
+                        {
+                            return false;
+                        }
+                        uvPoints.push_back(uv);
                     }
 
                     const SCPolyline2d uvRing(std::move(uvPoints), SCPolylineClosure::Closed);
@@ -1040,7 +1052,8 @@ namespace Geometry
                         SCPlaneSurface shellPlaneSurface{};
                         if (ShellCap::TryBuildStandaloneShellPlaneSurface(body, shell, tolerance, shellPlaneSurface))
                         {
-                            const SCPlane shellPlane = shellPlaneSurface.SupportPlane();
+                            SCPlane shellPlane;
+                            if (!Detail::TryActualPlane(shellPlaneSurface,tolerance,shellPlane)) { shellSupportMismatch[shellIndex]=true; continue; }
                             const double eps = std::max(tolerance.distanceEpsilon, Geometry::kHealingDefaultEpsilon);
                             for (const SCBrepFace& face : shell.Faces())
                             {
@@ -1051,7 +1064,8 @@ namespace Geometry
                                     break;
                                 }
 
-                                const SCPlane facePlane = facePlaneSurface->SupportPlane();
+                                SCPlane facePlane;
+                                if (!Detail::TryActualPlane(*facePlaneSurface,tolerance,facePlane)) { shellSupportMismatch[shellIndex]=true; break; }
                                 if (!IsParallel(shellPlane.UnitNormal(eps), facePlane.UnitNormal(eps), tolerance) ||
                                     std::abs(shellPlane.SignedDistanceTo(facePlane.origin, eps)) >
                                         tolerance.distanceEpsilon)

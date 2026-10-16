@@ -199,6 +199,21 @@ namespace Geometry
             ordered.erase(std::unique(ordered.begin(), ordered.end()), ordered.end());
             return ordered;
         }
+
+        [[nodiscard]] double StableDistance(const SCPoint3d& first, const SCPoint3d& second)
+        {
+            if (!first.IsValid() || !second.IsValid())
+            {
+                return std::numeric_limits<double>::infinity();
+            }
+            return std::hypot(first.x - second.x, first.y - second.y, first.z - second.z);
+        }
+
+        [[nodiscard]] bool WithinDistance(const SCPoint3d& first, const SCPoint3d& second, double maximum)
+        {
+            const double distance = StableDistance(first, second);
+            return std::isfinite(distance) && distance <= maximum;
+        }
     }  // namespace
 
     std::vector<SCSegmentSearchHit3d> SCSegmentSearch3d::QueryWithinDistance(const SCPoint3d& point, double maxDistance) const
@@ -215,7 +230,6 @@ namespace Geometry
         {
             return result;
         }
-        const double maxDistanceSquared = maxDistance * maxDistance;
         std::vector<std::size_t> candidateIndices;
         if (hasUntrustedBounds_)
         {
@@ -257,7 +271,7 @@ namespace Geometry
                 continue;
             }
             const auto projection = ProjectPointToCurve(point, *entry.curve, tolerance);
-            if (!projection.success || projection.distanceSquared > maxDistanceSquared)
+            if (!projection.success || !WithinDistance(point, projection.point, maxDistance))
             {
                 continue;
             }
@@ -298,7 +312,6 @@ namespace Geometry
             return hits;
         }
 
-        const double maxDistanceSquared = maxDistance * maxDistance;
         std::unordered_set<std::size_t> projectedIds;
         std::size_t candidateCount = std::min(k, entries_.size());
         if (candidateCount == 0)
@@ -306,10 +319,12 @@ namespace Geometry
             return hits;
         }
 
-        const auto compareHits = [](const auto& lhs, const auto& rhs) {
-            if (lhs.distanceSquared != rhs.distanceSquared)
+        const auto compareHits = [&point](const auto& lhs, const auto& rhs) {
+            const double lhsDistance = StableDistance(point, lhs.point);
+            const double rhsDistance = StableDistance(point, rhs.point);
+            if (lhsDistance != rhsDistance)
             {
-                return lhs.distanceSquared < rhs.distanceSquared;
+                return lhsDistance < rhsDistance;
             }
             return lhs.id < rhs.id;
         };
@@ -324,7 +339,7 @@ namespace Geometry
                     continue;
                 }
                 const auto projection = ProjectPointToCurve(point, *entry.curve, tolerance);
-                if (!projection.success || projection.distanceSquared > maxDistanceSquared)
+                if (!projection.success || !WithinDistance(point, projection.point, maxDistance))
                 {
                     continue;
                 }
@@ -357,7 +372,7 @@ namespace Geometry
                     continue;
                 }
                 const auto projection = ProjectPointToCurve(point, *entry->curve, tolerance);
-                if (!projection.success || projection.distanceSquared > maxDistanceSquared)
+                if (!projection.success || !WithinDistance(point, projection.point, maxDistance))
                 {
                     continue;
                 }
@@ -374,11 +389,12 @@ namespace Geometry
                 hits.resize(k);
             }
 
-            const auto worstHit = std::max_element(hits.begin(), hits.end(), [](const auto& lhs, const auto& rhs) {
-                return lhs.distanceSquared < rhs.distanceSquared;
+            const auto worstHit = std::max_element(hits.begin(), hits.end(), [&point](const auto& lhs, const auto& rhs) {
+                return StableDistance(point, lhs.point) < StableDistance(point, rhs.point);
             });
             if (boxHits.size() < candidateCount || candidateCount == entries_.size() ||
-                (hits.size() >= k && boxHits.back().distanceSquared > worstHit->distanceSquared))
+                (hits.size() >= k && std::sqrt(std::max(0.0, boxHits.back().distanceSquared)) >
+                    StableDistance(point, worstHit->point)))
             {
                 break;
             }
@@ -386,10 +402,7 @@ namespace Geometry
             candidateCount = std::max(candidateCount + 1, doubled);
         }
 
-        std::sort(hits.begin(), hits.end(), [](const auto& lhs, const auto& rhs) {
-            return lhs.distanceSquared == rhs.distanceSquared ? lhs.id < rhs.id
-                                                                : lhs.distanceSquared < rhs.distanceSquared;
-        });
+        std::sort(hits.begin(), hits.end(), compareHits);
         return hits;
     }
 

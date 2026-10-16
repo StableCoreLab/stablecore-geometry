@@ -1,4 +1,5 @@
 #include "Core/Intersection.h"
+#include "Support/StableNumerics.h"
 
 #include <algorithm>
 #include <array>
@@ -18,7 +19,13 @@
 #include "Brep/SCBrepEdge.h"
 #include "Brep/SCBrepFace.h"
 #include "Brep/SCBrepVertex.h"
+#include "../Detail/AffinePlaneGeometry.h"
+#include "../Detail/BrepFaceRegion.h"
+#include "../Detail/LineFaceHits.h"
+#include "../Detail/CurveOnSurfaceNumerics.h"
 #include "Geometry3d/SCLineCurve3d.h"
+#include "Geometry3d/Detail/SurfaceNumerics.h"
+#include "Geometry3d/SCOffsetSurface.h"
 #include "Geometry3d/SCNurbsCurve3d.h"
 #include "Geometry3d/SCNurbsSurface.h"
 #include "Geometry3d/SCPlaneSurface.h"
@@ -30,10 +37,12 @@ namespace Geometry
 {
     namespace
     {
-        [[nodiscard]] double SurfaceResidualSquared(
+        double Norm(const SCVector3d& vector) { return std::hypot(vector.x,vector.y,vector.z); }
+
+        [[nodiscard]] double SurfaceResidualDistance(
             const SCLine3d& line, double t, const ISCSurface& surface, double u, double v)
         {
-            return (line.PointAt(t) - surface.PointAt(u, v)).LengthSquared();
+            return Norm(line.PointAt(t) - surface.PointAt(u, v));
         }
 
         [[nodiscard]] bool TryBuildSupportPlane(const SCNurbsSurface& surface,
@@ -45,29 +54,49 @@ namespace Geometry
                 return false;
             }
 
-            const SCIntervald uRange = surface.URange();
-            const SCIntervald vRange = surface.VRange();
-            const double u = 0.5 * (uRange.min + uRange.max);
-            const double v = 0.5 * (vRange.min + vRange.max);
-            const SCSurfaceEval3d eval = surface.Evaluate(u, v, 1);
-            if (!eval.IsValid() || eval.normal.Length() <= tolerance.distanceEpsilon)
+            // This plane supplies a candidate only.  Floating-point PointAt
+            // may depart from it even for an affine control net.
+            if (surface.DegreeU() != 1 || surface.DegreeV() != 1 ||
+                surface.ControlPointCountU() != 2 || surface.ControlPointCountV() != 2)
+            {
+                return false;
+            }
+            const auto& controlPoints = surface.ControlPoints();
+            const auto& weights = surface.Weights();
+            if (controlPoints.size() != 4 || weights.size() != 4 ||
+                !std::all_of(weights.begin() + 1, weights.end(),
+                             [&](double weight) { return weight == weights.front(); }))
+            {
+                return false;
+            }
+            const SCPoint3d affineCorner = controlPoints[1] + (controlPoints[2] - controlPoints[0]);
+            if (controlPoints[3].x != affineCorner.x || controlPoints[3].y != affineCorner.y ||
+                controlPoints[3].z != affineCorner.z)
             {
                 return false;
             }
 
-            plane = SCPlane::FromPointAndNormal(eval.point, eval.normal);
+            const SCIntervald uRange = surface.URange();
+            const SCIntervald vRange = surface.VRange();
+            const double u = std::lerp(uRange.min, uRange.max, 0.5);
+            const double v = std::lerp(vRange.min, vRange.max, 0.5);
+            const SCSurfaceEval3d eval = surface.Evaluate(u, v, 1);
+            const SCPoint3d surfacePoint = surface.PointAt(u, v);
+            if (!Detail::HasIndependentSurfaceTangents(eval, tolerance.angleEpsilon) ||
+                !surfacePoint.IsValid() || !Detail::SameRoundedPosition(eval.point, surfacePoint))
+            {
+                return false;
+            }
+
+            SCVector3d unitNormal;
+            if (!Detail::TryUnitVector(eval.normal, unitNormal))
+            {
+                return false;
+            }
+            plane = SCPlane::FromPointAndNormal(surfacePoint, unitNormal);
             if (!plane.IsValid(tolerance.distanceEpsilon))
             {
                 return false;
-            }
-
-            for (const SCPoint3d& controlPoint : surface.ControlPoints())
-            {
-                if (std::abs(plane.SignedDistanceTo(controlPoint, tolerance.distanceEpsilon)) >
-                    tolerance.distanceEpsilon)
-                {
-                    return false;
-                }
             }
 
             return true;
@@ -96,6 +125,13 @@ namespace Geometry
             const SCPoint3d& p10 = controlPoints[1];
             const SCPoint3d& p01 = controlPoints[2];
             const SCPoint3d& p11 = controlPoints[3];
+            const auto& weights = surface.Weights();
+            if (weights.size() != 4 ||
+                !std::all_of(weights.begin() + 1, weights.end(),
+                             [&](double weight) { return weight == weights.front(); }))
+            {
+                return false;
+            }
             const SCPoint3d affineCorner = p10 + (p01 - p00);
             if (!affineCorner.AlmostEquals(p11, tolerance.distanceEpsilon))
             {
@@ -105,19 +141,28 @@ namespace Geometry
             const SCVector3d uDirection = p10 - p00;
             const SCVector3d vDirection = p01 - p00;
             const SCVector3d delta = point - p00;
-            const double uu = Dot(uDirection, uDirection);
-            const double uv = Dot(uDirection, vDirection);
-            const double vv = Dot(vDirection, vDirection);
-            const double du = Dot(delta, uDirection);
-            const double dv = Dot(delta, vDirection);
-            const double denominator = uu * vv - uv * uv;
-            if (std::abs(denominator) <= tolerance.parameterEpsilon)
+            SCVector3d unitU, unitV;
+            if (!Detail::TryUnitVector(uDirection, unitU) ||
+                !Detail::TryUnitVector(vDirection, unitV))
             {
                 return false;
             }
-
-            const double normalizedU = (du * vv - dv * uv) / denominator;
-            const double normalizedV = (dv * uu - du * uv) / denominator;
+            const double uv = Dot(unitU, unitV);
+            const double denominator = std::fma(-uv, uv, 1.0);
+            if (!(denominator > tolerance.angleEpsilon * tolerance.angleEpsilon))
+            {
+                return false;
+            }
+            const double du = Dot(delta, unitU);
+            const double dv = Dot(delta, unitV);
+            const double normalizedU = (du - uv * dv) /
+                (std::hypot(uDirection.x, uDirection.y, uDirection.z) * denominator);
+            const double normalizedV = (dv - uv * du) /
+                (std::hypot(vDirection.x, vDirection.y, vDirection.z) * denominator);
+            if (!std::isfinite(normalizedU) || !std::isfinite(normalizedV))
+            {
+                return false;
+            }
             if (normalizedU < -tolerance.parameterEpsilon || normalizedU > 1.0 + tolerance.parameterEpsilon ||
                 normalizedV < -tolerance.parameterEpsilon || normalizedV > 1.0 + tolerance.parameterEpsilon)
             {
@@ -126,8 +171,12 @@ namespace Geometry
 
             const SCIntervald uRange = surface.URange();
             const SCIntervald vRange = surface.VRange();
-            u = uRange.min + uRange.Length() * std::clamp(normalizedU, 0.0, 1.0);
-            v = vRange.min + vRange.Length() * std::clamp(normalizedV, 0.0, 1.0);
+            u = std::lerp(uRange.min, uRange.max, std::clamp(normalizedU, 0.0, 1.0));
+            v = std::lerp(vRange.min, vRange.max, std::clamp(normalizedV, 0.0, 1.0));
+            if (!std::isfinite(u) || !std::isfinite(v))
+            {
+                return false;
+            }
             surfacePoint = surface.PointAt(u, v);
             return surfacePoint.AlmostEquals(point, tolerance.distanceEpsilon);
         }
@@ -144,41 +193,51 @@ namespace Geometry
             double t = initialT;
             double u = std::clamp(initialU, uRange.min, uRange.max);
             double v = std::clamp(initialV, vRange.min, vRange.max);
-            const double distanceEpsilonSquared = tolerance.distanceEpsilon * tolerance.distanceEpsilon;
 
             for (int iteration = 0; iteration < 32; ++iteration)
             {
                 const SCPoint3d linePoint = line.PointAt(t);
                 const SCSurfaceEval3d surfaceEval = surface.Evaluate(u, v, 1);
-                if (surfaceEval.derivativeOrder < 1 || !surfaceEval.point.IsValid() ||
-                    !surfaceEval.derivativeU.IsValid() || !surfaceEval.derivativeV.IsValid())
+                if (dynamic_cast<const SCOffsetSurface*>(&surface) != nullptr ||
+                    !Detail::HasIndependentSurfaceTangents(surfaceEval, tolerance.angleEpsilon))
                 {
                     return {};
                 }
 
-                const SCVector3d residual = linePoint - surfaceEval.point;
-                if (residual.LengthSquared() <= distanceEpsilonSquared)
+                const SCPoint3d surfacePoint = surface.PointAt(u, v);
+                if (!surfacePoint.IsValid() || !Detail::SameRoundedPosition(surfaceEval.point, surfacePoint))
                 {
-                    return {true, false, false, t, u, v, surfaceEval.point};
+                    return {};
+                }
+                const SCVector3d residual = linePoint - surfacePoint;
+                if (Norm(residual) <= tolerance.distanceEpsilon)
+                {
+                    return {true, false, false, t, u, v, surfacePoint};
                 }
 
-                const SCVector3d columnT = line.direction;
-                const SCVector3d columnU = -surfaceEval.derivativeU;
-                const SCVector3d columnV = -surfaceEval.derivativeV;
+                const auto componentScale = [](const SCVector3d& value) {
+                    return std::max({std::abs(value.x), std::abs(value.y), std::abs(value.z)});
+                };
+                const double scaleT = componentScale(line.direction);
+                const double scaleU = componentScale(surfaceEval.derivativeU);
+                const double scaleV = componentScale(surfaceEval.derivativeV);
+                const double scaleR = componentScale(residual);
+                if (!(scaleT > 0) || !(scaleU > 0) || !(scaleV > 0) ||
+                    !(scaleR > 0) || !std::isfinite(scaleR)) return {};
+                const SCVector3d columnT = line.direction / scaleT;
+                const SCVector3d columnU = -surfaceEval.derivativeU / scaleU;
+                const SCVector3d columnV = -surfaceEval.derivativeV / scaleV;
                 const double determinant = Dot(columnT, Cross(columnU, columnV));
-                const double determinantScale = columnT.Length() * columnU.Length() * columnV.Length();
-                if (!std::isfinite(determinant) || !std::isfinite(determinantScale) ||
+                const double determinantScale = Norm(columnT) * Norm(columnU) * Norm(columnV);
+                if (!std::isfinite(determinant) ||
                     std::abs(determinant) <=
-                        std::max(tolerance.parameterEpsilon, std::numeric_limits<double>::epsilon()) *
-                            determinantScale)
-                {
-                    return {};
-                }
+                        std::max(tolerance.angleEpsilon, std::numeric_limits<double>::epsilon()) *
+                            determinantScale) return {};
 
-                const SCVector3d rhs = -residual;
-                const double deltaT = Dot(rhs, Cross(columnU, columnV)) / determinant;
-                const double deltaU = Dot(columnT, Cross(rhs, columnV)) / determinant;
-                const double deltaV = Dot(columnT, Cross(columnU, rhs)) / determinant;
+                const SCVector3d rhs = -residual / scaleR;
+                const double deltaT = (Dot(rhs, Cross(columnU, columnV)) / determinant * scaleR) / scaleT;
+                const double deltaU = (Dot(columnT, Cross(rhs, columnV)) / determinant * scaleR) / scaleU;
+                const double deltaV = (Dot(columnT, Cross(columnU, rhs)) / determinant * scaleR) / scaleV;
                 if (!std::isfinite(deltaT) || !std::isfinite(deltaU) || !std::isfinite(deltaV))
                 {
                     return {};
@@ -190,9 +249,9 @@ namespace Geometry
                     const double candidateT = t + scale * deltaT;
                     const double candidateU = std::clamp(u + scale * deltaU, uRange.min, uRange.max);
                     const double candidateV = std::clamp(v + scale * deltaV, vRange.min, vRange.max);
-                    const double candidateResidualSquared =
-                        SurfaceResidualSquared(line, candidateT, surface, candidateU, candidateV);
-                    if (candidateResidualSquared < residual.LengthSquared())
+                    const double candidateResidual = Norm(line.PointAt(candidateT) -
+                        surface.PointAt(candidateU, candidateV));
+                    if (candidateResidual < Norm(residual))
                     {
                         t = candidateT;
                         u = candidateU;
@@ -210,138 +269,70 @@ namespace Geometry
 
             const SCPoint3d linePoint = line.PointAt(t);
             const SCPoint3d surfacePoint = surface.PointAt(u, v);
-            if ((linePoint - surfacePoint).LengthSquared() <= distanceEpsilonSquared)
+            if (linePoint.IsValid() && surfacePoint.IsValid() && Norm(linePoint-surfacePoint) <= tolerance.distanceEpsilon)
             {
                 return {true, false, false, t, u, v, surfacePoint};
             }
             return {};
         }
 
-        [[nodiscard]] SCLineCurveIntersection3d TryRefineLineCurveNewton(const SCLine3d& line,
-                                                                          const ISCCurve3d& curve,
-                                                                          double initialParameter,
-                                                                          const SCGeometryTolerance3d& tolerance)
+        [[nodiscard]] SCLineCurveIntersection3d TryRefineLineCurveNewton(
+            const SCLine3d& line, const ISCCurve3d& curve, double initialParameter,
+            const SCGeometryTolerance3d& tolerance)
         {
-            const SCIntervald range = curve.ParameterRange();
-            if (!range.IsValid())
-            {
-                return {};
-            }
-
-            const double directionLengthSquared = line.direction.LengthSquared();
-            if (directionLengthSquared <= tolerance.distanceEpsilon * tolerance.distanceEpsilon)
-            {
-                return {};
-            }
-
-            const auto removeLineComponent = [&](const SCVector3d& vector) {
-                return vector - line.direction * (Dot(vector, line.direction) / directionLengthSquared);
+            const auto range=curve.ParameterRange();
+            SCVector3d unit;
+            if (!range.IsValid() || !Detail::TryUnitVector(line.direction,unit)) return {};
+            const auto removeLine=[&](const SCVector3d& v) { return v-unit*Dot(v,unit); };
+            const auto residualAt=[&](double t) {
+                const auto p=curve.PointAt(t);
+                if (!p.IsValid()) return std::numeric_limits<double>::infinity();
+                return Norm(removeLine(p-line.origin));
             };
-            double parameter = std::clamp(initialParameter, range.min, range.max);
-            const double distanceEpsilonSquared = tolerance.distanceEpsilon * tolerance.distanceEpsilon;
-            for (int iteration = 0; iteration < 32; ++iteration)
-            {
-                const SCCurveEval3d eval = curve.Evaluate(parameter, 2);
-                if (!eval.IsValid())
-                {
-                    return {};
+            double parameter=std::clamp(initialParameter,range.min,range.max);
+            double best=residualAt(parameter);
+            if (!std::isfinite(best)) return {};
+            for (int iteration=0;iteration<32 && best>tolerance.distanceEpsilon;++iteration) {
+                const auto point=curve.PointAt(parameter);
+                const auto eval=curve.Evaluate(parameter,2);
+                if (!eval.IsValid() || eval.derivativeOrder<1 || !Detail::SameRoundedPosition(point,eval.point)) break;
+                auto residual=removeLine(point-line.origin);
+                auto first=removeLine(eval.firstDerivative);
+                auto second=eval.derivativeOrder>=2?removeLine(eval.secondDerivative):SCVector3d{};
+                const double scale=std::max({std::abs(residual.x),std::abs(residual.y),std::abs(residual.z),
+                    std::abs(first.x),std::abs(first.y),std::abs(first.z),std::abs(second.x),std::abs(second.y),std::abs(second.z)});
+                if (!(scale>0) || !std::isfinite(scale)) break;
+                residual=residual/scale; first=first/scale; second=second/scale;
+                const double tangent=Dot(first,first), gradient=Dot(residual,first);
+                const double hessian=tangent+Dot(residual,second);
+                const double denominator=hessian>std::numeric_limits<double>::epsilon()*tangent?hessian:tangent;
+                if (!(denominator>0) || !std::isfinite(denominator)) break;
+                const double delta=-gradient/denominator;
+                if (!std::isfinite(delta)) break;
+                bool accepted=false;
+                for (double fraction=1;fraction>=1.0/128;fraction*=0.5) {
+                    const double t=std::clamp(parameter+fraction*delta,range.min,range.max);
+                    const double distance=residualAt(t);
+                    if (distance<best) { parameter=t; best=distance; accepted=true; break; }
                 }
-                if (eval.derivativeOrder < 1)
-                {
-                    double bestResidualSquared =
-                        removeLineComponent(curve.PointAt(parameter) - line.origin).LengthSquared();
-                    double step = std::max(range.Length() * 0.25, tolerance.parameterEpsilon);
-                    for (int refinement = 0; refinement < 64 && bestResidualSquared > distanceEpsilonSquared;
-                         ++refinement)
-                    {
-                        bool improved = false;
-                        for (const double dt : std::array<double, 2>{-step, step})
-                        {
-                            const double candidate = std::clamp(parameter + dt, range.min, range.max);
-                            const double candidateResidualSquared =
-                                removeLineComponent(curve.PointAt(candidate) - line.origin).LengthSquared();
-                            if (candidateResidualSquared < bestResidualSquared)
-                            {
-                                parameter = candidate;
-                                bestResidualSquared = candidateResidualSquared;
-                                improved = true;
-                            }
-                        }
-                        if (!improved)
-                        {
-                            step *= 0.5;
-                        }
-                        if (step <= tolerance.parameterEpsilon)
-                        {
-                            break;
-                        }
-                    }
-                    if (bestResidualSquared > distanceEpsilonSquared)
-                    {
-                        return {};
-                    }
-                    const SCPoint3d point = curve.PointAt(parameter);
-                    const double lineParameter = Dot(point - line.origin, line.direction) / directionLengthSquared;
-                    return {true, lineParameter, parameter, point};
-                }
-
-                const SCVector3d residual = removeLineComponent(eval.point - line.origin);
-                const double residualSquared = residual.LengthSquared();
-                if (residualSquared <= distanceEpsilonSquared)
-                {
-                    const double lineParameter = Dot(eval.point - line.origin, line.direction) / directionLengthSquared;
-                    return {true, lineParameter, parameter, eval.point};
-                }
-
-                const SCVector3d firstDerivative = removeLineComponent(eval.firstDerivative);
-                const double gradient = Dot(residual, firstDerivative);
-                const double tangentSquared = firstDerivative.LengthSquared();
-                const double curvatureTerm = eval.derivativeOrder >= 2
-                                                 ? Dot(residual, removeLineComponent(eval.secondDerivative))
-                                                 : 0.0;
-                const double hessian = tangentSquared + curvatureTerm;
-                const double hessianScale = tangentSquared + std::abs(curvatureTerm);
-                if (!std::isfinite(hessian) || !std::isfinite(hessianScale) ||
-                    std::abs(hessian) <= std::numeric_limits<double>::epsilon() * hessianScale)
-                {
-                    return {};
-                }
-
-                const double delta = -gradient / hessian;
-                if (!std::isfinite(delta))
-                {
-                    return {};
-                }
-
-                bool accepted = false;
-                for (double scale = 1.0; scale >= 1.0 / 128.0; scale *= 0.5)
-                {
-                    const double candidateParameter = std::clamp(parameter + scale * delta, range.min, range.max);
-                    const SCPoint3d candidatePoint = curve.PointAt(candidateParameter);
-                    const double candidateResidualSquared =
-                        removeLineComponent(candidatePoint - line.origin).LengthSquared();
-                    if (candidateResidualSquared < residualSquared)
-                    {
-                        parameter = candidateParameter;
-                        accepted = true;
-                        break;
-                    }
-                }
-
-                if (!accepted)
-                {
-                    return {};
-                }
+                if (!accepted) break;
             }
-
-            const SCPoint3d point = curve.PointAt(parameter);
-            const SCVector3d residual = removeLineComponent(point - line.origin);
-            if (residual.LengthSquared() > distanceEpsilonSquared)
-            {
-                return {};
+            double step=std::max(range.max*0.25-range.min*0.25,tolerance.parameterEpsilon);
+            for (int iteration=0;iteration<64 && best>tolerance.distanceEpsilon;++iteration) {
+                bool improved=false;
+                for (double delta : {-step,step}) {
+                    const double t=std::clamp(parameter+delta,range.min,range.max);
+                    const double distance=residualAt(t);
+                    if (distance<best) { parameter=t; best=distance; improved=true; }
+                }
+                if (!improved) step*=0.5;
+                if (step<=tolerance.parameterEpsilon) break;
             }
-            const double lineParameter = Dot(point - line.origin, line.direction) / directionLengthSquared;
-            return {true, lineParameter, parameter, point};
+            const auto point=curve.PointAt(parameter);
+            const auto projection=ProjectPointToLine(point,line,tolerance);
+            if (!point.IsValid() || !projection.isOnLine || !std::isfinite(projection.parameter) ||
+                !line.PointAt(projection.parameter).IsValid() || Norm(line.PointAt(projection.parameter)-point)>tolerance.distanceEpsilon) return {};
+            return {true,projection.parameter,parameter,point};
         }
 
         [[nodiscard]] SCLineSurfaceIntersection3d RefineLineSurfaceIntersection(const SCLine3d& line,
@@ -356,11 +347,11 @@ namespace Geometry
             double bestT = initialT;
             double bestU = std::clamp(initialU, uRange.min, uRange.max);
             double bestV = std::clamp(initialV, vRange.min, vRange.max);
-            double bestResidualSquared = SurfaceResidualSquared(line, bestT, surface, bestU, bestV);
+            double bestResidualDistance = SurfaceResidualDistance(line, bestT, surface, bestU, bestV);
 
             double stepT = std::max(1.0, tolerance.parameterEpsilon * 8.0);
-            double stepU = std::max(uRange.Length() * 0.25, tolerance.parameterEpsilon);
-            double stepV = std::max(vRange.Length() * 0.25, tolerance.parameterEpsilon);
+            double stepU = std::max((uRange.max*0.25-uRange.min*0.25), tolerance.parameterEpsilon);
+            double stepV = std::max((vRange.max*0.25-vRange.min*0.25), tolerance.parameterEpsilon);
 
             for (int iteration = 0; iteration < 20; ++iteration)
             {
@@ -374,15 +365,15 @@ namespace Geometry
                             const double candidateT = bestT + dt;
                             const double candidateU = std::clamp(bestU + du, uRange.min, uRange.max);
                             const double candidateV = std::clamp(bestV + dv, vRange.min, vRange.max);
-                            const double candidateResidualSquared =
-                                SurfaceResidualSquared(line, candidateT, surface, candidateU, candidateV);
-                            if (candidateResidualSquared + tolerance.distanceEpsilon * tolerance.distanceEpsilon <
-                                bestResidualSquared)
+                            const double candidateResidualDistance =
+                                SurfaceResidualDistance(line, candidateT, surface, candidateU, candidateV);
+                            if (candidateResidualDistance <
+                                bestResidualDistance)
                             {
                                 bestT = candidateT;
                                 bestU = candidateU;
                                 bestV = candidateV;
-                                bestResidualSquared = candidateResidualSquared;
+                                bestResidualDistance = candidateResidualDistance;
                                 improved = true;
                             }
                         }
@@ -405,7 +396,7 @@ namespace Geometry
 
             const SCPoint3d pointOnLine = line.PointAt(bestT);
             const SCPoint3d pointOnSurface = surface.PointAt(bestU, bestV);
-            if ((pointOnLine - pointOnSurface).LengthSquared() > tolerance.distanceEpsilon * tolerance.distanceEpsilon)
+            if (!pointOnLine.IsValid() || !pointOnSurface.IsValid() || Norm(pointOnLine-pointOnSurface) > tolerance.distanceEpsilon)
             {
                 return {};
             }
@@ -413,117 +404,33 @@ namespace Geometry
             return {true, false, false, bestT, bestU, bestV, pointOnSurface};
         }
 
-        [[nodiscard]] bool IsTrimPointInsideFace(const SCBrepFace& face, double u, double v, double eps, bool& onBoundary)
-        {
-            onBoundary = false;
-            if (!face.OuterTrim().IsValid())
-            {
-                return true;
-            }
 
-            std::vector<SCPolyline2d> holes;
-            holes.reserve(face.HoleTrims().size());
-            for (const SCCurveOnSurface& trim : face.HoleTrims())
-            {
-                if (!trim.IsValid())
-                {
-                    return false;
-                }
-                holes.push_back(trim.UvCurve());
-            }
 
-            const SCPolygon2d polygon(face.OuterTrim().UvCurve(), std::move(holes));
-            if (!polygon.IsValid())
-            {
-                return false;
-            }
-
-            const SCPointContainment2d containment = LocatePoint(SCPoint2d{u, v}, polygon, eps);
-            onBoundary = containment == SCPointContainment2d::OnBoundary;
-            return containment == SCPointContainment2d::Inside || onBoundary;
-        }
-
-        template <typename BodyIntersection, typename VisitFaces>
-        [[nodiscard]] BodyIntersection IntersectLineWithBodyFaces(const SCGeometryTolerance3d& tolerance,
-                                                                  VisitFaces&& visitFaces)
-        {
-            BodyIntersection result{};
-            using Hit = typename std::decay_t<decltype(result.hits)>::value_type;
-            std::vector<std::pair<std::size_t, Hit>> collected;
-            std::set<std::pair<long long, std::size_t>> dedup;
-            const auto collect = [&](std::size_t faceIndex, Hit hit) {
-                if (!hit.intersects)
-                {
-                    return;
-                }
-                const long long bucket = static_cast<long long>(std::llround(
-                    hit.lineParameter / std::max(tolerance.parameterEpsilon, Geometry::kIntersectionDefaultEpsilon)));
-                if (dedup.emplace(bucket, faceIndex).second)
-                {
-                    collected.emplace_back(faceIndex, std::move(hit));
-                }
-            };
-            visitFaces(collect);
-            std::sort(collected.begin(), collected.end(), [](const auto& lhs, const auto& rhs) {
-                return lhs.second.lineParameter < rhs.second.lineParameter;
-            });
-            for (auto& [faceIndex, hit] : collected)
-            {
-                result.faceIndices.push_back(faceIndex);
-                result.hits.push_back(std::move(hit));
-            }
-            result.intersects = !result.hits.empty();
-            return result;
-        }
-
-        [[nodiscard]] bool PointInTriangle3d(const SCPoint3d& point, const SCTriangle3d& triangle, double eps)
-        {
-            const SCVector3d v0 = triangle.c - triangle.a;
-            const SCVector3d v1 = triangle.b - triangle.a;
-            const SCVector3d v2 = point - triangle.a;
-
-            const double dot00 = Dot(v0, v0);
-            const double dot01 = Dot(v0, v1);
-            const double dot02 = Dot(v0, v2);
-            const double dot11 = Dot(v1, v1);
-            const double dot12 = Dot(v1, v2);
-            const double denominator = dot00 * dot11 - dot01 * dot01;
-            if (std::abs(denominator) <= eps)
-            {
-                return false;
-            }
-
-            const double inverse = 1.0 / denominator;
-            const double u = (dot11 * dot02 - dot01 * dot12) * inverse;
-            const double v = (dot00 * dot12 - dot01 * dot02) * inverse;
-            return u >= -eps && v >= -eps && u + v <= 1.0 + eps;
-        }
     }  // namespace
 
     SCLinePlaneIntersection3d Intersect(const SCLine3d& line, const SCPlane& plane, const SCGeometryTolerance3d& tolerance)
     {
         SCLinePlaneIntersection3d result{};
-        if (!line.IsValid(tolerance.distanceEpsilon) || !plane.IsValid(tolerance.distanceEpsilon))
-        {
+        if (!tolerance.IsValid() || !line.IsValid(tolerance.distanceEpsilon) || !plane.IsValid(tolerance.distanceEpsilon)) return result;
+        const auto unitNormal=plane.UnitNormal(tolerance.distanceEpsilon);
+        const double scale=std::max({std::abs(line.direction.x),std::abs(line.direction.y),std::abs(line.direction.z)});
+        const auto scaled=line.direction/scale;
+        const double length=Norm(scaled);
+        const double denominator=Dot(unitNormal,scaled/length);
+        const double numerator=Dot(unitNormal,plane.origin-line.origin);
+        if (!std::isfinite(denominator) || !std::isfinite(numerator)) return result;
+        if (std::abs(denominator)<=tolerance.angleEpsilon) {
+            result.isParallel=true;
+            result.liesOnPlane=denominator==0.0 && std::abs(numerator)<=tolerance.distanceEpsilon;
+            result.intersects=result.liesOnPlane;
+            result.point=line.origin;
             return result;
         }
-
-        const SCVector3d unitNormal = plane.UnitNormal(tolerance.distanceEpsilon);
-        const double denominator = Dot(unitNormal, line.direction);
-        const double numerator = Dot(unitNormal, plane.origin - line.origin);
-
-        if (std::abs(denominator) <= tolerance.distanceEpsilon)
-        {
-            result.isParallel = true;
-            result.liesOnPlane = std::abs(numerator) <= tolerance.distanceEpsilon;
-            result.intersects = result.liesOnPlane;
-            result.point = line.origin;
-            return result;
-        }
-
-        result.intersects = true;
-        result.parameter = numerator / denominator;
-        result.point = line.PointAt(result.parameter);
+        const double parameter=((numerator/denominator)/length)/scale;
+        const auto point=line.PointAt(parameter);
+        if (!std::isfinite(parameter) || !point.IsValid() ||
+            std::abs(plane.SignedDistanceTo(point,tolerance.distanceEpsilon))>tolerance.distanceEpsilon) return result;
+        result.intersects=true; result.parameter=parameter; result.point=point;
         return result;
     }
 
@@ -536,53 +443,30 @@ namespace Geometry
 
         if (const auto* lineCurve = dynamic_cast<const SCLineCurve3d*>(&curve))
         {
-            const SCLine3d curveLine = lineCurve->Line();
-            const SCVector3d cross = Cross(line.direction, curveLine.direction);
-            if (cross.LengthSquared() <= tolerance.distanceEpsilon * tolerance.distanceEpsilon)
-            {
-                const double separationSquared = Cross(curveLine.origin - line.origin, line.direction).LengthSquared() /
-                                                 line.direction.LengthSquared();
-                if (separationSquared > tolerance.distanceEpsilon * tolerance.distanceEpsilon)
-                {
-                    return {};
-                }
-
-                const SCIntervald curveRange = lineCurve->ParameterRange();
-                const double curveParameter = curveRange.min;
-                const SCPoint3d point = lineCurve->PointAt(curveParameter);
-                const double lineParameter = Dot(point - line.origin, line.direction) /
-                                             line.direction.LengthSquared();
-                return {true, lineParameter, curveParameter, point};
+            const auto& curveLine = lineCurve->Line();
+            SCVector3d unitA, unitB;
+            if (!Detail::TryUnitVector(line.direction, unitA) ||
+                !Detail::TryUnitVector(curveLine.direction, unitB)) return {};
+            const auto cross = Cross(unitA, unitB);
+            const double sine = Norm(cross);
+            const auto range = lineCurve->ParameterRange();
+            double parameter = range.min;
+            if (sine > tolerance.angleEpsilon) {
+                const auto delta = curveLine.origin - line.origin;
+                const double scale = std::max({std::abs(curveLine.direction.x),
+                    std::abs(curveLine.direction.y),std::abs(curveLine.direction.z)});
+                const double length = Norm(curveLine.direction / scale);
+                const double along = Dot(Cross(delta,unitA),cross/sine)/sine;
+                parameter = (along/scale)/length;
+                if (!Detail::StableContains(range.min,range.max,parameter,tolerance.parameterEpsilon)) return {};
+                parameter = std::clamp(parameter,range.min,range.max);
             }
-
-            const SCVector3d delta = curveLine.origin - line.origin;
-            const double a = line.direction.LengthSquared();
-            const double b = Dot(line.direction, curveLine.direction);
-            const double c = curveLine.direction.LengthSquared();
-            const double d = Dot(line.direction, delta);
-            const double e = Dot(curveLine.direction, delta);
-            const double denominator = a * c - b * b;
-            if (std::abs(denominator) <= tolerance.distanceEpsilon)
-            {
-                return {};
-            }
-
-            const double lineParameter = (d * c - b * e) / denominator;
-            const double curveParameter = (b * d - a * e) / denominator;
-            const SCIntervald curveRange = lineCurve->ParameterRange();
-            if (!curveRange.Contains(curveParameter, tolerance.parameterEpsilon))
-            {
-                return {};
-            }
-
-            const SCPoint3d pointOnLine = line.PointAt(lineParameter);
-            const SCPoint3d pointOnCurve = lineCurve->PointAt(curveParameter);
-            if (!pointOnLine.AlmostEquals(pointOnCurve, tolerance.distanceEpsilon))
-            {
-                return {};
-            }
-
-            return {true, lineParameter, curveParameter, pointOnCurve};
+            const auto point = lineCurve->PointAt(parameter);
+            const auto projection = ProjectPointToLine(point,line,tolerance);
+            const auto onLine = line.PointAt(projection.parameter);
+            if (!point.IsValid() || !onLine.IsValid() || !std::isfinite(projection.parameter) ||
+                Norm(onLine-point)>tolerance.distanceEpsilon) return {};
+            return {true,projection.parameter,parameter,point};
         }
 
         const SCIntervald range = curve.ParameterRange();
@@ -605,46 +489,38 @@ namespace Geometry
         const double curveScale = curveBounds.IsValid()
                                       ? (curveBounds.MaxPoint() - curveBounds.MinPoint()).Length()
                                       : tolerance.distanceEpsilon;
+        const std::size_t spanCount = curveBoundaries.size() - 1;
+        const std::size_t seedCount = std::max<std::size_t>(
+            256, spanCount > std::numeric_limits<std::size_t>::max() / 3
+                     ? std::numeric_limits<std::size_t>::max() : 3 * spanCount);
         const std::vector<double> curveSeeds = Detail::AdaptiveCurveParameterSeeds(
-            curve, std::move(curveBoundaries), std::max(tolerance.distanceEpsilon * 4.0, curveScale * 1e-3));
+            curve, std::move(curveBoundaries), std::max(tolerance.distanceEpsilon * 4.0, curveScale * 1e-3),
+            8, seedCount);
 
-        double bestLineParameter = 0.0;
-        double bestCurveParameter = range.min;
-        double bestDistanceSquared = (line.origin - curve.PointAt(bestCurveParameter)).LengthSquared();
+        double bestDistance = std::numeric_limits<double>::infinity();
+        SCLineCurveIntersection3d best{};
         for (const double curveParameter : curveSeeds)
         {
-            const SCPoint3d pointOnCurve = curve.PointAt(curveParameter);
-            const double lineParameter = Dot(pointOnCurve - line.origin, line.direction) /
-                                         line.direction.LengthSquared();
-            const SCPoint3d pointOnLine = line.PointAt(lineParameter);
-            const double distanceSquared = (pointOnLine - pointOnCurve).LengthSquared();
-            if (distanceSquared < bestDistanceSquared)
+            const SCPoint3d actual = curve.PointAt(curveParameter);
+            if (!actual.IsValid()) continue;
+            const auto projection = ProjectPointToLine(actual, line, tolerance);
+            const auto onLine = line.PointAt(projection.parameter);
+            const double distance = Norm(onLine - actual);
+            if (onLine.IsValid() && std::isfinite(projection.parameter) && distance < bestDistance)
             {
-                bestLineParameter = lineParameter;
-                bestCurveParameter = curveParameter;
-                bestDistanceSquared = distanceSquared;
-            }
-            const SCLineCurveIntersection3d refined =
-                TryRefineLineCurveNewton(line, curve, curveParameter, tolerance);
-            if (refined.intersects)
-            {
-                return refined;
+                bestDistance = distance;
+                best = {true, projection.parameter, curveParameter, actual};
             }
         }
-
-        const SCLineCurveIntersection3d newtonResult =
-            TryRefineLineCurveNewton(line, curve, bestCurveParameter, tolerance);
-        if (newtonResult.intersects)
+        // Inspect every actual seed before refinement, so an approximate root
+        // cannot hide an exactly represented knot or endpoint intersection.
+        if (best.intersects && bestDistance <= tolerance.distanceEpsilon) return best;
+        for (const double curveParameter : curveSeeds)
         {
-            return newtonResult;
+            const auto refined = TryRefineLineCurveNewton(line, curve, curveParameter, tolerance);
+            if (refined.intersects) return refined;
         }
-
-        if (bestDistanceSquared > tolerance.distanceEpsilon * tolerance.distanceEpsilon)
-        {
-            return {};
-        }
-
-        return {true, bestLineParameter, bestCurveParameter, curve.PointAt(bestCurveParameter)};
+        return {};
     }
 
     SCLineCurveOnSurfaceIntersection3d Intersect(const SCLine3d& line,
@@ -661,47 +537,13 @@ namespace Geometry
         const std::size_t segmentCount = curveOnSurface.UvCurve().IsClosed() ? pointCount : pointCount - 1;
         for (std::size_t i = 0; i < segmentCount; ++i)
         {
-            const std::size_t j = (i + 1) % pointCount;
-            const SCPoint3d start = curveOnSurface.PointAt(i);
-            const SCPoint3d end = curveOnSurface.PointAt(j);
-            const SCVector3d segmentDirection = end - start;
-            const double segmentLengthSquared = segmentDirection.LengthSquared();
-            if (segmentLengthSquared <= tolerance.distanceEpsilon * tolerance.distanceEpsilon)
+            const Detail::CurveOnSurfaceLineCandidate candidate =
+                Detail::ProjectCurveOnSurfaceSegmentToLine(line, curveOnSurface, i);
+            if (candidate.valid && candidate.distance <= tolerance.distanceEpsilon)
             {
-                continue;
+                return {true, i, candidate.sample.parameter, candidate.lineParameter,
+                        candidate.sample.uv, candidate.sample.point};
             }
-
-            const SCLine3d segmentLine = SCLine3d::FromOriginAndDirection(start, segmentDirection);
-            const SCVector3d delta = segmentLine.origin - line.origin;
-            const double a = line.direction.LengthSquared();
-            const double b = Dot(line.direction, segmentLine.direction);
-            const double c = segmentLine.direction.LengthSquared();
-            const double d = Dot(line.direction, delta);
-            const double e = Dot(segmentLine.direction, delta);
-            const double denominator = a * c - b * b;
-            if (std::abs(denominator) <= tolerance.distanceEpsilon)
-            {
-                continue;
-            }
-
-            const double lineParameter = (d * c - b * e) / denominator;
-            const double segmentParameter = (a * e - b * d) / denominator;
-            if (segmentParameter < -tolerance.parameterEpsilon || segmentParameter > 1.0 + tolerance.parameterEpsilon)
-            {
-                continue;
-            }
-
-            const SCPoint3d pointOnLine = line.PointAt(lineParameter);
-            const SCPoint3d pointOnSegment = start + segmentDirection * segmentParameter;
-            if (!pointOnLine.AlmostEquals(pointOnSegment, tolerance.distanceEpsilon))
-            {
-                continue;
-            }
-
-            const SCPoint2d uv0 = curveOnSurface.UvPointAt(i);
-            const SCPoint2d uv1 = curveOnSurface.UvPointAt(j);
-            const SCPoint2d uv = uv0 + (uv1 - uv0) * segmentParameter;
-            return {true, i, segmentParameter, lineParameter, uv, pointOnSegment};
         }
 
         return {};
@@ -718,28 +560,33 @@ namespace Geometry
 
         if (const auto* planeSurface = dynamic_cast<const SCPlaneSurface*>(&surface))
         {
-            const SCLinePlaneIntersection3d planeIntersection = Intersect(line, planeSurface->SupportPlane(), tolerance);
+            SCPlane actualPlane;
+            if (!Detail::TryActualPlane(*planeSurface, tolerance, actualPlane))
+            {
+                return {};
+            }
+            const SCLinePlaneIntersection3d planeIntersection = Intersect(line, actualPlane, tolerance);
             if (!planeIntersection.intersects)
             {
                 return {false, planeIntersection.isParallel, planeIntersection.liesOnPlane, 0.0, 0.0, 0.0, {}};
             }
-
-            const SCVector3d delta = planeIntersection.point - planeSurface->SupportPlane().origin;
-            const SCVector3d uAxis = planeSurface->UAxis();
-            const SCVector3d vAxis = planeSurface->VAxis();
-            const double uDenominator = std::max(uAxis.LengthSquared(), tolerance.parameterEpsilon);
-            const double vDenominator = std::max(vAxis.LengthSquared(), tolerance.parameterEpsilon);
-            const double u = Dot(delta, uAxis) / uDenominator;
-            const double v = Dot(delta, vAxis) / vDenominator;
-            const bool insideDomain = planeSurface->URange().Contains(u, tolerance.parameterEpsilon) &&
-                                      planeSurface->VRange().Contains(v, tolerance.parameterEpsilon);
-            if (!insideDomain)
+            SCPoint2d uv;
+            if (!Detail::TryAffinePlaneUv(*planeSurface, planeIntersection.point, tolerance, uv))
+            {
+                return {};
+            }
+            const auto ur=planeSurface->URange(),vr=planeSurface->VRange();
+            const bool insideDomain = Detail::StableContains(ur.min,ur.max,uv.x,tolerance.parameterEpsilon) &&
+                                      Detail::StableContains(vr.min,vr.max,uv.y,tolerance.parameterEpsilon);
+            const SCPoint3d surfacePoint = planeSurface->PointAt(uv.x, uv.y);
+            if (!insideDomain || !surfacePoint.IsValid() ||
+                Norm(surfacePoint-planeIntersection.point) > tolerance.distanceEpsilon)
             {
                 return {};
             }
 
             return {
-                true, false, planeIntersection.liesOnPlane, planeIntersection.parameter, u, v, planeIntersection.point};
+                true, false, planeIntersection.liesOnPlane, planeIntersection.parameter, uv.x, uv.y, surfacePoint};
         }
 
         if (const auto* nurbsSurface = dynamic_cast<const SCNurbsSurface*>(&surface))
@@ -748,36 +595,38 @@ namespace Geometry
             if (TryBuildSupportPlane(*nurbsSurface, tolerance, supportPlane))
             {
                 const SCLinePlaneIntersection3d planeIntersection = Intersect(line, supportPlane, tolerance);
-                if (!planeIntersection.intersects)
+                if (planeIntersection.intersects && !planeIntersection.isParallel &&
+                    std::isfinite(planeIntersection.parameter) && planeIntersection.point.IsValid())
                 {
-                    return {false, planeIntersection.isParallel, planeIntersection.liesOnPlane, 0.0, 0.0, 0.0, {}};
-                }
+                    const auto onLine = [&](const SCPoint3d& candidate) {
+                        if (!candidate.IsValid())
+                        {
+                            return false;
+                        }
+                        const SCPoint3d linePoint = line.PointAt(planeIntersection.parameter);
+                        return linePoint.IsValid() &&
+                            std::hypot(candidate.x - linePoint.x, candidate.y - linePoint.y,
+                                       candidate.z - linePoint.z) <= tolerance.distanceEpsilon;
+                    };
+                    double u = 0.0;
+                    double v = 0.0;
+                    SCPoint3d surfacePoint{};
+                    if (TryProjectPointToAffinePlanarNurbs(
+                            planeIntersection.point, *nurbsSurface, tolerance, u, v, surfacePoint) &&
+                        onLine(surfacePoint))
+                    {
+                        return {true, false, false, planeIntersection.parameter, u, v, surfacePoint};
+                    }
 
-                double u = 0.0;
-                double v = 0.0;
-                SCPoint3d surfacePoint{};
-                if (TryProjectPointToAffinePlanarNurbs(
-                        planeIntersection.point, *nurbsSurface, tolerance, u, v, surfacePoint))
-                {
-                    return {
-                        true, false, planeIntersection.liesOnPlane, planeIntersection.parameter, u, v, surfacePoint};
+                    const SCSurfaceProjection3d surfaceProjection =
+                        ProjectPointToSurface(planeIntersection.point, surface, tolerance);
+                    if (surfaceProjection.success && onLine(surfaceProjection.point) &&
+                        surfaceProjection.point == surface.PointAt(surfaceProjection.u, surfaceProjection.v))
+                    {
+                        return {true, false, false, planeIntersection.parameter,
+                                surfaceProjection.u, surfaceProjection.v, surfaceProjection.point};
+                    }
                 }
-
-                const SCSurfaceProjection3d surfaceProjection =
-                    ProjectPointToSurface(planeIntersection.point, surface, tolerance);
-                if (!surfaceProjection.success ||
-                    surfaceProjection.distanceSquared > tolerance.distanceEpsilon * tolerance.distanceEpsilon)
-                {
-                    return {};
-                }
-
-                return {true,
-                        false,
-                        planeIntersection.liesOnPlane,
-                        planeIntersection.parameter,
-                        surfaceProjection.u,
-                        surfaceProjection.v,
-                        surfaceProjection.point};
             }
         }
 
@@ -809,12 +658,11 @@ namespace Geometry
         const std::vector<Detail::SurfaceParameterSeed> surfaceSeeds = Detail::AdaptiveSurfaceParameterSeeds(
             surface, std::move(uBoundaries), std::move(vBoundaries),
             std::max(tolerance.distanceEpsilon * 4.0, surfaceScale * 1e-2));
-        double bestU = 0.5 * (uRange.min + uRange.max);
-        double bestV = 0.5 * (vRange.min + vRange.max);
+        double bestU = std::lerp(uRange.min, uRange.max, 0.5);
+        double bestV = std::lerp(vRange.min, vRange.max, 0.5);
         const SCPoint3d centerSurfacePoint = surface.PointAt(bestU, bestV);
-        double bestT = Dot(centerSurfacePoint - line.origin, line.direction) /
-                       std::max(line.direction.LengthSquared(), tolerance.parameterEpsilon);
-        double bestResidualSquared = SurfaceResidualSquared(line, bestT, surface, bestU, bestV);
+        double bestT = ProjectPointToLine(centerSurfacePoint,line,tolerance).parameter;
+        double bestResidualDistance = SurfaceResidualDistance(line, bestT, surface, bestU, bestV);
         const SCLineSurfaceIntersection3d centerNewton =
             TryRefineLineSurfaceNewton(line, surface, bestT, bestU, bestV, tolerance);
         if (centerNewton.intersects)
@@ -825,16 +673,15 @@ namespace Geometry
         const SCSurfaceProjection3d originProjection = ProjectPointToSurface(line.origin, surface, tolerance);
         if (originProjection.success)
         {
-            const double projectedLineParameter = Dot(originProjection.point - line.origin, line.direction) /
-                                                  std::max(line.direction.LengthSquared(), tolerance.parameterEpsilon);
-            const double projectedResidualSquared =
-                SurfaceResidualSquared(line, projectedLineParameter, surface, originProjection.u, originProjection.v);
-            if (projectedResidualSquared < bestResidualSquared)
+            const double projectedLineParameter = ProjectPointToLine(originProjection.point,line,tolerance).parameter;
+            const double projectedResidualDistance =
+                SurfaceResidualDistance(line, projectedLineParameter, surface, originProjection.u, originProjection.v);
+            if (projectedResidualDistance < bestResidualDistance)
             {
                 bestT = projectedLineParameter;
                 bestU = originProjection.u;
                 bestV = originProjection.v;
-                bestResidualSquared = projectedResidualSquared;
+                bestResidualDistance = projectedResidualDistance;
             }
             const SCLineSurfaceIntersection3d projectedNewton = TryRefineLineSurfaceNewton(
                 line, surface, projectedLineParameter, originProjection.u, originProjection.v, tolerance);
@@ -849,21 +696,20 @@ namespace Geometry
             const double u = seed.u;
             const double v = seed.v;
             const SCPoint3d surfacePoint = surface.PointAt(u, v);
-            const double t = Dot(surfacePoint - line.origin, line.direction) /
-                             std::max(line.direction.LengthSquared(), tolerance.parameterEpsilon);
-            const double residualSquared = SurfaceResidualSquared(line, t, surface, u, v);
+            const double t = ProjectPointToLine(surfacePoint,line,tolerance).parameter;
+            const double residualDistance = SurfaceResidualDistance(line, t, surface, u, v);
             const SCLineSurfaceIntersection3d seedNewton =
                 TryRefineLineSurfaceNewton(line, surface, t, u, v, tolerance);
             if (seedNewton.intersects)
             {
                 return seedNewton;
             }
-            if (residualSquared < bestResidualSquared)
+            if (residualDistance < bestResidualDistance)
             {
                 bestT = t;
                 bestU = u;
                 bestV = v;
-                bestResidualSquared = residualSquared;
+                bestResidualDistance = residualDistance;
             }
         }
 
@@ -900,7 +746,12 @@ namespace Geometry
         }
 
         const SCLineProjection3d projection = ProjectPointToLine(vertex.Point(), line, tolerance);
-        if (!projection.isOnLine || projection.distanceSquared > tolerance.distanceEpsilon * tolerance.distanceEpsilon)
+        const double residual = projection.point.IsValid()
+            ? std::hypot(vertex.Point().x - projection.point.x,
+                         vertex.Point().y - projection.point.y,
+                         vertex.Point().z - projection.point.z)
+            : std::numeric_limits<double>::infinity();
+        if (!projection.isOnLine || !std::isfinite(residual) || residual > tolerance.distanceEpsilon)
         {
             return {};
         }
@@ -915,45 +766,100 @@ namespace Geometry
             return {};
         }
 
-        const SCLineSurfaceIntersection3d surfaceIntersection = Intersect(line, *face.SupportSurface(), tolerance);
-        if (!surfaceIntersection.intersects)
+        SCPolygon2d polygon;
+        if (!Detail::TryBuildPolygonFromBrepFaceTrims(face, tolerance, polygon))
         {
             return {};
         }
 
-        bool onBoundary = false;
-        if (!IsTrimPointInsideFace(
-                face, surfaceIntersection.u, surfaceIntersection.v, tolerance.distanceEpsilon, onBoundary))
+        const SCLineSurfaceIntersection3d surfaceIntersection = Intersect(line, *face.SupportSurface(), tolerance);
+        if (!surfaceIntersection.intersects || surfaceIntersection.liesOnSurface ||
+            !std::isfinite(surfaceIntersection.lineParameter) ||
+            !std::isfinite(surfaceIntersection.u) || !std::isfinite(surfaceIntersection.v) ||
+            !surfaceIntersection.point.IsValid())
+        {
+            return {};
+        }
+
+        const SCPoint3d linePoint = line.PointAt(surfaceIntersection.lineParameter);
+        const SCPoint3d surfacePoint = face.SupportSurface()->PointAt(surfaceIntersection.u, surfaceIntersection.v);
+        const double residual = std::hypot(linePoint.x - surfacePoint.x,
+                                           linePoint.y - surfacePoint.y,
+                                           linePoint.z - surfacePoint.z);
+        if (!linePoint.IsValid() || !surfacePoint.IsValid() || !std::isfinite(residual) ||
+            residual > tolerance.distanceEpsilon)
+        {
+            return {};
+        }
+
+        const SCPointContainment2d containment = LocatePoint(
+            SCPoint2d{surfaceIntersection.u, surfaceIntersection.v}, polygon, tolerance.parameterEpsilon);
+        if (containment == SCPointContainment2d::Outside)
         {
             return {};
         }
 
         return {true,
-                onBoundary,
+                containment == SCPointContainment2d::OnBoundary,
                 surfaceIntersection.lineParameter,
                 surfaceIntersection.u,
                 surfaceIntersection.v,
-                surfaceIntersection.point};
+                surfacePoint};
+    }
+
+    std::vector<SCLineBrepFaceIntersection3d> Detail::CollectLineFaceHits(
+        const SCLine3d& line, const SCBrepFace& face, const SCGeometryTolerance3d& tolerance)
+    {
+        std::vector<SCLineBrepFaceIntersection3d> hits;
+        SCPolygon2d polygon;
+        if (!tolerance.IsValid() || !line.IsValid(tolerance.distanceEpsilon) || !face.IsValid(tolerance) ||
+            !Detail::TryBuildPolygonFromBrepFaceTrims(face,tolerance,polygon)) return hits;
+        const auto& surface=*face.SupportSurface();
+        const auto ur=surface.URange(), vr=surface.VRange();
+        std::vector<double> ub{ur.min,ur.max},vb{vr.min,vr.max};
+        if (const auto* nurbs=dynamic_cast<const SCNurbsSurface*>(&surface)) {
+            ub=Detail::KnotSpanBoundaries(ur,nurbs->KnotsU(),nurbs->DegreeU(),nurbs->ControlPointCountU());
+            vb=Detail::KnotSpanBoundaries(vr,nurbs->KnotsV(),nurbs->DegreeV(),nurbs->ControlPointCountV());
+        }
+        auto seeds=Detail::AdaptiveSurfaceParameterSeeds(surface,std::move(ub),std::move(vb),tolerance.distanceEpsilon*4);
+        // 包含边界与不同盆地，不从某一个代表命中提前返回。
+        for (int u=0;u<=8;++u) for (int v=0;v<=8;++v)
+            seeds.push_back({std::lerp(ur.min,ur.max,u/8.0),std::lerp(vr.min,vr.max,v/8.0)});
+        const auto append=[&](const SCLineSurfaceIntersection3d& hit) {
+            if (!hit.intersects || hit.liesOnSurface || !hit.IsValid()) return;
+            const auto actual=surface.PointAt(hit.u,hit.v);
+            if (!Detail::SameRoundedPosition(hit.point,actual) ||
+                !line.PointAt(hit.lineParameter).IsValid() || Norm(line.PointAt(hit.lineParameter)-actual)>tolerance.distanceEpsilon) return;
+            const auto containment=LocatePoint(SCPoint2d{hit.u,hit.v},polygon,tolerance.parameterEpsilon);
+            if (containment==SCPointContainment2d::Outside) return;
+            for (const auto& previous:hits)
+                if (std::abs(previous.lineParameter-hit.lineParameter)<=tolerance.parameterEpsilon &&
+                    std::abs(previous.u-hit.u)<=tolerance.parameterEpsilon && std::abs(previous.v-hit.v)<=tolerance.parameterEpsilon) return;
+            hits.push_back({true,containment==SCPointContainment2d::OnBoundary,hit.lineParameter,hit.u,hit.v,actual});
+        };
+        append(Intersect(line,surface,tolerance));
+        for (const auto& seed:seeds) {
+            const auto position=surface.PointAt(seed.u,seed.v);
+            if (!position.IsValid()) continue;
+            const auto projection=ProjectPointToLine(position,line,tolerance);
+            if (!projection.isOnLine || !std::isfinite(projection.parameter)) continue;
+            auto hit=TryRefineLineSurfaceNewton(line,surface,projection.parameter,seed.u,seed.v,tolerance);
+            if (!hit.intersects) hit=RefineLineSurfaceIntersection(line,surface,projection.parameter,seed.u,seed.v,tolerance);
+            append(hit);
+        }
+        std::sort(hits.begin(),hits.end(),[](const auto& a,const auto& b) {
+            if (a.lineParameter!=b.lineParameter) return a.lineParameter<b.lineParameter;
+            return std::tie(a.u,a.v)<std::tie(b.u,b.v);
+        });
+        return hits;
     }
 
     SCLineBrepBodyIntersection3d Intersect(const SCLine3d& line, const SCBrepBody& body, const SCGeometryTolerance3d& tolerance)
     {
-        if (!line.IsValid(tolerance.distanceEpsilon) || !body.IsValid(tolerance))
-        {
-            return {};
-        }
-        return IntersectLineWithBodyFaces<SCLineBrepBodyIntersection3d>(
-            tolerance, [&](auto&& collect) {
-                std::size_t faceIndex = 0;
-                for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
-                {
-                    const SCBrepShell& shell = body.ShellAtRef(shellIndex);
-                    for (std::size_t localFaceIndex = 0; localFaceIndex < shell.FaceCount(); ++localFaceIndex, ++faceIndex)
-                    {
-                        collect(faceIndex, Intersect(line, shell.FaceAtRef(localFaceIndex), tolerance));
-                    }
-                }
-            });
+        const auto result = IntersectLineBrepBodyWithStatus(line, body, tolerance);
+        return result.payloadValid &&
+            result.evidence.negativeCompleteness == SCGeometryEvidenceState::Verified
+                ? result.payload : SCLineBrepBodyIntersection3d{};
     }
 
     SCLinePolyhedronFaceIntersection3d Intersect(const SCLine3d& line,
@@ -999,74 +905,20 @@ namespace Geometry
                                                const PolyhedronBody& body,
                                                const SCGeometryTolerance3d& tolerance)
     {
-        if (!line.IsValid(tolerance.distanceEpsilon) || !body.IsValid(tolerance))
-        {
-            return {};
-        }
-        return IntersectLineWithBodyFaces<SCLinePolyhedronBodyIntersection3d>(
-            tolerance, [&](auto&& collect) {
-                for (std::size_t faceIndex = 0; faceIndex < body.FaceCount(); ++faceIndex)
-                {
-                    collect(faceIndex, Intersect(line, body.FaceAtRef(faceIndex), tolerance));
-                }
-            });
+        const auto result = IntersectLinePolyhedronBodyWithStatus(line, body, tolerance);
+        return result.payloadValid &&
+            result.evidence.negativeCompleteness == SCGeometryEvidenceState::Verified
+                ? result.payload : SCLinePolyhedronBodyIntersection3d{};
     }
 
     SCLineTriangleMeshIntersection3d Intersect(const SCLine3d& line,
                                              const TriangleMesh& mesh,
                                              const SCGeometryTolerance3d& tolerance)
     {
-        SCLineTriangleMeshIntersection3d result{};
-        if (!line.IsValid(tolerance.distanceEpsilon) || !mesh.IsValid(tolerance.distanceEpsilon))
-        {
-            return result;
-        }
-
-        std::set<std::pair<long long, std::size_t>> dedup;
-        struct Hit
-        {
-            std::size_t triangleIndex;
-            double lineParameter;
-            SCPoint3d point;
-        };
-        std::vector<Hit> hits;
-        for (std::size_t triangleIndex = 0; triangleIndex < mesh.TriangleCount(); ++triangleIndex)
-        {
-            const SCTriangle3d triangle = mesh.TriangleAt(triangleIndex);
-            const SCPlane plane = SCPlane::FromPointAndNormal(triangle.a, triangle.Normal());
-            const SCLinePlaneIntersection3d planeHit = Intersect(line, plane, tolerance);
-            if (!planeHit.intersects)
-            {
-                continue;
-            }
-
-            if (!PointInTriangle3d(planeHit.point, triangle, tolerance.distanceEpsilon))
-            {
-                continue;
-            }
-
-            const long long bucket = static_cast<long long>(std::llround(
-                planeHit.parameter / std::max(tolerance.parameterEpsilon, Geometry::kIntersectionDefaultEpsilon)));
-            if (!dedup.emplace(bucket, triangleIndex).second)
-            {
-                continue;
-            }
-            hits.push_back({triangleIndex, planeHit.parameter, planeHit.point});
-        }
-
-        std::sort(hits.begin(), hits.end(), [](const Hit& lhs, const Hit& rhs) {
-            return lhs.lineParameter < rhs.lineParameter;
-        });
-
-        for (const Hit& hit : hits)
-        {
-            result.triangleIndices.push_back(hit.triangleIndex);
-            result.lineParameters.push_back(hit.lineParameter);
-            result.points.push_back(hit.point);
-        }
-
-        result.intersects = !result.points.empty();
-        return result;
+        const auto result = IntersectLineTriangleMeshWithStatus(line, mesh, tolerance);
+        return result.payloadValid &&
+            result.evidence.negativeCompleteness == SCGeometryEvidenceState::Verified
+                ? result.payload : SCLineTriangleMeshIntersection3d{};
     }
 
     SCPlaneCurveIntersection3d Intersect(const SCPlane& plane, const ISCCurve3d& curve, const SCGeometryTolerance3d& tolerance)
@@ -1084,7 +936,7 @@ namespace Geometry
                 return {};
             }
             const SCIntervald range = lineCurve->ParameterRange();
-            if (!range.Contains(hit.parameter, tolerance.parameterEpsilon))
+            if (!Detail::StableContains(range.min,range.max,hit.parameter,tolerance.parameterEpsilon))
             {
                 return {};
             }
@@ -1111,8 +963,23 @@ namespace Geometry
         const double curveScale = curveBounds.IsValid()
                                       ? (curveBounds.MaxPoint() - curveBounds.MinPoint()).Length()
                                       : tolerance.distanceEpsilon;
-        const std::vector<double> parameterSeeds = Detail::AdaptiveCurveParameterSeeds(
-            curve, std::move(parameterBoundaries), std::max(tolerance.distanceEpsilon * 4.0, curveScale * 1e-3));
+        const bool customCurve = dynamic_cast<const SCNurbsCurve3d*>(&curve) == nullptr;
+        const std::size_t spanCount = parameterBoundaries.size() - 1;
+        const std::size_t seedCount = customCurve ? 256 :
+            std::max<std::size_t>(256, spanCount > std::numeric_limits<std::size_t>::max() / 3
+                ? std::numeric_limits<std::size_t>::max() : 3 * spanCount);
+        std::vector<double> parameterSeeds = Detail::AdaptiveCurveParameterSeeds(
+            curve, std::move(parameterBoundaries), std::max(tolerance.distanceEpsilon * 4.0, curveScale * 1e-3),
+            8, customCurve ? seedCount - 33 : seedCount);
+        if (customCurve)
+        {
+            for (int sample = 0; sample <= 32; ++sample)
+            {
+                parameterSeeds.push_back(std::lerp(range.min, range.max, sample / 32.0));
+            }
+            std::sort(parameterSeeds.begin(), parameterSeeds.end());
+            parameterSeeds.erase(std::unique(parameterSeeds.begin(), parameterSeeds.end()), parameterSeeds.end());
+        }
         const SCVector3d unitNormal = plane.UnitNormal(tolerance.distanceEpsilon);
 
         const auto refineTangentRoot = [&](double initialParameter) -> std::optional<double> {
@@ -1120,17 +987,19 @@ namespace Geometry
             for (int iteration = 0; iteration < 32; ++iteration)
             {
                 const SCCurveEval3d eval = curve.Evaluate(parameter, 1);
-                if (!eval.IsValid())
+                const SCPoint3d curvePoint = curve.PointAt(parameter);
+                if (!eval.IsValid() || eval.derivativeOrder < 1 || !curvePoint.IsValid() ||
+                    !Detail::SameRoundedPosition(eval.point, curvePoint))
                 {
                     return std::nullopt;
                 }
-                const double distance = plane.SignedDistanceTo(eval.point, tolerance.distanceEpsilon);
+                const double distance = plane.SignedDistanceTo(curvePoint, tolerance.distanceEpsilon);
                 if (std::abs(distance) <= tolerance.distanceEpsilon)
                 {
                     return parameter;
                 }
                 const double derivative = Dot(unitNormal, eval.firstDerivative);
-                const double derivativeScale = eval.firstDerivative.Length();
+                const double derivativeScale = std::hypot(eval.firstDerivative.x,eval.firstDerivative.y,eval.firstDerivative.z);
                 if (!std::isfinite(derivative) || !std::isfinite(derivativeScale) ||
                     std::abs(derivative) <= std::numeric_limits<double>::epsilon() * derivativeScale)
                 {
@@ -1139,10 +1008,12 @@ namespace Geometry
                 bool accepted = false;
                 for (double scale = 1.0; scale >= 1.0 / 128.0; scale *= 0.5)
                 {
-                    const double candidate = std::clamp(parameter - scale * distance / derivative, range.min, range.max);
+                    const auto advanced=Detail::StableAdvance(parameter,-scale*(distance/derivative));
+                    if (!advanced) continue;
+                    const double candidate = std::clamp(*advanced, range.min, range.max);
                     const double candidateDistance =
                         plane.SignedDistanceTo(curve.PointAt(candidate), tolerance.distanceEpsilon);
-                    if (std::abs(candidateDistance) < std::abs(distance))
+                    if (std::isfinite(candidateDistance) && std::abs(candidateDistance) < std::abs(distance))
                     {
                         parameter = candidate;
                         accepted = true;
@@ -1162,8 +1033,12 @@ namespace Geometry
         {
             const double t0 = parameterSeeds[i];
             const SCPoint3d p0 = curve.PointAt(t0);
+            if (!p0.IsValid())
+            {
+                continue;
+            }
             const double d0 = plane.SignedDistanceTo(p0, tolerance.distanceEpsilon);
-            if (std::abs(d0) <= tolerance.distanceEpsilon)
+            if (std::isfinite(d0) && std::abs(d0) <= tolerance.distanceEpsilon)
             {
                 return {true, t0, p0};
             }
@@ -1173,14 +1048,23 @@ namespace Geometry
                 double low = t0;
                 double high = parameterSeeds[i + 1];
                 const double d1 = plane.SignedDistanceTo(curve.PointAt(high), tolerance.distanceEpsilon);
-                if (d0 * d1 < 0.0)
+                if (std::isfinite(d0) && std::isfinite(d1) &&
+                    ((d0 < 0.0 && d1 > 0.0) || (d0 > 0.0 && d1 < 0.0)))
                 {
                     for (int iteration = 0; iteration < 64; ++iteration)
                     {
-                        const double middle = 0.5 * (low + high);
+                        const double middle = std::lerp(low, high, 0.5);
+                        if (middle <= low || middle >= high)
+                        {
+                            break;
+                        }
                         const SCPoint3d middlePoint = curve.PointAt(middle);
+                        if (!middlePoint.IsValid())
+                        {
+                            break;
+                        }
                         const double middleDistance = plane.SignedDistanceTo(middlePoint, tolerance.distanceEpsilon);
-                        if (std::abs(middleDistance) <= tolerance.distanceEpsilon)
+                        if (std::isfinite(middleDistance) && std::abs(middleDistance) <= tolerance.distanceEpsilon)
                         {
                             return {true, middle, middlePoint};
                         }
@@ -1193,9 +1077,9 @@ namespace Geometry
                             high = middle;
                         }
                     }
-                    const double parameter = 0.5 * (low + high);
+                    const double parameter = std::lerp(low, high, 0.5);
                     const SCPoint3d point = curve.PointAt(parameter);
-                    if (std::abs(plane.SignedDistanceTo(point, tolerance.distanceEpsilon)) <=
+                    if (point.IsValid() && std::abs(plane.SignedDistanceTo(point, tolerance.distanceEpsilon)) <=
                         tolerance.distanceEpsilon)
                     {
                         return {true, parameter, point};
@@ -1206,7 +1090,12 @@ namespace Geometry
 
             if (const std::optional<double> tangentRoot = refineTangentRoot(t0))
             {
-                return {true, *tangentRoot, curve.PointAt(*tangentRoot)};
+                const SCPoint3d point = curve.PointAt(*tangentRoot);
+                if (point.IsValid() &&
+                    std::abs(plane.SignedDistanceTo(point, tolerance.distanceEpsilon)) <= tolerance.distanceEpsilon)
+                {
+                    return {true, *tangentRoot, point};
+                }
             }
         }
 
@@ -1227,25 +1116,74 @@ namespace Geometry
         const std::size_t segmentCount = curveOnSurface.UvCurve().IsClosed() ? pointCount : pointCount - 1;
         for (std::size_t i = 0; i < segmentCount; ++i)
         {
-            const std::size_t j = (i + 1) % pointCount;
-            const SCPoint3d p0 = curveOnSurface.PointAt(i);
-            const SCPoint3d p1 = curveOnSurface.PointAt(j);
-            const double d0 = plane.SignedDistanceTo(p0, tolerance.distanceEpsilon);
-            const double d1 = plane.SignedDistanceTo(p1, tolerance.distanceEpsilon);
-            if (std::abs(d0) <= tolerance.distanceEpsilon)
+            Detail::CurveOnSurfaceSample previous{};
+            double previousDistance = 0.0;
+            constexpr int sampleCount = 32;
+            for (int sampleIndex = 0; sampleIndex <= sampleCount; ++sampleIndex)
             {
-                return {true, i, 0.0, curveOnSurface.UvPointAt(i), p0};
+                const double parameter = static_cast<double>(sampleIndex) / sampleCount;
+                const Detail::CurveOnSurfaceSample current =
+                    Detail::EvaluateCurveOnSurfaceSegment(curveOnSurface, i, parameter);
+                if (!current.valid)
+                {
+                    previous = {};
+                    continue;
+                }
+                const double distance = plane.SignedDistanceTo(current.point, tolerance.distanceEpsilon);
+                if (!std::isfinite(distance))
+                {
+                    previous = {};
+                    continue;
+                }
+                if (std::abs(distance) <= tolerance.distanceEpsilon)
+                {
+                    return {true, i, current.parameter, current.uv, current.point};
+                }
+                if (previous.valid &&
+                    ((previousDistance < 0.0 && distance > 0.0) ||
+                     (previousDistance > 0.0 && distance < 0.0)))
+                {
+                    double low = previous.parameter;
+                    double high = current.parameter;
+                    double lowDistance = previousDistance;
+                    for (int iteration = 0; iteration < 64; ++iteration)
+                    {
+                        const double middle = std::lerp(low, high, 0.5);
+                        if (middle <= low || middle >= high)
+                        {
+                            break;
+                        }
+                        const Detail::CurveOnSurfaceSample midpoint =
+                            Detail::EvaluateCurveOnSurfaceSegment(curveOnSurface, i, middle);
+                        if (!midpoint.valid)
+                        {
+                            break;
+                        }
+                        const double middleDistance =
+                            plane.SignedDistanceTo(midpoint.point, tolerance.distanceEpsilon);
+                        if (!std::isfinite(middleDistance))
+                        {
+                            break;
+                        }
+                        if (std::abs(middleDistance) <= tolerance.distanceEpsilon)
+                        {
+                            return {true, i, midpoint.parameter, midpoint.uv, midpoint.point};
+                        }
+                        if ((lowDistance < 0.0 && middleDistance < 0.0) ||
+                            (lowDistance > 0.0 && middleDistance > 0.0))
+                        {
+                            low = middle;
+                            lowDistance = middleDistance;
+                        }
+                        else
+                        {
+                            high = middle;
+                        }
+                    }
+                }
+                previous = current;
+                previousDistance = distance;
             }
-            if (d0 * d1 > 0.0)
-            {
-                continue;
-            }
-
-            const double weight = d0 / (d0 - d1);
-            const SCPoint2d uv0 = curveOnSurface.UvPointAt(i);
-            const SCPoint2d uv1 = curveOnSurface.UvPointAt(j);
-            const SCPoint2d uv = uv0 + (uv1 - uv0) * weight;
-            return {true, i, weight, uv, p0 + (p1 - p0) * weight};
         }
 
         return {};
@@ -1287,33 +1225,9 @@ namespace Geometry
 
     SCPlanePlaneIntersection3d Intersect(const SCPlane& first, const SCPlane& second, const SCGeometryTolerance3d& tolerance)
     {
-        SCPlanePlaneIntersection3d result{};
-        if (!first.IsValid(tolerance.distanceEpsilon) || !second.IsValid(tolerance.distanceEpsilon))
-        {
-            return result;
-        }
-
-        const SCVector3d n1 = first.UnitNormal(tolerance.distanceEpsilon);
-        const SCVector3d n2 = second.UnitNormal(tolerance.distanceEpsilon);
-        const SCVector3d direction = Cross(n1, n2);
-        const double directionLengthSquared = direction.LengthSquared();
-
-        if (directionLengthSquared <= tolerance.distanceEpsilon * tolerance.distanceEpsilon)
-        {
-            result.isParallel = true;
-            result.isCoincident =
-                std::abs(second.SignedDistanceTo(first.origin, tolerance.distanceEpsilon)) <= tolerance.distanceEpsilon;
-            result.intersects = result.isCoincident;
-            return result;
-        }
-
-        const double d1 = Dot(n1, first.origin - SCPoint3d{});
-        const double d2 = Dot(n2, second.origin - SCPoint3d{});
-        const SCVector3d pointVector = Cross((d1 * n2) - (d2 * n1), direction) / directionLengthSquared;
-
-        result.intersects = true;
-        result.line = SCLine3d::FromOriginAndDirection(SCPoint3d{pointVector.x, pointVector.y, pointVector.z}, direction);
-        return result;
+        const auto result=IntersectPlanePlaneWithStatus(first,second,tolerance);
+        return result.payloadValid || result.state==SCGeometryOperationState::NonUnique
+            ? result.payload : SCPlanePlaneIntersection3d{};
     }
 }  // namespace Geometry
 

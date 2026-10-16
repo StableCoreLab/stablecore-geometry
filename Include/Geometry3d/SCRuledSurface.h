@@ -4,6 +4,8 @@
 #include <memory>
 
 #include "Geometry3d/ISCSurface.h"
+#include "Support/StableNumerics.h"
+#include "Geometry3d/Detail/SurfaceNumerics.h"
 
 namespace Geometry
 {
@@ -43,16 +45,19 @@ namespace Geometry
 
         [[nodiscard]] SCPoint3d PointAt(double u, double v) const override
         {
-            if (first_ == nullptr || second_ == nullptr)
+            if (first_ == nullptr || second_ == nullptr || !vRange_.IsValid() || !std::isfinite(v))
             {
-                return {};
+                return {std::numeric_limits<double>::quiet_NaN(), 0, 0};
             }
 
-            const double normalized =
-                vRange_.Length() <= Geometry::kDefaultEpsilon ? 0.0 : (v - vRange_.min) / vRange_.Length();
+            const auto normalized = Detail::StableNormalizedParameter(vRange_.min, vRange_.max,
+                std::clamp(v, vRange_.min, vRange_.max));
+            if (!normalized) return {std::numeric_limits<double>::quiet_NaN(), 0, 0};
             const SCPoint3d start = first_->PointAt(u);
             const SCPoint3d end = second_->PointAt(u);
-            return start + (end - start) * std::clamp(normalized, 0.0, 1.0);
+            if (!start.IsValid() || !end.IsValid()) return {std::numeric_limits<double>::quiet_NaN(), 0, 0};
+            return {std::lerp(start.x,end.x,*normalized), std::lerp(start.y,end.y,*normalized),
+                    std::lerp(start.z,end.z,*normalized)};
         }
 
         [[nodiscard]] SCSurfaceEval3d Evaluate(double u, double v, int derivativeOrder = 1) const override
@@ -62,15 +67,26 @@ namespace Geometry
             eval.derivativeOrder = std::clamp(derivativeOrder, 0, 1);
             if (eval.derivativeOrder >= 1 && first_ != nullptr && second_ != nullptr)
             {
-                const double normalized =
-                    vRange_.Length() <= Geometry::kDefaultEpsilon ? 0.0 : (v - vRange_.min) / vRange_.Length();
-                const double weight = std::clamp(normalized, 0.0, 1.0);
+                if (!eval.point.IsValid() || !vRange_.IsValid()) { eval.derivativeOrder=0; return eval; }
+                const auto normalized=Detail::StableNormalizedParameter(vRange_.min,vRange_.max,
+                    std::clamp(v,vRange_.min,vRange_.max));
+                const auto span=Detail::StableSpan(vRange_.min,vRange_.max);
+                if (!normalized || !span || *span==0) { eval.derivativeOrder=0; return eval; }
+                const double weight = *normalized;
                 const SCCurveEval3d firstEval = first_->Evaluate(u, 1);
                 const SCCurveEval3d secondEval = second_->Evaluate(u, 1);
-                eval.derivativeU =
-                    firstEval.firstDerivative + (secondEval.firstDerivative - firstEval.firstDerivative) * weight;
-                eval.derivativeV = second_->PointAt(u) - first_->PointAt(u);
+                if (firstEval.derivativeOrder<1 || secondEval.derivativeOrder<1 ||
+                    !firstEval.firstDerivative.IsValid() || !secondEval.firstDerivative.IsValid() ||
+                    !Detail::SameRoundedPosition(firstEval.point,first_->PointAt(u)) ||
+                    !Detail::SameRoundedPosition(secondEval.point,second_->PointAt(u)))
+                    { eval.derivativeOrder=0; return eval; }
+                eval.derivativeU = {std::lerp(firstEval.firstDerivative.x,secondEval.firstDerivative.x,weight),
+                    std::lerp(firstEval.firstDerivative.y,secondEval.firstDerivative.y,weight),
+                    std::lerp(firstEval.firstDerivative.z,secondEval.firstDerivative.z,weight)};
+                eval.derivativeV = (second_->PointAt(u) - first_->PointAt(u)) / *span;
                 eval.normal = Cross(eval.derivativeU, eval.derivativeV);
+                if (!eval.derivativeU.IsValid() || !eval.derivativeV.IsValid() || !eval.normal.IsValid())
+                    eval.derivativeOrder=0;
             }
             return eval;
         }

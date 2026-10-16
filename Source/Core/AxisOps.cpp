@@ -279,7 +279,7 @@ namespace Geometry
             return result;
         }
 
-        double bestDistanceSquared = maxDistance * maxDistance;
+        double bestDistance = maxDistance;
         for (std::size_t i = 0; i < segments.size(); ++i)
         {
             const ISCSegment2d* segment = segments[i];
@@ -289,7 +289,13 @@ namespace Geometry
             }
 
             const SCSegmentProjection2d projection = ProjectPointToAxis(point, *segment).projection;
-            if (!projection.IsValid() || projection.distanceSquared > bestDistanceSquared)
+            if (!projection.IsValid() || !projection.point.IsValid())
+            {
+                continue;
+            }
+
+            const double distance = std::hypot(point.x - projection.point.x, point.y - projection.point.y);
+            if (!std::isfinite(distance) || distance > bestDistance)
             {
                 continue;
             }
@@ -299,7 +305,7 @@ namespace Geometry
             result.distanceSquared = projection.distanceSquared;
             result.segmentIndex = i;
             result.parameter = projection.parameter;
-            bestDistanceSquared = projection.distanceSquared;
+            bestDistance = distance;
         }
 
         return result;

@@ -9,8 +9,8 @@ namespace Geometry
     {
         [[nodiscard]] SCVector3d MakePerpendicularVector(const SCVector3d& normal, double eps)
         {
-            const SCVector3d normalized = normal.Normalized(eps);
-            if (normalized.Length() <= eps)
+            SCVector3d normalized;
+            if (!Detail::TryUnitVector(normal, normalized))
             {
                 return SCVector3d{};
             }
@@ -25,14 +25,26 @@ namespace Geometry
             }
 
             const SCVector3d inPlane = referenceAxis - normalized * Dot(referenceAxis, normalized);
-            return inPlane.Normalized(eps);
+            SCVector3d unitInPlane;
+            return Detail::TryUnitVector(inPlane, unitInPlane) ? unitInPlane : SCVector3d{};
         }
     }  // namespace
 
     SCPlaneSurface SCPlaneSurface::FromPlane(const SCPlane& plane, SCIntervald uRange, SCIntervald vRange, double eps)
     {
+        SCVector3d unitNormal;
+        if (!std::isfinite(eps) || eps < 0.0 || !plane.origin.IsValid() ||
+            !Detail::TryUnitVector(plane.normal, unitNormal))
+        {
+            return SCPlaneSurface(plane, {}, {}, uRange, vRange);
+        }
         const SCVector3d uAxis = MakePerpendicularVector(plane.normal, eps);
-        const SCVector3d vAxis = Cross(plane.UnitNormal(eps), uAxis).Normalized(eps);
+        SCVector3d unitU, vAxis;
+        if (!Detail::TryUnitVector(uAxis, unitU) ||
+            !Detail::TryUnitVector(Cross(unitNormal, unitU), vAxis))
+        {
+            return SCPlaneSurface(plane, {}, {}, uRange, vRange);
+        }
         return SCPlaneSurface(plane, uAxis, vAxis, uRange, vRange);
     }
 }  // namespace Geometry

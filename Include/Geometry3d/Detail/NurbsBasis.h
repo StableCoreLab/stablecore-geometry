@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cmath>
 #include <limits>
+#include <span>
 #include <utility>
 #include <vector>
 
@@ -52,16 +53,46 @@ namespace Geometry::Detail
 
         NurbsWeightedSum(const std::vector<SCPoint3d>& points, const std::vector<double>& weights,
                          const std::vector<double>& activeBasis)
+            : NurbsWeightedSum(points, weights, activeBasis, 0, points.size())
         {
-            for (std::size_t i = 0; i < points.size(); ++i)
+        }
+
+        NurbsWeightedSum(const std::vector<SCPoint3d>& points, const std::vector<double>& weights,
+                         const std::vector<double>& activeBasis, std::size_t firstIndex, std::size_t activeCount)
+        {
+            for (std::size_t i = 0; i < activeCount; ++i)
             {
+                const std::size_t index = firstIndex + i;
                 if (activeBasis[i] > 0.0)
                 {
-                    weightScale = std::max(weightScale, weights[i]);
-                    coordinateScale = std::max({coordinateScale, std::abs(points[i].x),
-                                                std::abs(points[i].y), std::abs(points[i].z)});
+                    weightScale = std::max(weightScale, weights[index]);
+                    coordinateScale = std::max({coordinateScale, std::abs(points[index].x),
+                                                std::abs(points[index].y), std::abs(points[index].z)});
                 }
-                if (i > 0 && points[i] != points[0]) constantGeometry = false;
+                if (i > 0 && points[index] != points[firstIndex]) constantGeometry = false;
+            }
+        }
+
+        NurbsWeightedSum(const std::vector<SCPoint3d>& points, const std::vector<double>& weights,
+                         const std::vector<double>& activeBasis, const std::vector<std::size_t>& activeIndices)
+            : NurbsWeightedSum(points, weights, std::span<const double>(activeBasis),
+                               std::span<const std::size_t>(activeIndices))
+        {
+        }
+
+        NurbsWeightedSum(const std::vector<SCPoint3d>& points, const std::vector<double>& weights,
+                         std::span<const double> activeBasis, std::span<const std::size_t> activeIndices)
+        {
+            for (std::size_t i = 0; i < activeIndices.size(); ++i)
+            {
+                const std::size_t index = activeIndices[i];
+                if (activeBasis[i] > 0.0)
+                {
+                    weightScale = std::max(weightScale, weights[index]);
+                    coordinateScale = std::max({coordinateScale, std::abs(points[index].x),
+                                                std::abs(points[index].y), std::abs(points[index].z)});
+                }
+                if (i > 0 && points[index] != points[activeIndices.front()]) constantGeometry = false;
             }
         }
 
@@ -187,6 +218,26 @@ namespace Geometry::Detail
         std::vector<double> second;
     };
 
+    // 节点和参数有限，但差值的真实量级可能超过 double；先保留常规路径
+    // 的舍入方式，仅在差值溢出时共同缩放，不能把无穷跨度当作零基函数。
+    [[nodiscard]] inline double NurbsKnotRatio(double numeratorEnd,double numeratorStart,
+                                               double spanEnd,double spanStart)
+    {
+        const double numerator=numeratorEnd-numeratorStart,span=spanEnd-spanStart;
+        if (std::isfinite(numerator) && std::isfinite(span)) return numerator/span;
+        const double scale=std::max({std::abs(numeratorEnd),std::abs(numeratorStart),std::abs(spanEnd),std::abs(spanStart)});
+        if (!(scale>0) || !std::isfinite(scale)) return std::numeric_limits<double>::quiet_NaN();
+        return (numeratorEnd/scale-numeratorStart/scale)/(spanEnd/scale-spanStart/scale);
+    }
+
+    [[nodiscard]] inline double NurbsKnotDerivativeScale(int degree,double last,double first)
+    {
+        const double width=last-first;
+        if (std::isfinite(width)) return static_cast<double>(degree)/width;
+        const double scale=std::max(std::abs(last),std::abs(first));
+        return (static_cast<double>(degree)/scale)/(last/scale-first/scale);
+    }
+
     [[nodiscard]] inline bool ValidKnots(const std::vector<double>& knots, std::size_t count, int degree)
     {
         if (degree < 1 || count <= static_cast<std::size_t>(degree) ||
@@ -225,13 +276,13 @@ namespace Geometry::Detail
                 const std::size_t order = static_cast<std::size_t>(d);
                 const double left = knots[i + order] - knots[i];
                 const double right = knots[i + order + 1] - knots[i + 1];
-                if (left > 0.0)
+                if (left > 0.0 && levels[order-1][i]!=0.0)
                 {
-                    levels[order][i] += (u - knots[i]) * levels[order - 1][i] / left;
+                    levels[order][i] += NurbsKnotRatio(u,knots[i],knots[i+order],knots[i]) * levels[order - 1][i];
                 }
-                if (right > 0.0)
+                if (right > 0.0 && levels[order-1][i+1]!=0.0)
                 {
-                    levels[order][i] += (knots[i + order + 1] - u) * levels[order - 1][i + 1] / right;
+                    levels[order][i] += NurbsKnotRatio(knots[i+order+1],u,knots[i+order+1],knots[i+1]) * levels[order - 1][i + 1];
                 }
             }
         }
@@ -246,12 +297,13 @@ namespace Geometry::Detail
                 const std::size_t order = static_cast<std::size_t>(d);
                 const double left = knots[i + order] - knots[i];
                 const double right = knots[i + order + 1] - knots[i + 1];
-                const double a = left > 0.0 ? static_cast<double>(d) / left : 0.0;
-                const double b = right > 0.0 ? static_cast<double>(d) / right : 0.0;
-                currentFirst[i] = a * levels[order - 1][i] - b * levels[order - 1][i + 1];
+                const double a = left > 0.0 ? NurbsKnotDerivativeScale(d,knots[i+order],knots[i]) : 0.0;
+                const double b = right > 0.0 ? NurbsKnotDerivativeScale(d,knots[i+order+1],knots[i+1]) : 0.0;
+                currentFirst[i] = (levels[order-1][i]==0?0:a*levels[order-1][i]) -
+                    (levels[order-1][i+1]==0?0:b*levels[order-1][i+1]);
                 if (d == degree)
                 {
-                    result.second[i] = a * lowerFirst[i] - b * lowerFirst[i + 1];
+                    result.second[i] = (lowerFirst[i]==0?0:a*lowerFirst[i]) - (lowerFirst[i+1]==0?0:b*lowerFirst[i+1]);
                 }
             }
             lowerFirst = std::move(currentFirst);
@@ -260,6 +312,90 @@ namespace Geometry::Detail
         {
             result.value[i] = levels[static_cast<std::size_t>(degree)][i];
             result.first[i] = lowerFirst[i];
+        }
+        return result;
+    }
+
+    struct LocalNurbsBasis
+    {
+        std::size_t firstControlIndex{0};
+        std::vector<double> value;
+        std::vector<double> first;
+        std::vector<double> second;
+    };
+
+    [[nodiscard]] inline std::size_t FindValidatedNurbsSpan(const std::vector<double>& knots,
+                                                           std::size_t count, double parameter)
+    {
+        const double* data = knots.data();
+        const bool end = parameter == data[count];
+        std::size_t first = 0, last = end ? count + 1 : knots.size();
+        while (first < last) {
+            const std::size_t middle = first + (last-first)/2;
+            if (end ? data[middle] < parameter : data[middle] <= parameter) first = middle+1;
+            else last = middle;
+        }
+        return first-1;
+    }
+
+    [[nodiscard]] inline std::size_t EvaluateValidatedLinearNurbsBasis(const std::vector<double>& knots,
+        std::size_t count,double parameter,double* values)
+    {
+        const double t=std::clamp(parameter,knots[1],knots[count]);
+        const auto span=FindValidatedNurbsSpan(knots,count,t);
+        values[0]=NurbsKnotRatio(knots[span+1],t,knots[span+1],knots[span]);
+        values[1]=NurbsKnotRatio(t,knots[span],knots[span+1],knots[span]);
+        return span;
+    }
+
+    [[nodiscard]] inline LocalNurbsBasis EvaluateLocalNurbsBasis(const std::vector<double>& knots,
+                                                                std::size_t count,
+                                                                int degree,
+                                                                double parameter)
+    {
+        const double u = std::clamp(parameter, knots[static_cast<std::size_t>(degree)], knots[count]);
+        const std::size_t span = FindValidatedNurbsSpan(knots, count, u);
+        const std::size_t order = static_cast<std::size_t>(degree);
+        const std::size_t first = span - order;
+        std::vector<std::vector<double>> levels(order + 1, std::vector<double>(order + 2, 0.0));
+        levels[0][order] = 1.0;
+
+        LocalNurbsBasis result{first, std::vector<double>(order + 1),
+                              std::vector<double>(order + 1), std::vector<double>(order + 1)};
+        std::vector<double> lowerFirst(order + 2, 0.0);
+        for (int d = 1; d <= degree; ++d)
+        {
+            const std::size_t currentOrder = static_cast<std::size_t>(d);
+            std::vector<double> currentFirst(order + 2, 0.0);
+            for (std::size_t j = 0; j <= order; ++j)
+            {
+                const std::size_t i = first + j;
+                const double left = knots[i + currentOrder] - knots[i];
+                const double right = knots[i + currentOrder + 1] - knots[i + 1];
+                if (left > 0.0 && levels[currentOrder-1][j]!=0.0)
+                {
+                    levels[currentOrder][j] += NurbsKnotRatio(u,knots[i],knots[i+currentOrder],knots[i]) * levels[currentOrder - 1][j];
+                }
+                if (right > 0.0 && levels[currentOrder-1][j+1]!=0.0)
+                {
+                    levels[currentOrder][j] +=
+                        NurbsKnotRatio(knots[i+currentOrder+1],u,knots[i+currentOrder+1],knots[i+1]) * levels[currentOrder - 1][j + 1];
+                }
+                const double a = left > 0.0 ? NurbsKnotDerivativeScale(d,knots[i+currentOrder],knots[i]) : 0.0;
+                const double b = right > 0.0 ? NurbsKnotDerivativeScale(d,knots[i+currentOrder+1],knots[i+1]) : 0.0;
+                currentFirst[j] = (levels[currentOrder-1][j]==0?0:a*levels[currentOrder-1][j]) -
+                    (levels[currentOrder-1][j+1]==0?0:b*levels[currentOrder-1][j+1]);
+                if (d == degree)
+                {
+                    result.second[j] = (lowerFirst[j]==0?0:a*lowerFirst[j]) - (lowerFirst[j+1]==0?0:b*lowerFirst[j+1]);
+                }
+            }
+            lowerFirst = std::move(currentFirst);
+        }
+        for (std::size_t j = 0; j <= order; ++j)
+        {
+            result.value[j] = levels[order][j];
+            result.first[j] = lowerFirst[j];
         }
         return result;
     }

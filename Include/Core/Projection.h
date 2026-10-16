@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/GeometryEvidence.h"
 #include "Core/GeometryTypes.h"
 #include "Export/GeometryExport.h"
 #include "Geometry2d/SCArcSegment2d.h"
@@ -20,6 +21,117 @@ namespace Geometry
     class PolyhedronBody;
     class PolyhedronFace3d;
     class TriangleMesh;
+
+    struct GEOMETRY_API SCBrepVertexProjection3dWithStatus
+    {
+        SCGeometryOperationState state{SCGeometryOperationState::InvalidInput};
+        bool payloadValid{false};
+        SCBrepVertexProjection3d payload{};
+        SCGeometryEvidenceStatus evidence{};
+    };
+
+    struct GEOMETRY_API SCBrepFaceProjection3dWithStatus
+    {
+        SCGeometryOperationState state{SCGeometryOperationState::InvalidInput};
+        bool payloadValid{false};
+        SCBrepFaceProjection3d payload{};
+        SCGeometryEvidenceStatus evidence{};
+        SCGeometrySearchStatistics statistics{};
+    };
+
+    struct GEOMETRY_API SCPolyhedronFaceProjection3dWithStatus
+    {
+        SCGeometryOperationState state{SCGeometryOperationState::InvalidInput};
+        bool payloadValid{false};
+        SCPolyhedronFaceProjection3d payload{};
+        SCGeometryEvidenceStatus evidence{};
+    };
+
+    struct SCBrepFaceProjectionRecord3d
+    {
+        std::size_t shellIndex{0};
+        std::size_t localFaceIndex{0};
+        std::size_t faceIndex{0};
+        SCBrepFaceProjection3dWithStatus result{};
+    };
+    struct GEOMETRY_API SCBrepBodyProjection3dWithStatus
+    {
+        SCGeometryOperationState state{SCGeometryOperationState::InvalidInput};
+        bool payloadValid{false};
+        SCBrepBodyProjection3d payload{};
+        SCGeometryEvidenceStatus evidence{};
+        std::vector<SCBrepFaceProjectionRecord3d> faces{};
+    };
+    struct GEOMETRY_API SCPolyhedronBodyProjection3dWithStatus
+    {
+        SCGeometryOperationState state{SCGeometryOperationState::InvalidInput};
+        bool payloadValid{false};
+        SCPolyhedronBodyProjection3d payload{};
+        SCGeometryEvidenceStatus evidence{};
+        std::vector<SCPolyhedronFaceProjection3dWithStatus> faces{};
+    };
+    [[nodiscard]] GEOMETRY_API SCBrepBodyProjection3dWithStatus ProjectPointToBrepBodyWithStatus(
+        const SCPoint3d& point, const SCBrepBody& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCPolyhedronBodyProjection3dWithStatus ProjectPointToPolyhedronBodyWithStatus(
+        const SCPoint3d& point, const PolyhedronBody& target, const SCGeometryTolerance3d& tolerance = {});
+
+    // success 只表示可读取候选；最优性必须单独检查 evidence.optimality。
+    struct GEOMETRY_API SCCurveProjection3dWithStatus
+    {
+        SCGeometryOperationState state{SCGeometryOperationState::InvalidInput};
+        bool payloadValid{false};
+        SCCurveProjection3d payload{};
+        SCGeometryEvidenceStatus evidence{};
+    };
+    [[nodiscard]] GEOMETRY_API SCCurveProjection3dWithStatus ProjectPointToCurveWithStatus(
+        const SCPoint3d& point, const ISCCurve3d& target, const SCGeometryTolerance3d& tolerance = {});
+
+    struct GEOMETRY_API SCCurveOnSurfaceProjection3dWithStatus
+    {
+        SCGeometryOperationState state{SCGeometryOperationState::InvalidInput};
+        bool payloadValid{false};
+        SCCurveOnSurfaceProjection3d payload{};
+        SCGeometryEvidenceStatus evidence{};
+    };
+    [[nodiscard]] GEOMETRY_API SCCurveOnSurfaceProjection3dWithStatus ProjectPointToCurveOnSurfaceWithStatus(
+        const SCPoint3d& point, const SCCurveOnSurface& target, const SCGeometryTolerance3d& tolerance = {});
+
+    struct GEOMETRY_API SCSurfaceProjection3dWithStatus
+    {
+        SCGeometryOperationState state{SCGeometryOperationState::InvalidInput};
+        bool payloadValid{false};
+        SCSurfaceProjection3d payload{};
+        SCGeometryEvidenceStatus evidence{};
+        SCGeometrySearchStatistics statistics{};
+    };
+    [[nodiscard]] GEOMETRY_API SCSurfaceProjection3dWithStatus ProjectPointToSurfaceWithStatus(
+        const SCPoint3d& point, const ISCSurface& target, const SCGeometryTolerance3d& tolerance = {});
+
+    [[nodiscard]] GEOMETRY_API SCBrepFaceProjection3dWithStatus ProjectPointToBrepFaceWithStatus(
+        const SCPoint3d& point, const SCBrepFace& target, const SCGeometryTolerance3d& tolerance = {});
+
+    struct GEOMETRY_API SCBrepEdgeProjection3dWithStatus
+    {
+        SCGeometryOperationState state{SCGeometryOperationState::InvalidInput};
+        bool payloadValid{false};
+        SCBrepEdgeProjection3d payload{};
+        SCGeometryEvidenceStatus evidence{};
+    };
+    [[nodiscard]] GEOMETRY_API SCBrepEdgeProjection3dWithStatus ProjectPointToBrepEdgeWithStatus(
+        const SCPoint3d& point, const SCBrepEdge& target, const SCGeometryTolerance3d& tolerance = {});
+
+    [[nodiscard]] GEOMETRY_API SCPolyhedronFaceProjection3dWithStatus ProjectPointToPolyhedronFaceWithStatus(
+        const SCPoint3d& point, const PolyhedronFace3d& target, const SCGeometryTolerance3d& tolerance = {});
+
+    struct GEOMETRY_API SCTriangleMeshProjection3dWithStatus
+    {
+        SCGeometryOperationState state{SCGeometryOperationState::InvalidInput};
+        bool payloadValid{false};
+        SCTriangleMeshProjection3d payload{};
+        SCGeometryEvidenceStatus evidence{};
+    };
+    [[nodiscard]] GEOMETRY_API SCTriangleMeshProjection3dWithStatus ProjectPointToTriangleMeshWithStatus(
+        const SCPoint3d& point, const TriangleMesh& target, const SCGeometryTolerance3d& tolerance = {});
 
     [[nodiscard]] GEOMETRY_API SCSegmentProjection2d ProjectPointToLineSegment(const SCPoint2d& point,
                                                                              const SCLineSegment2d& segment,
@@ -76,6 +188,9 @@ namespace Geometry
 
     [[nodiscard]] GEOMETRY_API SCBrepVertexProjection3d
     ProjectPointToBrepVertex(const SCPoint3d& point, const SCBrepVertex& vertex, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCBrepVertexProjection3dWithStatus
+    ProjectPointToBrepVertexWithStatus(const SCPoint3d& point, const SCBrepVertex& vertex,
+                                      const SCGeometryTolerance3d& tolerance = {});
 
     [[nodiscard]] GEOMETRY_API SCBrepBodyProjection3d ProjectPointToBrepBody(const SCPoint3d& point,
                                                                            const SCBrepBody& body,

@@ -11,6 +11,14 @@
 
 namespace Geometry
 {
+    class SCNurbsCurve3d;
+    namespace Detail
+    {
+        [[nodiscard]] SCCurveEval3d EvaluateValidatedNurbsCurve(const SCNurbsCurve3d& curve,
+                                                                 double parameter,
+                                                                 int derivativeOrder);
+    }
+
     class GEOMETRY_API SCNurbsCurve3d final : public ISCCurve3d
     {
     public:
@@ -83,34 +91,13 @@ namespace Geometry
         {
             derivativeOrder = std::clamp(derivativeOrder, 0, 2);
             SCCurveEval3d eval{};
+            eval.point.x=std::numeric_limits<double>::quiet_NaN();
             eval.derivativeOrder = derivativeOrder;
-            if (!IsValid() || std::isnan(parameter))
+            if (!IsValid() || !std::isfinite(parameter))
             {
                 return eval;
             }
-            const auto basis = Detail::EvaluateNurbsBasis(knots_, controlPoints_.size(), degree_, parameter);
-            Detail::NurbsWeightedSum sum(controlPoints_, weights_, basis.value);
-            for (std::size_t i = 0; i < controlPoints_.size(); ++i)
-            {
-                sum.Add(controlPoints_[i], weights_[i], basis.value[i],
-                        derivativeOrder >= 1 ? basis.first[i] : 0.0,
-                        derivativeOrder >= 2 ? basis.second[i] : 0.0);
-            }
-            if (sum.weight <= 0.0 || !std::isfinite(sum.weight))
-            {
-                return eval;
-            }
-            const SCVector3d point = sum.Point();
-            eval.point = SCPoint3d{point.x, point.y, point.z};
-            if (derivativeOrder >= 1)
-            {
-                eval.firstDerivative = sum.First();
-            }
-            if (derivativeOrder >= 2)
-            {
-                eval.secondDerivative = sum.Second(eval.firstDerivative);
-            }
-            return eval;
+            return Detail::EvaluateValidatedNurbsCurve(*this, parameter, derivativeOrder);
         }
 
         [[nodiscard]] SCBox3d Bounds() const override
@@ -146,11 +133,56 @@ namespace Geometry
         [[nodiscard]] const std::vector<double>& Weights() const { return weights_; }
 
     private:
+        friend SCCurveEval3d Detail::EvaluateValidatedNurbsCurve(const SCNurbsCurve3d&, double, int);
+
         int degree_{1};
         std::vector<SCPoint3d> controlPoints_{};
         std::vector<double> knots_{0.0, 1.0};
         std::vector<double> weights_{};
         bool periodic_{false};
     };
+
+    namespace Detail
+    {
+        [[nodiscard]] inline SCCurveEval3d EvaluateValidatedNurbsCurve(const SCNurbsCurve3d& curve,
+                                                                        double parameter,
+                                                                        int derivativeOrder)
+        {
+            derivativeOrder = std::clamp(derivativeOrder, 0, 2);
+            SCCurveEval3d eval{};
+            eval.point.x=std::numeric_limits<double>::quiet_NaN();
+            eval.derivativeOrder = derivativeOrder;
+            if (!std::isfinite(parameter))
+            {
+                return eval;
+            }
+            const auto basis = EvaluateLocalNurbsBasis(
+                curve.knots_, curve.controlPoints_.size(), curve.degree_, parameter);
+            NurbsWeightedSum sum(curve.controlPoints_, curve.weights_, basis.value,
+                                 basis.firstControlIndex, basis.value.size());
+            for (std::size_t i = 0; i < basis.value.size(); ++i)
+            {
+                const std::size_t index = basis.firstControlIndex + i;
+                sum.Add(curve.controlPoints_[index], curve.weights_[index], basis.value[i],
+                        derivativeOrder >= 1 ? basis.first[i] : 0.0,
+                        derivativeOrder >= 2 ? basis.second[i] : 0.0);
+            }
+            if (sum.weight <= 0.0 || !std::isfinite(sum.weight))
+            {
+                return eval;
+            }
+            const SCVector3d point = sum.Point();
+            eval.point = SCPoint3d{point.x, point.y, point.z};
+            if (derivativeOrder >= 1)
+            {
+                eval.firstDerivative = sum.First();
+            }
+            if (derivativeOrder >= 2)
+            {
+                eval.secondDerivative = sum.Second(eval.firstDerivative);
+            }
+            return eval;
+        }
+    }
 }  // namespace Geometry
 

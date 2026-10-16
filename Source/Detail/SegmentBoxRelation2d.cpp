@@ -1,6 +1,7 @@
 #include "SegmentBoxRelation2d.h"
 
 #include <algorithm>
+#include <numeric>
 #include <array>
 #include <cmath>
 #include <memory>
@@ -716,7 +717,7 @@ namespace Geometry::Detail
                     hasBoundary = true;
                     continue;
                 }
-                const double mid = 0.5 * (a + b);
+                const double mid = std::midpoint(a, b);
                 const SCPoint2d sample = EvaluateLocalSegment(localSegment, mid);
                 if (!sample.IsValid())
                 {
@@ -799,8 +800,8 @@ namespace Geometry::Detail
             const SCPoint2d maxPoint = expandedBox.MaxPoint();
             const SCPoint2d samples[] = {
                 line->startPoint,
-                SCPoint2d{0.5 * (line->startPoint.x + line->endPoint.x),
-                          0.5 * (line->startPoint.y + line->endPoint.y)},
+                SCPoint2d{std::midpoint(line->startPoint.x, line->endPoint.x),
+                          std::midpoint(line->startPoint.y, line->endPoint.y)},
                 line->endPoint};
             bool allInside = true;
             for (const SCPoint2d& point : samples)

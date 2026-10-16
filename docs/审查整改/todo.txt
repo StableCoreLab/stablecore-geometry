@@ -1,3 +1,0 @@
-本轮独立审查发现两处待修复问题，按优先级列出：
-1. P2：极小尺度下，平面与曲线求交可能漏检。 [Intersection3d.cpp (line 1176)](/D:/code/stablecore/Geometry/Source/Geometry3d/Intersection3d.cpp:1176) 用 d0 * d1 < 0.0 判断异号。两侧距离约为 ±1e-200、容差更小时，乘积会下溢为 -0.0，因此跳过括根。对于只提供零阶求值的合法 ISCCurve3d，后续导数细化也无法找回交点。原实现不会因乘积下溢而跳过该区间；这里应直接比较符号。
-2. P2：公开的有效性检查忽略了调用者传入的阈值。 [SCGeometryTypes3d.h (line 55)](/D:/code/stablecore/Geometry/Include/Types/Geometry3d/SCGeometryTypes3d.h:55) 中 SCSurfaceEval3d::IsValid(eps) 现将 eps 丢弃，使法向长度低于指定阈值的求值仍返回 true。这改变了原有 API 行为；内部个别调用点另行检查法向长度，不能恢复外部调用者的判定。

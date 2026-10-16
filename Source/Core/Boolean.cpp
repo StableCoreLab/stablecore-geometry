@@ -1,6 +1,8 @@
 #include "Core/Boolean.h"
 
 #include <algorithm>
+#include <numeric>
+#include "Support/StableNumerics.h"
 #include <cmath>
 #include <cstdint>
 #include <limits>
@@ -300,7 +302,8 @@ namespace Geometry
                 }
                 clippedPolygon = best;
             }
-            if (std::abs(clippedPolygon.Area()) <= std::max(64.0 * eps * eps, 1e-14))
+            const auto smallArea=Detail::MagnitudeWithinPower(std::abs(clippedPolygon.Area()),eps,2,64);
+            if (!smallArea || *smallArea || std::abs(clippedPolygon.Area())<=1e-14)
             {
                 return fallback;
             }
@@ -342,7 +345,9 @@ namespace Geometry
                 return {};
             }
 
-            const double areaTol = std::max(Geometry::kBooleanAreaEpsilon, 64.0 * eps * eps);
+            const auto scaledTolerance=Detail::StableProduct(eps,eps,64);
+            if (!scaledTolerance) return {};
+            const double areaTol = std::max(Geometry::kBooleanAreaEpsilon, *scaledTolerance);
             auto addStrip = [&](double minX, double minY, double maxX, double maxY) {
                 if (maxX - minX <= eps || maxY - minY <= eps)
                 {
@@ -947,7 +952,7 @@ namespace Geometry
         {
             if (segments.empty())
             {
-                return 64.0 * eps * eps;
+                return Detail::StableProduct(eps,eps,64).value_or(std::numeric_limits<double>::quiet_NaN());
             }
 
             double minX = segments.front().start.x;
@@ -964,11 +969,14 @@ namespace Geometry
 
             const double dx = maxX - minX;
             const double dy = maxY - minY;
-            const double diagonal = std::sqrt(dx * dx + dy * dy);
+            const double diagonal = std::hypot(dx,dy);
             // Keep the tiny-face filter conservative enough to suppress
             // numerical slivers, but not so aggressive that ultra-thin
             // repeated-overlap bands are erased.
-            return std::max(64.0 * eps * eps, 2.0 * diagonal * eps);
+            const auto absolute=Detail::StableProduct(eps,eps,64);
+            const auto relative=Detail::StableProduct(diagonal,eps,2);
+            if (!absolute || !relative) return std::numeric_limits<double>::quiet_NaN();
+            return std::max(*absolute,*relative);
         }
 
         [[nodiscard]] bool IsNearlyCollinearVertex(const SCPoint2d& previous,
@@ -1376,7 +1384,7 @@ namespace Geometry
                     continue;
                 }
 
-                const SCPoint2d midpoint{0.5 * (start.x + end.x), 0.5 * (start.y + end.y)};
+                const SCPoint2d midpoint{std::midpoint(start.x, end.x), std::midpoint(start.y, end.y)};
                 const SCVector2d inward{-edge.y / length, edge.x / length};
                 const double step = std::max(32.0 * eps, std::min(0.25 * length, maxStep));
                 const SCPoint2d candidate = midpoint + inward * step;
@@ -1598,6 +1606,7 @@ namespace Geometry
             }
 
             const double areaTol = ComputeAreaTolerance(splitSegments, eps);
+            if (!std::isfinite(areaTol)) return result;
 
             std::vector<SCPoint2d> vertices;
             std::vector<DirectedEdge> edges;
@@ -1694,7 +1703,9 @@ namespace Geometry
         }
         const double expectedArea = TotalArea(overlap) + TotalArea(firstOnly) + TotalArea(secondOnly);
         const double actualArea = TotalArea(result);
-        const double areaTol = std::max(Geometry::kBooleanAreaEpsilon, 64.0 * eps * eps);
+        const auto scaledTolerance=Detail::StableProduct(eps,eps,64);
+        if (!scaledTolerance) return {};
+        const double areaTol = std::max(Geometry::kBooleanAreaEpsilon, *scaledTolerance);
 
         if (expectedArea > areaTol && actualArea + areaTol < expectedArea)
         {

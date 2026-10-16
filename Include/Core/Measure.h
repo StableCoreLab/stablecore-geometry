@@ -2,6 +2,7 @@
 
 #include <cstddef>
 
+#include "Core/GeometryEvidence.h"
 #include "Core/GeometryTypes.h"
 #include "Export/GeometryExport.h"
 #include "Geometry3d/SCCurveOnSurface.h"
@@ -19,8 +20,28 @@ namespace Geometry
     class PolyhedronFace3d;
     class TriangleMesh;
 
+    struct GEOMETRY_API SCDistancePayload3d
+    {
+        double distance{0.0};
+        double distanceSquared{0.0};
+        bool distanceValid{false};
+        bool distanceSquaredValid{false};
+    };
+
+    struct GEOMETRY_API SCDistanceResult3dWithStatus
+    {
+        SCGeometryOperationState state{SCGeometryOperationState::InvalidInput};
+        bool payloadValid{false};
+        SCDistancePayload3d payload{};
+        SCGeometryEvidenceStatus evidence{};
+    };
+
     [[nodiscard]] GEOMETRY_API double DistanceSquared(const SCPoint3d& lhs, const SCPoint3d& rhs);
     [[nodiscard]] GEOMETRY_API double Distance(const SCPoint3d& lhs, const SCPoint3d& rhs);
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceSquaredWithStatus(
+        const SCPoint3d& lhs, const SCPoint3d& rhs);
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceWithStatus(
+        const SCPoint3d& lhs, const SCPoint3d& rhs);
 
     [[nodiscard]] GEOMETRY_API double DistanceSquared(const SCPoint3d& point,
                                                       const SCLine3d& line,
@@ -28,9 +49,17 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API double Distance(const SCPoint3d& point,
                                                const SCLine3d& line,
                                                const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceSquaredWithStatus(
+        const SCPoint3d& point, const SCLine3d& line, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceWithStatus(
+        const SCPoint3d& point, const SCLine3d& line, const SCGeometryTolerance3d& tolerance = {});
 
     [[nodiscard]] GEOMETRY_API double DistanceSquared(const SCPoint3d& point, const SCPlane& plane);
     [[nodiscard]] GEOMETRY_API double Distance(const SCPoint3d& point, const SCPlane& plane);
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceSquaredWithStatus(
+        const SCPoint3d& point, const SCPlane& plane, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceWithStatus(
+        const SCPoint3d& point, const SCPlane& plane, const SCGeometryTolerance3d& tolerance = {});
     [[nodiscard]] GEOMETRY_API double DistanceSquared(const SCPoint3d& point,
                                                       const ISCCurve3d& curve,
                                                       const SCGeometryTolerance3d& tolerance = {});
@@ -67,6 +96,10 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API double Distance(const SCPoint3d& point,
                                                const SCBrepVertex& vertex,
                                                const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceSquaredWithStatus(
+        const SCPoint3d& point, const SCBrepVertex& vertex, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceWithStatus(
+        const SCPoint3d& point, const SCBrepVertex& vertex, const SCGeometryTolerance3d& tolerance = {});
     [[nodiscard]] GEOMETRY_API double DistanceSquared(const SCPoint3d& point,
                                                       const SCBrepBody& body,
                                                       const SCGeometryTolerance3d& tolerance = {});
@@ -92,8 +125,48 @@ namespace Geometry
                                                const TriangleMesh& mesh,
                                                const SCGeometryTolerance3d& tolerance = {});
 
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceWithStatus(
+        const SCPoint3d& point, const ISCCurve3d& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceSquaredWithStatus(
+        const SCPoint3d& point, const ISCCurve3d& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceWithStatus(
+        const SCPoint3d& point, const SCCurveOnSurface& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceSquaredWithStatus(
+        const SCPoint3d& point, const SCCurveOnSurface& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceWithStatus(
+        const SCPoint3d& point, const ISCSurface& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceSquaredWithStatus(
+        const SCPoint3d& point, const ISCSurface& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceWithStatus(
+        const SCPoint3d& point, const SCBrepFace& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceSquaredWithStatus(
+        const SCPoint3d& point, const SCBrepFace& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceWithStatus(
+        const SCPoint3d& point, const SCBrepEdge& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceSquaredWithStatus(
+        const SCPoint3d& point, const SCBrepEdge& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceWithStatus(
+        const SCPoint3d& point, const SCBrepBody& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceSquaredWithStatus(
+        const SCPoint3d& point, const SCBrepBody& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceWithStatus(
+        const SCPoint3d& point, const PolyhedronFace3d& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceSquaredWithStatus(
+        const SCPoint3d& point, const PolyhedronFace3d& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceWithStatus(
+        const SCPoint3d& point, const PolyhedronBody& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceSquaredWithStatus(
+        const SCPoint3d& point, const PolyhedronBody& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceWithStatus(
+        const SCPoint3d& point, const TriangleMesh& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCDistanceResult3dWithStatus DistanceSquaredWithStatus(
+        const SCPoint3d& point, const TriangleMesh& target, const SCGeometryTolerance3d& tolerance = {});
+
     [[nodiscard]] GEOMETRY_API double Length(const SCLineSegment3d& segment);
     [[nodiscard]] GEOMETRY_API double Length(const ISCCurve3d& curve, std::size_t sampleCount = 32);
+    // 对实际 UV 边映射作 32 段保底及最多 8 层弦差细分的近似长度，包含闭合边。
+    // 有限采样不提供任意曲面的全局误差证明，不用于拓扑排除或硬剪枝。
+    // 实际位置或累积长度不可表示时返回 +infinity。
     [[nodiscard]] GEOMETRY_API double Length(const SCCurveOnSurface& curveOnSurface);
 
     [[nodiscard]] GEOMETRY_API double Area(const SCTriangle3d& triangle);

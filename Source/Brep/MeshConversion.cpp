@@ -50,8 +50,10 @@ namespace Geometry
                 holes.emplace_back(std::move(holeVertices));
             }
 
+            SCPlane actualPlane;
+            if (!Detail::TryActualPlane(*planeSurface, tolerance, actualPlane)) return false;
             polyFace = PolyhedronFace3d(
-                planeSurface->SupportPlane(), PolyhedronLoop3d(std::move(outerVertices)), std::move(holes));
+                actualPlane, PolyhedronLoop3d(std::move(outerVertices)), std::move(holes));
             return polyFace.IsValid(tolerance);
         }
 

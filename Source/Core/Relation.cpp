@@ -24,13 +24,13 @@ namespace Geometry
         [[nodiscard]] bool IsPointOnLineSegment(const SCPoint2d& point, const SCLineSegment2d& segment, double eps)
         {
             const auto projection = ProjectPointToLineSegment(point, segment, true);
-            return projection.distanceSquared <= eps * eps;
+            return projection.point.IsValid() && std::hypot(point.x-projection.point.x,point.y-projection.point.y) <= eps;
         }
 
         [[nodiscard]] bool IsPointOnArcSegment(const SCPoint2d& point, const SCArcSegment2d& segment, double eps)
         {
             const auto projection = ProjectPointToArcSegment(point, segment, true);
-            return projection.distanceSquared <= eps * eps;
+            return projection.point.IsValid() && std::hypot(point.x-projection.point.x,point.y-projection.point.y) <= eps;
         }
 
         [[nodiscard]] std::size_t CountLineSegmentRayCrossings(const SCLineSegment2d& segment,
@@ -78,7 +78,8 @@ namespace Geometry
 
                 const SCPoint2d candidate{x, point.y};
                 const SCSegmentProjection2d projection = ProjectPointToArcSegment(candidate, segment, false);
-                if (projection.distanceSquared > eps * eps || !projection.isOnSegment)
+                if (!projection.point.IsValid() ||
+                    !(std::hypot(candidate.x-projection.point.x,candidate.y-projection.point.y)<=eps) || !projection.isOnSegment)
                 {
                     continue;
                 }

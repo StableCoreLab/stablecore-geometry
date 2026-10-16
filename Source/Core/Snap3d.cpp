@@ -1,5 +1,7 @@
 #include "Core/Snap3d.h"
 
+#include <cmath>
+#include <limits>
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -31,7 +33,12 @@ namespace Geometry
             }
 
             const auto nearest = search.Nearest(point, tolerance);
-            if (!nearest.has_value() || nearest->distanceSquared > maxDistance * maxDistance)
+            const double distance = nearest.has_value() && nearest->point.IsValid()
+                ? std::hypot(point.x - nearest->point.x,
+                             point.y - nearest->point.y,
+                             point.z - nearest->point.z)
+                : std::numeric_limits<double>::infinity();
+            if (!nearest.has_value() || !std::isfinite(distance) || distance > maxDistance)
             {
                 return result;
             }

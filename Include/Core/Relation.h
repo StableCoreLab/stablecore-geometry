@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Core/GeometryEvidence.h"
+
 #include "Core/GeometryTypes.h"
 #include "Export/GeometryExport.h"
 #include "Geometry2d/SCArcSegment2d.h"
@@ -39,6 +41,46 @@ namespace Geometry
         OnPlane,
         Above
     };
+
+    struct SCPointContainmentFaceRecord3d
+    {
+        std::size_t shellIndex{0}, localFaceIndex{0}, faceIndex{0};
+        SCGeometryOperationState state{SCGeometryOperationState::InvalidInput};
+        SCGeometryEvidenceStatus evidence{};
+    };
+
+    struct GEOMETRY_API SCPointContainment3dWithStatus
+    {
+        SCGeometryOperationState state{SCGeometryOperationState::InvalidInput};
+        bool payloadValid{false};
+        SCPointContainment3d payload{};
+        SCGeometryEvidenceStatus evidence{};
+        std::vector<SCPointContainmentFaceRecord3d> faces{};
+    };
+    struct GEOMETRY_API SCPointPlaneSide3dWithStatus
+    {
+        SCGeometryOperationState state{SCGeometryOperationState::InvalidInput};
+        bool payloadValid{false};
+        SCPointPlaneSide3d payload{};
+        SCGeometryEvidenceStatus evidence{};
+    };
+    // 旧三值入口在未知时返回 Outside/OnPlane；确定性消费者必须读取状态入口。
+    [[nodiscard]] GEOMETRY_API SCPointPlaneSide3dWithStatus LocatePointWithStatus(
+        const SCPoint3d& point, const SCPlane& plane, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCPointContainment3dWithStatus LocatePointWithStatus(
+        const SCPoint3d& point, const ISCCurve3d& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCPointContainment3dWithStatus LocatePointWithStatus(
+        const SCPoint3d& point, const SCCurveOnSurface& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCPointContainment3dWithStatus LocatePointWithStatus(
+        const SCPoint3d& point, const SCBrepFace& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCPointContainment3dWithStatus LocatePointWithStatus(
+        const SCPoint3d& point, const SCBrepBody& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCPointContainment3dWithStatus LocatePointWithStatus(
+        const SCPoint3d& point, const PolyhedronFace3d& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCPointContainment3dWithStatus LocatePointWithStatus(
+        const SCPoint3d& point, const PolyhedronBody& target, const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCPointContainment3dWithStatus LocatePointWithStatus(
+        const SCPoint3d& point, const TriangleMesh& target, const SCGeometryTolerance3d& tolerance = {});
 
     [[nodiscard]] GEOMETRY_API SCPointContainment2d LocatePoint(const SCPoint2d& point,
                                                               const SCLineSegment2d& segment,

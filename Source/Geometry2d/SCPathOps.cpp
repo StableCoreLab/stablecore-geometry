@@ -1,4 +1,5 @@
 #include "Geometry2d/SCPathOps.h"
+#include "Support/StableNumerics.h"
 
 #include <algorithm>
 #include <cmath>
@@ -575,7 +576,8 @@ namespace Geometry
                     {
                         continue;
                     }
-                    if (projection.distanceSquared > repairTol * repairTol || projection.distanceSquared <= eps * eps)
+                    const double gap=std::hypot(endpoint.x-projection.point.x,endpoint.y-projection.point.y);
+                    if (!std::isfinite(gap) || gap > repairTol || gap <= eps)
                     {
                         continue;
                     }
@@ -683,7 +685,7 @@ namespace Geometry
         {
             if (segments.empty())
             {
-                return 256.0 * eps * eps;
+                return Detail::StableProduct(eps,eps,256).value_or(std::numeric_limits<double>::quiet_NaN());
             }
 
             double minX = segments.front().start.x;
@@ -700,8 +702,11 @@ namespace Geometry
 
             const double dx = maxX - minX;
             const double dy = maxY - minY;
-            const double diagonal = std::sqrt(dx * dx + dy * dy);
-            return std::max(256.0 * eps * eps, diagonal * std::max(repairTol, 16.0 * eps) * 1e-3);
+            const double diagonal = std::hypot(dx,dy);
+            const auto absolute=Detail::StableProduct(eps,eps,256);
+            const auto relative=Detail::StableProduct(diagonal,std::max(repairTol,16*eps),1e-3);
+            if (!absolute || !relative) return std::numeric_limits<double>::quiet_NaN();
+            return std::max(*absolute,*relative);
         }
 
         [[nodiscard]] bool RejectRingCandidate(const RingCandidate& candidate,
@@ -1024,6 +1029,7 @@ namespace Geometry
             return {};
         }
         const double areaTol = ComputeAreaTolerance(splitSegments, repairTol, eps);
+        if (!std::isfinite(areaTol)) return {};
 
         std::vector<SCPoint2d> vertices;
         std::vector<DirectedEdge> edges;

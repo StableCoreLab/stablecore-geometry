@@ -54,12 +54,12 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
         {
-            if (!point.IsValid() || derivativeOrder < 0 || derivativeOrder > 1)
+            if (!point.IsValid() || !std::isfinite(eps) || eps < 0.0 || derivativeOrder < 0 || derivativeOrder > 1)
             { return false; }
             if (derivativeOrder >= 1 &&
-                (!derivativeU.IsValid() || !derivativeV.IsValid() || !normal.IsValid()))
+                (!derivativeU.IsValid() || !derivativeV.IsValid() || !normal.IsValid() ||
+                 std::hypot(normal.x, normal.y, normal.z) <= eps))
             { return false; }
-            (void)eps;
             return true;
         }
     };

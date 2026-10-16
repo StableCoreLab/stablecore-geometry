@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <vector>
+#include "Support/StableNumerics.h"
 
 namespace Geometry
 {
@@ -30,12 +31,16 @@ namespace Geometry
         for (std::size_t v = 0; v <= vSegments; ++v)
         {
             const double vRatio = static_cast<double>(v) / static_cast<double>(vSegments);
-            const double vParameter = vRange.min + vRange.Length() * vRatio;
+            const auto vParameter = Detail::StableLerp(vRange.min, vRange.max, vRatio);
+            if (!vParameter) return {};
             for (std::size_t u = 0; u <= uSegments; ++u)
             {
                 const double uRatio = static_cast<double>(u) / static_cast<double>(uSegments);
-                const double uParameter = uRange.min + uRange.Length() * uRatio;
-                vertices.push_back(surface.PointAt(uParameter, vParameter));
+                const auto uParameter = Detail::StableLerp(uRange.min, uRange.max, uRatio);
+                if (!uParameter) return {};
+                const auto point=surface.PointAt(*uParameter, *vParameter);
+                if (!point.IsValid()) return {};
+                vertices.push_back(point);
             }
         }
 

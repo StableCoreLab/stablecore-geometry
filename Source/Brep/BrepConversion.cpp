@@ -70,7 +70,7 @@ namespace Geometry
 
         [[nodiscard]] double ComputeBodyValidationEpsilon(const PolyhedronBody& body, double eps)
         {
-            double maxDistanceSquared = 0.0;
+            double maxDistance = 0.0;
             for (std::size_t faceIndex = 0; faceIndex < body.FaceCount(); ++faceIndex)
             {
                 const PolyhedronFace3d face = body.FaceAt(faceIndex);
@@ -79,10 +79,11 @@ namespace Geometry
                     {
                         for (std::size_t j = i + 1; j < loop.VertexCount(); ++j)
                         {
-                            const double distanceSquared = (loop.VertexAt(i) - loop.VertexAt(j)).LengthSquared();
-                            if (distanceSquared > maxDistanceSquared)
+                            const auto delta = loop.VertexAt(i) - loop.VertexAt(j);
+                            const double distance = std::hypot(delta.x, delta.y, delta.z);
+                            if (std::isfinite(distance) && distance > maxDistance)
                             {
-                                maxDistanceSquared = distanceSquared;
+                                maxDistance = distance;
                             }
                         }
                     }
@@ -95,12 +96,12 @@ namespace Geometry
                 }
             }
 
-            if (maxDistanceSquared <= 0.0)
+            if (maxDistance <= 0.0)
             {
                 return eps;
             }
 
-            return std::min(eps, 0.1 * maxDistanceSquared);
+            return std::min(eps, 0.1 * maxDistance);
         }
 
         void BuildBodyLoopRepresentativeIds(const PolyhedronBody& body,
@@ -454,8 +455,12 @@ namespace Geometry
                 holes.emplace_back(std::move(holeVertices));
             }
 
+            SCPlane actualPlane;
+            SCGeometryTolerance3d planeTolerance{};
+            planeTolerance.distanceEpsilon=eps;
+            if (!Detail::TryActualPlane(*planeSurface,planeTolerance,actualPlane)) return false;
             polyFace = PolyhedronFace3d(
-                planeSurface->SupportPlane(), PolyhedronLoop3d(std::move(outerVertices)), std::move(holes));
+                actualPlane, PolyhedronLoop3d(std::move(outerVertices)), std::move(holes));
             return polyFace.IsValid(eps);
         }
 
@@ -905,23 +910,24 @@ namespace Geometry
                 }
             }
 
-            auto maxLoopScaleSquared = [&](const PolyhedronLoop3d& loop) {
-                double maxDistanceSquared = 0.0;
+            auto maxLoopScale = [&](const PolyhedronLoop3d& loop) {
+                double maxDistance = 0.0;
                 for (std::size_t i = 0; i < loop.VertexCount(); ++i)
                 {
                     for (std::size_t j = i + 1; j < loop.VertexCount(); ++j)
                     {
-                        const double distanceSquared = (loop.VertexAt(i) - loop.VertexAt(j)).LengthSquared();
-                        if (distanceSquared > maxDistanceSquared)
+                        const auto delta = loop.VertexAt(i) - loop.VertexAt(j);
+                        const double distance = std::hypot(delta.x, delta.y, delta.z);
+                        if (std::isfinite(distance) && distance > maxDistance)
                         {
-                            maxDistanceSquared = distanceSquared;
+                            maxDistance = distance;
                         }
                     }
                 }
 
-                return std::max(maxDistanceSquared, supportEps * supportEps);
+                return std::max(maxDistance, supportEps);
             };
-            const double faceValidityEps = std::min(eps, 0.1 * maxLoopScaleSquared(outer));
+            const double faceValidityEps = std::min(eps, 0.1 * maxLoopScale(outer));
 
             std::vector<PolyhedronLoop3d> holes;
             std::vector<std::vector<std::size_t>> normalizedHoleRepresentativeIds;
@@ -1242,7 +1248,7 @@ namespace Geometry
 
             if (!foundSupport)
             {
-                const double scaleAwareThreshold = maxLoopScaleSquared(outer) * eps;
+                const double scaleAwareThreshold = maxLoopScale(outer) * eps;
                 if (bestNormalLength <= scaleAwareThreshold)
                 {
                     return false;
@@ -1563,8 +1569,11 @@ namespace Geometry
             holes.emplace_back(std::move(holeVertices));
         }
 
+        SCPlane actualPlane;
+        if (!Detail::TryActualPlane(*planeSurface,tolerance,actualPlane))
+            return {false,BrepConversionIssue3d::InvalidFace,{}};
         PolyhedronFace3d polyFace(
-            planeSurface->SupportPlane(), PolyhedronLoop3d(std::move(outerVertices)), std::move(holes));
+            actualPlane, PolyhedronLoop3d(std::move(outerVertices)), std::move(holes));
         if (!polyFace.IsValid(eps))
         {
             return {false, BrepConversionIssue3d::InvalidTrim, {}};
@@ -1672,7 +1681,7 @@ namespace Geometry
             }
 
             auto computeBodyScale = [&sourceBody]() {
-                double maxDistanceSquared = 0.0;
+                double maxDistance = 0.0;
                 for (std::size_t faceIndex = 0; faceIndex < sourceBody.FaceCount(); ++faceIndex)
                 {
                     const PolyhedronFace3d face = sourceBody.FaceAt(faceIndex);
@@ -1681,10 +1690,11 @@ namespace Geometry
                         {
                             for (std::size_t j = i + 1; j < loop.VertexCount(); ++j)
                             {
-                                const double distanceSquared = (loop.VertexAt(i) - loop.VertexAt(j)).LengthSquared();
-                                if (distanceSquared > maxDistanceSquared)
+                                const auto delta = loop.VertexAt(i) - loop.VertexAt(j);
+                                const double distance = std::hypot(delta.x, delta.y, delta.z);
+                                if (std::isfinite(distance) && distance > maxDistance)
                                 {
-                                    maxDistanceSquared = distanceSquared;
+                                    maxDistance = distance;
                                 }
                             }
                         }
@@ -1697,7 +1707,7 @@ namespace Geometry
                     }
                 }
 
-                return std::sqrt(maxDistanceSquared);
+                return maxDistance;
             };
 
             const bool repairQuadHolelessBody = [&sourceBody, requiresRepair]() {
@@ -2004,7 +2014,12 @@ namespace Geometry
 
                     for (const SCPoint3d& point : outerLoopVertices)
                     {
-                        outerUv.push_back(Detail::ProjectPointToPlaneUv(point, planeSurface));
+                        SCPoint2d uv;
+                        if (!Detail::ProjectPointToPlaneUv(point, planeSurface, uv, eps, Detail::PlaneUvPurpose::ApproximateRepair))
+                        {
+                            return {false, BrepConversionIssue3d::InvalidFace, faceIndex, {}};
+                        }
+                        outerUv.push_back(uv);
                     }
                 } catch (const std::exception&)
                 {
@@ -2070,7 +2085,12 @@ namespace Geometry
 
                             for (const SCPoint3d& point : holeLoopVertices)
                             {
-                        holeUv.push_back(Detail::ProjectPointToPlaneUv(point, planeSurface));
+                                SCPoint2d uv;
+                                if (!Detail::ProjectPointToPlaneUv(point, planeSurface, uv, eps, Detail::PlaneUvPurpose::ApproximateRepair))
+                                {
+                                    return {false, BrepConversionIssue3d::InvalidFace, faceIndex, {}};
+                                }
+                                holeUv.push_back(uv);
                             }
                         } catch (const std::exception&)
                         {

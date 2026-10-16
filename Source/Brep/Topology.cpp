@@ -1,4 +1,5 @@
 #include "Brep/Topology.h"
+#include <numeric>
 
 #include <sstream>
 #include <vector>
@@ -122,7 +123,7 @@ namespace Geometry
                     inward = inward * -1.0;
                 }
 
-                const SCPoint2d midpoint{0.5 * (start.x + end.x), 0.5 * (start.y + end.y)};
+                const SCPoint2d midpoint{std::midpoint(start.x, end.x), std::midpoint(start.y, end.y)};
                 const double step = std::max(16.0 * eps, std::min(0.2 * length, 1e-3));
                 const SCPoint2d candidatePoint = midpoint + inward * step;
                 if (LocatePoint(candidatePoint, polygon, eps) == SCPointContainment2d::Inside)
@@ -154,7 +155,7 @@ namespace Geometry
                 }
 
                 const SCPoint2d next = ring.PointAt((i + 1) % ring.PointCount());
-                const SCPoint2d midpoint{0.5 * (point.x + next.x), 0.5 * (point.y + next.y)};
+                const SCPoint2d midpoint{std::midpoint(point.x, next.x), std::midpoint(point.y, next.y)};
                 if (LocatePoint(midpoint, container, eps) == SCPointContainment2d::Inside)
                 {
                     return true;
