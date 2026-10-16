@@ -2,7 +2,7 @@
   "version": 3,
   "cmakeMinimumRequired": {
     "major": 3,
-    "minor": 16,
+    "minor": 21,
     "patch": 0
   },
   "configurePresets": [
@@ -13,7 +13,6 @@
       "architecture": "x64",
       "binaryDir": "${sourceDir}/../Build/GeometryVs2022",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "SCGEOMETRY_BUILD_TESTS": "ON"
       }
     },
@@ -24,7 +23,6 @@
       "architecture": "x64",
       "binaryDir": "${sourceDir}/../Build/GeometryVs2022Fast",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "SCGEOMETRY_BUILD_TESTS": "ON",
         "SCGEOMETRY_ENABLE_PCH": "ON",
         "SCGEOMETRY_ENABLE_UNITY_BUILD": "OFF"

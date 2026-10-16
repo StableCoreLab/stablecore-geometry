@@ -3,8 +3,8 @@
 #include <array>
 #include <numbers>
 
-#ifndef GEOMETRY_USE_DLL
-#error "The installed SCGeometry target must publish GEOMETRY_USE_DLL."
+#if defined(SCGEOMETRY_EXPECT_SHARED) != defined(GEOMETRY_USE_DLL)
+#error "The installed SCGeometry target publishes the wrong DLL import definition."
 #endif
 
 int main()

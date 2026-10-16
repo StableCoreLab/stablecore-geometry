@@ -1,4 +1,6 @@
 #pragma once
+
+#include "Export/GeometryExport.h"
 #include "Core/GeometryTypes.h"
 #include "Core/Section.h"
 #include "Geometry2d/SCPolygon2d.h"

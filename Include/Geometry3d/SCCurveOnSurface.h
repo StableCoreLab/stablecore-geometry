@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Export/GeometryExport.h"
+
 #include <cstddef>
 #include <memory>
 

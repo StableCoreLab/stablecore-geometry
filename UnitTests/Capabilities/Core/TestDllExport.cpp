@@ -2,8 +2,8 @@
 
 #include "Support/Epsilon.h"
 
-#ifndef GEOMETRY_USE_DLL
-#error "Consumers of SCGeometry must compile with GEOMETRY_USE_DLL."
+#if defined(SCGEOMETRY_EXPECT_SHARED) != defined(GEOMETRY_USE_DLL)
+#error "SCGeometry consumer DLL import definition does not match the library type."
 #endif
 
 namespace
