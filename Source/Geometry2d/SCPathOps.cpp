@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <numeric>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -63,27 +64,6 @@ namespace Geometry
 
         [[nodiscard]] std::vector<SCPoint2d> SimplifyRingVertices(std::vector<SCPoint2d> points, double eps);
 
-        [[nodiscard]] double SignedSide(const SCPoint2d& point, const SCLineSegment2d& line)
-        {
-            return Cross(line.endPoint - line.startPoint, point - line.startPoint);
-        }
-
-        [[nodiscard]] SCPoint2d IntersectInfiniteLines(const SCPoint2d& a1,
-                                                     const SCPoint2d& a2,
-                                                     const SCPoint2d& b1,
-                                                     const SCPoint2d& b2)
-        {
-            const SCVector2d r = a2 - a1;
-            const SCVector2d s = b2 - b1;
-            const double denom = Cross(r, s);
-            if (std::abs(denom) <= Geometry::kPathOpsDefaultEpsilon)
-            {
-                return a2;
-            }
-            const double t = Cross(b1 - a1, s) / denom;
-            return a1 + r * t;
-        }
-
         [[nodiscard]] SCPolyline2d ClipPolylineLength(const SCPolyline2d& polyline, double startLength, double endLength)
         {
             if (!polyline.IsValid() || endLength < startLength)
@@ -137,62 +117,6 @@ namespace Geometry
             return SCPolyline2d(std::move(points), SCPolylineClosure::Open);
         }
 
-        [[nodiscard]] SCPolygon2d ClipPolygonHalfPlane(const SCPolygon2d& polygon,
-                                                     const SCLineSegment2d& cutter,
-                                                     bool keepLeft)
-        {
-            if (!polygon.IsValid() || polygon.HoleCount() != 0)
-            {
-                return {};
-            }
-
-            std::vector<SCPoint2d> input;
-            input.reserve(polygon.OuterRing().PointCount());
-            for (std::size_t i = 0; i < polygon.OuterRing().PointCount(); ++i)
-            {
-                input.push_back(polygon.OuterRing().PointAt(i));
-            }
-
-            std::vector<SCPoint2d> output;
-            if (input.empty())
-            {
-                return {};
-            }
-
-            SCPoint2d prev = input.back();
-            double prevSide = SignedSide(prev, cutter);
-            for (const SCPoint2d& current : input)
-            {
-                const double currentSide = SignedSide(current, cutter);
-                const bool prevInside = keepLeft ? prevSide >= -Geometry::kPathOpsDefaultEpsilon
-                                                 : prevSide <= Geometry::kPathOpsDefaultEpsilon;
-                const bool currentInside = keepLeft ? currentSide >= -Geometry::kPathOpsDefaultEpsilon
-                                                    : currentSide <= Geometry::kPathOpsDefaultEpsilon;
-
-                if (currentInside)
-                {
-                    if (!prevInside)
-                    {
-                        output.push_back(IntersectInfiniteLines(prev, current, cutter.startPoint, cutter.endPoint));
-                    }
-                    output.push_back(current);
-                } else if (prevInside)
-                {
-                    output.push_back(IntersectInfiniteLines(prev, current, cutter.startPoint, cutter.endPoint));
-                }
-
-                prev = current;
-                prevSide = currentSide;
-            }
-
-            if (output.size() < 3)
-            {
-                return {};
-            }
-
-            return SCPolygon2d(SCPolyline2d(std::move(output), SCPolylineClosure::Closed));
-        }
-
         [[nodiscard]] SCPolygon2d BuildHalfPlaneClipPolygon(const SCPolygon2d& polygon,
                                                           const SCLineSegment2d& cutter,
                                                           bool keepLeft,
@@ -210,8 +134,8 @@ namespace Geometry
             }
 
             const SCVector2d direction = cutter.endPoint - cutter.startPoint;
-            const double length = direction.Length();
-            if (length <= eps)
+            const double length = std::hypot(direction.x, direction.y);
+            if (!std::isfinite(length) || length <= eps)
             {
                 return {};
             }
@@ -225,13 +149,16 @@ namespace Geometry
 
             const SCPoint2d minPoint = bounds.MinPoint();
             const SCPoint2d maxPoint = bounds.MaxPoint();
-            const double diagonal = std::sqrt((maxPoint.x - minPoint.x) * (maxPoint.x - minPoint.x) +
-                                              (maxPoint.y - minPoint.y) * (maxPoint.y - minPoint.y));
+            const double diagonal = std::hypot(maxPoint.x - minPoint.x,
+                                               maxPoint.y - minPoint.y);
             const double extent = std::max(1.0, 8.0 * diagonal + 1.0);
 
             const SCVector2d along = tangent * extent;
             const SCVector2d side = normal * (2.0 * extent);
-            const SCPoint2d anchor = cutter.startPoint;
+            const SCPoint2d center{std::midpoint(minPoint.x, maxPoint.x),
+                                   std::midpoint(minPoint.y, maxPoint.y)};
+            const SCVector2d lineNormal{-tangent.y, tangent.x};
+            const SCPoint2d anchor = center - lineNormal * Dot(center - cutter.startPoint, lineNormal);
             const SCPoint2d lineStart = anchor - along;
             const SCPoint2d lineEnd = anchor + along;
 
@@ -435,6 +362,86 @@ namespace Geometry
                 }
             }
             return graph;
+        }
+
+        [[nodiscard]] SCPolygonBuildDiagnostics2d AnalyzeBuildInput(const SCMultiPolyline2d& lines,
+                                                                     double eps)
+        {
+            SCPolygonBuildDiagnostics2d diagnostics;
+            diagnostics.inputPolylineCount = lines.Size();
+            std::vector<RawSegment> segments;
+            for (std::size_t lineIndex = 0; lineIndex < lines.Size(); ++lineIndex)
+            {
+                const SCPolyline2d& line = lines[lineIndex];
+                if (!line.IsValid() || line.PointCount() < 2) continue;
+                const std::size_t count = line.IsClosed() ? line.PointCount() : line.PointCount() - 1;
+                for (std::size_t i = 0; i < count; ++i)
+                {
+                    const SCPoint2d start = line.PointAt(i);
+                    const SCPoint2d end = line.PointAt((i + 1) % line.PointCount());
+                    if (!start.AlmostEquals(end, eps)) segments.push_back({start, end, false});
+                }
+            }
+            diagnostics.inputSegmentCount = segments.size();
+            const VertexGraph2d graph = BuildVertexGraph(segments, eps);
+            diagnostics.uniqueVertexCount = graph.vertices.size();
+            for (const std::size_t degree : graph.degrees)
+            {
+                if (degree == 1U)
+                {
+                    ++diagnostics.danglingEndpointCount;
+                }
+                else if (degree > 2U)
+                {
+                    ++diagnostics.branchVertexCount;
+                }
+            }
+            diagnostics.inferredSyntheticEdgeCount = diagnostics.danglingEndpointCount / 2U;
+            return diagnostics;
+        }
+
+        [[nodiscard]] std::vector<RawSegment> PruneBranchLeaves(std::vector<RawSegment> segments,
+                                                                double eps)
+        {
+            bool changed = true;
+            while (changed)
+            {
+                changed = false;
+                const VertexGraph2d graph = BuildVertexGraph(segments, eps);
+                std::vector<RawSegment> kept;
+                kept.reserve(segments.size());
+                for (const RawSegment& segment : segments)
+                {
+                    const auto degreeAt = [&](const SCPoint2d& point) {
+                        for (std::size_t i = 0; i < graph.vertices.size(); ++i)
+                        {
+                            if (graph.vertices[i].AlmostEquals(point, eps)) return graph.degrees[i];
+                        }
+                        return std::size_t{0};
+                    };
+                    const std::size_t fromDegree = degreeAt(segment.start);
+                    const std::size_t toDegree = degreeAt(segment.end);
+                    if ((fromDegree == 1U && toDegree > 2U) ||
+                        (toDegree == 1U && fromDegree > 2U))
+                    {
+                        changed = true;
+                        continue;
+                    }
+                    kept.push_back(segment);
+                }
+                segments = std::move(kept);
+            }
+            return segments;
+        }
+
+        [[nodiscard]] SCMultiPolyline2d SegmentPolylines(const std::vector<RawSegment>& segments)
+        {
+            SCMultiPolyline2d lines;
+            for (const RawSegment& segment : segments)
+            {
+                lines.Add(SCPolyline2d({segment.start, segment.end}, SCPolylineClosure::Open));
+            }
+            return lines;
         }
 
         [[nodiscard]] std::vector<RawSegment> RemoveDuplicateSegments(const std::vector<RawSegment>& segments,
@@ -953,35 +960,28 @@ namespace Geometry
                                                               double eps)
         {
             SCPolygonCutResult2d result;
-            if (!polygon.IsValid())
+            const double cutterLength = std::hypot(cutter.endPoint.x - cutter.startPoint.x,
+                                                   cutter.endPoint.y - cutter.startPoint.y);
+            if (!polygon.IsValid() || !(eps > 0.0) || !std::isfinite(eps) ||
+                !cutter.startPoint.IsValid() || !cutter.endPoint.IsValid() ||
+                !std::isfinite(cutterLength) || !(cutterLength > eps))
             {
                 return result;
             }
-
-            if (polygon.HoleCount() > 0)
-            {
-                const SCPolygon2d leftClip = BuildHalfPlaneClipPolygon(polygon, cutter, true, eps);
-                const SCPolygon2d rightClip = BuildHalfPlaneClipPolygon(polygon, cutter, false, eps);
-                if (!leftClip.IsValid() || !rightClip.IsValid())
-                {
-                    return result;
-                }
-
-                result.left = Intersect(polygon, leftClip, eps);
-                result.right = Intersect(polygon, rightClip, eps);
-                result.success = !result.left.IsEmpty() && !result.right.IsEmpty();
-                return result;
-            }
-
-            const SCPolygon2d left = ClipPolygonHalfPlane(polygon, cutter, true);
-            const SCPolygon2d right = ClipPolygonHalfPlane(polygon, cutter, false);
-            if (!left.IsValid() || !right.IsValid())
+            const SCPolygon2d leftClip = BuildHalfPlaneClipPolygon(polygon, cutter, true, eps);
+            const SCPolygon2d rightClip = BuildHalfPlaneClipPolygon(polygon, cutter, false, eps);
+            if (!leftClip.IsValid() || !rightClip.IsValid())
             {
                 return result;
             }
-            result.success = true;
-            result.left.Add(SCPolygon2d(left));
-            result.right.Add(SCPolygon2d(right));
+            result.left = Intersect(polygon, leftClip, eps);
+            result.right = Intersect(polygon, rightClip, eps);
+            result.success = !result.left.IsEmpty() && !result.right.IsEmpty();
+            if (!result.success)
+            {
+                result.left = {};
+                result.right = {};
+            }
             return result;
         }
     }  // namespace
@@ -1003,48 +1003,109 @@ namespace Geometry
         return ComputePolygonCut(polygon, cutter, eps);
     }
 
-    SCMultiPolygon2d BuildMultiPolygonByLines(const SCMultiPolyline2d& polylines, double eps)
+    SCPolygonBuildResult2d BuildMultiPolygonByLinesWithDiagnostics(const SCMultiPolyline2d& polylines,
+                                                                   double eps,
+                                                                   SCPolygonBuildOptions2d options)
     {
+        SCPolygonBuildResult2d result;
+        if (!(eps > 0.0) || !std::isfinite(eps))
+        {
+            return result;
+        }
         std::vector<RawSegment> rawSegments = CollectRawSegments(polylines, eps);
+        result.diagnostics = AnalyzeBuildInput(polylines, eps);
         if (rawSegments.empty())
         {
-            return {};
+            return result;
         }
 
         rawSegments = RemoveDuplicateSegments(rawSegments, eps);
-        std::vector<RawSegment> splitSegments = SubdivideRawSegments(rawSegments, eps);
-        if (splitSegments.empty())
+        const auto rebuild = [&]() -> SCMultiPolygon2d
         {
-            return {};
-        }
+            std::vector<RawSegment> splitSegments = SubdivideRawSegments(rawSegments, eps);
+            if (splitSegments.empty())
+            {
+                return {};
+            }
 
-        const double repairTol = ComputeRepairTolerance(splitSegments, eps);
-        AutoCloseDanglingEndpoints(splitSegments, repairTol, eps);
-        AutoExtendDanglingEndpoints(splitSegments, repairTol, eps);
-        splitSegments = SubdivideRawSegments(splitSegments, eps);
-        splitSegments = RemoveDuplicateSegments(splitSegments, eps);
-        splitSegments = PruneDanglingSegments(std::move(splitSegments), eps);
-        if (splitSegments.empty())
+            const double repairTol = ComputeRepairTolerance(splitSegments, eps);
+            if (options.allowFakeEdges && options.autoClose)
+            {
+                const std::size_t before = splitSegments.size();
+                AutoCloseDanglingEndpoints(splitSegments, repairTol, eps);
+                result.usedAutoClose = splitSegments.size() > before;
+            }
+            if (options.allowFakeEdges && options.autoExtend)
+            {
+                const std::size_t before = splitSegments.size();
+                AutoExtendDanglingEndpoints(splitSegments, repairTol, eps);
+                result.usedAutoExtend = splitSegments.size() > before;
+            }
+            splitSegments = SubdivideRawSegments(splitSegments, eps);
+            splitSegments = RemoveDuplicateSegments(splitSegments, eps);
+            splitSegments = PruneDanglingSegments(std::move(splitSegments), eps);
+            if (splitSegments.empty())
+            {
+                return {};
+            }
+            const double areaTol = ComputeAreaTolerance(splitSegments, repairTol, eps);
+            if (!std::isfinite(areaTol)) return {};
+
+            std::vector<SCPoint2d> vertices;
+            std::vector<DirectedEdge> edges;
+            std::vector<std::vector<std::size_t>> outgoing;
+            std::unordered_set<std::uint64_t> edgeKeys;
+            AppendSplitEdges(splitSegments, vertices, edges, outgoing, edgeKeys, eps);
+            if (edges.empty())
+            {
+                return {};
+            }
+
+            Detail::SortOutgoingFans(edges, outgoing);
+            const std::vector<RingCandidate> rings =
+                ExtractCandidateRings(edges, vertices, outgoing, repairTol, areaTol, eps);
+            return BuildFilledPolygonsFromCandidateRings(rings, eps);
+        };
+        result.polygons = rebuild();
+        if (result.polygons.IsEmpty() && options.removeBranches && options.allowFakeEdges &&
+            result.diagnostics.branchVertexCount > 0U)
         {
-            return {};
+            std::vector<RawSegment> cleaned = PruneBranchLeaves(rawSegments, eps);
+            if (!cleaned.empty() && cleaned.size() < rawSegments.size())
+            {
+                options.removeBranches = false;
+                SCPolygonBuildResult2d retry = BuildMultiPolygonByLinesWithDiagnostics(
+                    SegmentPolylines(cleaned), eps, options);
+                if (retry.polygons.IsEmpty() && options.autoClose)
+                {
+                    const VertexGraph2d graph = BuildVertexGraph(cleaned, eps);
+                    std::vector<SCPoint2d> endpoints;
+                    for (std::size_t i = 0; i < graph.vertices.size(); ++i)
+                    {
+                        if (graph.degrees[i] == 1U) endpoints.push_back(graph.vertices[i]);
+                    }
+                    if (endpoints.size() == 2U && !endpoints[0].AlmostEquals(endpoints[1], eps))
+                    {
+                        cleaned.push_back({endpoints[0], endpoints[1], true});
+                        retry = BuildMultiPolygonByLinesWithDiagnostics(SegmentPolylines(cleaned), eps, options);
+                        retry.usedAutoClose = !retry.polygons.IsEmpty();
+                    }
+                }
+                if (!retry.polygons.IsEmpty())
+                {
+                    result.polygons = std::move(retry.polygons);
+                    result.usedAutoClose = retry.usedAutoClose;
+                    result.usedAutoExtend = retry.usedAutoExtend;
+                    result.usedBranchCleanup = true;
+                }
+            }
         }
-        const double areaTol = ComputeAreaTolerance(splitSegments, repairTol, eps);
-        if (!std::isfinite(areaTol)) return {};
+        return result;
+    }
 
-        std::vector<SCPoint2d> vertices;
-        std::vector<DirectedEdge> edges;
-        std::vector<std::vector<std::size_t>> outgoing;
-        std::unordered_set<std::uint64_t> edgeKeys;
-        AppendSplitEdges(splitSegments, vertices, edges, outgoing, edgeKeys, eps);
-        if (edges.empty())
-        {
-            return {};
-        }
-
-        Detail::SortOutgoingFans(edges, outgoing);
-        const std::vector<RingCandidate> rings =
-            ExtractCandidateRings(edges, vertices, outgoing, repairTol, areaTol, eps);
-        return BuildFilledPolygonsFromCandidateRings(rings, eps);
+    SCMultiPolygon2d BuildMultiPolygonByLines(const SCMultiPolyline2d& polylines, double eps)
+    {
+        return BuildMultiPolygonByLinesWithDiagnostics(polylines, eps).polygons;
     }
 
     SCPolygon2d NormalizePolygonByLines(const SCPolygon2d& polygon, double eps)

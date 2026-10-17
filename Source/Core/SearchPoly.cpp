@@ -25,7 +25,6 @@ namespace Geometry
 
         struct LineNetworkAnalysis2d
         {
-            SCSearchPolyDiagnostics2d diagnostics{};
             std::vector<GraphVertex2d> vertices{};
             std::vector<SCLineSegment2d> segments{};
             double repairTolerance{0.0};
@@ -57,31 +56,6 @@ namespace Geometry
         [[nodiscard]] std::size_t BranchDegreeAtPoint(const std::vector<GraphVertex2d>& vertices,
                                                       const SCPoint2d& point,
                                                       double epsilon);
-
-        [[nodiscard]] std::vector<GraphVertex2d> BuildSegmentVertices(const std::vector<SCLineSegment2d>& segments,
-                                                                      double epsilon)
-        {
-            std::vector<GraphVertex2d> vertices;
-            for (const SCLineSegment2d& segment : segments)
-            {
-                if (!segment.IsValid() || segment.startPoint.AlmostEquals(segment.endPoint, epsilon))
-                {
-                    continue;
-                }
-
-                const std::size_t startIndex = FindOrAddVertex(vertices, segment.startPoint, epsilon);
-                const std::size_t endIndex = FindOrAddVertex(vertices, segment.endPoint, epsilon);
-                if (startIndex == endIndex)
-                {
-                    continue;
-                }
-
-                ++vertices[startIndex].degree;
-                ++vertices[endIndex].degree;
-            }
-
-            return vertices;
-        }
 
         [[nodiscard]] std::size_t FindOrAddVertex(std::vector<GraphVertex2d>& vertices,
                                                   const SCPoint2d& point,
@@ -130,7 +104,6 @@ namespace Geometry
         [[nodiscard]] LineNetworkAnalysis2d AnalyzeLineNetwork(const SCMultiPolyline2d& lines, double epsilon)
         {
             LineNetworkAnalysis2d analysis;
-            analysis.diagnostics.inputPolylineCount = lines.Size();
 
             for (std::size_t lineIndex = 0; lineIndex < lines.Size(); ++lineIndex)
             {
@@ -150,7 +123,6 @@ namespace Geometry
                         continue;
                     }
 
-                    ++analysis.diagnostics.inputSegmentCount;
                     analysis.segments.push_back(SCLineSegment2d(start, end));
                     const std::size_t from = FindOrAddVertex(analysis.vertices, start, epsilon);
                     const std::size_t to = FindOrAddVertex(analysis.vertices, end, epsilon);
@@ -162,19 +134,6 @@ namespace Geometry
                 }
             }
 
-            analysis.diagnostics.uniqueVertexCount = analysis.vertices.size();
-            for (const GraphVertex2d& vertex : analysis.vertices)
-            {
-                if (vertex.degree == 1)
-                {
-                    ++analysis.diagnostics.danglingEndpointCount;
-                } else if (vertex.degree > 2)
-                {
-                    ++analysis.diagnostics.branchVertexCount;
-                }
-            }
-
-            analysis.diagnostics.inferredSyntheticEdgeCount = analysis.diagnostics.danglingEndpointCount / 2U;
             analysis.repairTolerance = ComputeRepairToleranceFromSegments(analysis.segments, epsilon);
             return analysis;
         }
@@ -496,96 +455,6 @@ namespace Geometry
             return seeded && coveredUntil >= 1.0 - parameterTolerance;
         }
 
-        [[nodiscard]] SCMultiPolyline2d BuildSegmentPolylines(const std::vector<SCLineSegment2d>& segments)
-        {
-            SCMultiPolyline2d polylines;
-            for (const SCLineSegment2d& segment : segments)
-            {
-                if (!segment.IsValid())
-                {
-                    continue;
-                }
-
-                polylines.Add(SCPolyline2d({segment.startPoint, segment.endPoint}, SCPolylineClosure::Open));
-            }
-            return polylines;
-        }
-
-        [[nodiscard]] std::vector<SCLineSegment2d> PruneBranchDanglingSegments(std::vector<SCLineSegment2d> segments,
-                                                                             double epsilon)
-        {
-            bool changed = true;
-            while (changed)
-            {
-                changed = false;
-                const std::vector<GraphVertex2d> vertices = BuildSegmentVertices(segments, epsilon);
-                std::vector<SCLineSegment2d> kept;
-                kept.reserve(segments.size());
-                for (const SCLineSegment2d& segment : segments)
-                {
-                    const std::size_t startDegree = BranchDegreeAtPoint(vertices, segment.startPoint, epsilon);
-                    const std::size_t endDegree = BranchDegreeAtPoint(vertices, segment.endPoint, epsilon);
-                    const bool pruneStartLeaf = startDegree == 1U && endDegree > 2U;
-                    const bool pruneEndLeaf = endDegree == 1U && startDegree > 2U;
-                    if (pruneStartLeaf || pruneEndLeaf)
-                    {
-                        changed = true;
-                        continue;
-                    }
-
-                    kept.push_back(segment);
-                }
-                segments = std::move(kept);
-            }
-
-            return segments;
-        }
-
-        [[nodiscard]] SCMultiPolygon2d TryBuildPolygonsWithBranchCleanupFallback(const LineNetworkAnalysis2d& analysis,
-                                                                               const SCSearchPolyOptions2d& options)
-        {
-            if (!options.removeBranches || !options.allowFakeEdges || analysis.diagnostics.branchVertexCount == 0U)
-            {
-                return {};
-            }
-
-            std::vector<SCLineSegment2d> prunedSegments = PruneBranchDanglingSegments(analysis.segments, options.epsilon);
-            if (prunedSegments.empty() || prunedSegments.size() >= analysis.segments.size())
-            {
-                return {};
-            }
-
-            SCMultiPolygon2d polygons = BuildMultiPolygonByLines(BuildSegmentPolylines(prunedSegments), options.epsilon);
-            if (polygons.Size() > 0)
-            {
-                return polygons;
-            }
-
-            if (!options.autoClose)
-            {
-                return {};
-            }
-
-            const std::vector<GraphVertex2d> vertices = BuildSegmentVertices(prunedSegments, options.epsilon);
-            std::vector<SCPoint2d> danglingEndpoints;
-            for (const GraphVertex2d& vertex : vertices)
-            {
-                if (vertex.degree == 1U)
-                {
-                    danglingEndpoints.push_back(vertex.point);
-                }
-            }
-
-            if (danglingEndpoints.size() != 2U ||
-                danglingEndpoints[0].AlmostEquals(danglingEndpoints[1], options.epsilon))
-            {
-                return {};
-            }
-
-            prunedSegments.push_back(SCLineSegment2d(danglingEndpoints[0], danglingEndpoints[1]));
-            return BuildMultiPolygonByLines(BuildSegmentPolylines(prunedSegments), options.epsilon);
-        }
-
         void AccumulateRingMetrics(const SCPolyline2d& ring,
                                    const LineNetworkAnalysis2d& analysis,
                                    double epsilon,
@@ -827,19 +696,27 @@ namespace Geometry
     SCSearchPolyResult2d SearchPolygons(const SCMultiPolyline2d& lines, SCSearchPolyOptions2d options)
     {
         SCSearchPolyResult2d result;
-        if (options.epsilon <= 0.0 || lines.Size() == 0)
+        if (!(options.epsilon > 0.0) || !std::isfinite(options.epsilon) || lines.Size() == 0)
         {
             result.issue = SCSearchPolyIssue2d::InvalidInput;
             return result;
         }
 
         const LineNetworkAnalysis2d analysis = AnalyzeLineNetwork(lines, options.epsilon);
-        result.diagnostics = analysis.diagnostics;
-        result.polygons = BuildMultiPolygonByLines(lines, options.epsilon);
-        if (result.polygons.Size() == 0)
-        {
-            result.polygons = TryBuildPolygonsWithBranchCleanupFallback(analysis, options);
-        }
+        const SCPolygonBuildResult2d built = BuildMultiPolygonByLinesWithDiagnostics(
+            lines, options.epsilon,
+            {options.autoClose, options.autoExtend, options.allowFakeEdges, options.removeBranches});
+        result.diagnostics = {
+            built.diagnostics.inputPolylineCount,
+            built.diagnostics.inputSegmentCount,
+            built.diagnostics.uniqueVertexCount,
+            built.diagnostics.danglingEndpointCount,
+            built.diagnostics.branchVertexCount,
+            built.diagnostics.inferredSyntheticEdgeCount};
+        result.polygons = built.polygons;
+        result.usedAutoClose = built.usedAutoClose;
+        result.usedAutoExtend = built.usedAutoExtend;
+        result.usedBranchCleanup = built.usedBranchCleanup;
         if (result.polygons.Size() == 0)
         {
             result.issue = SCSearchPolyIssue2d::NoClosedPolygonFound;
@@ -875,15 +752,6 @@ namespace Geometry
                 return candidate.inferredSyntheticEdgeCount > 0 || candidate.branchVertexCount > 0 ||
                        candidate.syntheticBranchVertexCount > 0;
             });
-
-        if (result.diagnostics.danglingEndpointCount > 0)
-        {
-            result.usedAutoClose = options.autoClose;
-        }
-        if (result.diagnostics.branchVertexCount > 0 && result.usedBranchScoring)
-        {
-            result.usedAutoExtend = options.autoExtend;
-        }
 
         return result;
     }

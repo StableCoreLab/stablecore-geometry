@@ -129,6 +129,7 @@ namespace Geometry
         bool usedAutoExtend{false};
         bool usedSyntheticEdges{false};
         bool usedBranchScoring{false};
+        bool usedBranchCleanup{false};
 
         [[nodiscard]] bool IsSuccess() const
         {

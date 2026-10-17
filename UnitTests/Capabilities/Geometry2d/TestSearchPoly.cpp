@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 
+#include <limits>
+
 #include "Core/SearchPoly.h"
+#include "Geometry2d/SCPathOps.h"
 
 using Geometry::SCMultiPolyline2d;
 using Geometry::SCPoint2d;
@@ -279,10 +282,10 @@ TEST(SearchPolyCapabilityTest, AutoFlagsRespectOptionsWhileDiagnosticsRemainStab
     autoCloseDisabled.autoClose = false;
     const auto syntheticResult = SearchPolygons(syntheticLines, autoCloseDisabled);
 
-    ASSERT_TRUE(syntheticResult.IsSuccess());
+    EXPECT_FALSE(syntheticResult.IsSuccess());
     EXPECT_EQ(syntheticResult.diagnostics.danglingEndpointCount, 2U);
-    EXPECT_TRUE(syntheticResult.usedSyntheticEdges);
-    EXPECT_TRUE(syntheticResult.usedBranchScoring);
+    EXPECT_FALSE(syntheticResult.usedSyntheticEdges);
+    EXPECT_FALSE(syntheticResult.usedBranchScoring);
     EXPECT_FALSE(syntheticResult.usedAutoClose);
     EXPECT_FALSE(syntheticResult.usedAutoExtend);
 
@@ -300,8 +303,50 @@ TEST(SearchPolyCapabilityTest, AutoFlagsRespectOptionsWhileDiagnosticsRemainStab
     ASSERT_TRUE(branchingResult.IsSuccess());
     EXPECT_EQ(branchingResult.diagnostics.branchVertexCount, 1U);
     EXPECT_TRUE(branchingResult.usedBranchScoring);
-    EXPECT_TRUE(branchingResult.usedAutoClose);
+    EXPECT_FALSE(branchingResult.usedAutoClose);
     EXPECT_FALSE(branchingResult.usedAutoExtend);
+}
+
+TEST(SearchPolyCapabilityTest, SearchAndPathOpsShareRepairPolicyAndInputDiagnostics)
+{
+    const SCMultiPolyline2d lines{
+        SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}}, SCPolylineClosure::Open),
+        SCPolyline2d({SCPoint2d{4.0, 0.0}, SCPoint2d{4.0, 4.0}}, SCPolylineClosure::Open),
+        SCPolyline2d({SCPoint2d{4.0, 4.0}, SCPoint2d{0.0, 4.0}}, SCPolylineClosure::Open),
+        SCPolyline2d({SCPoint2d{0.0, 4.0}, SCPoint2d{0.0, 0.3}}, SCPolylineClosure::Open)};
+
+    const auto built = Geometry::BuildMultiPolygonByLinesWithDiagnostics(lines);
+    const auto searched = SearchPolygons(lines);
+    ASSERT_TRUE(searched.IsSuccess());
+    EXPECT_EQ(built.polygons.Count(), searched.polygons.Count());
+    EXPECT_EQ(built.diagnostics.danglingEndpointCount, searched.diagnostics.danglingEndpointCount);
+    EXPECT_EQ(built.diagnostics.branchVertexCount, searched.diagnostics.branchVertexCount);
+    EXPECT_EQ(built.usedAutoClose, searched.usedAutoClose);
+    EXPECT_EQ(built.usedAutoExtend, searched.usedAutoExtend);
+    EXPECT_EQ(built.usedBranchCleanup, searched.usedBranchCleanup);
+
+    SearchPolyOptions2d noRepair{};
+    noRepair.allowFakeEdges = false;
+    const auto noRepairSearch = SearchPolygons(lines, noRepair);
+    const auto noRepairBuild = Geometry::BuildMultiPolygonByLinesWithDiagnostics(
+        lines, noRepair.epsilon, {noRepair.autoClose, noRepair.autoExtend,
+                                  noRepair.allowFakeEdges, noRepair.removeBranches});
+    EXPECT_FALSE(noRepairSearch.IsSuccess());
+    EXPECT_TRUE(noRepairBuild.polygons.IsEmpty());
+    EXPECT_EQ(noRepairSearch.diagnostics.danglingEndpointCount,
+              noRepairBuild.diagnostics.danglingEndpointCount);
+    EXPECT_FALSE(noRepairSearch.usedAutoClose);
+    EXPECT_FALSE(noRepairSearch.usedAutoExtend);
+}
+
+TEST(SearchPolyCapabilityTest, RejectsNonFiniteRebuildTolerance)
+{
+    const SCMultiPolyline2d lines{SCPolyline2d(
+        {{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 1.0}}, SCPolylineClosure::Closed)};
+    SearchPolyOptions2d options{};
+    options.epsilon = std::numeric_limits<double>::quiet_NaN();
+    EXPECT_EQ(SearchPolygons(lines, options).issue, Geometry::SCSearchPolyIssue2d::InvalidInput);
+    EXPECT_TRUE(Geometry::BuildMultiPolygonByLinesWithDiagnostics(lines, options.epsilon).polygons.IsEmpty());
 }
 
 TEST(SearchPolyCapabilityTest, SearchPolygonsRanksCleanCandidateAheadOfSyntheticPeer)
@@ -470,7 +515,7 @@ TEST(SearchPolyCapabilityTest, SearchPolygonsAppliesBranchPenaltyAtExplicitBranc
     ASSERT_EQ(result.candidates.size(), 1U);
     EXPECT_EQ(result.diagnostics.branchVertexCount, 1U);
     EXPECT_TRUE(result.usedBranchScoring);
-    EXPECT_TRUE(result.usedAutoExtend);
+    EXPECT_FALSE(result.usedAutoExtend);
     EXPECT_EQ(result.candidates.front().inferredSyntheticEdgeCount, 0U);
     EXPECT_TRUE(result.candidates.front().inferredSyntheticEdges.empty());
     EXPECT_TRUE(result.candidates.front().inferredSyntheticEdgeKinds.empty());
@@ -702,6 +747,7 @@ TEST(SearchPolyCapabilityTest, SearchPolygonsClassifiesBranchCleanupSyntheticEdg
     const auto result = SearchPolygons(lines);
 
     ASSERT_TRUE(result.IsSuccess());
+    EXPECT_TRUE(result.usedBranchCleanup);
     ASSERT_EQ(result.candidates.size(), 1U);
     const auto& candidate = result.candidates.front();
     ASSERT_EQ(candidate.inferredSyntheticEdgeKinds.size(), candidate.inferredSyntheticEdgeCount);

@@ -475,6 +475,15 @@ namespace Geometry
             return {};
         }
 
+        if (const auto* nurbs = dynamic_cast<const SCNurbsCurve3d*>(&curve);
+            nurbs != nullptr && nurbs->Degree() >= 1 && nurbs->Degree() <= 16 &&
+            std::count(nurbs->Knots().begin(), nurbs->Knots().end(), range.min) >= nurbs->Degree() + 1 &&
+            std::count(nurbs->Knots().begin(), nurbs->Knots().end(), range.max) >= nurbs->Degree() + 1)
+        {
+            const auto all = IntersectAllLineCurveWithStatus(line, curve, tolerance);
+            return all.hits.empty() ? SCLineCurveIntersection3d{} : all.hits.front();
+        }
+
         std::vector<double> curveBoundaries{range.min, range.max};
         if (const auto* nurbsCurve = dynamic_cast<const SCNurbsCurve3d*>(&curve))
         {
@@ -722,6 +731,100 @@ namespace Geometry
         return RefineLineSurfaceIntersection(line, surface, bestT, bestU, bestV, tolerance);
     }
 
+    SCLineSurfaceIntersections3dWithStatus IntersectAllLineSurfaceWithStatus(
+        const SCLine3d& line, const ISCSurface& surface, const SCGeometryTolerance3d& tolerance)
+    {
+        SCLineSurfaceIntersections3dWithStatus result;
+        if (!tolerance.IsValid() || !line.IsValid(tolerance.distanceEpsilon) || !surface.IsValid(tolerance))
+            return result;
+
+        result.state = SCGeometryOperationState::Unknown;
+        result.evidence.hit = SCGeometryEvidenceState::Unknown;
+        result.evidence.negativeCompleteness = SCGeometryEvidenceState::Unknown;
+        result.evidence.reasons = SCGeometryFailureReason::SearchIncomplete;
+        const auto append = [&](const SCLineSurfaceIntersection3d& hit) {
+            if (!hit.intersects || hit.liesOnSurface || !hit.IsValid()) return;
+            const SCPoint3d actual = surface.PointAt(hit.u, hit.v);
+            const SCPoint3d linePoint = line.PointAt(hit.lineParameter);
+            if (!actual.IsValid() || !linePoint.IsValid() ||
+                !Detail::SameRoundedPosition(actual, hit.point) ||
+                Norm(linePoint - actual) > tolerance.distanceEpsilon) return;
+            for (const auto& previous : result.hits)
+            {
+                if (std::abs(previous.lineParameter - hit.lineParameter) <= tolerance.parameterEpsilon &&
+                    std::abs(previous.u - hit.u) <= tolerance.parameterEpsilon &&
+                    std::abs(previous.v - hit.v) <= tolerance.parameterEpsilon) return;
+            }
+            result.hits.push_back(hit);
+        };
+
+        if (dynamic_cast<const SCPlaneSurface*>(&surface) != nullptr)
+        {
+            const auto planar = IntersectLineSurfaceWithStatus(line, surface, tolerance);
+            result.state = planar.state;
+            result.evidence = planar.evidence;
+            if (planar.payloadValid) append(planar.payload);
+            if (planar.payloadValid && result.hits.empty())
+            {
+                result.state = SCGeometryOperationState::Unknown;
+                result.evidence.hit = SCGeometryEvidenceState::Unknown;
+                result.evidence.negativeCompleteness = SCGeometryEvidenceState::Unknown;
+                result.evidence.reasons = SCGeometryFailureReason::SearchIncomplete;
+            }
+            return result;
+        }
+
+        const SCLineSurfaceIntersection3d first = Intersect(line, surface, tolerance);
+        if (first.liesOnSurface)
+        {
+            result.state = SCGeometryOperationState::NonUnique;
+            result.evidence.hit = SCGeometryEvidenceState::Verified;
+            result.evidence.negativeCompleteness = SCGeometryEvidenceState::NotApplicable;
+            result.evidence.reasons = SCGeometryFailureReason::NonUnique;
+            return result;
+        }
+        append(first);
+        const SCIntervald uRange = surface.URange();
+        const SCIntervald vRange = surface.VRange();
+        std::vector<double> uBoundaries{uRange.min, uRange.max};
+        std::vector<double> vBoundaries{vRange.min, vRange.max};
+        if (const auto* nurbs = dynamic_cast<const SCNurbsSurface*>(&surface))
+        {
+            uBoundaries = Detail::KnotSpanBoundaries(
+                uRange, nurbs->KnotsU(), nurbs->DegreeU(), nurbs->ControlPointCountU());
+            vBoundaries = Detail::KnotSpanBoundaries(
+                vRange, nurbs->KnotsV(), nurbs->DegreeV(), nurbs->ControlPointCountV());
+        }
+        const auto seeds = Detail::AdaptiveSurfaceParameterSeeds(
+            surface, std::move(uBoundaries), std::move(vBoundaries),
+            tolerance.distanceEpsilon * 4.0);
+        for (const auto& seed : seeds)
+        {
+            const SCPoint3d position = surface.PointAt(seed.u, seed.v);
+            if (!position.IsValid()) continue;
+            const SCLineProjection3d projection = ProjectPointToLine(position, line, tolerance);
+            if (!std::isfinite(projection.parameter)) continue;
+            SCLineSurfaceIntersection3d hit = TryRefineLineSurfaceNewton(
+                line, surface, projection.parameter, seed.u, seed.v, tolerance);
+            if (!hit.intersects)
+                hit = RefineLineSurfaceIntersection(
+                    line, surface, projection.parameter, seed.u, seed.v, tolerance);
+            append(hit);
+        }
+        std::sort(result.hits.begin(), result.hits.end(), [](const auto& left, const auto& right) {
+            if (left.lineParameter != right.lineParameter)
+                return left.lineParameter < right.lineParameter;
+            if (left.u != right.u) return left.u < right.u;
+            return left.v < right.v;
+        });
+        if (!result.hits.empty())
+        {
+            result.state = SCGeometryOperationState::HasResult;
+            result.evidence.hit = SCGeometryEvidenceState::Verified;
+        }
+        return result;
+    }
+
     SCLineBrepEdgeIntersection3d Intersect(const SCLine3d& line, const SCBrepEdge& edge, const SCGeometryTolerance3d& tolerance)
     {
         if (!line.IsValid(tolerance.distanceEpsilon) || !edge.IsValid(tolerance) || edge.Curve() == nullptr)
@@ -947,6 +1050,15 @@ namespace Geometry
         if (!range.IsValid())
         {
             return {};
+        }
+
+        if (const auto* nurbs = dynamic_cast<const SCNurbsCurve3d*>(&curve);
+            nurbs != nullptr && nurbs->Degree() >= 1 && nurbs->Degree() <= 16 &&
+            std::count(nurbs->Knots().begin(), nurbs->Knots().end(), range.min) >= nurbs->Degree() + 1 &&
+            std::count(nurbs->Knots().begin(), nurbs->Knots().end(), range.max) >= nurbs->Degree() + 1)
+        {
+            const auto all = IntersectAllPlaneCurveWithStatus(plane, curve, tolerance);
+            return all.hits.empty() ? SCPlaneCurveIntersection3d{} : all.hits.front();
         }
 
         std::vector<double> parameterBoundaries{range.min, range.max};

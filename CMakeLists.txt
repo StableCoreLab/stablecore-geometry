@@ -318,6 +318,7 @@ set(SCGEOMETRY_SOURCES
     Geometry2d/SCSegmentSearch2d.cpp
     Geometry3d/GeometryEvidence3d.cpp
     Geometry3d/Intersection3d.cpp
+    Geometry3d/PlaneCurveRoots.cpp
     Geometry3d/PlaneSurface.cpp
     Geometry3d/Projection3d.cpp
     Geometry3d/Relation3d.cpp

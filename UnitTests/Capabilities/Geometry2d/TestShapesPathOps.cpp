@@ -191,3 +191,59 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
     ASSERT_TRUE(normalizedByLines.IsValid());
     EXPECT_NEAR(normalizedByLines.Area(), 16.0, 1e-6);
 }
+
+TEST(ShapesPathopsTest, CutPolygonUsesCallerToleranceForBothBoundaryPaths)
+{
+    const SCPolygon2d square(SCPolyline2d(
+        {{0.0, 0.0}, {4.0, 0.0}, {4.0, 4.0}, {0.0, 4.0}}, SCPolylineClosure::Closed));
+    const SCPolygon2d donut(SCPolyline2d(
+        {{0.0, 0.0}, {4.0, 0.0}, {4.0, 4.0}, {0.0, 4.0}}, SCPolylineClosure::Closed),
+        {SCPolyline2d({{1.0, 1.0}, {1.0, 3.0}, {3.0, 3.0}, {3.0, 1.0}}, SCPolylineClosure::Closed)});
+    const SCLineSegment2d shortCutter({2.0, -1.0}, {2.0, -1.0 + 1e-5});
+    for (const SCPolygon2d* polygon : {&square, &donut})
+    {
+        EXPECT_FALSE(Geometry::CutPolygonParts(*polygon, shortCutter, 1e-4).has_value());
+        EXPECT_FALSE(Geometry::CutPolygonParts(*polygon,
+            SCLineSegment2d({2.0, 0.0}, {2.0, 0.0}), 1e-9).has_value());
+        const auto smallCutter = Geometry::CutPolygonParts(*polygon,
+            SCLineSegment2d({2.0, -1e-10}, {2.0, 1e-10}), 1e-12);
+        ASSERT_TRUE(smallCutter.has_value());
+        ASSERT_EQ(smallCutter->left.Count(), 1U);
+        ASSERT_EQ(smallCutter->right.Count(), 1U);
+        const double expectedArea = polygon == &square ? 8.0 : 6.0;
+        EXPECT_NEAR(smallCutter->left[0].Area(), expectedArea, 1e-8);
+        EXPECT_NEAR(smallCutter->right[0].Area(), expectedArea, 1e-8);
+    }
+}
+
+TEST(ShapesPathopsTest, CutConcavePolygonKeepsDisconnectedPartsWithDistantCutter)
+{
+    const SCPolygon2d concave(SCPolyline2d(
+        {{0.0, 0.0}, {4.0, 0.0}, {4.0, 1.0}, {1.0, 1.0},
+         {1.0, 3.0}, {4.0, 3.0}, {4.0, 4.0}, {0.0, 4.0}},
+        SCPolylineClosure::Closed));
+    ASSERT_TRUE(concave.IsValid());
+    const auto parts = Geometry::CutPolygonParts(
+        concave, SCLineSegment2d({2.0, -1000000.0}, {2.0, -999999.0}));
+    ASSERT_TRUE(parts.has_value());
+    ASSERT_EQ(parts->left.Count(), 1U);
+    ASSERT_EQ(parts->right.Count(), 2U);
+    double rightArea = 0.0;
+    for (std::size_t i = 0; i < parts->right.Count(); ++i) rightArea += parts->right[i].Area();
+    EXPECT_NEAR(parts->left[0].Area(), 6.0, 1e-8);
+    EXPECT_NEAR(rightArea, 4.0, 1e-8);
+}
+
+TEST(ShapesPathopsTest, CutPolygonAcceptsFiniteLongCutter)
+{
+    const SCPolygon2d square(SCPolyline2d(
+        {{0.0, 0.0}, {4.0, 0.0}, {4.0, 4.0}, {0.0, 4.0}},
+        SCPolylineClosure::Closed));
+    const auto parts = Geometry::CutPolygonParts(
+        square, SCLineSegment2d({2.0, -1e160}, {2.0, 1e160}));
+    ASSERT_TRUE(parts.has_value());
+    ASSERT_EQ(parts->left.Count(), 1U);
+    ASSERT_EQ(parts->right.Count(), 1U);
+    EXPECT_NEAR(parts->left[0].Area(), 8.0, 1e-9);
+    EXPECT_NEAR(parts->right[0].Area(), 8.0, 1e-9);
+}

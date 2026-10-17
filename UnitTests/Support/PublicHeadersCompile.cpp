@@ -1,4 +1,6 @@
 // Compiles the complete installed public header surface in a consumer-like target.
+namespace Geometry { struct SCSearchPolyDiagnostics2d; }
+
 #include "Core/PathGeometry.h"
 #include "Core/ArcOps3d.h"
 #include "Core/Offset.h"

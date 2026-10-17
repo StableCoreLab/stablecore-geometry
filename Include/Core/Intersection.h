@@ -12,6 +12,8 @@
 #include "Geometry2d/ISCSegment2d.h"
 #include "Support/Epsilon.h"
 
+#include <vector>
+
 namespace Geometry
 {
     class SCBrepBody;
@@ -100,6 +102,28 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API SCLineCurveIntersection3dWithStatus IntersectLineCurveWithStatus(
         const SCLine3d& primitive, const ISCCurve3d& target, const SCGeometryTolerance3d& tolerance = {});
 
+    struct GEOMETRY_API SCLineCurveIntersections3dWithStatus
+    {
+        SCGeometryOperationState state{SCGeometryOperationState::InvalidInput};
+        std::vector<SCLineCurveIntersection3d> hits{};
+        SCGeometryEvidenceStatus evidence{};
+    };
+
+    // NURBS 曲线按曲线参数升序返回所有已验证命中；搜索未穷尽时保留已找到的点。
+    [[nodiscard]] GEOMETRY_API SCLineCurveIntersections3dWithStatus IntersectAllLineCurveWithStatus(
+        const SCLine3d& primitive, const ISCCurve3d& target, const SCGeometryTolerance3d& tolerance = {});
+
+    struct GEOMETRY_API SCLineSurfaceIntersections3dWithStatus
+    {
+        SCGeometryOperationState state{SCGeometryOperationState::InvalidInput};
+        std::vector<SCLineSurfaceIntersection3d> hits{};
+        SCGeometryEvidenceStatus evidence{};
+    };
+
+    // 返回所有已验证的种子盆地命中；非平面曲面的完整性保持 Unknown。
+    [[nodiscard]] GEOMETRY_API SCLineSurfaceIntersections3dWithStatus IntersectAllLineSurfaceWithStatus(
+        const SCLine3d& primitive, const ISCSurface& target, const SCGeometryTolerance3d& tolerance = {});
+
     struct GEOMETRY_API SCLineCurveOnSurfaceIntersection3dWithStatus
     {
         SCGeometryOperationState state{SCGeometryOperationState::InvalidInput};
@@ -118,6 +142,19 @@ namespace Geometry
         SCGeometryEvidenceStatus evidence{};
     };
     [[nodiscard]] GEOMETRY_API SCPlaneCurveIntersection3dWithStatus IntersectPlaneCurveWithStatus(
+        const SCPlane& primitive, const ISCCurve3d& target, const SCGeometryTolerance3d& tolerance = {});
+
+    struct GEOMETRY_API SCPlaneCurveIntersections3dWithStatus
+    {
+        SCGeometryOperationState state{SCGeometryOperationState::InvalidInput};
+        std::vector<SCPlaneCurveIntersection3d> hits{};
+        SCGeometryEvidenceStatus evidence{};
+    };
+
+    // 按曲线参数升序返回本次搜索已验证的孤立交点。NURBS 搜索未穷尽时保留已找到的点，
+    // evidence.negativeCompleteness 为 Unknown；受支持的 NURBS 存在非零长度重合区间时，
+    // state 为 NonUnique。其他曲线类型的连续重合判定以其具体实现为准。
+    [[nodiscard]] GEOMETRY_API SCPlaneCurveIntersections3dWithStatus IntersectAllPlaneCurveWithStatus(
         const SCPlane& primitive, const ISCCurve3d& target, const SCGeometryTolerance3d& tolerance = {});
 
     struct GEOMETRY_API SCPlaneCurveOnSurfaceIntersection3dWithStatus

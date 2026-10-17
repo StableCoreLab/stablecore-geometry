@@ -16,6 +16,7 @@
 #include "Brep/SCBrepVertex.h"
 #include "Brep/PolyhedronBody.h"
 #include "Geometry3d/SCLineCurve3d.h"
+#include "Geometry3d/SCNurbsCurve3d.h"
 #include "Geometry3d/SCPlaneSurface.h"
 #include "Geometry3d/TriangleMesh.h"
 #include "../Detail/BrepFaceRegion.h"
@@ -331,6 +332,17 @@ namespace Geometry
                 }
             }
         }
+        if (dynamic_cast<const SCNurbsCurve3d*>(&curve) != nullptr) {
+            const auto all = IntersectAllLineCurveWithStatus(line, curve, tolerance);
+            SCLineCurveIntersection3dWithStatus result{};
+            result.state = all.state;
+            result.evidence = all.evidence;
+            if (!all.hits.empty()) {
+                result.payload = all.hits.front();
+                result.payloadValid = result.payload.IsValid();
+            }
+            return result;
+        }
         const auto hit = Intersect(line, curve, tolerance);
         return LineCandidate<SCLineCurveIntersection3dWithStatus>(line, hit, hit.intersects ? curve.PointAt(hit.curveParameter) : SCPoint3d{}, tolerance, false);
     }
@@ -386,29 +398,19 @@ namespace Geometry
     {
         SCPlaneCurveIntersection3dWithStatus result{};
         if (!tolerance.IsValid() || !plane.IsValid(tolerance.distanceEpsilon) || !curve.IsValid(tolerance)) return result;
-        Unknown(result, Reason::SearchIncomplete | Reason::NoProof);
-        if (const auto* line = dynamic_cast<const SCLineCurve3d*>(&curve)) {
-            const auto relation = IntersectLinePlaneWithStatus(line->Line(), plane, tolerance);
-            if (relation.state==State::NonUnique && line->ParameterRange().min < line->ParameterRange().max) {
-                result.state = State::NonUnique;
-                result.evidence.hit = Evidence::Verified;
-                result.evidence.negativeCompleteness = Evidence::NotApplicable;
-                result.evidence.reasons = Reason::NonUnique;
-                return result;
+        const auto all = IntersectAllPlaneCurveWithStatus(plane, curve, tolerance);
+        result.state = all.state;
+        result.evidence = all.evidence;
+        if (!all.hits.empty()) {
+            const auto& hit = all.hits.front();
+            if (hit.intersects && hit.IsValid() &&
+                Detail::SameRoundedPosition(curve.PointAt(hit.curveParameter), hit.point) &&
+                Distance(hit.point, plane) <= tolerance.distanceEpsilon) {
+                result.payloadValid = true;
+                result.payload = hit;
+            } else {
+                Unknown(result, Reason::SearchIncomplete | Reason::NoProof);
             }
-            if (relation.evidence.negativeCompleteness==Evidence::Verified) {
-                result.evidence.negativeCompleteness = Evidence::Verified;
-                result.evidence.reasons = Reason::None;
-                result.state = State::NoResult;
-            }
-        }
-        const auto hit = Intersect(plane, curve, tolerance);
-        if (hit.intersects && hit.IsValid() && Detail::SameRoundedPosition(curve.PointAt(hit.curveParameter), hit.point) &&
-            Distance(hit.point, plane) <= tolerance.distanceEpsilon) {
-            result.state = State::HasResult;
-            result.payloadValid = true;
-            result.payload = hit;
-            result.evidence.hit = Evidence::Verified;
         }
         return result;
     }
