@@ -272,7 +272,6 @@ set(SCGEOMETRY_SOURCES
     Brep/MeshRepair.cpp
     Brep/Tessellation.cpp
     Brep/Topology.cpp
-    Core/Algorithms.cpp
     Core/ArcOps3d.cpp
     Core/AxisOps.cpp
     Core/Boolean.cpp

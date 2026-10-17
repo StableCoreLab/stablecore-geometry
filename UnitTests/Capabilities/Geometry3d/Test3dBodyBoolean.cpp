@@ -12,7 +12,7 @@
 #include "Geometry3d/SCNurbsCurve3d.h"
 #include "Geometry3d/SCNurbsSurface.h"
 #include "Geometry3d/SCPlaneSurface.h"
-#include "support/Fixtures3d.h"
+#include "Support/Fixtures3d.h"
 
 using Geometry::BodyBooleanIssue3d;
 using Geometry::BodyBooleanOptions3d;

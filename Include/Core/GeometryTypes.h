@@ -29,22 +29,6 @@ namespace Geometry
 {
     struct SCCurveEval3d;
 
-    using Geometry::SCBox2d;
-    using Geometry::SCBox3d;
-    using Geometry::SCDirection3d;
-    using Geometry::SCIntervald;
-    using Geometry::SCLine3d;
-    using Geometry::SCLineSegment3d;
-    using Geometry::SCMatrix3d;
-    using Geometry::SCPlane;
-    using Geometry::SCPoint2d;
-    using Geometry::SCPoint3d;
-    using Geometry::SCRay3d;
-    using Geometry::SCTransform3d;
-    using Geometry::SCTriangle3d;
-    using Geometry::SCVector2d;
-    using Geometry::SCVector3d;
-
     // Projection results are declared in ProjectionResults.h.
     struct GEOMETRY_API SCLinePlaneIntersection3d
     {
@@ -314,16 +298,3 @@ namespace Geometry
     };
 
 }  // namespace Geometry
-
-namespace Geometry
-{
-    namespace Sdk = ::Geometry;
-}
-
-
-
-
-
-
-
-
