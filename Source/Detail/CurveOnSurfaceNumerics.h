@@ -110,15 +110,8 @@ namespace Geometry::Detail
         {
             return result;
         }
-        const SCPoint2d uv0 = curve.UvPointAt(segmentIndex);
-        const SCPoint2d uv1 = curve.UvPointAt((segmentIndex + 1) % pointCount);
-        if (!uv0.IsValid() || !uv1.IsValid())
-        {
-            return result;
-        }
         result.parameter = parameter;
-        result.uv = SCPoint2d{std::lerp(uv0.x, uv1.x, parameter),
-                              std::lerp(uv0.y, uv1.y, parameter)};
+        result.uv = curve.UvAt(static_cast<double>(segmentIndex) + parameter);
         if (!result.uv.IsValid())
         {
             return result;

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <algorithm>
 #include <cmath>
+#include <numbers>
 #include <sstream>
 #include <string>
 
@@ -41,13 +41,20 @@ namespace Geometry
 
         [[nodiscard]] bool AlmostEquals(const SCDirection3d& other, double angleEps = kDefaultEpsilon) const
         {
-            if (!IsValid() || !other.IsValid())
+            if (!IsValid() || !other.IsValid() || !std::isfinite(angleEps) || angleEps < 0.0)
             {
                 return false;
             }
 
-            const double cosine = std::clamp(Dot(value, other.value), -1.0, 1.0);
-            return cosine >= std::cos(angleEps);
+            if (angleEps >= std::numbers::pi_v<double>)
+            {
+                return true;
+            }
+
+            const SCVector3d first = value.Normalized();
+            const SCVector3d second = other.value.Normalized();
+            const double chord = std::hypot(first.x - second.x, first.y - second.y, first.z - second.z);
+            return chord <= 2.0 * std::sin(angleEps * 0.5);
         }
 
         [[nodiscard]] std::string DebugString() const

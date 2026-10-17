@@ -49,8 +49,8 @@ namespace Geometry
     bool SCArcSegment2d::IsValid() const
     {
         return center.IsValid() && std::isfinite(radius) && std::isfinite(startAngle) && std::isfinite(sweepAngle) &&
-               radius > 0.0 && std::abs(sweepAngle) > Geometry::kArcSegmentDefaultEpsilon &&
-               std::abs(sweepAngle) <= 2.0 * std::numbers::pi_v<double> + Geometry::kArcSegmentDefaultEpsilon;
+               radius > 0.0 && std::abs(sweepAngle) > Geometry::kDefaultEpsilon &&
+               std::abs(sweepAngle) <= 2.0 * std::numbers::pi_v<double> + Geometry::kDefaultEpsilon;
     }
 
     SCArcDirection SCArcSegment2d::Direction() const
@@ -176,11 +176,11 @@ namespace Geometry
         if (sweepAngle >= 0.0)
         {
             const double delta = NormalizeAngle(candidateAngle - startAngle);
-            return delta <= sweepAngle + Geometry::kArcSegmentDefaultEpsilon;
+            return delta <= sweepAngle + Geometry::kDefaultEpsilon;
         }
 
         const double delta = NormalizeAngle(startAngle - candidateAngle);
-        return delta <= (-sweepAngle) + Geometry::kArcSegmentDefaultEpsilon;
+        return delta <= (-sweepAngle) + Geometry::kDefaultEpsilon;
     }
 
     SCPoint2d SCArcSegment2d::PointAtAngle(double angle) const

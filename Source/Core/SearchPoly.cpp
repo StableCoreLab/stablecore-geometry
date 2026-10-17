@@ -1,4 +1,5 @@
 #include "Core/SearchPoly.h"
+#include "../Detail/TolerancePolicy2d.h"
 
 #include <algorithm>
 #include <cmath>
@@ -422,7 +423,7 @@ namespace Geometry
             std::sort(intervals.begin(),
                       intervals.end(),
                       [](const std::pair<double, double>& left, const std::pair<double, double>& right) {
-                          if (std::abs(left.first - right.first) > Geometry::kSearchPolyComparisonEpsilon)
+                          if (std::abs(left.first - right.first) > Geometry::Detail::kComparisonEpsilon2d)
                           {
                               return left.first < right.first;
                           }
@@ -590,11 +591,11 @@ namespace Geometry
                 candidates.begin(),
                 candidates.end(),
                 [](const SCSearchPolyCandidate2d& left, const SCSearchPolyCandidate2d& right) {
-                    if (std::abs(left.branchScore - right.branchScore) > Geometry::kSearchPolyComparisonEpsilon)
+                    if (std::abs(left.branchScore - right.branchScore) > Geometry::Detail::kComparisonEpsilon2d)
                     {
                         return left.branchScore > right.branchScore;
                     }
-                    if (std::abs(left.absoluteArea - right.absoluteArea) > Geometry::kSearchPolyComparisonEpsilon)
+                    if (std::abs(left.absoluteArea - right.absoluteArea) > Geometry::Detail::kComparisonEpsilon2d)
                     {
                         return left.absoluteArea > right.absoluteArea;
                     }
@@ -647,7 +648,7 @@ namespace Geometry
             {
                 const SCSearchPolyCandidate2d& candidate = result.candidates[index];
                 if (std::abs(candidate.branchScore - bestCandidate.branchScore) <=
-                    Geometry::kSearchPolyComparisonEpsilon)
+                    Geometry::Detail::kComparisonEpsilon2d)
                 {
                     ++result.ambiguousTopCandidateCount;
                     ambiguousTopPenaltyKinds.push_back(candidate.dominantPenaltyKind);

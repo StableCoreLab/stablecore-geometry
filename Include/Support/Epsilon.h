@@ -88,8 +88,8 @@ namespace Geometry
     // candidate ranking.
     extern GEOMETRY_DATA_API const double kSearchPolyDefaultEpsilon;
 
-    // Boolean helpers use these floors for their internal tolerance fallback,
-    // area filtering, and rebuild retry logic.
+    // 兼容旧的模块专用常量名；内部二维算法的固定下限统一定义于
+    // Source/Detail/TolerancePolicy2d.h，并保持这些导出符号的既有值。
     extern GEOMETRY_DATA_API const double kBooleanComparisonEpsilon;
     extern GEOMETRY_DATA_API const double kBooleanAreaEpsilon;
     extern GEOMETRY_DATA_API const double kBooleanRebuildFallbackEpsilon;

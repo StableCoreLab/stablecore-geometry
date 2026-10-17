@@ -4,13 +4,16 @@
 
 #include <cstddef>
 #include <memory>
+#include <type_traits>
+#include <utility>
 
 #include "Geometry2d/SCPolyline2d.h"
+#include "Geometry3d/ISCCurve3d.h"
 #include "Geometry3d/ISCSurface.h"
 
 namespace Geometry
 {
-    class GEOMETRY_API SCCurveOnSurface
+    class GEOMETRY_API SCCurveOnSurface final : public ISCCurve3d
     {
     public:
         SCCurveOnSurface() = default;
@@ -19,10 +22,13 @@ namespace Geometry
         {
         }
 
-        [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const
-        {
-            return supportSurface_ != nullptr && supportSurface_->IsValid(tolerance) && uvCurve_.IsValid();
-        }
+        [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const override;
+        [[nodiscard]] SCIntervald ParameterRange() const override;
+        [[nodiscard]] bool IsClosed(const SCGeometryTolerance3d& tolerance = {}) const override;
+        [[nodiscard]] bool IsPeriodic(const SCGeometryTolerance3d& tolerance = {}) const override;
+        [[nodiscard]] SCPoint3d PointAt(double parameter) const override;
+        [[nodiscard]] SCCurveEval3d Evaluate(double parameter, int derivativeOrder = 1) const override;
+        [[nodiscard]] std::unique_ptr<ISCCurve3d> Clone() const override;
 
         [[nodiscard]] const ISCSurface* SupportSurface() const
         {
@@ -44,6 +50,8 @@ namespace Geometry
             return uvCurve_.PointAt(index);
         }
 
+        [[nodiscard]] SCPoint2d UvAt(double parameter) const;
+
         [[nodiscard]] SCPoint3d PointAt(std::size_t index) const
         {
             if (supportSurface_ == nullptr || index >= uvCurve_.PointCount())
@@ -55,20 +63,21 @@ namespace Geometry
             return supportSurface_->PointAt(uv.x, uv.y);
         }
 
-        [[nodiscard]] SCBox3d Bounds() const
+        template <typename T>
+            requires (std::is_integral_v<T> && !std::is_same_v<T, std::size_t>)
+        [[nodiscard]] SCPoint3d PointAt(T index) const
         {
-            SCBox3d bounds{};
-            if (supportSurface_ == nullptr)
+            if constexpr (std::is_signed_v<T>)
             {
-                return bounds;
+                if (index < 0)
+                {
+                    return {};
+                }
             }
-
-            for (std::size_t i = 0; i < uvCurve_.PointCount(); ++i)
-            {
-                bounds.ExpandToInclude(PointAt(i));
-            }
-            return bounds;
+            return PointAt(static_cast<std::size_t>(index));
         }
+
+        [[nodiscard]] SCBox3d Bounds() const override;
 
     private:
         std::shared_ptr<ISCSurface> supportSurface_{};

@@ -361,39 +361,6 @@ namespace Geometry
             return true;
         }
 
-        [[nodiscard]] bool AppendLoopVerticesFromBrepTopology(const std::vector<SCBrepVertex>& vertices,
-                                                              const std::vector<SCBrepEdge>& edges,
-                                                              const SCBrepLoop& loop,
-                                                              std::vector<SCPoint3d>& loopVertices)
-        {
-            loopVertices.clear();
-            if (!loop.IsValid())
-            {
-                return false;
-            }
-
-            loopVertices.reserve(loop.CoedgeCount());
-            for (std::size_t i = 0; i < loop.CoedgeCount(); ++i)
-            {
-                const SCBrepCoedge& coedge = loop.CoedgeAtRef(i);
-                if (coedge.EdgeIndex() >= edges.size())
-                {
-                    return false;
-                }
-
-                const SCBrepEdge& edge = edges[coedge.EdgeIndex()];
-                const std::size_t vertexIndex = coedge.Reversed() ? edge.EndVertexIndex() : edge.StartVertexIndex();
-                if (vertexIndex >= vertices.size())
-                {
-                    return false;
-                }
-
-                loopVertices.push_back(vertices[vertexIndex].Point());
-            }
-
-            return loopVertices.size() >= 3;
-        }
-
         [[nodiscard]] bool BuildLoopFromTrim(const SCCurveOnSurface& trim, std::vector<SCPoint3d>& vertices, double eps)
         {
             if (!trim.IsValid() || trim.PointCount() < 3)
@@ -411,14 +378,14 @@ namespace Geometry
                     return false;
                 }
 
-                if (vertices.empty() || !vertices.back().AlmostEquals(point, Geometry::kLoopCleanupEpsilon))
+                if (vertices.empty() || !vertices.back().AlmostEquals(point, Geometry::kDefaultEpsilon))
                 {
                     vertices.push_back(point);
                 }
             }
 
             while (vertices.size() >= 2 &&
-                   vertices.front().AlmostEquals(vertices.back(), Geometry::kLoopCleanupEpsilon))
+                   vertices.front().AlmostEquals(vertices.back(), Geometry::kDefaultEpsilon))
             {
                 vertices.pop_back();
             }
@@ -2007,7 +1974,7 @@ namespace Geometry
                 try
                 {
                     std::vector<SCPoint3d> outerLoopVertices;
-                    if (!AppendLoopVerticesFromBrepTopology(vertices, edges, outerLoop, outerLoopVertices))
+                    if (!Detail::AppendRawLoopVertices(vertices, edges, outerLoop, outerLoopVertices))
                     {
                         return {false, BrepConversionIssue3d::InvalidFace, faceIndex, {}};
                     }
@@ -2078,7 +2045,7 @@ namespace Geometry
                         try
                         {
                             std::vector<SCPoint3d> holeLoopVertices;
-                            if (!AppendLoopVerticesFromBrepTopology(vertices, edges, holeLoop, holeLoopVertices))
+                            if (!Detail::AppendRawLoopVertices(vertices, edges, holeLoop, holeLoopVertices))
                             {
                                 return {false, BrepConversionIssue3d::InvalidFace, faceIndex, {}};
                             }
@@ -2159,16 +2126,13 @@ namespace Geometry
                         for (std::size_t i = 0; i < outerLoop.CoedgeCount(); ++i)
                         {
                             const SCBrepCoedge& coedge = outerLoop.CoedgeAtRef(i);
-                            if (coedge.EdgeIndex() >= edges.size())
+                            std::size_t startVertexIndex = 0;
+                            std::size_t endVertexIndex = 0;
+                            if (!Detail::TryGetCoedgeVertexIndices(edges, vertices.size(), coedge,
+                                                                   startVertexIndex, endVertexIndex))
                             {
                                 return false;
                             }
-
-                            const SCBrepEdge& edge = edges[coedge.EdgeIndex()];
-                            const std::size_t startVertexIndex =
-                                coedge.Reversed() ? edge.EndVertexIndex() : edge.StartVertexIndex();
-                            const std::size_t endVertexIndex =
-                                coedge.Reversed() ? edge.StartVertexIndex() : edge.EndVertexIndex();
                             ++edgeUseCounts[std::minmax(startVertexIndex, endVertexIndex)];
                         }
                     }

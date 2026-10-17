@@ -24,7 +24,7 @@ namespace Geometry
         [[nodiscard]] SCPoint2d MirrorPoint(const SCPoint2d& point, const SCPoint2d& linePoint, const SCVector2d& lineDir)
         {
             const double lengthSquared = lineDir.LengthSquared();
-            if (lengthSquared <= Geometry::kTransformDefaultEpsilon)
+            if (lengthSquared <= Geometry::kDefaultEpsilon)
             {
                 return point;
             }

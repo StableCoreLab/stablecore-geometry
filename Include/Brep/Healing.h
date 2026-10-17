@@ -1,10 +1,10 @@
 #pragma once
 #include "Brep/SCBrepBody.h"
 #include "Brep/PolyhedronBody.h"
-#include "Core/GeometryTypes.h"
 #include "Export/GeometryExport.h"
 #include "Geometry3d/TriangleMesh.h"
 #include "Support/Epsilon.h"
+#include "Types/Geometry3d/SCGeometryTypes3d.h"
 
 namespace Geometry
 {

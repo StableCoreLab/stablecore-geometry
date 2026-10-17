@@ -15,6 +15,7 @@
 #include "../Detail/PolygonNesting2d.h"
 #include "../Detail/RingVertices2d.h"
 #include "../Detail/SegmentSubdivision2d.h"
+#include "../Detail/TolerancePolicy2d.h"
 #include "Core/PolygonRelation2d.h"
 #include "Core/Editing.h"
 #include "Core/Intersection.h"
@@ -117,7 +118,7 @@ namespace Geometry
                 box.maxY = std::max(box.maxY, point.y);
             }
 
-            const double tol = std::max(Geometry::kBooleanComparisonEpsilon, 0.05 * eps);
+            const double tol = std::max(Geometry::Detail::kComparisonEpsilon2d, 0.05 * eps);
             for (std::size_t i = 0; i < outer.PointCount(); ++i)
             {
                 const SCPoint2d current = outer.PointAt(i);
@@ -245,7 +246,7 @@ namespace Geometry
             }
 
             const SCPolyline2d normalizedOuter =
-                Normalize(subject.OuterRing(), std::max(eps, Geometry::kBooleanRebuildFallbackEpsilon));
+                Normalize(subject.OuterRing(), std::max(eps, Geometry::Detail::kRebuildFallbackEpsilon2d));
             if (!normalizedOuter.IsValid() || normalizedOuter.PointCount() < 3)
             {
                 return fallback;
@@ -260,7 +261,7 @@ namespace Geometry
             }
 
             std::vector<SCPoint2d> clipped = ClipPointsToAxisAlignedBox(subjectPoints, box, eps);
-            clipped = SimplifyRingVertices(std::move(clipped), std::max(eps, Geometry::kBooleanRebuildFallbackEpsilon));
+            clipped = SimplifyRingVertices(std::move(clipped), std::max(eps, Geometry::Detail::kRebuildFallbackEpsilon2d));
             if (clipped.size() < 3)
             {
                 return fallback;
@@ -278,7 +279,7 @@ namespace Geometry
                 SCMultiPolyline2d boundaries;
                 boundaries.Add(clippedPolygon.OuterRing());
                 const SCMultiPolygon2d rebuilt =
-                    BuildMultiPolygonByLines(boundaries, std::max(eps, Geometry::kBooleanRebuildFallbackEpsilon));
+                    BuildMultiPolygonByLines(boundaries, std::max(eps, Geometry::Detail::kRebuildFallbackEpsilon2d));
                 SCPolygon2d best;
                 double bestArea = 0.0;
                 for (std::size_t i = 0; i < rebuilt.Size(); ++i)
@@ -347,7 +348,7 @@ namespace Geometry
 
             const auto scaledTolerance=Detail::StableProduct(eps,eps,64);
             if (!scaledTolerance) return {};
-            const double areaTol = std::max(Geometry::kBooleanAreaEpsilon, *scaledTolerance);
+            const double areaTol = std::max(Geometry::Detail::kAreaEpsilon2d, *scaledTolerance);
             auto addStrip = [&](double minX, double minY, double maxX, double maxY) {
                 if (maxX - minX <= eps || maxY - minY <= eps)
                 {
@@ -471,7 +472,7 @@ namespace Geometry
                 outerPoints.push_back(outer.PointAt(i));
             }
 
-            const double simplifyEps = std::max(Geometry::kBooleanComparisonEpsilon, 8.0 * eps);
+            const double simplifyEps = std::max(Geometry::Detail::kComparisonEpsilon2d, 8.0 * eps);
             std::vector<SCPoint2d> simplifiedOuter = SimplifyRingVertices(std::move(outerPoints), simplifyEps);
             if (simplifiedOuter.size() >= 3)
             {
@@ -496,12 +497,12 @@ namespace Geometry
             const double length = segment.Length();
             if (length <= eps)
             {
-                return Geometry::kBooleanComparisonEpsilon;
+                return Geometry::Detail::kComparisonEpsilon2d;
             }
 
             // Convert world-space tolerance into param-space tolerance so that
             // near-degenerate intersection clusters collapse consistently.
-            return std::min(1e-4, std::max(Geometry::kBooleanComparisonEpsilon, 8.0 * eps / length));
+            return std::min(1e-4, std::max(Geometry::Detail::kComparisonEpsilon2d, 8.0 * eps / length));
         }
 
         [[nodiscard]] std::vector<RawSegment> SubdivideRawSegments(const std::vector<RawSegment>& rawSegments,
@@ -566,7 +567,7 @@ namespace Geometry
             // Only remove clearly negligible fragments. Using a larger
             // threshold can break ring connectivity when near-duplicate
             // vertices encode valid edges.
-            return std::max(Geometry::kBooleanComparisonEpsilon, 0.25 * eps);
+            return std::max(Geometry::Detail::kComparisonEpsilon2d, 0.25 * eps);
         }
 
         [[nodiscard]] double ComputeVertexMergeTolerance(const std::vector<RawSegment>& segments, double eps)
@@ -586,7 +587,7 @@ namespace Geometry
                 return eps;
             }
 
-            const double floorTol = std::max(Geometry::kBooleanComparisonEpsilon, eps * 1e-3);
+            const double floorTol = std::max(Geometry::Detail::kComparisonEpsilon2d, eps * 1e-3);
             return std::max(floorTol, std::min(eps, 0.25 * minLength));
         }
 
@@ -1705,7 +1706,7 @@ namespace Geometry
         const double actualArea = TotalArea(result);
         const auto scaledTolerance=Detail::StableProduct(eps,eps,64);
         if (!scaledTolerance) return {};
-        const double areaTol = std::max(Geometry::kBooleanAreaEpsilon, *scaledTolerance);
+        const double areaTol = std::max(Geometry::Detail::kAreaEpsilon2d, *scaledTolerance);
 
         if (expectedArea > areaTol && actualArea + areaTol < expectedArea)
         {
@@ -1716,7 +1717,7 @@ namespace Geometry
             if (!boundaries.IsEmpty())
             {
                 SCMultiPolygon2d rebuilt =
-                    BuildMultiPolygonByLines(boundaries, std::max(eps, Geometry::kBooleanRebuildFallbackEpsilon));
+                    BuildMultiPolygonByLines(boundaries, std::max(eps, Geometry::Detail::kRebuildFallbackEpsilon2d));
                 if (!rebuilt.IsEmpty() && TotalArea(rebuilt) + areaTol >= expectedArea)
                 {
                     result = std::move(rebuilt);

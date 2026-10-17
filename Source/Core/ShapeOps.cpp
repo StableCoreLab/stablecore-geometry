@@ -28,7 +28,7 @@ namespace Geometry
         [[nodiscard]] SCPoint2d RingCentroid(const SCPolyline2d& ring)
         {
             const Detail::RingMoment2d moment = Detail::ComputeRingMoment(ring);
-            if (std::abs(moment.signedArea) <= Geometry::kShapeOpsDefaultEpsilon)
+            if (std::abs(moment.signedArea) <= Geometry::kDefaultEpsilon)
             {
                 return SCPoint2d{};
             }
@@ -46,7 +46,7 @@ namespace Geometry
     SCRingOrientation2d Orientation(const SCPolyline2d& ring)
     {
         const double signedArea = SignedArea(ring);
-        if (std::abs(signedArea) <= Geometry::kShapeOpsDefaultEpsilon)
+        if (std::abs(signedArea) <= Geometry::kDefaultEpsilon)
         {
             return SCRingOrientation2d::Unknown;
         }

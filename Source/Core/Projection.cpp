@@ -76,8 +76,8 @@ namespace Geometry
         return SCSegmentProjection2d{projectedPoint,
                                    parameter,
                                    DistanceSquared(point, projectedPoint),
-                                   rawParameter >= -Geometry::kProjectionDefaultEpsilon &&
-                                       rawParameter <= 1.0 + Geometry::kProjectionDefaultEpsilon};
+                                   rawParameter >= -Geometry::kDefaultEpsilon &&
+                                       rawParameter <= 1.0 + Geometry::kDefaultEpsilon};
     }
 
     SCSegmentProjection2d ProjectPointToSegment(const SCPoint2d& point,
@@ -112,8 +112,8 @@ namespace Geometry
         return SCSegmentProjection2d{projectedPoint,
                                    parameter,
                                    DistanceSquared(point, projectedPoint),
-                                   rawParameter >= -Geometry::kProjectionDefaultEpsilon &&
-                                       rawParameter <= 1.0 + Geometry::kProjectionDefaultEpsilon};
+                                   rawParameter >= -Geometry::kDefaultEpsilon &&
+                                       rawParameter <= 1.0 + Geometry::kDefaultEpsilon};
     }
 
     SCSegmentProjection2d ProjectPointToSegment(const SCPoint2d& point, const ISCSegment2d& segment, bool clampToSegment)
@@ -129,7 +129,7 @@ namespace Geometry
     double ParameterAtLength(const SCLineSegment2d& segment, double length, bool clampToSegment)
     {
         const double totalLength = segment.Length();
-        if (totalLength <= Geometry::kProjectionDefaultEpsilon)
+        if (totalLength <= Geometry::kDefaultEpsilon)
         {
             return 0.0;
         }
@@ -144,7 +144,7 @@ namespace Geometry
     double ParameterAtLength(const SCArcSegment2d& segment, double length, bool clampToSegment)
     {
         const double totalLength = segment.Length();
-        if (totalLength <= Geometry::kProjectionDefaultEpsilon)
+        if (totalLength <= Geometry::kDefaultEpsilon)
         {
             return 0.0;
         }
@@ -160,7 +160,7 @@ namespace Geometry
     {
         const SCVector2d direction = segment.endPoint - segment.startPoint;
         const double length = direction.Length();
-        if (length <= Geometry::kProjectionDefaultEpsilon)
+        if (length <= Geometry::kDefaultEpsilon)
         {
             return SCVector2d{};
         }
@@ -172,7 +172,7 @@ namespace Geometry
         const SCPoint2d point = segment.PointAt(parameter);
         SCVector2d radial = point - segment.center;
         const double radialLength = radial.Length();
-        if (radialLength <= Geometry::kProjectionDefaultEpsilon)
+        if (radialLength <= Geometry::kDefaultEpsilon)
         {
             return SCVector2d{};
         }

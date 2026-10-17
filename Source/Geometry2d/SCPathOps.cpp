@@ -16,6 +16,7 @@
 #include "../Detail/PolygonNesting2d.h"
 #include "../Detail/RingVertices2d.h"
 #include "../Detail/SegmentSubdivision2d.h"
+#include "../Detail/TolerancePolicy2d.h"
 #include "Core/PolygonRelation2d.h"
 #include "Core/Boolean.h"
 #include "Core/Editing.h"
@@ -74,7 +75,7 @@ namespace Geometry
             const double total = polyline.Length();
             startLength = std::clamp(startLength, 0.0, total);
             endLength = std::clamp(endLength, 0.0, total);
-            if (endLength < startLength + Geometry::kPathOpsDefaultEpsilon)
+            if (endLength < startLength + Geometry::kDefaultEpsilon)
             {
                 return {};
             }
@@ -88,12 +89,12 @@ namespace Geometry
                 const double segStart = cursor;
                 const double segEnd = cursor + segLen;
 
-                if (segEnd < startLength - Geometry::kPathOpsDefaultEpsilon)
+                if (segEnd < startLength - Geometry::kDefaultEpsilon)
                 {
                     cursor = segEnd;
                     continue;
                 }
-                if (segStart > endLength + Geometry::kPathOpsDefaultEpsilon)
+                if (segStart > endLength + Geometry::kDefaultEpsilon)
                 {
                     break;
                 }
@@ -102,11 +103,11 @@ namespace Geometry
                 const double localEnd = std::min(segLen, endLength - segStart);
                 const SCPoint2d startPoint = segment.PointAtLength(localStart, true);
                 const SCPoint2d endPoint = segment.PointAtLength(localEnd, true);
-                if (points.empty() || !points.back().AlmostEquals(startPoint, Geometry::kPathOpsDefaultEpsilon))
+                if (points.empty() || !points.back().AlmostEquals(startPoint, Geometry::kDefaultEpsilon))
                 {
                     points.push_back(startPoint);
                 }
-                if (points.empty() || !points.back().AlmostEquals(endPoint, Geometry::kPathOpsDefaultEpsilon))
+                if (points.empty() || !points.back().AlmostEquals(endPoint, Geometry::kDefaultEpsilon))
                 {
                     points.push_back(endPoint);
                 }
@@ -307,10 +308,10 @@ namespace Geometry
             const double length = segment.Length();
             if (length <= eps)
             {
-                return Geometry::kPathOpsComparisonEpsilon;
+                return Geometry::Detail::kComparisonEpsilon2d;
             }
 
-            return std::min(1e-4, std::max(Geometry::kPathOpsComparisonEpsilon, 8.0 * eps / length));
+            return std::min(1e-4, std::max(Geometry::Detail::kComparisonEpsilon2d, 8.0 * eps / length));
         }
 
         [[nodiscard]] std::vector<RawSegment> SubdivideRawSegments(const std::vector<RawSegment>& rawSegments,
@@ -852,11 +853,11 @@ namespace Geometry
             }
 
             std::stable_sort(rings.begin(), rings.end(), [](const RingCandidate& lhs, const RingCandidate& rhs) {
-                if (std::abs(lhs.score - rhs.score) > Geometry::kPathOpsComparisonEpsilon)
+                if (std::abs(lhs.score - rhs.score) > Geometry::Detail::kComparisonEpsilon2d)
                 {
                     return lhs.score > rhs.score;
                 }
-                if (std::abs(lhs.area - rhs.area) > Geometry::kPathOpsComparisonEpsilon)
+                if (std::abs(lhs.area - rhs.area) > Geometry::Detail::kComparisonEpsilon2d)
                 {
                     return lhs.area > rhs.area;
                 }
@@ -1117,8 +1118,8 @@ namespace Geometry
             return {};
         }
 
-        const std::vector<double> epsCandidates{std::max(eps, Geometry::kPathOpsComparisonEpsilon),
-                                                std::max(eps, Geometry::kPathOpsRebuildFallbackEpsilon),
+        const std::vector<double> epsCandidates{std::max(eps, Geometry::Detail::kComparisonEpsilon2d),
+                                                std::max(eps, Geometry::Detail::kRebuildFallbackEpsilon2d),
                                                 std::max(eps, 1e-7)};
 
         SCPolygon2d rebuilt = RebuildLargestPolygonWithCandidates(boundaries, epsCandidates);
@@ -1128,7 +1129,7 @@ namespace Geometry
         }
 
         const double simplifyEps =
-            std::max(Geometry::kPathOpsAreaEpsilon, 8.0 * std::max(eps, Geometry::kPathOpsComparisonEpsilon));
+            std::max(Geometry::Detail::kAreaEpsilon2d, 8.0 * std::max(eps, Geometry::Detail::kComparisonEpsilon2d));
         SCMultiPolyline2d simplifiedBoundaries = SimplifyBoundaryPolylines(boundaries, simplifyEps);
         if (simplifiedBoundaries.IsEmpty())
         {

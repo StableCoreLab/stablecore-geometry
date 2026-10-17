@@ -2,9 +2,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <vector>
 
 #include "Brep/SCBrepBody.h"
+#include "Brep/SCBrepEdge.h"
 #include "Brep/SCBrepLoop.h"
 #include "../Detail/AffinePlaneGeometry.h"
 #include "Geometry3d/SCPlaneSurface.h"
@@ -13,6 +15,48 @@
 namespace Geometry::Detail
 {
     enum class PlaneUvPurpose { VerifyOriginalVertex, ApproximateRepair };
+
+    [[nodiscard]] inline bool TryGetCoedgeVertexIndices(const std::vector<SCBrepEdge>& edges,
+                                                        std::size_t vertexCount,
+                                                        const SCBrepCoedge& coedge,
+                                                        std::size_t& startVertexIndex,
+                                                        std::size_t& endVertexIndex)
+    {
+        if (coedge.EdgeIndex() >= edges.size())
+        {
+            return false;
+        }
+        const SCBrepEdge& edge = edges[coedge.EdgeIndex()];
+        startVertexIndex = coedge.Reversed() ? edge.EndVertexIndex() : edge.StartVertexIndex();
+        endVertexIndex = coedge.Reversed() ? edge.StartVertexIndex() : edge.EndVertexIndex();
+        return startVertexIndex < vertexCount && endVertexIndex < vertexCount;
+    }
+
+    [[nodiscard]] inline bool AppendRawLoopVertices(const std::vector<SCBrepVertex>& vertices,
+                                                    const std::vector<SCBrepEdge>& edges,
+                                                    const SCBrepLoop& loop,
+                                                    std::vector<SCPoint3d>& loopVertices)
+    {
+        loopVertices.clear();
+        if (!loop.IsValid())
+        {
+            return false;
+        }
+        loopVertices.reserve(loop.CoedgeCount());
+        for (const SCBrepCoedge& coedge : loop.Coedges())
+        {
+            std::size_t startVertexIndex = 0;
+            std::size_t endVertexIndex = 0;
+            if (!TryGetCoedgeVertexIndices(edges, vertices.size(), coedge,
+                                           startVertexIndex, endVertexIndex))
+            {
+                return false;
+            }
+            loopVertices.push_back(vertices[startVertexIndex].Point());
+        }
+        return loopVertices.size() >= 3;
+    }
+
     [[nodiscard]] inline bool AppendLoopVertices(const SCBrepBody& body,
                                                  const SCBrepLoop& loop,
                                                  std::vector<SCPoint3d>& vertices,
@@ -28,14 +72,10 @@ namespace Geometry::Detail
         for (std::size_t i = 0; i < loop.CoedgeCount(); ++i)
         {
             const SCBrepCoedge& coedge = loop.CoedgeAtRef(i);
-            if (coedge.EdgeIndex() >= body.EdgeCount())
-            {
-                return false;
-            }
-
-            const SCBrepEdge& edge = body.EdgeAtRef(coedge.EdgeIndex());
-            const std::size_t vertexIndex = coedge.Reversed() ? edge.EndVertexIndex() : edge.StartVertexIndex();
-            if (vertexIndex >= body.VertexCount())
+            std::size_t vertexIndex = 0;
+            std::size_t endVertexIndex = 0;
+            if (!TryGetCoedgeVertexIndices(body.Edges(), body.VertexCount(), coedge,
+                                           vertexIndex, endVertexIndex))
             {
                 return false;
             }

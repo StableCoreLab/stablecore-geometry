@@ -144,6 +144,7 @@ set(SCGEOMETRY_HEADERS
     Core/GeometryApi.h
     Core/GeometryEvidence.h
     Core/GeometryTypes.h
+    Core/IntersectionResults3d.h
     Core/GeometryTypesFwd.h
     Core/GeometryTypesPrimitives.h
     Core/Intersection.h
@@ -186,7 +187,6 @@ set(SCGEOMETRY_HEADERS
     Geometry2d/SCRectangle2d.h
     Geometry2d/SCSegmentSearch2d.h
     Geometry2d/SegmentTypes.h
-    Geometry3d/Detail/NurbsBasis.h
     Geometry3d/Detail/SurfaceNumerics.h
     Geometry3d/ISCCurve3d.h
     Geometry3d/ISCSurface.h
@@ -245,6 +245,7 @@ set(SCGEOMETRY_INTERNAL_HEADERS
     Detail/DirectedEdgeFans2d.h
     Detail/GeometryContainerOps.h
     Detail/LineFaceHits.h
+    Detail/NurbsBasis.h
     Detail/ParametricSeeds.h
     Detail/PathNumerics3d.h
     Detail/PolygonNesting2d.h
@@ -252,6 +253,7 @@ set(SCGEOMETRY_INTERNAL_HEADERS
     Detail/PolylineRing2d.h
     Detail/ProjectionCandidates.h
     Detail/RingVertices2d.h
+    Detail/TolerancePolicy2d.h
     Detail/SegmentBoxRelation2d.h
     Detail/SegmentKernel2d.h
     Detail/SegmentParameters2d.h
@@ -322,6 +324,9 @@ set(SCGEOMETRY_SOURCES
     Geometry3d/Projection3d.cpp
     Geometry3d/Relation3d.cpp
     Geometry3d/SCBoxTree3d.cpp
+    Geometry3d/SCCurveOnSurface.cpp
+    Geometry3d/SCNurbsCurve3d.cpp
+    Geometry3d/SCNurbsSurface.cpp
     Geometry3d/SCSegmentSearch3d.cpp
     Serialize/GeometryText.cpp
     Serialize/SegmentCodec.cpp

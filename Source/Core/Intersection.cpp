@@ -102,7 +102,7 @@ namespace Geometry
 
         [[nodiscard]] double ArcParameterAtAngle(const SCArcSegment2d& arc, double angle)
         {
-            if (AlmostEqual(arc.sweepAngle, 0.0, Geometry::kIntersectionDefaultEpsilon))
+            if (AlmostEqual(arc.sweepAngle, 0.0, Geometry::kDefaultEpsilon))
             {
                 return 0.0;
             }
@@ -145,7 +145,7 @@ namespace Geometry
         {
             const SCVector2d segmentVector = segment.endPoint - segment.startPoint;
             const double segmentLengthSquared = segmentVector.LengthSquared();
-            if (segmentLengthSquared <= Geometry::kIntersectionDefaultEpsilon * Geometry::kIntersectionDefaultEpsilon)
+            if (segmentLengthSquared <= Geometry::kDefaultEpsilon * Geometry::kDefaultEpsilon)
             {
                 return SCSegmentProjection2d{
                     segment.startPoint, 0.0, DistanceSquaredPoints(point, segment.startPoint), true};
@@ -161,8 +161,8 @@ namespace Geometry
             return SCSegmentProjection2d{projectedPoint,
                                        parameter,
                                        DistanceSquaredPoints(point, projectedPoint),
-                                       clampToSegment || (rawParameter >= -Geometry::kIntersectionDefaultEpsilon &&
-                                                          rawParameter <= 1.0 + Geometry::kIntersectionDefaultEpsilon)};
+                                       clampToSegment || (rawParameter >= -Geometry::kDefaultEpsilon &&
+                                                          rawParameter <= 1.0 + Geometry::kDefaultEpsilon)};
         }
 
         [[nodiscard]] ArcProjectionCandidate ProjectPointToArcSegmentLocal(const SCPoint2d& point,
@@ -228,7 +228,7 @@ namespace Geometry
                            double secondParameter)
         {
             const double distanceSquared = DistanceSquaredPoints(firstPoint, secondPoint);
-            if (!hasBest || distanceSquared + Geometry::kIntersectionDefaultEpsilon < best.distanceSquared)
+            if (!hasBest || distanceSquared + Geometry::kDefaultEpsilon < best.distanceSquared)
             {
                 best = MakeClosestPoints(firstPoint, secondPoint, firstParameter, secondParameter, distanceSquared);
                 hasBest = true;
@@ -544,7 +544,7 @@ namespace Geometry
                                                                     const SCLineSegment2d& second)
         {
             const SCSegmentIntersection2d intersection =
-                IntersectLineLineInternal(first, second, Geometry::kIntersectionDefaultEpsilon);
+                IntersectLineLineInternal(first, second, Geometry::kDefaultEpsilon);
             if (intersection.HasIntersection())
             {
                 const SCIntersectionPoint2d& point = intersection.points[0];
@@ -578,7 +578,7 @@ namespace Geometry
         [[nodiscard]] SCClosestPoints2d ClosestPointsLineArcInternal(const SCLineSegment2d& line, const SCArcSegment2d& arc)
         {
             const SCSegmentIntersection2d intersection =
-                IntersectLineArcInternal(line, arc, Geometry::kIntersectionDefaultEpsilon);
+                IntersectLineArcInternal(line, arc, Geometry::kDefaultEpsilon);
             if (intersection.HasIntersection())
             {
                 const SCIntersectionPoint2d& point = intersection.points[0];
@@ -590,7 +590,7 @@ namespace Geometry
 
             const auto updateFromLineEndpoint = [&](const SCPoint2d& endpoint, double parameterOnLine) {
                 const ArcProjectionCandidate projected =
-                    ProjectPointToArcSegmentLocal(endpoint, arc, Geometry::kIntersectionDefaultEpsilon);
+                    ProjectPointToArcSegmentLocal(endpoint, arc, Geometry::kDefaultEpsilon);
                 UpdateClosest(best, hasBest, endpoint, projected.point, parameterOnLine, projected.parameter);
             };
 
@@ -608,10 +608,10 @@ namespace Geometry
             const SCSegmentProjection2d centerProjection = ProjectPointToLineSegmentLocal(arc.center, line, true);
             const SCVector2d fromCenter = centerProjection.point - arc.center;
             if (fromCenter.LengthSquared() >
-                Geometry::kIntersectionDefaultEpsilon * Geometry::kIntersectionDefaultEpsilon)
+                Geometry::kDefaultEpsilon * Geometry::kDefaultEpsilon)
             {
                 const double angle = std::atan2(fromCenter.y, fromCenter.x);
-                if (IsAngleOnArc(arc, angle, Geometry::kIntersectionDefaultEpsilon))
+                if (IsAngleOnArc(arc, angle, Geometry::kDefaultEpsilon))
                 {
                     const SCPoint2d arcPoint = PointAtAngle(arc, angle);
                     UpdateClosest(best,
@@ -629,7 +629,7 @@ namespace Geometry
         [[nodiscard]] SCClosestPoints2d ClosestPointsArcArcInternal(const SCArcSegment2d& first, const SCArcSegment2d& second)
         {
             const SCSegmentIntersection2d intersection =
-                IntersectArcArcInternal(first, second, Geometry::kIntersectionDefaultEpsilon);
+                IntersectArcArcInternal(first, second, Geometry::kDefaultEpsilon);
             if (intersection.HasIntersection())
             {
                 const SCIntersectionPoint2d& point = intersection.points[0];
@@ -641,13 +641,13 @@ namespace Geometry
 
             const auto updateFromFirstEndpoint = [&](const SCPoint2d& endpoint, double parameterOnFirst) {
                 const ArcProjectionCandidate projected =
-                    ProjectPointToArcSegmentLocal(endpoint, second, Geometry::kIntersectionDefaultEpsilon);
+                    ProjectPointToArcSegmentLocal(endpoint, second, Geometry::kDefaultEpsilon);
                 UpdateClosest(best, hasBest, endpoint, projected.point, parameterOnFirst, projected.parameter);
             };
 
             const auto updateFromSecondEndpoint = [&](const SCPoint2d& endpoint, double parameterOnSecond) {
                 const ArcProjectionCandidate projected =
-                    ProjectPointToArcSegmentLocal(endpoint, first, Geometry::kIntersectionDefaultEpsilon);
+                    ProjectPointToArcSegmentLocal(endpoint, first, Geometry::kDefaultEpsilon);
                 UpdateClosest(best, hasBest, projected.point, endpoint, projected.parameter, parameterOnSecond);
             };
 
@@ -658,7 +658,7 @@ namespace Geometry
 
             const SCVector2d centerDelta = second.center - first.center;
             const double centerDistanceSquared = Dot(centerDelta, centerDelta);
-            if (centerDistanceSquared > Geometry::kIntersectionDefaultEpsilon * Geometry::kIntersectionDefaultEpsilon)
+            if (centerDistanceSquared > Geometry::kDefaultEpsilon * Geometry::kDefaultEpsilon)
             {
                 const double centerDistance = std::sqrt(centerDistanceSquared);
                 const SCVector2d unit = centerDelta / centerDistance;
@@ -670,8 +670,8 @@ namespace Geometry
                     std::atan2(firstCandidate.y - first.center.y, firstCandidate.x - first.center.x);
                 const double secondAngle =
                     std::atan2(secondCandidate.y - second.center.y, secondCandidate.x - second.center.x);
-                if (IsAngleOnArc(first, firstAngle, Geometry::kIntersectionDefaultEpsilon) &&
-                    IsAngleOnArc(second, secondAngle, Geometry::kIntersectionDefaultEpsilon))
+                if (IsAngleOnArc(first, firstAngle, Geometry::kDefaultEpsilon) &&
+                    IsAngleOnArc(second, secondAngle, Geometry::kDefaultEpsilon))
                 {
                     UpdateClosest(best,
                                   hasBest,
@@ -1016,7 +1016,7 @@ namespace Geometry
 
     SCClosestPoints2d ClosestPoints(const SCLineSegment2d& first, const SCArcSegment2d& second)
     {
-        return ClosestPointsLineArcInternal(first, second, Geometry::kIntersectionDefaultEpsilon);
+        return ClosestPointsLineArcInternal(first, second, Geometry::kDefaultEpsilon);
     }
 
     SCClosestPoints2d ClosestPoints(const SCArcSegment2d& first, const SCArcSegment2d& second)
@@ -1117,7 +1117,7 @@ namespace Geometry
                                                             const std::vector<double>& segmentLengths,
                                                             double totalLength)
         {
-            if (totalLength <= Geometry::kIntersectionDefaultEpsilon)
+            if (totalLength <= Geometry::kDefaultEpsilon)
             {
                 return 0.0;
             }

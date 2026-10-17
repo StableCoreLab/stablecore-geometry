@@ -205,15 +205,8 @@ namespace Geometry
                                                          std::size_t& startVertexIndex,
                                                          std::size_t& endVertexIndex)
             {
-                if (coedge.EdgeIndex() >= body.EdgeCount())
-                {
-                    return false;
-                }
-
-                const SCBrepEdge& edge = body.EdgeAtRef(coedge.EdgeIndex());
-                startVertexIndex = coedge.Reversed() ? edge.EndVertexIndex() : edge.StartVertexIndex();
-                endVertexIndex = coedge.Reversed() ? edge.StartVertexIndex() : edge.EndVertexIndex();
-                return startVertexIndex < body.VertexCount() && endVertexIndex < body.VertexCount();
+                return Detail::TryGetCoedgeVertexIndices(body.Edges(), body.VertexCount(), coedge,
+                                                         startVertexIndex, endVertexIndex);
             }
 
             void AppendUniqueLoopVertexIndices(const SCBrepBody& body,
@@ -245,7 +238,7 @@ namespace Geometry
                                                                    const SCGeometryTolerance3d& tolerance,
                                                                     SCPlaneSurface& planeSurface)
             {
-                const double eps = std::max(tolerance.distanceEpsilon, Geometry::kHealingDefaultEpsilon);
+                const double eps = std::max(tolerance.distanceEpsilon, Geometry::kDefaultEpsilon);
                 std::vector<std::size_t> vertexIndices;
                 vertexIndices.reserve(shell.FaceCount() * 8);
 
@@ -689,7 +682,7 @@ namespace Geometry
 
             [[nodiscard]] BoundaryGeometryPointKey QuantizeBoundaryPointKey(const SCPoint3d& point, double eps)
             {
-                const double safeEps = std::max(eps, Geometry::kHealingDefaultEpsilon);
+                const double safeEps = std::max(eps, Geometry::kDefaultEpsilon);
                 return BoundaryGeometryPointKey{static_cast<long long>(std::llround(point.x / safeEps)),
                                                 static_cast<long long>(std::llround(point.y / safeEps)),
                                                 static_cast<long long>(std::llround(point.z / safeEps))};
@@ -865,7 +858,7 @@ namespace Geometry
                 }
 
                 const double firstLengthSquared =
-                    std::max(firstDirection.LengthSquared(), Geometry::kHealingDefaultEpsilon);
+                    std::max(firstDirection.LengthSquared(), Geometry::kDefaultEpsilon);
                 double secondStartParameter =
                     Dot(second.startPoint - first.startPoint, firstDirection) / firstLengthSquared;
                 double secondEndParameter =
@@ -1054,7 +1047,7 @@ namespace Geometry
                         {
                             SCPlane shellPlane;
                             if (!Detail::TryActualPlane(shellPlaneSurface,tolerance,shellPlane)) { shellSupportMismatch[shellIndex]=true; continue; }
-                            const double eps = std::max(tolerance.distanceEpsilon, Geometry::kHealingDefaultEpsilon);
+                            const double eps = std::max(tolerance.distanceEpsilon, Geometry::kDefaultEpsilon);
                             for (const SCBrepFace& face : shell.Faces())
                             {
                                 const auto* facePlaneSurface = dynamic_cast<const SCPlaneSurface*>(face.SupportSurface());

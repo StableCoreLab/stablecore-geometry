@@ -38,6 +38,9 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/Test3dConversion.cpp
     Capabilities/Geometry3d/Test3dHealing.cpp
     Capabilities/Geometry3d/Test3dSection.cpp
+    Capabilities/Geometry3d/Test3dValueTypes.cpp
+    Capabilities/Geometry3d/TestBrepLoopGeometry.cpp
+    Capabilities/Geometry3d/TestCurveOnSurfaceInterface.cpp
     Capabilities/Geometry3d/TestGeometryEvidence.cpp
     Capabilities/Geometry3d/TestNurbsNumerics.cpp
 )
@@ -76,6 +79,28 @@ foreach(SCGEOMETRY_STATUS_HEADER GeometryEvidence Projection Intersection Measur
         "SCGEOMETRY_HEADER_UNDER_TEST=\"Core/${SCGEOMETRY_STATUS_HEADER}.h\"")
     target_link_libraries(${SCGEOMETRY_STATUS_HEADER_TARGET} PRIVATE ${SCGEOMETRY_TARGET})
     SCGeometryConfigureTarget(${SCGEOMETRY_STATUS_HEADER_TARGET})
+endforeach()
+
+# 聚合头和 NURBS 公开头分别独立编译，检查传递包含依赖。
+foreach(SCGEOMETRY_STANDALONE_HEADER IN ITEMS
+    Geometry.h
+    Core/GeometryApi.h
+    Core/Algorithms.h
+    Core/IntersectionResults3d.h
+    Core/GeometryTypes.h
+    Brep/BodyBoolean.h
+    Brep/Healing.h
+    Geometry3d/SCCurveOnSurface.h
+    Geometry3d/SCNurbsCurve3d.h
+    Geometry3d/SCNurbsSurface.h)
+    string(REPLACE "/" "_" SCGEOMETRY_STANDALONE_TARGET "${SCGEOMETRY_STANDALONE_HEADER}")
+    string(REPLACE "." "_" SCGEOMETRY_STANDALONE_TARGET "${SCGEOMETRY_STANDALONE_TARGET}")
+    add_library(SCGeometryStandalone${SCGEOMETRY_STANDALONE_TARGET}Compile OBJECT
+        ${CMAKE_CURRENT_SOURCE_DIR}/Support/StandalonePublicHeaderCompile.cpp)
+    target_compile_definitions(SCGeometryStandalone${SCGEOMETRY_STANDALONE_TARGET}Compile PRIVATE
+        "SCGEOMETRY_HEADER_UNDER_TEST=\"${SCGEOMETRY_STANDALONE_HEADER}\"")
+    target_link_libraries(SCGeometryStandalone${SCGEOMETRY_STANDALONE_TARGET}Compile PRIVATE ${SCGEOMETRY_TARGET})
+    SCGeometryConfigureTarget(SCGeometryStandalone${SCGEOMETRY_STANDALONE_TARGET}Compile)
 endforeach()
 
 add_executable(${SCGEOMETRY_CAPABILITY_TESTS_TARGET}

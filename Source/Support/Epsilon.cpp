@@ -1,4 +1,5 @@
 #include "Support/Epsilon.h"
+#include "../Detail/TolerancePolicy2d.h"
 
 namespace Geometry
 {
@@ -25,14 +26,14 @@ namespace Geometry
     const double kTransformDefaultEpsilon = kDefaultEpsilon;
     const double kSectionDefaultEpsilon = kDefaultEpsilon;
     const double kSearchPolyDefaultEpsilon = kDefaultEpsilon;
-    const double kBooleanComparisonEpsilon = 1e-12;
-    const double kBooleanAreaEpsilon = 1e-10;
-    const double kBooleanRebuildFallbackEpsilon = 1e-8;
-    const double kPathOpsComparisonEpsilon = 1e-12;
-    const double kPathOpsAreaEpsilon = 1e-10;
-    const double kPathOpsRebuildFallbackEpsilon = 1e-8;
-    const double kSearchPolyComparisonEpsilon = 1e-12;
-    const double kOffsetRebuildFallbackEpsilon = 1e-8;
+    const double kBooleanComparisonEpsilon = Detail::kComparisonEpsilon2d;
+    const double kBooleanAreaEpsilon = Detail::kAreaEpsilon2d;
+    const double kBooleanRebuildFallbackEpsilon = Detail::kRebuildFallbackEpsilon2d;
+    const double kPathOpsComparisonEpsilon = Detail::kComparisonEpsilon2d;
+    const double kPathOpsAreaEpsilon = Detail::kAreaEpsilon2d;
+    const double kPathOpsRebuildFallbackEpsilon = Detail::kRebuildFallbackEpsilon2d;
+    const double kSearchPolyComparisonEpsilon = Detail::kComparisonEpsilon2d;
+    const double kOffsetRebuildFallbackEpsilon = Detail::kRebuildFallbackEpsilon2d;
     const double kSupportPlaneHoleDistanceWeight = 4.0;
     const double kSupportPlaneOnPlaneEpsilon = 1e-10;
 }  // namespace Geometry

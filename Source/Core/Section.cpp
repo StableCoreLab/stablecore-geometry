@@ -414,7 +414,7 @@ namespace Geometry
                                    double secondDistance)
         {
             const double denominator = firstDistance - secondDistance;
-            if (std::abs(denominator) <= Geometry::kSectionDefaultEpsilon)
+            if (std::abs(denominator) <= Geometry::kDefaultEpsilon)
             {
                 return first;
             }
@@ -856,8 +856,8 @@ namespace Geometry
         SCPoint2d ProjectPointToSectionBasis(const SCPoint3d& point, const SCPolyhedronSection3d& section)
         {
             const SCVector3d delta = point - section.origin;
-            const double uDenom = std::max(section.uAxis.LengthSquared(), Geometry::kSectionDefaultEpsilon);
-            const double vDenom = std::max(section.vAxis.LengthSquared(), Geometry::kSectionDefaultEpsilon);
+            const double uDenom = std::max(section.uAxis.LengthSquared(), Geometry::kDefaultEpsilon);
+            const double vDenom = std::max(section.vAxis.LengthSquared(), Geometry::kDefaultEpsilon);
             return SCPoint2d{Dot(delta, section.uAxis) / uDenom, Dot(delta, section.vAxis) / vDenom};
         }
 

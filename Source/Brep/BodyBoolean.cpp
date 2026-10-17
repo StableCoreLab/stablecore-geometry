@@ -490,7 +490,7 @@ namespace Geometry
             result.issue = BodyBooleanIssue3d::None;
             std::sort(bodies.begin(), bodies.end(), [](const SCBrepBody& first, const SCBrepBody& second) {
                 return BoundsLexicographicallyLess(
-                    first.Bounds(), second.Bounds(), Geometry::kBodyBooleanDefaultEpsilon);
+                    first.Bounds(), second.Bounds(), Geometry::kDefaultEpsilon);
             });
             result.bodies = std::move(bodies);
             result.message = message;

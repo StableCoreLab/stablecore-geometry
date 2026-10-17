@@ -49,7 +49,7 @@ namespace Geometry
 
             const SCVector2d direction = segment.endPoint - segment.startPoint;
             const double lengthSquared = direction.LengthSquared();
-            if (lengthSquared <= Geometry::kAxisOpsDefaultEpsilon * Geometry::kAxisOpsDefaultEpsilon)
+            if (lengthSquared <= Geometry::kDefaultEpsilon * Geometry::kDefaultEpsilon)
             {
                 return SCSegmentProjection2d{segment.startPoint, 0.0, DistanceSquared(point, segment.startPoint), true};
             }
@@ -60,8 +60,8 @@ namespace Geometry
             return SCSegmentProjection2d{projectedPoint,
                                        parameter,
                                        DistanceSquared(point, projectedPoint),
-                                       clampToSegment || (rawParameter >= -Geometry::kAxisOpsDefaultEpsilon &&
-                                                          rawParameter <= 1.0 + Geometry::kAxisOpsDefaultEpsilon)};
+                                       clampToSegment || (rawParameter >= -Geometry::kDefaultEpsilon &&
+                                                          rawParameter <= 1.0 + Geometry::kDefaultEpsilon)};
         }
 
         [[nodiscard]] double ParameterOnArc(const SCArcSegment2d& segment, double angle)
@@ -91,7 +91,7 @@ namespace Geometry
 
             const SCVector2d radial = point - segment.center;
             const double radialLengthSquared = radial.LengthSquared();
-            if (radialLengthSquared <= Geometry::kAxisOpsDefaultEpsilon * Geometry::kAxisOpsDefaultEpsilon)
+            if (radialLengthSquared <= Geometry::kDefaultEpsilon * Geometry::kDefaultEpsilon)
             {
                 const SCPoint2d startPoint = segment.StartPoint();
                 return SCSegmentProjection2d{startPoint, 0.0, DistanceSquared(point, startPoint), clampToSegment};
@@ -104,15 +104,15 @@ namespace Geometry
             return SCSegmentProjection2d{projectedPoint,
                                        parameter,
                                        DistanceSquared(point, projectedPoint),
-                                       clampToSegment || (rawParameter >= -Geometry::kAxisOpsDefaultEpsilon &&
-                                                          rawParameter <= 1.0 + Geometry::kAxisOpsDefaultEpsilon)};
+                                       clampToSegment || (rawParameter >= -Geometry::kDefaultEpsilon &&
+                                                          rawParameter <= 1.0 + Geometry::kDefaultEpsilon)};
         }
 
         [[nodiscard]] SCVector2d UnitTangentAt(const SCLineSegment2d& segment)
         {
             const SCVector2d direction = segment.endPoint - segment.startPoint;
             const double length = direction.Length();
-            if (length <= Geometry::kAxisOpsDefaultEpsilon)
+            if (length <= Geometry::kDefaultEpsilon)
             {
                 return SCVector2d{};
             }
@@ -130,7 +130,7 @@ namespace Geometry
             const SCPoint2d point = segment.PointAt(parameter);
             SCVector2d radial = point - segment.center;
             const double radialLength = radial.Length();
-            if (radialLength <= Geometry::kAxisOpsDefaultEpsilon)
+            if (radialLength <= Geometry::kDefaultEpsilon)
             {
                 return SCVector2d{};
             }
@@ -163,7 +163,7 @@ namespace Geometry
     SCAxisSample2d SampleAxisAtLength(const ISCSegment2d& segment, double length, bool clampToSegment)
     {
         const double totalLength = segment.Length();
-        if (totalLength <= Geometry::kAxisOpsDefaultEpsilon)
+        if (totalLength <= Geometry::kDefaultEpsilon)
         {
             return SampleAxis(segment, 0.0);
         }
@@ -247,7 +247,7 @@ namespace Geometry
 
         startParameter = std::clamp(startParameter, 0.0, 1.0);
         endParameter = std::clamp(endParameter, 0.0, 1.0);
-        if (endParameter - startParameter <= Geometry::kAxisOpsDefaultEpsilon)
+        if (endParameter - startParameter <= Geometry::kDefaultEpsilon)
         {
             return result;
         }

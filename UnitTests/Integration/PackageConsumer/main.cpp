@@ -1,6 +1,7 @@
 #include "Geometry.h"
 
 #include <array>
+#include <memory>
 #include <numbers>
 
 #if defined(SCGEOMETRY_EXPECT_SHARED) != defined(GEOMETRY_USE_DLL)
@@ -32,11 +33,24 @@ int main()
     const auto corner = EvaluateCornerGeometry(first, cornerExit, pathTolerance);
     const auto legacyOffset = Offset(first, 1.0);
     const auto normalized = Normalize(path);
+    const SCNurbsCurve3d nurbsCurve(1, {{0, 0, 0}, {2, 0, 0}}, {0, 0, 1, 1});
+    const SCNurbsSurface nurbsSurface(1, 1, 2, 2,
+                                      {{0, 0, 0}, {2, 0, 0}, {0, 2, 0}, {2, 2, 0}},
+                                      {0, 0, 1, 1}, {0, 0, 1, 1});
+    const bool nurbsAvailable = nurbsCurve.IsValid() && nurbsSurface.IsValid() &&
+        nurbsCurve.PointAt(0.5).AlmostEquals({1, 0, 0}) &&
+        nurbsSurface.PointAt(0.5, 0.5).AlmostEquals({1, 1, 0});
+    const auto curveSurface = std::make_shared<SCPlaneSurface>(SCPlaneSurface::FromPlane(
+        SCPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1}), {-2, 2}, {-2, 2}));
+    const SCCurveOnSurface composedCurve(curveSurface, SCPolyline2d({{0, 0}, {1, 0}}));
+    const ISCCurve3d& genericCurve = composedCurve;
+    const bool genericCurveAvailable = genericCurve.IsValid() &&
+        genericCurve.PointAt(0.5).AlmostEquals({0.5, 0, 0});
     return projection == SCParallelSegmentProjectionRelation2d::PositiveLengthIntersection &&
                    Contains(box, path) && Intersects(box, path) && area.success &&
                    area.hasPositiveAreaIntersection && fittedPlane.success && arc.success &&
                    projectedArc.success && mappedOffset.success && corner.success &&
-                   legacyOffset.IsValid() && normalized.IsValid()
+                   legacyOffset.IsValid() && normalized.IsValid() && nurbsAvailable && genericCurveAvailable
                ? 0
                : 1;
 }
