@@ -46,11 +46,16 @@ int main()
     const ISCCurve3d& genericCurve = composedCurve;
     const bool genericCurveAvailable = genericCurve.IsValid() &&
         genericCurve.PointAt(0.5).AlmostEquals({0.5, 0, 0});
+    const SCOffsetSurface offsetSurface(curveSurface, 0.2);
+    const auto offsetEval = offsetSurface.Evaluate(0.0, 0.0, 1);
+    const bool offsetAvailable = offsetEval.IsValid() &&
+        offsetEval.point.AlmostEquals({0.0, 0.0, 0.2});
     return projection == SCParallelSegmentProjectionRelation2d::PositiveLengthIntersection &&
                    Contains(box, path) && Intersects(box, path) && area.success &&
                    area.hasPositiveAreaIntersection && fittedPlane.success && arc.success &&
                    projectedArc.success && mappedOffset.success && corner.success &&
-                   legacyOffset.IsValid() && normalized.IsValid() && nurbsAvailable && genericCurveAvailable
+                   legacyOffset.IsValid() && normalized.IsValid() && nurbsAvailable && genericCurveAvailable &&
+                   offsetAvailable
                ? 0
                : 1;
 }

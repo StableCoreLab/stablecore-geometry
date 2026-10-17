@@ -47,11 +47,19 @@ namespace Geometry
 
     SCBox2d SCEllipse2d::Bounds(std::size_t segmentCount) const
     {
-        if (!IsValid())
+        if (!IsValid() || segmentCount < 8)
         {
             return {};
         }
-        return ToPolygon(segmentCount).Bounds();
+
+        // 对有效的旧细分参数，解析包围盒不再依赖采样点数量。
+        const double c = std::cos(angleRadians);
+        const double s = std::sin(angleRadians);
+        const double extentX = std::hypot(majorRadius * c, minorRadius * s);
+        const double extentY = std::hypot(majorRadius * s, minorRadius * c);
+        return SCBox2d::FromMinMax(
+            SCPoint2d{center.x - extentX, center.y - extentY},
+            SCPoint2d{center.x + extentX, center.y + extentY});
     }
 
     SCPolygon2d SCEllipse2d::ToPolygon(std::size_t segmentCount) const

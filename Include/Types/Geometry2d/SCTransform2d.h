@@ -49,6 +49,12 @@ namespace Geometry
             return linear.IsValid() && translation.IsValid();
         }
 
+        [[nodiscard]] bool IsIdentity(double eps = kDefaultEpsilon) const
+        {
+            return IsValid() && linear.AlmostEquals(SCMatrix2d::Identity(), eps) &&
+                   translation.AlmostEquals(SCVector2d{}, eps);
+        }
+
         [[nodiscard]] SCPoint2d Apply(const SCPoint2d& point) const
         {
             return linear * point + translation;

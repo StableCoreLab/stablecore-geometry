@@ -62,16 +62,7 @@ namespace Geometry
             return basePoint + unitNormal * offsetDistance_;
         }
 
-        [[nodiscard]] SCSurfaceEval3d Evaluate(double u, double v, int derivativeOrder = 1) const override
-        {
-            SCSurfaceEval3d eval =
-                baseSurface_ != nullptr ? baseSurface_->Evaluate(u, v, derivativeOrder) : SCSurfaceEval3d{};
-            if (eval.derivativeOrder >= 0)
-            {
-                eval.point = PointAt(u, v);
-            }
-            return eval;
-        }
+        [[nodiscard]] SCSurfaceEval3d Evaluate(double u, double v, int derivativeOrder = 1) const override;
 
         [[nodiscard]] SCBox3d Bounds() const override
         {

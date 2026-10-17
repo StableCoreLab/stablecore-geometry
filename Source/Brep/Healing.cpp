@@ -1220,19 +1220,19 @@ namespace Geometry
             return {false, HealingIssue3d::InvalidMesh, {}};
         }
 
-        const TriangleMeshRepair3d closed = ClosePlanarBoundaryLoops(mesh, eps);
+        TriangleMeshRepair3d oriented = OrientTriangleMeshConsistently(mesh, eps);
+        if (!oriented.success)
+        {
+            return {false, MapMeshRepairIssue(oriented.issue), {}};
+        }
+
+        TriangleMeshRepair3d closed = ClosePlanarBoundaryLoops(oriented.mesh, eps);
         if (closed.success)
         {
             return {true, HealingIssue3d::None, std::move(closed.mesh)};
         }
 
-        const TriangleMeshRepair3d oriented = OrientTriangleMeshConsistently(mesh, eps);
-        if (oriented.success)
-        {
-            return {true, HealingIssue3d::None, std::move(oriented.mesh)};
-        }
-
-        return {false, MapMeshRepairIssue(oriented.issue), {}};
+        return {true, HealingIssue3d::None, std::move(oriented.mesh)};
     }
 
     PolyhedronHealing3d Heal(const PolyhedronBody& body, double eps)

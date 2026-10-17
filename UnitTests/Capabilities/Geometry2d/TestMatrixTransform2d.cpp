@@ -1,18 +1,11 @@
 #include <gtest/gtest.h>
 
-#include "Core/Metrics.h"
-#include "Geometry2d/SCLineSegment2d.h"
-#include "Geometry2d/SCPolyline2d.h"
 #include "Support/Epsilon.h"
 #include "Types/Geometry2d/SCMatrix2d.h"
 #include "Types/Geometry2d/SCTransform2d.h"
 
-using Geometry::Distance;
-using Geometry::DistanceSquared;
 using Geometry::SCMatrix2d;
 using Geometry::SCPoint2d;
-using Geometry::SCPolyline2d;
-using Geometry::SCPolylineClosure;
 using Geometry::SCTransform2d;
 using Geometry::SCVector2d;
 
@@ -142,6 +135,16 @@ TEST(Transform2dTest, SingularInverseReturnsNullopt)
     ASSERT_FALSE((SCTransform2d{SCMatrix2d{1.0, 2.0, 2.0, 4.0}, SCVector2d{}}.Inverse().has_value()));
 }
 
+TEST(Transform2dTest, IsIdentityChecksLinearAndTranslationWithTolerance)
+{
+    EXPECT_TRUE(SCTransform2d::Identity().IsIdentity());
+    EXPECT_TRUE((SCTransform2d{SCMatrix2d{1.0 + 1e-10, 0.0, 0.0, 1.0},
+                               SCVector2d{0.0, -1e-10}}.IsIdentity(1e-9)));
+    EXPECT_FALSE(SCTransform2d::Translation({0.01, 0.0}).IsIdentity(1e-9));
+    EXPECT_FALSE(SCTransform2d::Rotation({0.0, 0.0}, 0.1).IsIdentity(1e-9));
+    EXPECT_FALSE(SCTransform2d::Identity().IsIdentity(-1.0));
+}
+
 TEST(Transform2dTest, AxisGridPlacementEquivalence)
 {
     // Axis-grid placement: Apply(local) = origin + R * (local - anchor),
@@ -167,36 +170,4 @@ TEST(Transform2dTest, AxisGridPlacementEquivalence)
                                            SCTransform2d::Rotation(anchor, Geometry::kPi * 0.5);
     // The wrong composition maps anchor to origin + anchor, not origin.
     ASSERT_FALSE(wrongComposition.Apply(anchor).AlmostEquals(origin, 1e-12));
-}
-
-TEST(Measure2dTest, PointSegmentDistance)
-{
-    const Geometry::SCLineSegment2d segment(SCPoint2d{0.0, 0.0}, SCPoint2d{2.0, 0.0});
-    EXPECT_NEAR(DistanceSquared(SCPoint2d{1.0, 2.0}, segment), 4.0, 1e-12);
-    EXPECT_NEAR(Distance(SCPoint2d{1.0, 2.0}, segment), 2.0, 1e-12);
-}
-
-TEST(Measure2dTest, PolylineBounds)
-{
-    const SCPolyline2d polyline({SCPoint2d{0.0, 0.0}, SCPoint2d{2.0, 0.0}, SCPoint2d{2.0, 2.0}, SCPoint2d{0.0, 2.0}},
-                                SCPolylineClosure::Closed);
-    const Geometry::SCBox2d bounds = polyline.Bounds();
-    EXPECT_NEAR(bounds.MinPoint().x, 0.0, 1e-12);
-    EXPECT_NEAR(bounds.MinPoint().y, 0.0, 1e-12);
-    EXPECT_NEAR(bounds.MaxPoint().x, 2.0, 1e-12);
-    EXPECT_NEAR(bounds.MaxPoint().y, 2.0, 1e-12);
-}
-
-TEST(Vector2Test, Normalized)
-{
-    const SCVector2d normalized = SCVector2d{3.0, 4.0}.Normalized();
-    EXPECT_NEAR(normalized.x, 0.6, 1e-12);
-    EXPECT_NEAR(normalized.y, 0.8, 1e-12);
-    const SCVector2d zeroNormalized = SCVector2d{0.0, 0.0}.Normalized();
-    EXPECT_DOUBLE_EQ(zeroNormalized.x, 0.0);
-    EXPECT_DOUBLE_EQ(zeroNormalized.y, 0.0);
-    SCVector2d tryNormalized{};
-    EXPECT_TRUE((SCVector2d{3.0, 4.0}.TryNormalized(tryNormalized)));
-    EXPECT_TRUE(tryNormalized.AlmostEquals(SCVector2d{0.6, 0.8}, 1e-12));
-    EXPECT_FALSE(SCVector2d{}.TryNormalized(tryNormalized));
 }

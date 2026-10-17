@@ -21,6 +21,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Core/TestUmbrella.cpp
     Capabilities/Geometry2d/TestBox.cpp
     Capabilities/Geometry2d/TestMatrixTransform2d.cpp
+    Capabilities/Geometry2d/TestMeasure2d.cpp
     Capabilities/Geometry2d/TestOffset.cpp
     Capabilities/Geometry2d/TestPointVector.cpp
     Capabilities/Geometry2d/TestPolygon.cpp
@@ -42,7 +43,9 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestBrepLoopGeometry.cpp
     Capabilities/Geometry3d/TestCurveOnSurfaceInterface.cpp
     Capabilities/Geometry3d/TestGeometryEvidence.cpp
+    Capabilities/Geometry3d/TestMeshHealingContract.cpp
     Capabilities/Geometry3d/TestNurbsNumerics.cpp
+    Capabilities/Geometry3d/TestOffsetSurfaceEval.cpp
 )
 list(TRANSFORM SCGEOMETRY_CAPABILITY_TEST_SOURCES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
 
@@ -92,7 +95,8 @@ foreach(SCGEOMETRY_STANDALONE_HEADER IN ITEMS
     Brep/Healing.h
     Geometry3d/SCCurveOnSurface.h
     Geometry3d/SCNurbsCurve3d.h
-    Geometry3d/SCNurbsSurface.h)
+    Geometry3d/SCNurbsSurface.h
+    Geometry3d/SCOffsetSurface.h)
     string(REPLACE "/" "_" SCGEOMETRY_STANDALONE_TARGET "${SCGEOMETRY_STANDALONE_HEADER}")
     string(REPLACE "." "_" SCGEOMETRY_STANDALONE_TARGET "${SCGEOMETRY_STANDALONE_TARGET}")
     add_library(SCGeometryStandalone${SCGEOMETRY_STANDALONE_TARGET}Compile OBJECT

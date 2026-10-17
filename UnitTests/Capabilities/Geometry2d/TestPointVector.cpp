@@ -25,6 +25,20 @@ using Geometry::TryNormalize;
 using Geometry::SCVector2d;
 using Geometry::SCVector2i;
 
+TEST(Vector2Test, Normalized)
+{
+    const SCVector2d normalized = SCVector2d{3.0, 4.0}.Normalized();
+    EXPECT_NEAR(normalized.x, 0.6, 1e-12);
+    EXPECT_NEAR(normalized.y, 0.8, 1e-12);
+    const SCVector2d zeroNormalized = SCVector2d{0.0, 0.0}.Normalized();
+    EXPECT_DOUBLE_EQ(zeroNormalized.x, 0.0);
+    EXPECT_DOUBLE_EQ(zeroNormalized.y, 0.0);
+    SCVector2d tryNormalized{};
+    EXPECT_TRUE((SCVector2d{3.0, 4.0}.TryNormalized(tryNormalized)));
+    EXPECT_TRUE(tryNormalized.AlmostEquals(SCVector2d{0.6, 0.8}, 1e-12));
+    EXPECT_FALSE(SCVector2d{}.TryNormalized(tryNormalized));
+}
+
 template <typename T>
 concept SupportsPointPlusPoint = requires(T a, T b) { a + b; };
 

@@ -327,6 +327,7 @@ set(SCGEOMETRY_SOURCES
     Geometry3d/SCCurveOnSurface.cpp
     Geometry3d/SCNurbsCurve3d.cpp
     Geometry3d/SCNurbsSurface.cpp
+    Geometry3d/SCOffsetSurface.cpp
     Geometry3d/SCSegmentSearch3d.cpp
     Serialize/GeometryText.cpp
     Serialize/SegmentCodec.cpp

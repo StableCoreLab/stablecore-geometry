@@ -268,12 +268,6 @@ namespace Geometry
             }
         }
 
-        TriangleMeshRepair3d oriented = OrientTriangleMeshConsistently(repaired, eps);
-        if (!oriented.success)
-        {
-            return oriented;
-        }
-
-        return oriented;
+        return OrientTriangleMeshConsistently(repaired, eps);
     }
 }  // namespace Geometry

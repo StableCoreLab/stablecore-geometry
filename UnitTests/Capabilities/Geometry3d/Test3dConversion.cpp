@@ -1,5 +1,7 @@
 #include <cmath>
 #include <memory>
+#include <ostream>
+#include <string>
 
 #include <gtest/gtest.h>
 
@@ -2413,12 +2415,27 @@ TEST(Conversion3dCapabilityTest,
     ASSERT_EQ(rightCount, 2);
 }
 
-// Demonstrates representative-average placement remains stable when
-// support-mismatch shared-chain mixed-content also requires duplicate-hole
-// normalization on middle face.
-TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualSharedChainMixedContentWithDuplicateHoleRepairsToBrepBody)
+struct SupportMismatchSharedChainCase
 {
-    const PolyhedronBody body = BuildSupportMismatchNearEqualSharedChainMixedContentWithDuplicateHoleBody();
+    const char* name;
+    PolyhedronBody (*build)();
+    std::size_t vertexCount;
+    std::size_t edgeCount;
+};
+
+void PrintTo(const SupportMismatchSharedChainCase& scenario, std::ostream* stream)
+{
+    *stream << scenario.name;
+}
+
+class SupportMismatchSharedChainTest : public ::testing::TestWithParam<SupportMismatchSharedChainCase>
+{
+};
+
+TEST_P(SupportMismatchSharedChainTest, PreservesRepresentativeAverageTargets)
+{
+    const SupportMismatchSharedChainCase& scenario = GetParam();
+    const PolyhedronBody body = scenario.build();
     ASSERT_FALSE(body.IsValid());
     ASSERT_EQ(body.FaceCount(), 3);
 
@@ -2429,8 +2446,8 @@ TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualSharedChainMixedContent
     ASSERT_EQ(result.body.FaceCount(), 3);
     ASSERT_EQ(result.body.ShellCount(), 1);
     ASSERT_FALSE(result.body.ShellAt(0).IsClosed());
-    ASSERT_EQ(result.body.VertexCount(), 12);
-    ASSERT_EQ(result.body.EdgeCount(), 14);
+    ASSERT_EQ(result.body.VertexCount(), scenario.vertexCount);
+    ASSERT_EQ(result.body.EdgeCount(), scenario.edgeCount);
 
     const double s = 1e-5;
     const double dx = 2e-7;
@@ -2459,96 +2476,15 @@ TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualSharedChainMixedContent
     ASSERT_EQ(rightCount, 2);
 }
 
-// Demonstrates representative-average placement remains deterministic for
-// support-mismatch shared-chain full-composition with near-equal shared-edge
-// perturbations.
-TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualSharedChainFullCompositionRepairsToBrepBody)
-{
-    const PolyhedronBody body = BuildSupportMismatchNearEqualSharedChainFullCompositionBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 3);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.ShellCount(), 1);
-    ASSERT_FALSE(result.body.ShellAt(0).IsClosed());
-    ASSERT_EQ(result.body.VertexCount(), 13);
-    ASSERT_EQ(result.body.EdgeCount(), 15);
-
-    const double s = 1e-5;
-    const double dx = 2e-7;
-    const double expectedXLeft = s + 0.5 * dx;
-    const double expectedXRight = 2.0 * s + 0.5 * dx;
-
-    std::size_t leftCount = 0;
-    std::size_t rightCount = 0;
-    for (std::size_t i = 0; i < result.body.VertexCount(); ++i)
-    {
-        const SCPoint3d point = result.body.VertexAt(i).Point();
-        if (std::abs(point.y) < 1e-12 || std::abs(point.y - s) < 1e-12)
-        {
-            if (std::abs(point.x - expectedXLeft) < 1e-12)
-            {
-                ++leftCount;
-            }
-            if (std::abs(point.x - expectedXRight) < 1e-12)
-            {
-                ++rightCount;
-            }
-        }
-    }
-
-    ASSERT_EQ(leftCount, 2);
-    ASSERT_EQ(rightCount, 2);
-}
-
-// Demonstrates representative-average placement stays deterministic for
-// support-mismatch shared-chain dual-duplicate full-composition.
-TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualSharedChainDualDuplicateFullCompositionRepairsToBrepBody)
-{
-    const PolyhedronBody body = BuildSupportMismatchNearEqualSharedChainDualDuplicateFullCompositionBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 3);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.ShellCount(), 1);
-    ASSERT_FALSE(result.body.ShellAt(0).IsClosed());
-    ASSERT_EQ(result.body.VertexCount(), 13);
-    ASSERT_EQ(result.body.EdgeCount(), 15);
-
-    const double s = 1e-5;
-    const double dx = 2e-7;
-    const double expectedXLeft = s + 0.5 * dx;
-    const double expectedXRight = 2.0 * s + 0.5 * dx;
-
-    std::size_t leftCount = 0;
-    std::size_t rightCount = 0;
-    for (std::size_t i = 0; i < result.body.VertexCount(); ++i)
-    {
-        const SCPoint3d point = result.body.VertexAt(i).Point();
-        if (std::abs(point.y) < 1e-12 || std::abs(point.y - s) < 1e-12)
-        {
-            if (std::abs(point.x - expectedXLeft) < 1e-12)
-            {
-                ++leftCount;
-            }
-            if (std::abs(point.x - expectedXRight) < 1e-12)
-            {
-                ++rightCount;
-            }
-        }
-    }
-
-    ASSERT_EQ(leftCount, 2);
-    ASSERT_EQ(rightCount, 2);
-}
+INSTANTIATE_TEST_SUITE_P(
+    Conversion3d, SupportMismatchSharedChainTest,
+    ::testing::Values(
+        SupportMismatchSharedChainCase{"DuplicateHole", &BuildSupportMismatchNearEqualSharedChainMixedContentWithDuplicateHoleBody, 12, 14},
+        SupportMismatchSharedChainCase{"FullComposition", &BuildSupportMismatchNearEqualSharedChainFullCompositionBody, 13, 15},
+        SupportMismatchSharedChainCase{"DualDuplicateFullComposition", &BuildSupportMismatchNearEqualSharedChainDualDuplicateFullCompositionBody, 13, 15}),
+    [](const ::testing::TestParamInfo<SupportMismatchSharedChainCase>& info) {
+        return std::string(info.param.name);
+    });
 
 // Demonstrates representative-average placement can simultaneously stabilize
 // multiple shared vertices on a support-mismatch closed tetrahedron.
@@ -3540,306 +3476,69 @@ TEST(Conversion3dCapabilityTest, CompositeRepairStressFaceStillConvertsToBrepBod
     ASSERT_EQ(result.body.EdgeCount(), 10);
 }
 
-// Demonstrates robust refit can recover a tiny-scale non-planar loop even
-// when absolute-normal thresholds would otherwise reject support estimation.
-TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarFaceStillRepairsToBrepBody)
+struct TinyScaleRepairCase
 {
-    const PolyhedronBody body = BuildTinyScaleNonPlanarRepairBody();
+    const char* name;
+    PolyhedronBody (*build)();
+    std::size_t faceCount;
+    std::size_t vertexCount;
+    std::size_t edgeCount;
+    bool expectOpenShell{false};
+};
+
+void PrintTo(const TinyScaleRepairCase& scenario, std::ostream* stream)
+{
+    *stream << scenario.name;
+}
+
+class TinyScaleRepairTest : public ::testing::TestWithParam<TinyScaleRepairCase>
+{
+};
+
+TEST_P(TinyScaleRepairTest, ConvertsToBrepWithExpectedTopology)
+{
+    const TinyScaleRepairCase& scenario = GetParam();
+    const PolyhedronBody body = scenario.build();
     ASSERT_FALSE(body.IsValid());
+    ASSERT_EQ(body.FaceCount(), scenario.faceCount);
 
     const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
     ASSERT_TRUE(result.success);
     ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
     ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 1);
-    ASSERT_EQ(result.body.VertexCount(), 4);
-    ASSERT_EQ(result.body.EdgeCount(), 4);
+    ASSERT_EQ(result.body.FaceCount(), scenario.faceCount);
+    ASSERT_EQ(result.body.VertexCount(), scenario.vertexCount);
+    ASSERT_EQ(result.body.EdgeCount(), scenario.edgeCount);
+    if (scenario.expectOpenShell)
+    {
+        ASSERT_EQ(result.body.ShellCount(), 1);
+        ASSERT_FALSE(result.body.ShellAt(0).IsClosed());
+    }
 }
 
-// Demonstrates tiny-scale refit/projection repair also stabilizes holed
-// non-planar inputs in the same face.
-TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarHoledFaceStillRepairsToBrepBody)
-{
-    const PolyhedronBody body = BuildTinyScaleNonPlanarHoledRepairBody();
-    ASSERT_FALSE(body.IsValid());
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 1);
-    ASSERT_EQ(result.body.VertexCount(), 8);
-    ASSERT_EQ(result.body.EdgeCount(), 8);
-}
-
-// Demonstrates tiny-scale non-planar repair remains stable for multi-face
-// body inputs where each face needs local support-plane refit.
-TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarMultiFaceStillRepairsToBrepBody)
-{
-    const PolyhedronBody body = BuildTinyScaleNonPlanarMultiFaceRepairBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 2);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 2);
-    ASSERT_EQ(result.body.VertexCount(), 8);
-    ASSERT_EQ(result.body.EdgeCount(), 8);
-}
-
-// Demonstrates tiny-scale non-planar repair remains stable for mixed-content
-// multi-face inputs (holed + plain) in one conversion.
-TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarMixedContentStillRepairsToBrepBody)
-{
-    const PolyhedronBody body = BuildTinyScaleNonPlanarMixedContentBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 2);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 2);
-    ASSERT_EQ(result.body.VertexCount(), 12);
-    ASSERT_EQ(result.body.EdgeCount(), 12);
-}
-
-// Demonstrates tiny-scale non-planar repair remains stable when adjacent faces
-// share an edge and each face needs local refit/projection.
-TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarSharedEdgeFacesStillRepairToBrepBody)
-{
-    const PolyhedronBody body = BuildTinyScaleNonPlanarSharedEdgeBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 2);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 2);
-    ASSERT_EQ(result.body.VertexCount(), 6);
-    ASSERT_EQ(result.body.EdgeCount(), 7);
-}
-
-// Demonstrates tiny-scale non-planar repair remains stable on a shared-edge
-// adjacency chain where local refit is applied across multiple neighboring
-// faces. The conversion now preserves source representative vertex identities
-// across repaired faces, so shared-edge chain topology remains deterministic
-// even when per-face projection introduces small geometric drift.
-TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarSharedEdgeChainStillRepairsToBrepBody)
-{
-    const PolyhedronBody body = BuildTinyScaleNonPlanarSharedEdgeChainBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 3);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.VertexCount(), 8);
-    ASSERT_EQ(result.body.EdgeCount(), 10);
-}
-
-// Demonstrates support-plane mismatch across a tiny-scale quad shared-edge
-// chain can still recover deterministic shared topology through source
-// representative-id-driven Brep vertex reuse.
-TEST(Conversion3dCapabilityTest, TinyScaleSupportMismatchSharedEdgeChainRepairsWithSharedTopology)
-{
-    const PolyhedronBody body = BuildTinyScaleSupportMismatchSharedEdgeChainBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 3);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.VertexCount(), 8);
-    ASSERT_EQ(result.body.EdgeCount(), 10);
-    ASSERT_EQ(result.body.ShellCount(), 1);
-    ASSERT_FALSE(result.body.ShellAt(0).IsClosed());
-}
-
-// Demonstrates representative-id propagation through normalization can keep
-// deterministic shared topology even when support-plane mismatch and duplicate
-// middle-face leading vertices appear together in a quad shared-edge chain.
-TEST(Conversion3dCapabilityTest, TinyScaleSupportMismatchSharedEdgeChainWithDuplicateRepairsWithSharedTopology)
-{
-    const PolyhedronBody body = BuildTinyScaleSupportMismatchSharedEdgeChainWithDuplicateBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 3);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.VertexCount(), 8);
-    ASSERT_EQ(result.body.EdgeCount(), 10);
-    ASSERT_EQ(result.body.ShellCount(), 1);
-    ASSERT_FALSE(result.body.ShellAt(0).IsClosed());
-}
-
-// Demonstrates tiny-scale shared-edge adjacency chain repair also supports
-// mixed-content faces (including holed faces) in one conversion.
-TEST(Conversion3dCapabilityTest, TinyScaleNonPlanarSharedEdgeChainMixedContentRepairsToBrepBody)
-{
-    const PolyhedronBody body = BuildTinyScaleNonPlanarSharedEdgeChainMixedContentBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 3);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.VertexCount(), 12);
-    ASSERT_EQ(result.body.EdgeCount(), 14);
-}
-
-// Demonstrates shared-edge chain tiny-scale repair remains stable when one
-// adjacent face also needs duplicate-loop normalization.
-TEST(Conversion3dCapabilityTest, TinyScaleSharedEdgeChainWithDuplicateLoopRepairsToBrepBody)
-{
-    const PolyhedronBody body = BuildTinyScaleNonPlanarSharedEdgeChainWithDuplicateLoopBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 3);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.VertexCount(), 8);
-    ASSERT_EQ(result.body.EdgeCount(), 10);
-}
-
-// Demonstrates duplicate-hole-loop normalization composes with shared-edge
-// chain mixed-content tiny-scale refit/projection repair.
-TEST(Conversion3dCapabilityTest, TinyScaleSharedChainMixedContentDuplicateHoleRepairsToBrepBody)
-{
-    const PolyhedronBody body = BuildTinyScaleSharedEdgeChainMixedContentWithDuplicateHoleBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 3);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.VertexCount(), 12);
-    ASSERT_EQ(result.body.EdgeCount(), 14);
-}
-
-// Demonstrates shared-chain mixed-content tiny-scale repair remains stable
-// with collinear-leading outer vertices on one adjacent face.
-TEST(Conversion3dCapabilityTest, TinyScaleSharedChainMixedContentCollinearLeadingRepairsToBrepBody)
-{
-    const PolyhedronBody body = BuildTinyScaleSharedChainMixedContentWithCollinearLeadingBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 3);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.VertexCount(), 13);
-    ASSERT_EQ(result.body.EdgeCount(), 15);
-}
-
-// Demonstrates support-plane mismatch composes with shared-chain mixed-content
-// tiny-scale repair and still yields stable Brep conversion.
-TEST(Conversion3dCapabilityTest, TinyScaleSharedChainMixedContentSupportPlaneMismatchRepairsToBrepBody)
-{
-    const PolyhedronBody body = BuildTinyScaleSharedChainMixedContentSupportPlaneMismatchBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 3);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.VertexCount(), 12);
-    ASSERT_EQ(result.body.EdgeCount(), 14);
-}
-
-// Demonstrates support-plane mismatch and duplicate-hole normalization can
-// compose on shared-chain mixed-content input while preserving deterministic
-// shared topology counts.
-TEST(Conversion3dCapabilityTest, TinyScaleSharedChainMixedContentSupportMismatchWithDuplicateHoleRepairsToBrepBody)
-{
-    const PolyhedronBody body = BuildTinyScaleSharedChainMixedContentSupportMismatchWithDuplicateHoleBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 3);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.VertexCount(), 12);
-    ASSERT_EQ(result.body.EdgeCount(), 14);
-    ASSERT_EQ(result.body.ShellCount(), 1);
-    ASSERT_FALSE(result.body.ShellAt(0).IsClosed());
-}
-
-// Demonstrates support-plane mismatch and collinear-leading fallback can
-// compose under shared-chain mixed-content tiny-scale repair.
-TEST(Conversion3dCapabilityTest, TinyScaleSharedChainSupportMismatchAndCollinearRepairsToBrepBody)
-{
-    const PolyhedronBody body = BuildTinyScaleSharedChainSupportMismatchAndCollinearBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 3);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.VertexCount(), 13);
-    ASSERT_EQ(result.body.EdgeCount(), 15);
-}
-
-// Demonstrates shared-chain mixed-content tiny-scale conversion remains stable
-// when support-plane mismatch, collinear-leading fallback, and duplicate-hole
-// normalization are all present together.
-TEST(Conversion3dCapabilityTest, TinyScaleSharedChainFullCompositionRepairsToBrepBody)
-{
-    const PolyhedronBody body = BuildTinyScaleSharedChainFullCompositionBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 3);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.VertexCount(), 13);
-    ASSERT_EQ(result.body.EdgeCount(), 15);
-}
-
-// Demonstrates shared-chain mixed-content tiny-scale conversion remains stable
-// when full-composition repair also normalizes duplicate vertices on both an
-// outer loop and a hole loop.
-TEST(Conversion3dCapabilityTest, TinyScaleSharedChainDualDuplicateFullCompositionRepairsToBrepBody)
-{
-    const PolyhedronBody body = BuildTinyScaleSharedChainDualDuplicateFullCompositionBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 3);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.VertexCount(), 13);
-    ASSERT_EQ(result.body.EdgeCount(), 15);
-}
+INSTANTIATE_TEST_SUITE_P(
+    Conversion3d, TinyScaleRepairTest,
+    ::testing::Values(
+        TinyScaleRepairCase{"NonPlanarFace", &BuildTinyScaleNonPlanarRepairBody, 1, 4, 4},
+        TinyScaleRepairCase{"NonPlanarHoledFace", &BuildTinyScaleNonPlanarHoledRepairBody, 1, 8, 8},
+        TinyScaleRepairCase{"NonPlanarMultiFace", &BuildTinyScaleNonPlanarMultiFaceRepairBody, 2, 8, 8},
+        TinyScaleRepairCase{"NonPlanarMixedContent", &BuildTinyScaleNonPlanarMixedContentBody, 2, 12, 12},
+        TinyScaleRepairCase{"NonPlanarSharedEdgeFaces", &BuildTinyScaleNonPlanarSharedEdgeBody, 2, 6, 7},
+        TinyScaleRepairCase{"NonPlanarSharedEdgeChain", &BuildTinyScaleNonPlanarSharedEdgeChainBody, 3, 8, 10},
+        TinyScaleRepairCase{"SupportMismatchChain", &BuildTinyScaleSupportMismatchSharedEdgeChainBody, 3, 8, 10, true},
+        TinyScaleRepairCase{"SupportMismatchChainWithDuplicate", &BuildTinyScaleSupportMismatchSharedEdgeChainWithDuplicateBody, 3, 8, 10, true},
+        TinyScaleRepairCase{"NonPlanarChainMixedContent", &BuildTinyScaleNonPlanarSharedEdgeChainMixedContentBody, 3, 12, 14},
+        TinyScaleRepairCase{"ChainWithDuplicateLoop", &BuildTinyScaleNonPlanarSharedEdgeChainWithDuplicateLoopBody, 3, 8, 10},
+        TinyScaleRepairCase{"ChainMixedContentDuplicateHole", &BuildTinyScaleSharedEdgeChainMixedContentWithDuplicateHoleBody, 3, 12, 14},
+        TinyScaleRepairCase{"ChainMixedContentCollinearLeading", &BuildTinyScaleSharedChainMixedContentWithCollinearLeadingBody, 3, 13, 15},
+        TinyScaleRepairCase{"ChainMixedContentSupportPlaneMismatch", &BuildTinyScaleSharedChainMixedContentSupportPlaneMismatchBody, 3, 12, 14},
+        TinyScaleRepairCase{"ChainMixedContentSupportMismatchDuplicateHole", &BuildTinyScaleSharedChainMixedContentSupportMismatchWithDuplicateHoleBody, 3, 12, 14, true},
+        TinyScaleRepairCase{"ChainSupportMismatchCollinear", &BuildTinyScaleSharedChainSupportMismatchAndCollinearBody, 3, 13, 15},
+        TinyScaleRepairCase{"ChainFullComposition", &BuildTinyScaleSharedChainFullCompositionBody, 3, 13, 15},
+        TinyScaleRepairCase{"ChainDualDuplicateFullComposition", &BuildTinyScaleSharedChainDualDuplicateFullCompositionBody, 3, 13, 15}),
+    [](const ::testing::TestParamInfo<TinyScaleRepairCase>& info) {
+        return std::string(info.param.name);
+    });
 
 // Demonstrates that a tiny-scale closed tetrahedron polyhedron (4 triangular
 // faces, all 6 edges shared by exactly two faces each) with identical

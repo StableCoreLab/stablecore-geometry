@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <cmath>
+#include <numbers>
+
 #include "Geometry.h"
 
 using Geometry::BuildMultiPolygonByLines;
@@ -34,6 +37,19 @@ TEST(ShapesPathopsTest, BuildsPrimitiveShapeContracts)
     EXPECT_NEAR(ellipse.Area(), 18.84955592153876, 1e-9);
     ASSERT_TRUE(ellipse.ToPolygon(32).IsValid());
 
+}
+
+TEST(ShapesPathopsTest, RotatedEllipseBoundsContainAnalyticExtrema)
+{
+    const SCEllipse2d ellipse(SCPoint2d{4.0, -3.0}, 3.0, 2.0, std::numbers::pi_v<double> / 4.0);
+    ASSERT_TRUE(ellipse.IsValid());
+
+    const double extent = std::sqrt(6.5);
+    const auto expected = Geometry::SCBox2d::FromMinMax(
+        SCPoint2d{4.0 - extent, -3.0 - extent}, SCPoint2d{4.0 + extent, -3.0 + extent});
+    EXPECT_TRUE(ellipse.Bounds(8).AlmostEquals(expected, 1e-12));
+    EXPECT_TRUE(ellipse.Bounds(128).AlmostEquals(expected, 1e-12));
+    EXPECT_FALSE(ellipse.Bounds(7).IsValid());
 }
 
 TEST(ShapesPathopsTest, ExtractsPolylineSubpaths)
