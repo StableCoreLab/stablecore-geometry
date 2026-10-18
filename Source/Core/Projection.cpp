@@ -14,7 +14,6 @@
 #include "Geometry3d/ISCCurve3d.h"
 #include "Geometry3d/ISCSurface.h"
 #include "Geometry3d/TriangleMesh.h"
-#include "Support/Geometry2d/Predicate2.h"
 #include "Support/Epsilon.h"
 
 namespace Geometry
@@ -76,8 +75,8 @@ namespace Geometry
         return SCSegmentProjection2d{projectedPoint,
                                    parameter,
                                    DistanceSquared(point, projectedPoint),
-                                   rawParameter >= -Geometry::kDefaultEpsilon &&
-                                       rawParameter <= 1.0 + Geometry::kDefaultEpsilon};
+                                   rawParameter >= -Geometry::kDefaultParameterEpsilon &&
+                                       rawParameter <= 1.0 + Geometry::kDefaultParameterEpsilon};
     }
 
     SCSegmentProjection2d ProjectPointToSegment(const SCPoint2d& point,
@@ -85,7 +84,8 @@ namespace Geometry
                                               const SCPoint2d& segmentEnd,
                                               bool clampToSegment)
     {
-        if (IsZero((segmentEnd - segmentStart).LengthSquared()))
+        if ((segmentEnd - segmentStart).LengthSquared() <=
+            Geometry::kDefaultEpsilon * Geometry::kDefaultEpsilon)
         {
             return {segmentStart, 0.0, DistanceSquared(point, segmentStart), true};
         }
@@ -112,8 +112,8 @@ namespace Geometry
         return SCSegmentProjection2d{projectedPoint,
                                    parameter,
                                    DistanceSquared(point, projectedPoint),
-                                   rawParameter >= -Geometry::kDefaultEpsilon &&
-                                       rawParameter <= 1.0 + Geometry::kDefaultEpsilon};
+                                   rawParameter >= -Geometry::kDefaultParameterEpsilon &&
+                                       rawParameter <= 1.0 + Geometry::kDefaultParameterEpsilon};
     }
 
     SCSegmentProjection2d ProjectPointToSegment(const SCPoint2d& point, const ISCSegment2d& segment, bool clampToSegment)

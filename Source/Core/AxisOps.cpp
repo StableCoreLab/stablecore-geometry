@@ -60,8 +60,8 @@ namespace Geometry
             return SCSegmentProjection2d{projectedPoint,
                                        parameter,
                                        DistanceSquared(point, projectedPoint),
-                                       clampToSegment || (rawParameter >= -Geometry::kDefaultEpsilon &&
-                                                          rawParameter <= 1.0 + Geometry::kDefaultEpsilon)};
+                                       clampToSegment || (rawParameter >= -Geometry::kDefaultParameterEpsilon &&
+                                                          rawParameter <= 1.0 + Geometry::kDefaultParameterEpsilon)};
         }
 
         [[nodiscard]] double ParameterOnArc(const SCArcSegment2d& segment, double angle)
@@ -104,8 +104,8 @@ namespace Geometry
             return SCSegmentProjection2d{projectedPoint,
                                        parameter,
                                        DistanceSquared(point, projectedPoint),
-                                       clampToSegment || (rawParameter >= -Geometry::kDefaultEpsilon &&
-                                                          rawParameter <= 1.0 + Geometry::kDefaultEpsilon)};
+                                       clampToSegment || (rawParameter >= -Geometry::kDefaultParameterEpsilon &&
+                                                          rawParameter <= 1.0 + Geometry::kDefaultParameterEpsilon)};
         }
 
         [[nodiscard]] SCVector2d UnitTangentAt(const SCLineSegment2d& segment)
@@ -247,7 +247,7 @@ namespace Geometry
 
         startParameter = std::clamp(startParameter, 0.0, 1.0);
         endParameter = std::clamp(endParameter, 0.0, 1.0);
-        if (endParameter - startParameter <= Geometry::kDefaultEpsilon)
+        if (endParameter - startParameter <= Geometry::kDefaultParameterEpsilon)
         {
             return result;
         }

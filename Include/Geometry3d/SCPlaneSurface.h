@@ -3,6 +3,7 @@
 #include "Export/GeometryExport.h"
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 
 #include "Geometry3d/ISCSurface.h"
@@ -27,7 +28,8 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const override
         {
-            if (!plane_.IsValid(tolerance.distanceEpsilon) || !uRange_.IsValid() || !vRange_.IsValid())
+            if (!tolerance.IsValid() || !plane_.IsValid(tolerance.distanceEpsilon) ||
+                !uRange_.IsValid() || !vRange_.IsValid())
             {
                 return false;
             }
@@ -38,9 +40,12 @@ namespace Geometry
             {
                 return false;
             }
-            return std::abs(Dot(unitU, unitNormal)) <= tolerance.angleEpsilon &&
-                   std::abs(Dot(unitV, unitNormal)) <= tolerance.angleEpsilon &&
-                   std::abs(Dot(unitU, unitV)) <= tolerance.angleEpsilon;
+            const auto perpendicularDeviation = [](const SCVector3d& first, const SCVector3d& second) {
+                return std::asin(std::min(1.0, std::abs(Dot(first, second))));
+            };
+            return perpendicularDeviation(unitU, unitNormal) <= tolerance.angleEpsilon &&
+                   perpendicularDeviation(unitV, unitNormal) <= tolerance.angleEpsilon &&
+                   perpendicularDeviation(unitU, unitV) <= tolerance.angleEpsilon;
         }
 
         [[nodiscard]] SCIntervald URange() const override

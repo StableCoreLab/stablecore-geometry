@@ -34,7 +34,7 @@ using Geometry::SCSegmentSearch3d;
 using Geometry::SCTangentPoints2d;
 using Geometry::TangentPoints;
 
-TEST(MissingAlgorithmsCapabilityTest, TangentPointsReturnsTwoPointsForExternalPoint)
+TEST(AlgorithmCapabilitiesTest, TangentPointsReturnsTwoPointsForExternalPoint)
 {
     const Geometry::SCCircle2d circle(SCPoint2d{0.0, 0.0}, 5.0);
     const SCTangentPoints2d result = TangentPoints(SCPoint2d{10.0, 0.0}, circle);
@@ -45,7 +45,7 @@ TEST(MissingAlgorithmsCapabilityTest, TangentPointsReturnsTwoPointsForExternalPo
     EXPECT_TRUE(result.points[1].AlmostEquals(SCPoint2d{2.5, 2.5 * std::sqrt(3.0)}, 1e-12));
 }
 
-TEST(MissingAlgorithmsCapabilityTest, Line2dIntersectionFindsPointAndSegmentHit)
+TEST(AlgorithmCapabilitiesTest, Line2dIntersectionFindsPointAndSegmentHit)
 {
     const SCLine2d first = SCLine2d::FromTwoPoints(SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0});
     const SCLine2d second = SCLine2d::FromTwoPoints(SCPoint2d{2.0, -2.0}, SCPoint2d{2.0, 2.0});
@@ -61,7 +61,7 @@ TEST(MissingAlgorithmsCapabilityTest, Line2dIntersectionFindsPointAndSegmentHit)
     EXPECT_TRUE(lineSegment.points[0].point.AlmostEquals(SCPoint2d{2.0, 0.0}, 1e-12));
 }
 
-TEST(MissingAlgorithmsCapabilityTest, IntersectExtendedPolicyNoneMatchesIntersectForCollinearLines)
+TEST(AlgorithmCapabilitiesTest, IntersectExtendedPolicyNoneMatchesIntersectForCollinearLines)
 {
     const SCLineSegment2d first{SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}};
     const SCLineSegment2d second{SCPoint2d{2.0, 0.0}, SCPoint2d{6.0, 0.0}};
@@ -81,7 +81,7 @@ TEST(MissingAlgorithmsCapabilityTest, IntersectExtendedPolicyNoneMatchesIntersec
     EXPECT_TRUE(actual.onSecondSegment);
 }
 
-TEST(MissingAlgorithmsCapabilityTest, ProjectPointToLineSegment3dClampsAndProjects)
+TEST(AlgorithmCapabilitiesTest, ProjectPointToLineSegment3dClampsAndProjects)
 {
     const SCLineSegment3d segment{SCPoint3d{0.0, 0.0, 0.0}, SCPoint3d{2.0, 0.0, 0.0}};
     const auto projection = Geometry::ProjectPointToLineSegment(SCPoint3d{1.0, 0.0, 1.0}, segment, true);
@@ -92,7 +92,7 @@ TEST(MissingAlgorithmsCapabilityTest, ProjectPointToLineSegment3dClampsAndProjec
     EXPECT_DOUBLE_EQ(projection.distanceSquared, 1.0);
 }
 
-TEST(MissingAlgorithmsCapabilityTest, QueryKNearestReturnsOrderedHits)
+TEST(AlgorithmCapabilitiesTest, QueryKNearestReturnsOrderedHits)
 {
     SCBoxTree2d tree2d;
     tree2d.Add(1, SCBox2d::FromMinMax(SCPoint2d{2.0, 2.0}, SCPoint2d{3.0, 3.0}));
@@ -126,7 +126,7 @@ TEST(MissingAlgorithmsCapabilityTest, QueryKNearestReturnsOrderedHits)
     EXPECT_EQ(hitsSearch3d[0].id, 0U);
 }
 
-TEST(MissingAlgorithmsCapabilityTest, QueryKNearestBreaksEqualDistanceTiesById)
+TEST(AlgorithmCapabilitiesTest, QueryKNearestBreaksEqualDistanceTiesById)
 {
     SCBoxTree2d tree2d;
     tree2d.Add(30, SCBox2d::FromMinMax(SCPoint2d{2.0, 0.0}, SCPoint2d{3.0, 1.0}));
@@ -151,7 +151,7 @@ TEST(MissingAlgorithmsCapabilityTest, QueryKNearestBreaksEqualDistanceTiesById)
     EXPECT_DOUBLE_EQ(hits3d[0].distanceSquared, hits3d[1].distanceSquared);
 }
 
-TEST(MissingAlgorithmsCapabilityTest, BoxTree3dKeepsIncrementalQueriesConsistent)
+TEST(AlgorithmCapabilitiesTest, BoxTree3dKeepsIncrementalQueriesConsistent)
 {
     SCBoxTree3d tree;
     tree.Add(99, SCBox3d{});
@@ -176,7 +176,7 @@ TEST(MissingAlgorithmsCapabilityTest, BoxTree3dKeepsIncrementalQueriesConsistent
     EXPECT_EQ(hits.front().id, 10U);
 }
 
-TEST(MissingAlgorithmsCapabilityTest, BoxTree3dKnnMatchesIndependentDistanceOracle)
+TEST(AlgorithmCapabilitiesTest, BoxTree3dKnnMatchesIndependentDistanceOracle)
 {
     SCBoxTree3d tree;
     std::vector<std::pair<double, std::size_t>> expected;
@@ -207,7 +207,7 @@ TEST(MissingAlgorithmsCapabilityTest, BoxTree3dKnnMatchesIndependentDistanceOrac
     }
 }
 
-TEST(MissingAlgorithmsCapabilityTest, BoxTree3dAddAcceptsGeometryReferencedFromExistingEntry)
+TEST(AlgorithmCapabilitiesTest, BoxTree3dAddAcceptsGeometryReferencedFromExistingEntry)
 {
     SCBoxTree3d tree;
     const auto box = SCBox3d::FromMinMax({1.0, 1.0, 1.0}, {2.0, 2.0, 2.0});
@@ -222,7 +222,7 @@ TEST(MissingAlgorithmsCapabilityTest, BoxTree3dAddAcceptsGeometryReferencedFromE
     EXPECT_TRUE(tree.Find(99)->box.IsValid());
 }
 
-TEST(MissingAlgorithmsCapabilityTest, BoxTree3dRemovesManyDuplicateIdsInOnePass)
+TEST(AlgorithmCapabilitiesTest, BoxTree3dRemovesManyDuplicateIdsInOnePass)
 {
     SCBoxTree3d tree;
     tree.Add(1, SCBox3d::FromMinMax({-2.0, 0.0, 0.0}, {-1.0, 1.0, 1.0}));
@@ -238,7 +238,7 @@ TEST(MissingAlgorithmsCapabilityTest, BoxTree3dRemovesManyDuplicateIdsInOnePass)
     EXPECT_EQ(tree.QueryContaining({40.5, 0.5, 0.5}), std::vector<std::size_t>{2});
 }
 
-TEST(MissingAlgorithmsCapabilityTest, IntersectExtendedLineArcFindsExtendedHit)
+TEST(AlgorithmCapabilitiesTest, IntersectExtendedLineArcFindsExtendedHit)
 {
     const SCLineSegment2d lineSegment{SCPoint2d{3.0, 3.0}, SCPoint2d{4.0, 4.0}};
     const SCArcSegment2d arc{SCPoint2d{0.0, 0.0}, std::sqrt(8.0), 0.0, Geometry::kPi / 2.0};
@@ -255,7 +255,7 @@ TEST(MissingAlgorithmsCapabilityTest, IntersectExtendedLineArcFindsExtendedHit)
     EXPECT_TRUE(extended.onSecondSegment);
 }
 
-TEST(MissingAlgorithmsCapabilityTest, IntersectExtendedLineArcUsesCallerEpsilonForArcBoundary)
+TEST(AlgorithmCapabilitiesTest, IntersectExtendedLineArcUsesCallerEpsilonForArcBoundary)
 {
     const double delta = 5e-7;
     const double eps = 1e-6;
@@ -277,7 +277,7 @@ TEST(MissingAlgorithmsCapabilityTest, IntersectExtendedLineArcUsesCallerEpsilonF
     EXPECT_TRUE(relaxed.onSecondSegment);
 }
 
-TEST(MissingAlgorithmsCapabilityTest, ArcArcExtendedIntersectionHonorsPerSideExtension)
+TEST(AlgorithmCapabilitiesTest, ArcArcExtendedIntersectionHonorsPerSideExtension)
 {
     const SCArcSegment2d first{SCPoint2d{0.0, 0.0}, 5.0, 0.0, Geometry::kPi / 4.0};
     const SCArcSegment2d second{SCPoint2d{0.0, 0.0}, 5.0, Geometry::kPi / 2.0, Geometry::kPi / 6.0};
@@ -295,7 +295,7 @@ TEST(MissingAlgorithmsCapabilityTest, ArcArcExtendedIntersectionHonorsPerSideExt
     EXPECT_TRUE(extendFirst.onSecondSegment);
 }
 
-TEST(MissingAlgorithmsCapabilityTest, SegmentSearch3dNearestUsesProvidedTolerance)
+TEST(AlgorithmCapabilitiesTest, SegmentSearch3dNearestUsesProvidedTolerance)
 {
     SCSegmentSearch3d search;
     const SCLine3d line = SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 0.0, 0.0}, Geometry::SCVector3d{1e-6, 0.0, 0.0});
@@ -309,7 +309,7 @@ TEST(MissingAlgorithmsCapabilityTest, SegmentSearch3dNearestUsesProvidedToleranc
     EXPECT_FALSE(looseHit.has_value());
 }
 
-TEST(MissingAlgorithmsCapabilityTest, SegmentSearch3dUsesBoxIndexForExactQueries)
+TEST(AlgorithmCapabilitiesTest, SegmentSearch3dUsesBoxIndexForExactQueries)
 {
     SCSegmentSearch3d search;
     for (std::size_t id = 0; id < 32; ++id)
@@ -345,7 +345,7 @@ TEST(MissingAlgorithmsCapabilityTest, SegmentSearch3dUsesBoxIndexForExactQueries
     EXPECT_EQ(nearestAfterRemove->id, 19U);
 }
 
-TEST(MissingAlgorithmsCapabilityTest, ThreeDimensionalPointContainmentHasItsOwnEnum)
+TEST(AlgorithmCapabilitiesTest, ThreeDimensionalPointContainmentHasItsOwnEnum)
 {
     const SCLine3d line = SCLine3d::FromOriginAndDirection(SCPoint3d{}, SCVector3d{1.0, 0.0, 0.0});
     const SCLineCurve3d curve = SCLineCurve3d::FromLine(line, SCIntervald{0.0, 1.0});
@@ -353,7 +353,7 @@ TEST(MissingAlgorithmsCapabilityTest, ThreeDimensionalPointContainmentHasItsOwnE
     EXPECT_EQ(containment, SCPointContainment3d::OnBoundary);
 }
 
-TEST(MissingAlgorithmsCapabilityTest, PolylineIntersectionReturnsSharedCrossing)
+TEST(AlgorithmCapabilitiesTest, PolylineIntersectionReturnsSharedCrossing)
 {
     const SCPolyline2d first(std::vector<SCPoint2d>{SCPoint2d{0.0, 0.0}, SCPoint2d{2.0, 0.0}, SCPoint2d{4.0, 0.0}});
     const SCPolyline2d second(std::vector<SCPoint2d>{SCPoint2d{2.0, -1.0}, SCPoint2d{2.0, 1.0}});
@@ -364,7 +364,7 @@ TEST(MissingAlgorithmsCapabilityTest, PolylineIntersectionReturnsSharedCrossing)
     EXPECT_TRUE(intersections[0].point.AlmostEquals(SCPoint2d{2.0, 0.0}, 1e-12));
 }
 
-TEST(MissingAlgorithmsCapabilityTest, SnapPointToSegments3dFindsNearestSegment)
+TEST(AlgorithmCapabilitiesTest, SnapPointToSegments3dFindsNearestSegment)
 {
     const SCLineSegment3d first{SCPoint3d{0.0, 0.0, 0.0}, SCPoint3d{2.0, 0.0, 0.0}};
     const SCLineSegment3d second{SCPoint3d{0.0, 3.0, 0.0}, SCPoint3d{2.0, 3.0, 0.0}};

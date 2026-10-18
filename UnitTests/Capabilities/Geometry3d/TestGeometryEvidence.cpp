@@ -48,6 +48,21 @@ namespace
         EXPECT_FALSE(Geometry::IsPerpendicular({1e200,0,0},{1e200,0,0}));
     }
 
+    TEST(GeometryEvidenceTest, VectorRelationsUseAngularToleranceInRadians)
+    {
+        Geometry::SCGeometryTolerance3d tolerance{};
+        tolerance.angleEpsilon = 0.9;
+        const Geometry::SCVector3d reference{1.0, 0.0, 0.0};
+        const Geometry::SCVector3d rotated{std::cos(1.0), std::sin(1.0), 0.0};
+        const Geometry::SCVector3d skew{std::sin(1.0), std::cos(1.0), 0.0};
+        EXPECT_FALSE(Geometry::IsParallel(reference, rotated, tolerance));
+        EXPECT_FALSE(Geometry::IsPerpendicular(reference, skew, tolerance));
+
+        tolerance.angleEpsilon = 1.1;
+        EXPECT_TRUE(Geometry::IsParallel(reference, rotated, tolerance));
+        EXPECT_TRUE(Geometry::IsPerpendicular(reference, skew, tolerance));
+    }
+
     TEST(GeometryEvidenceTest, RuledSurfaceUsesStableNormalizationAndParameterDerivative)
     {
         using namespace Geometry;

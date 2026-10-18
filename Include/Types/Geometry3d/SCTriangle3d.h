@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <sstream>
 #include <string>
 
@@ -16,7 +17,32 @@ namespace Geometry
 
         [[nodiscard]] bool IsDegenerate(double eps = kDefaultEpsilon) const
         {
-            return Cross(b - a, c - a).Length() <= eps;
+            const SCVector3d ab = b - a;
+            const SCVector3d bc = c - b;
+            const SCVector3d ca = a - c;
+            const double abLength = std::hypot(ab.x, ab.y, ab.z);
+            const double bcLength = std::hypot(bc.x, bc.y, bc.z);
+            const double caLength = std::hypot(ca.x, ca.y, ca.z);
+
+            const SCVector3d* base = &ab;
+            SCVector3d opposite = c - a;
+            double baseLength = abLength;
+            if (bcLength > baseLength)
+            {
+                base = &bc;
+                opposite = a - b;
+                baseLength = bcLength;
+            }
+            if (caLength > baseLength)
+            {
+                base = &ca;
+                opposite = b - c;
+                baseLength = caLength;
+            }
+            if (!(baseLength > 0.0)) return true;
+
+            const SCVector3d normal = Cross(*base / baseLength, opposite);
+            return std::hypot(normal.x, normal.y, normal.z) <= eps;
         }
 
         [[nodiscard]] bool IsValid(double eps = kDefaultEpsilon) const

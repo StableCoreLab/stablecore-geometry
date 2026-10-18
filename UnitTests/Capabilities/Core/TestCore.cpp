@@ -196,6 +196,11 @@ TEST(GeometryTest, CoversTwoDimensionalPrimitives)
     EXPECT_DOUBLE_EQ(unboundedEndpoint.parameter, 2.5);
     EXPECT_FALSE(unboundedEndpoint.isOnSegment);
 
+    const auto shortSegmentProjection = ProjectPointToSegment(
+        SCPoint2d{5e-6, 1e-6}, SCPoint2d{0.0, 0.0}, SCPoint2d{1e-5, 0.0});
+    EXPECT_NEAR(shortSegmentProjection.parameter, 0.5, 1e-12);
+    EXPECT_TRUE(shortSegmentProjection.point.AlmostEquals(SCPoint2d{5e-6, 0.0}, 1e-12));
+
     const SCBox2d boxA = SCBox2d::FromMinMax(SCPoint2d{0.0, 0.0}, SCPoint2d{2.0, 2.0});
     const SCBox2d boxB = SCBox2d::FromMinMax(SCPoint2d{1.0, 1.0}, SCPoint2d{3.0, 3.0});
     const SCBox2d boxC = SCBox2d::FromMinMax(SCPoint2d{3.1, 3.1}, SCPoint2d{4.0, 4.0});

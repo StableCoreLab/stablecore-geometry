@@ -1,5 +1,6 @@
 #include "Core/Relation.h"
 
+#include <algorithm>
 #include <cmath>
 
 #include "Core/Intersection.h"
@@ -79,7 +80,8 @@ namespace Geometry
         }
 
         const SCVector3d cross = Cross(a,b);
-        return std::hypot(cross.x,cross.y,cross.z) <= tolerance.angleEpsilon;
+        const double angle = std::asin(std::min(1.0, std::hypot(cross.x,cross.y,cross.z)));
+        return angle <= tolerance.angleEpsilon;
     }
 
     bool IsPerpendicular(const SCVector3d& first, const SCVector3d& second, const SCGeometryTolerance3d& tolerance)
@@ -90,7 +92,8 @@ namespace Geometry
             return false;
         }
 
-        return std::abs(Dot(a,b)) <= tolerance.angleEpsilon;
+        const double angleFromPerpendicular = std::asin(std::min(1.0, std::abs(Dot(a,b))));
+        return angleFromPerpendicular <= tolerance.angleEpsilon;
     }
 }  // namespace Geometry
 

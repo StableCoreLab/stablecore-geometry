@@ -8,7 +8,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Core/TestFailureSentinels.cpp
     Capabilities/Core/TestGeometryTestSupport.cpp
     Capabilities/Core/TestMetricsPolylineBox.cpp
-    Capabilities/Core/TestMissingAlgorithms.cpp
+    Capabilities/Core/TestAlgorithmCapabilities.cpp
     Capabilities/Core/TestPathGeometry.cpp
     Capabilities/Core/TestPlaneOps.cpp
     Capabilities/Core/TestPointOps.cpp
@@ -51,8 +51,6 @@ list(TRANSFORM SCGEOMETRY_CAPABILITY_TEST_SOURCES PREPEND "${CMAKE_CURRENT_SOURC
 
 set(SCGEOMETRY_GAP_TEST_SOURCES
     Gaps/Core/TestMissingAlgorithmsGaps.cpp
-    Gaps/Geometry2d/TestOffsetGaps.cpp
-    Gaps/Geometry2d/TestRelationGaps.cpp
     Gaps/Geometry2d/TestSearchPolyGaps.cpp
     Gaps/Geometry3d/Test3dBodyBooleanGaps.cpp
     Gaps/Geometry3d/Test3dBrepGaps.cpp

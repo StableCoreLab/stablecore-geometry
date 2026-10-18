@@ -21,6 +21,20 @@ using Geometry::Section;
 using SectionContentKind3d = Geometry::SCSectionContentKind3d;
 using Geometry::SCVector3d;
 
+TEST(Section3dCapabilityTest, ValidationAcceptsShortIndependentAxes)
+{
+    Geometry::SCPolyhedronSection3d section{};
+    section.success = true;
+    section.uAxis = SCVector3d{1e-5, 0.0, 0.0};
+    section.vAxis = SCVector3d{0.0, 1e-5, 0.0};
+    EXPECT_TRUE(Geometry::Validate(section).valid);
+
+    section.uAxis = SCVector3d{1.0, 0.0, 0.0};
+    section.vAxis = SCVector3d{1.0, 5e-10, 0.0};
+    EXPECT_EQ(Geometry::Validate(section).issue,
+              Geometry::SCSectionValidationIssue3d::InvalidBasis);
+}
+
 TEST(Section3dCapabilityTest, RebuildBrepFacePreservesUvWithShortSectionAxis)
 {
     Geometry::SCPolyhedronSection3d section{};
@@ -78,6 +92,43 @@ TEST(Section3dCapabilityTest, TriangleCutHonorsSubDefaultDistanceTolerance)
         EXPECT_NEAR(segment.startPoint.z, 0.0, tolerance.distanceEpsilon);
         EXPECT_NEAR(segment.endPoint.z, 0.0, tolerance.distanceEpsilon);
     }
+}
+
+TEST(Section3dCapabilityTest, FaceCoplanarityUsesAngularTolerance)
+{
+    const SCPoint3d a{0.0, 0.0, 0.0};
+    const SCPoint3d b{100.0, 0.0, 0.05};
+    const SCPoint3d c{-100.0, 100.0, -0.05};
+    const SCPlane support = SCPlane::FromPointAndNormal(a, Geometry::Cross(b - a, c - a));
+    const PolyhedronBody body({PolyhedronFace3d(support, PolyhedronLoop3d({a, b, c}))});
+    Geometry::SCGeometryTolerance3d tolerance{};
+    tolerance.distanceEpsilon = 1e-3;
+    tolerance.angleEpsilon = 1e-8;
+    ASSERT_TRUE(body.IsValid(tolerance));
+
+    const auto section = Section(body, SCPlane::FromPointAndNormal({}, {0.0, 0.0, 1.0}), tolerance);
+    ASSERT_TRUE(section.success);
+    EXPECT_TRUE(section.polygons.empty());
+    EXPECT_FALSE(section.segments.empty());
+}
+
+TEST(Section3dCapabilityTest, BrepFaceCoplanarityUsesAngularTolerance)
+{
+    const SCPoint3d a{0.0, 0.0, 0.0};
+    const SCPoint3d b{1.0, 0.0, -std::tan(1.0)};
+    const SCPoint3d c{0.0, 1.0, 0.0};
+    const SCPlane support = SCPlane::FromPointAndNormal(a, Geometry::Cross(b - a, c - a));
+    const PolyhedronBody body({PolyhedronFace3d(support, PolyhedronLoop3d({a, b, c}))});
+    ASSERT_TRUE(body.IsValid());
+    const auto converted = ConvertToBrepBody(body);
+    ASSERT_TRUE(converted.success);
+
+    Geometry::SCGeometryTolerance3d tolerance{};
+    tolerance.angleEpsilon = 0.9;
+    const auto section = Section(converted.body,
+                                 SCPlane::FromPointAndNormal({}, {0.0, 0.0, 1.0}), tolerance);
+    ASSERT_TRUE(section.success);
+    EXPECT_TRUE(section.polygons.empty());
 }
 
 namespace

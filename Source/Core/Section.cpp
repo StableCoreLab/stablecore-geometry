@@ -792,22 +792,31 @@ namespace Geometry
             }
         }
 
-        bool IsCoplanarWithSectionPlane(const PolyhedronFace3d& face, const SCPlane& plane, double eps)
+        double UnorientedNormalAngle(const SCVector3d& first, const SCVector3d& second)
+        {
+            return std::asin(std::min(1.0, Cross(first, second).Length()));
+        }
+
+        bool IsCoplanarWithSectionPlane(const PolyhedronFace3d& face, const SCPlane& plane,
+                                        const SCGeometryTolerance3d& tolerance)
         {
             const SCPlane supportPlane = face.SupportPlane();
-            if (!supportPlane.IsValid(eps) || !plane.IsValid(eps))
+            if (!supportPlane.IsValid(tolerance.distanceEpsilon) ||
+                !plane.IsValid(tolerance.distanceEpsilon))
             {
                 return false;
             }
 
-            const SCVector3d firstNormal = supportPlane.UnitNormal(eps);
-            const SCVector3d secondNormal = plane.UnitNormal(eps);
-            if (Cross(firstNormal, secondNormal).Length() > eps)
+            const SCVector3d firstNormal = supportPlane.UnitNormal(tolerance.distanceEpsilon);
+            const SCVector3d secondNormal = plane.UnitNormal(tolerance.distanceEpsilon);
+            const double normalAngle = UnorientedNormalAngle(firstNormal, secondNormal);
+            if (normalAngle > tolerance.angleEpsilon)
             {
                 return false;
             }
 
-            return std::abs(plane.SignedDistanceTo(supportPlane.origin, eps)) <= eps;
+            return std::abs(plane.SignedDistanceTo(supportPlane.origin, tolerance.distanceEpsilon)) <=
+                   tolerance.distanceEpsilon;
         }
 
         FaceSectionData BuildCoplanarFaceSectionData(const PolyhedronFace3d& face,
@@ -2062,7 +2071,7 @@ namespace Geometry
         std::vector<SCLineSegment3d> planeEdgeSegments;
         for (const PolyhedronFace3d& face : body.Faces())
         {
-            if (!IsCoplanarWithSectionPlane(face, plane, tolerance.distanceEpsilon))
+            if (!IsCoplanarWithSectionPlane(face, plane, tolerance))
             {
                 AddUniquePlaneEdgeSegments(face.OuterLoop(), plane, planeEdgeSegments, tolerance.distanceEpsilon);
                 for (std::size_t i = 0; i < face.HoleCount(); ++i)
@@ -2219,10 +2228,11 @@ namespace Geometry
                 if (!Detail::TryActualPlane(*planeSurface, tolerance, facePlane)) return {};
                 const SCVector3d faceNormal = facePlane.UnitNormal(tolerance.distanceEpsilon);
                 const SCVector3d sectionNormal = plane.UnitNormal(tolerance.distanceEpsilon);
-                const bool normalsParallel = Cross(faceNormal, sectionNormal).Length() <= tolerance.angleEpsilon &&
-                                             std::abs(facePlane.SignedDistanceTo(
-                                                 plane.origin, tolerance.distanceEpsilon)) <= tolerance.distanceEpsilon;
-                if (!normalsParallel)
+                const bool coplanar =
+                    UnorientedNormalAngle(faceNormal, sectionNormal) <= tolerance.angleEpsilon &&
+                    std::abs(facePlane.SignedDistanceTo(plane.origin, tolerance.distanceEpsilon)) <=
+                        tolerance.distanceEpsilon;
+                if (!coplanar)
                 {
                     continue;
                 }

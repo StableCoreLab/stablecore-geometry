@@ -102,7 +102,7 @@ namespace Geometry
 
         [[nodiscard]] double ArcParameterAtAngle(const SCArcSegment2d& arc, double angle)
         {
-            if (AlmostEqual(arc.sweepAngle, 0.0, Geometry::kDefaultEpsilon))
+            if (AlmostEqual(arc.sweepAngle, 0.0, Geometry::kDefaultAngleEpsilon))
             {
                 return 0.0;
             }
@@ -161,8 +161,8 @@ namespace Geometry
             return SCSegmentProjection2d{projectedPoint,
                                        parameter,
                                        DistanceSquaredPoints(point, projectedPoint),
-                                       clampToSegment || (rawParameter >= -Geometry::kDefaultEpsilon &&
-                                                          rawParameter <= 1.0 + Geometry::kDefaultEpsilon)};
+                                       clampToSegment || (rawParameter >= -Geometry::kDefaultParameterEpsilon &&
+                                                          rawParameter <= 1.0 + Geometry::kDefaultParameterEpsilon)};
         }
 
         [[nodiscard]] ArcProjectionCandidate ProjectPointToArcSegmentLocal(const SCPoint2d& point,
@@ -611,7 +611,7 @@ namespace Geometry
                 Geometry::kDefaultEpsilon * Geometry::kDefaultEpsilon)
             {
                 const double angle = std::atan2(fromCenter.y, fromCenter.x);
-                if (IsAngleOnArc(arc, angle, Geometry::kDefaultEpsilon))
+                if (IsAngleOnArc(arc, angle, Geometry::kDefaultAngleEpsilon))
                 {
                     const SCPoint2d arcPoint = PointAtAngle(arc, angle);
                     UpdateClosest(best,
@@ -670,8 +670,8 @@ namespace Geometry
                     std::atan2(firstCandidate.y - first.center.y, firstCandidate.x - first.center.x);
                 const double secondAngle =
                     std::atan2(secondCandidate.y - second.center.y, secondCandidate.x - second.center.x);
-                if (IsAngleOnArc(first, firstAngle, Geometry::kDefaultEpsilon) &&
-                    IsAngleOnArc(second, secondAngle, Geometry::kDefaultEpsilon))
+                if (IsAngleOnArc(first, firstAngle, Geometry::kDefaultAngleEpsilon) &&
+                    IsAngleOnArc(second, secondAngle, Geometry::kDefaultAngleEpsilon))
                 {
                     UpdateClosest(best,
                                   hasBest,

@@ -256,7 +256,9 @@ namespace Geometry
 
         if (!section.origin.IsValid() || !section.uAxis.IsValid() || !section.vAxis.IsValid() ||
             section.uAxis.Length() <= eps || section.vAxis.Length() <= eps ||
-            Cross(section.uAxis, section.vAxis).Length() <= eps)
+            SCTriangle3d{{0.0, 0.0, 0.0},
+                         {section.uAxis.x, section.uAxis.y, section.uAxis.z},
+                         {section.vAxis.x, section.vAxis.y, section.vAxis.z}}.IsDegenerate(eps))
         {
             return {false, SCSectionValidationIssue3d::InvalidBasis, 0};
         }
