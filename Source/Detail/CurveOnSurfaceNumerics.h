@@ -262,9 +262,11 @@ namespace Geometry::Detail
     };
 
     [[nodiscard]] inline CurveOnSurfaceLineCandidate ProjectCurveOnSurfaceSegmentToLine(
-        const SCLine3d& line, const SCCurveOnSurface& curve, std::size_t segmentIndex)
+        const SCLine3d& line, const SCCurveOnSurface& curve, std::size_t segmentIndex,
+        std::vector<CurveOnSurfaceLineCandidate>* localMinima = nullptr)
     {
         CurveOnSurfaceLineCandidate best{};
+        CurveOnSurfaceLineCandidate intervalBest{};
         const double directionSquared = line.direction.LengthSquared();
         if (!line.origin.IsValid() || !line.direction.IsValid() ||
             !std::isfinite(directionSquared) || !(directionSquared > 0.0))
@@ -294,7 +296,22 @@ namespace Geometry::Detail
             {
                 best = {true, sample, lineParameter, distance};
             }
+            if (localMinima != nullptr && std::isfinite(distance) &&
+                (!intervalBest.valid || distance < intervalBest.distance))
+            {
+                intervalBest = {true, sample, lineParameter, distance};
+            }
             return distance;
+        };
+        const auto refineInterval = [&](double left, double right) {
+            intervalBest = {};
+            consider(left);
+            consider(right);
+            RefineCurveOnSurfaceInterval(left, right, consider);
+            if (localMinima != nullptr && intervalBest.valid)
+            {
+                localMinima->push_back(intervalBest);
+            }
         };
 
         constexpr std::size_t sampleCount = 32;
@@ -312,17 +329,144 @@ namespace Geometry::Detail
                 minima.push_back(i);
             }
         }
-        RefineCurveOnSurfaceInterval(0.0, 1.0 / sampleCount, consider);
-        RefineCurveOnSurfaceInterval((sampleCount - 1.0) / sampleCount, 1.0, consider);
+        refineInterval(0.0, 1.0 / sampleCount);
+        refineInterval((sampleCount - 1.0) / sampleCount, 1.0);
         std::sort(minima.begin(), minima.end(), [&](std::size_t lhs, std::size_t rhs) {
             return distances[lhs] < distances[rhs];
         });
         for (std::size_t index = 0; index < std::min<std::size_t>(8, minima.size()); ++index)
         {
             const std::size_t seed = minima[index];
-            RefineCurveOnSurfaceInterval(static_cast<double>(seed - 1) / sampleCount,
-                                         static_cast<double>(seed + 1) / sampleCount, consider);
+            refineInterval(static_cast<double>(seed - 1) / sampleCount,
+                           static_cast<double>(seed + 1) / sampleCount);
         }
         return best;
+    }
+
+    [[nodiscard]] inline std::vector<CurveOnSurfaceLineCandidate> FindLineCurveOnSurfaceSegmentHits(
+        const SCLine3d& line, const SCCurveOnSurface& curve, std::size_t segmentIndex,
+        const SCGeometryTolerance3d& tolerance)
+    {
+        std::vector<CurveOnSurfaceLineCandidate> candidates;
+        (void)ProjectCurveOnSurfaceSegmentToLine(line, curve, segmentIndex, &candidates);
+        std::sort(candidates.begin(), candidates.end(), [](const auto& lhs, const auto& rhs) {
+            return lhs.sample.parameter < rhs.sample.parameter;
+        });
+        std::vector<CurveOnSurfaceLineCandidate> hits;
+        for (const auto& candidate : candidates)
+        {
+            if (candidate.distance > tolerance.distanceEpsilon)
+            {
+                continue;
+            }
+            if (!hits.empty() &&
+                std::abs(hits.back().sample.parameter - candidate.sample.parameter) <=
+                    std::max(tolerance.parameterEpsilon, 1e-8) &&
+                hits.back().sample.point.AlmostEquals(candidate.sample.point, tolerance.distanceEpsilon))
+            {
+                if (candidate.distance < hits.back().distance)
+                {
+                    hits.back() = candidate;
+                }
+                continue;
+            }
+            hits.push_back(candidate);
+        }
+        return hits;
+    }
+
+    [[nodiscard]] inline std::vector<CurveOnSurfaceSample> FindPlaneCurveOnSurfaceSegmentHits(
+        const SCPlane& plane, const SCCurveOnSurface& curve, std::size_t segmentIndex,
+        const SCGeometryTolerance3d& tolerance)
+    {
+        std::vector<CurveOnSurfaceSample> hits;
+        const auto appendHit = [&](const CurveOnSurfaceSample& sample) {
+            if (!hits.empty() &&
+                std::abs(hits.back().parameter - sample.parameter) <=
+                    std::max(tolerance.parameterEpsilon, 1e-8) &&
+                hits.back().point.AlmostEquals(sample.point, tolerance.distanceEpsilon))
+            {
+                return;
+            }
+            hits.push_back(sample);
+        };
+        CurveOnSurfaceSample previous{};
+        double previousDistance = 0.0;
+        constexpr int sampleCount = 32;
+        for (int sampleIndex = 0; sampleIndex <= sampleCount; ++sampleIndex)
+        {
+            const double parameter = static_cast<double>(sampleIndex) / sampleCount;
+            const CurveOnSurfaceSample current =
+                EvaluateCurveOnSurfaceSegment(curve, segmentIndex, parameter);
+            if (!current.valid)
+            {
+                previous = {};
+                continue;
+            }
+            const double distance = plane.SignedDistanceTo(current.point, tolerance.distanceEpsilon);
+            if (!std::isfinite(distance))
+            {
+                previous = {};
+                continue;
+            }
+            if (std::abs(distance) <= tolerance.distanceEpsilon)
+            {
+                appendHit(current);
+            }
+            else if (previous.valid && std::abs(previousDistance) > tolerance.distanceEpsilon &&
+                ((previousDistance < 0.0 && distance > 0.0) ||
+                 (previousDistance > 0.0 && distance < 0.0)))
+            {
+                double low = previous.parameter;
+                double high = current.parameter;
+                double lowDistance = previousDistance;
+                for (int iteration = 0; iteration < 64; ++iteration)
+                {
+                    const double middle = std::lerp(low, high, 0.5);
+                    if (middle <= low || middle >= high)
+                    {
+                        break;
+                    }
+                    const CurveOnSurfaceSample midpoint =
+                        EvaluateCurveOnSurfaceSegment(curve, segmentIndex, middle);
+                    if (!midpoint.valid)
+                    {
+                        break;
+                    }
+                    const double middleDistance =
+                        plane.SignedDistanceTo(midpoint.point, tolerance.distanceEpsilon);
+                    if (!std::isfinite(middleDistance))
+                    {
+                        break;
+                    }
+                    if (std::abs(middleDistance) <= tolerance.distanceEpsilon)
+                    {
+                        appendHit(midpoint);
+                        break;
+                    }
+                    if ((lowDistance < 0.0 && middleDistance < 0.0) ||
+                        (lowDistance > 0.0 && middleDistance > 0.0))
+                    {
+                        low = middle;
+                        lowDistance = middleDistance;
+                    }
+                    else
+                    {
+                        high = middle;
+                    }
+                }
+            }
+            previous = current;
+            previousDistance = distance;
+        }
+        return hits;
+    }
+
+    [[nodiscard]] inline CurveOnSurfaceSample FindPlaneCurveOnSurfaceSegmentHit(
+        const SCPlane& plane, const SCCurveOnSurface& curve, std::size_t segmentIndex,
+        const SCGeometryTolerance3d& tolerance)
+    {
+        const auto hits = FindPlaneCurveOnSurfaceSegmentHits(plane, curve, segmentIndex, tolerance);
+        return hits.empty() ? CurveOnSurfaceSample{} : hits.front();
     }
 }

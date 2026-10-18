@@ -3938,13 +3938,24 @@ TEST(Conversion3dCapabilityTest, TwoSeparatedCubeBrepBodyConvertsToMeshWithTwoCo
     ASSERT_EQ(components[1].size(), 12);
 }
 
-// Demonstrates the pure-quad closed-shell analogue of the triangular-prism
-// all-vertices test: a tiny-scale 2x1x1 cuboid with all 8 logical shared
-// vertices near-equal perturbed across 3 incident faces still converges to the
-// deterministic representative-average targets for every shared vertex.
-TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidAllVerticesRepairsWithRepresentativeAverageTarget)
+struct ClosedCuboidRepresentativeCase
 {
-    const PolyhedronBody body = BuildSupportMismatchNearEqualClosedCuboidAllVerticesBody();
+    const char* name;
+    PolyhedronBody (*build)();
+};
+
+void PrintTo(const ClosedCuboidRepresentativeCase& scenario, std::ostream* stream)
+{
+    *stream << scenario.name;
+}
+
+class ClosedCuboidAllVerticesTest : public ::testing::TestWithParam<ClosedCuboidRepresentativeCase>
+{
+};
+
+TEST_P(ClosedCuboidAllVerticesTest, PreservesRepresentativeAverageTarget)
+{
+    const PolyhedronBody body = GetParam().build();
     ASSERT_FALSE(body.IsValid());
     ASSERT_EQ(body.FaceCount(), 6);
 
@@ -3960,57 +3971,23 @@ TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidAllVertices
     AssertClosedCuboidAllVerticesRepresentativeTargets(result.body);
 }
 
-// Demonstrates representative-average shared-vertex placement and closed-shell
-// topology recovery remain stable when the near-equal closed-cuboid input also
-// requires duplicate-loop normalization on one face.
-TEST(Conversion3dCapabilityTest,
-     SupportMismatchNearEqualClosedCuboidAllVerticesWithDuplicateLoopRepairsWithRepresentativeAverageTarget)
+INSTANTIATE_TEST_SUITE_P(
+    Conversion3d, ClosedCuboidAllVerticesTest,
+    ::testing::Values(
+        ClosedCuboidRepresentativeCase{"Base", &BuildSupportMismatchNearEqualClosedCuboidAllVerticesBody},
+        ClosedCuboidRepresentativeCase{"DuplicateLoop", &BuildSupportMismatchNearEqualClosedCuboidAllVerticesWithDuplicateLoopBody},
+        ClosedCuboidRepresentativeCase{"DualDuplicateLoop", &BuildSupportMismatchNearEqualClosedCuboidAllVerticesWithDualDuplicateLoopBody}),
+    [](const ::testing::TestParamInfo<ClosedCuboidRepresentativeCase>& info) {
+        return std::string(info.param.name);
+    });
+
+class ClosedCuboidDualVerticesTest : public ::testing::TestWithParam<ClosedCuboidRepresentativeCase>
 {
-    const PolyhedronBody body = BuildSupportMismatchNearEqualClosedCuboidAllVerticesWithDuplicateLoopBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 6);
+};
 
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 6);
-    ASSERT_EQ(result.body.ShellCount(), 1);
-    ASSERT_TRUE(result.body.ShellAt(0).IsClosed());
-    ASSERT_EQ(result.body.VertexCount(), 8);
-    ASSERT_EQ(result.body.EdgeCount(), 12);
-    AssertClosedCuboidAllVerticesRepresentativeTargets(result.body);
-}
-
-// Demonstrates closed-shell representative-average recovery remains stable when
-// the near-equal closed-cuboid all-vertices input requires duplicate-loop
-// normalization on two faces simultaneously.
-TEST(Conversion3dCapabilityTest,
-     SupportMismatchNearEqualClosedCuboidAllVerticesWithDualDuplicateLoopRepairsWithRepresentativeAverageTarget)
+TEST_P(ClosedCuboidDualVerticesTest, PreservesRepresentativeAverageTarget)
 {
-    const PolyhedronBody body = BuildSupportMismatchNearEqualClosedCuboidAllVerticesWithDualDuplicateLoopBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 6);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 6);
-    ASSERT_EQ(result.body.ShellCount(), 1);
-    ASSERT_TRUE(result.body.ShellAt(0).IsClosed());
-    ASSERT_EQ(result.body.VertexCount(), 8);
-    ASSERT_EQ(result.body.EdgeCount(), 12);
-    AssertClosedCuboidAllVerticesRepresentativeTargets(result.body);
-}
-
-// Demonstrates representative-average placement and closed-shell topology
-// recovery remain stable on a near-equal closed-cuboid dual-shared-vertices
-// subset when one face also requires duplicate-loop normalization.
-TEST(Conversion3dCapabilityTest,
-     SupportMismatchNearEqualClosedCuboidDualVerticesWithDuplicateLoopRepairsToValidBrepBody)
-{
-    const PolyhedronBody body = BuildSupportMismatchNearEqualClosedCuboidDualVerticesWithDuplicateLoopBody();
+    const PolyhedronBody body = GetParam().build();
     ASSERT_FALSE(body.IsValid());
     ASSERT_EQ(body.FaceCount(), 6);
 
@@ -4048,99 +4025,23 @@ TEST(Conversion3dCapabilityTest,
     ASSERT_EQ(sharedV6Count, 1);
 }
 
-// Demonstrates representative-average placement and closed-shell topology
-// recovery remain stable on near-equal closed-cuboid dual-shared-vertices
-// when duplicate-loop-normalization is required on two faces.
-TEST(Conversion3dCapabilityTest,
-     SupportMismatchNearEqualClosedCuboidDualVerticesWithDualDuplicateLoopRepairsToValidBrepBody)
+INSTANTIATE_TEST_SUITE_P(
+    Conversion3d, ClosedCuboidDualVerticesTest,
+    ::testing::Values(
+        ClosedCuboidRepresentativeCase{"Base", &BuildSupportMismatchNearEqualClosedCuboidDualVerticesBody},
+        ClosedCuboidRepresentativeCase{"DuplicateLoop", &BuildSupportMismatchNearEqualClosedCuboidDualVerticesWithDuplicateLoopBody},
+        ClosedCuboidRepresentativeCase{"DualDuplicateLoop", &BuildSupportMismatchNearEqualClosedCuboidDualVerticesWithDualDuplicateLoopBody}),
+    [](const ::testing::TestParamInfo<ClosedCuboidRepresentativeCase>& info) {
+        return std::string(info.param.name);
+    });
+
+class ClosedCuboidTripleVerticesTest : public ::testing::TestWithParam<ClosedCuboidRepresentativeCase>
 {
-    const PolyhedronBody body = BuildSupportMismatchNearEqualClosedCuboidDualVerticesWithDualDuplicateLoopBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 6);
+};
 
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 6);
-    ASSERT_EQ(result.body.ShellCount(), 1);
-    ASSERT_TRUE(result.body.ShellAt(0).IsClosed());
-    ASSERT_EQ(result.body.VertexCount(), 8);
-    ASSERT_EQ(result.body.EdgeCount(), 12);
-
-    const double s = 1e-5;
-    const double w = 2.0 * s;
-    const double expectedV6X = w + 1.0e-7 / 3.0;
-
-    std::size_t sharedV0Count = 0;
-    std::size_t sharedV6Count = 0;
-    for (std::size_t i = 0; i < result.body.VertexCount(); ++i)
-    {
-        const SCPoint3d point = result.body.VertexAt(i).Point();
-        if (std::abs(point.x) < 1e-12 && std::abs(point.y) < 1e-12 && std::abs(point.z) < 1e-12)
-        {
-            ++sharedV0Count;
-        }
-        if (point.x > 1.5 * s && point.x < 2.5 * s && std::abs(point.y - s) < 1e-12 && std::abs(point.z - s) < 1e-12)
-        {
-            ++sharedV6Count;
-            ASSERT_LT(std::abs(point.x - expectedV6X), 1e-10);
-        }
-    }
-
-    ASSERT_EQ(sharedV0Count, 1);
-    ASSERT_EQ(sharedV6Count, 1);
-}
-
-// Demonstrates representative-average placement and closed-shell topology also
-// stay deterministic on near-equal closed-cuboid dual-shared-vertices without
-// duplicate-loop normalization noise.
-TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidDualVerticesRepairsToValidBrepBody)
+TEST_P(ClosedCuboidTripleVerticesTest, PreservesRepresentativeAverageTarget)
 {
-    const PolyhedronBody body = BuildSupportMismatchNearEqualClosedCuboidDualVerticesBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 6);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 6);
-    ASSERT_EQ(result.body.ShellCount(), 1);
-    ASSERT_TRUE(result.body.ShellAt(0).IsClosed());
-    ASSERT_EQ(result.body.VertexCount(), 8);
-    ASSERT_EQ(result.body.EdgeCount(), 12);
-
-    const double s = 1e-5;
-    const double w = 2.0 * s;
-    const double expectedV6X = w + 1.0e-7 / 3.0;
-
-    std::size_t sharedV0Count = 0;
-    std::size_t sharedV6Count = 0;
-    for (std::size_t i = 0; i < result.body.VertexCount(); ++i)
-    {
-        const SCPoint3d point = result.body.VertexAt(i).Point();
-        if (std::abs(point.x) < 1e-12 && std::abs(point.y) < 1e-12 && std::abs(point.z) < 1e-12)
-        {
-            ++sharedV0Count;
-        }
-        if (point.x > 1.5 * s && point.x < 2.5 * s && std::abs(point.y - s) < 1e-12 && std::abs(point.z - s) < 1e-12)
-        {
-            ++sharedV6Count;
-            ASSERT_LT(std::abs(point.x - expectedV6X), 1e-10);
-        }
-    }
-
-    ASSERT_EQ(sharedV0Count, 1);
-    ASSERT_EQ(sharedV6Count, 1);
-}
-
-// Demonstrates representative-average placement covers an intermediate
-// triple-shared-vertices case on a near-equal closed cuboid: v0, v1, and v6
-// each perturbed across 3 incident faces, without duplicate-loop noise.
-TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidTripleVerticesRepairsToValidBrepBody)
-{
-    const PolyhedronBody body = BuildSupportMismatchNearEqualClosedCuboidTripleVerticesBody();
+    const PolyhedronBody body = GetParam().build();
     ASSERT_FALSE(body.IsValid());
     ASSERT_EQ(body.FaceCount(), 6);
 
@@ -4186,107 +4087,13 @@ TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedCuboidTripleVerti
     ASSERT_EQ(sharedV6Count, 1);
 }
 
-// Demonstrates that triple-shared-vertices near-equal perturbation paired with
-// duplicate-loop-normalization on one face also converges: the left face has a
-// duplicate leading vertex, while v0, v1, v6 each span 3 incident faces.
-TEST(Conversion3dCapabilityTest,
-     SupportMismatchNearEqualClosedCuboidTripleVerticesWithDuplicateLoopRepairsToValidBrepBody)
-{
-    const PolyhedronBody body = BuildSupportMismatchNearEqualClosedCuboidTripleVerticesWithDuplicateLoopBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 6);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 6);
-    ASSERT_EQ(result.body.ShellCount(), 1);
-    ASSERT_TRUE(result.body.ShellAt(0).IsClosed());
-    ASSERT_EQ(result.body.VertexCount(), 8);
-    ASSERT_EQ(result.body.EdgeCount(), 12);
-
-    const double s = 1e-5;
-    const double w = 2.0 * s;
-    const double expectedV1X = w;
-    const double expectedV6X = w + 1.0e-7 / 3.0;
-
-    std::size_t sharedV0Count = 0;
-    std::size_t sharedV1Count = 0;
-    std::size_t sharedV6Count = 0;
-    for (std::size_t i = 0; i < result.body.VertexCount(); ++i)
-    {
-        const SCPoint3d point = result.body.VertexAt(i).Point();
-        if (std::abs(point.x) < 1e-10 && std::abs(point.y) < 1e-12 && std::abs(point.z) < 1e-12)
-        {
-            ++sharedV0Count;
-        }
-        if (point.x > 1.5 * s && point.x < 2.5 * s && std::abs(point.y) < 1e-12 && std::abs(point.z) < 1e-12)
-        {
-            ++sharedV1Count;
-            ASSERT_LT(std::abs(point.x - expectedV1X), 1e-10);
-        }
-        if (point.x > 1.5 * s && point.x < 2.5 * s && std::abs(point.y - s) < 1e-12 && std::abs(point.z - s) < 1e-12)
-        {
-            ++sharedV6Count;
-            ASSERT_LT(std::abs(point.x - expectedV6X), 1e-10);
-        }
-    }
-
-    ASSERT_EQ(sharedV0Count, 1);
-    ASSERT_EQ(sharedV1Count, 1);
-    ASSERT_EQ(sharedV6Count, 1);
-}
-
-// Demonstrates triple-shared-vertices near-equal perturbation remains stable
-// when duplicate-loop-normalization is required on two faces simultaneously.
-TEST(Conversion3dCapabilityTest,
-     SupportMismatchNearEqualClosedCuboidTripleVerticesWithDualDuplicateLoopRepairsToValidBrepBody)
-{
-    const PolyhedronBody body = BuildSupportMismatchNearEqualClosedCuboidTripleVerticesWithDualDuplicateLoopBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 6);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 6);
-    ASSERT_EQ(result.body.ShellCount(), 1);
-    ASSERT_TRUE(result.body.ShellAt(0).IsClosed());
-    ASSERT_EQ(result.body.VertexCount(), 8);
-    ASSERT_EQ(result.body.EdgeCount(), 12);
-
-    const double s = 1e-5;
-    const double w = 2.0 * s;
-    const double expectedV1X = w;
-    const double expectedV6X = w + 1.0e-7 / 3.0;
-
-    std::size_t sharedV0Count = 0;
-    std::size_t sharedV1Count = 0;
-    std::size_t sharedV6Count = 0;
-    for (std::size_t i = 0; i < result.body.VertexCount(); ++i)
-    {
-        const SCPoint3d point = result.body.VertexAt(i).Point();
-        if (std::abs(point.x) < 1e-10 && std::abs(point.y) < 1e-12 && std::abs(point.z) < 1e-12)
-        {
-            ++sharedV0Count;
-        }
-        if (point.x > 1.5 * s && point.x < 2.5 * s && std::abs(point.y) < 1e-12 && std::abs(point.z) < 1e-12)
-        {
-            ++sharedV1Count;
-            ASSERT_LT(std::abs(point.x - expectedV1X), 1e-10);
-        }
-        if (point.x > 1.5 * s && point.x < 2.5 * s && std::abs(point.y - s) < 1e-12 && std::abs(point.z - s) < 1e-12)
-        {
-            ++sharedV6Count;
-            ASSERT_LT(std::abs(point.x - expectedV6X), 1e-10);
-        }
-    }
-
-    ASSERT_EQ(sharedV0Count, 1);
-    ASSERT_EQ(sharedV1Count, 1);
-    ASSERT_EQ(sharedV6Count, 1);
-}
-
+INSTANTIATE_TEST_SUITE_P(
+    Conversion3d, ClosedCuboidTripleVerticesTest,
+    ::testing::Values(
+        ClosedCuboidRepresentativeCase{"Base", &BuildSupportMismatchNearEqualClosedCuboidTripleVerticesBody},
+        ClosedCuboidRepresentativeCase{"DuplicateLoop", &BuildSupportMismatchNearEqualClosedCuboidTripleVerticesWithDuplicateLoopBody},
+        ClosedCuboidRepresentativeCase{"DualDuplicateLoop", &BuildSupportMismatchNearEqualClosedCuboidTripleVerticesWithDualDuplicateLoopBody}),
+    [](const ::testing::TestParamInfo<ClosedCuboidRepresentativeCase>& info) {
+        return std::string(info.param.name);
+    });
 

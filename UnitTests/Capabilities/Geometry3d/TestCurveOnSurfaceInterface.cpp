@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <memory>
 #include <type_traits>
 #include <vector>
@@ -45,16 +46,35 @@ namespace
         const auto projected = Geometry::ProjectPointToCurve(curve.PointAt(1.5), curve);
         ASSERT_TRUE(projected.success);
         EXPECT_TRUE(projected.point.AlmostEquals(curve.PointAt(1.5), 1e-7));
+        const Geometry::SCPoint3d probe{1.2, 0.4, 2.4};
+        const auto genericProjection = Geometry::ProjectPointToCurve(probe, curve);
+        const auto surfaceProjection = Geometry::ProjectPointToCurveOnSurface(probe, composed);
+        ASSERT_TRUE(genericProjection.success);
+        ASSERT_TRUE(surfaceProjection.success);
+        EXPECT_TRUE(genericProjection.point.AlmostEquals(surfaceProjection.point, 1e-12));
+        EXPECT_NEAR(genericProjection.parameter,
+                    static_cast<double>(surfaceProjection.segmentIndex) + surfaceProjection.segmentParameter,
+                    1e-12);
+        EXPECT_NEAR(genericProjection.distanceSquared, surfaceProjection.distanceSquared, 1e-12);
         const auto line = Geometry::SCLine3d::FromOriginAndDirection(
             {1.0, 0.5, 3.0}, {0.0, 0.0, -1.0});
         const auto lineHit = Geometry::Intersect(line, curve);
+        const auto surfaceLineHit = Geometry::Intersect(line, composed);
         ASSERT_TRUE(lineHit.intersects);
+        ASSERT_TRUE(surfaceLineHit.intersects);
         EXPECT_TRUE(lineHit.point.AlmostEquals(curve.PointAt(1.5), 1e-7));
+        EXPECT_NEAR(lineHit.curveParameter,
+                    static_cast<double>(surfaceLineHit.segmentIndex) + surfaceLineHit.segmentParameter, 1e-12);
+        EXPECT_NEAR(lineHit.lineParameter, surfaceLineHit.lineParameter, 1e-12);
         const auto plane = Geometry::SCPlane::FromPointAndNormal(
             {0.0, 0.0, 2.0}, {0.0, 0.0, 1.0});
         const auto planeHit = Geometry::Intersect(plane, curve);
+        const auto surfacePlaneHit = Geometry::Intersect(plane, composed);
         ASSERT_TRUE(planeHit.intersects);
+        ASSERT_TRUE(surfacePlaneHit.intersects);
         EXPECT_TRUE(planeHit.point.AlmostEquals(curve.PointAt(1.5), 1e-7));
+        EXPECT_NEAR(planeHit.curveParameter,
+                    static_cast<double>(surfacePlaneHit.segmentIndex) + surfacePlaneHit.segmentParameter, 1e-12);
         ASSERT_TRUE(curve.Bounds().IsValid());
         EXPECT_GE(curve.Bounds().MaxPoint().z, 4.0);
 
@@ -101,5 +121,194 @@ namespace
         ASSERT_TRUE(diagonal.Bounds().IsValid());
         EXPECT_GT(diagonal.PointAt(0.5).z, 0.0);
         EXPECT_GE(diagonal.Bounds().MaxPoint().z, diagonal.PointAt(0.5).z);
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, GenericProjectionEvidenceMatchesSurfaceSpecialization)
+    {
+        const auto plane = std::make_shared<Geometry::SCPlaneSurface>(
+            Geometry::SCPlaneSurface::FromPlane(
+                Geometry::SCPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1}), {-1, 1}, {-1, 1}));
+        const Geometry::SCCurveOnSurface composed(
+            plane, Geometry::SCPolyline2d({{0, 0}, {1, 0}}));
+        ASSERT_TRUE(composed.IsValid());
+
+        const Geometry::ISCCurve3d& genericCurve = composed;
+        const Geometry::SCPoint3d query{0.25, 0.25, 0.5};
+        const auto genericStatus = Geometry::ProjectPointToCurveWithStatus(query, genericCurve);
+        const auto surfaceStatus = Geometry::ProjectPointToCurveOnSurfaceWithStatus(query, composed);
+        ASSERT_TRUE(genericStatus.payloadValid);
+        ASSERT_TRUE(surfaceStatus.payloadValid);
+        EXPECT_TRUE(genericStatus.payload.point.AlmostEquals(surfaceStatus.payload.point, 1e-12));
+        EXPECT_EQ(genericStatus.evidence.optimality, surfaceStatus.evidence.optimality);
+        EXPECT_EQ(genericStatus.evidence.optimality, Geometry::SCGeometryEvidenceState::Verified);
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, GenericIntersectionEvidenceMatchesSurfaceSpecialization)
+    {
+        const auto surface = std::make_shared<Geometry::SCPlaneSurface>(
+            Geometry::SCPlaneSurface::FromPlane(
+                Geometry::SCPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1}), {-1, 1}, {-1, 1}));
+        const Geometry::SCCurveOnSurface composed(
+            surface, Geometry::SCPolyline2d({{0, 0}, {1, 0}}));
+        ASSERT_TRUE(composed.IsValid());
+        const Geometry::ISCCurve3d& genericCurve = composed;
+
+        const auto line = Geometry::SCLine3d::FromOriginAndDirection(
+            {0.5, 0.0, 1.0}, {0.0, 0.0, -1.0});
+        const auto genericLine = Geometry::IntersectLineCurveWithStatus(line, genericCurve);
+        const auto surfaceLine = Geometry::IntersectLineCurveOnSurfaceWithStatus(line, composed);
+        ASSERT_TRUE(genericLine.payloadValid);
+        ASSERT_TRUE(surfaceLine.payloadValid);
+        EXPECT_EQ(genericLine.state, surfaceLine.state);
+        EXPECT_EQ(genericLine.evidence.reasons, surfaceLine.evidence.reasons);
+        EXPECT_NEAR(genericLine.payload.curveParameter,
+                    static_cast<double>(surfaceLine.payload.segmentIndex) +
+                        surfaceLine.payload.segmentParameter, 1e-12);
+
+        const auto plane = Geometry::SCPlane::FromPointAndNormal(
+            {0.5, 0.0, 0.0}, {1.0, 0.0, 0.0});
+        const auto genericPlane = Geometry::IntersectPlaneCurveWithStatus(plane, genericCurve);
+        const auto surfacePlane = Geometry::IntersectPlaneCurveOnSurfaceWithStatus(plane, composed);
+        ASSERT_TRUE(genericPlane.payloadValid);
+        ASSERT_TRUE(surfacePlane.payloadValid);
+        EXPECT_EQ(genericPlane.state, surfacePlane.state);
+        EXPECT_EQ(genericPlane.evidence.reasons, surfacePlane.evidence.reasons);
+        EXPECT_EQ(genericPlane.evidence.negativeCompleteness,
+                  surfacePlane.evidence.negativeCompleteness);
+        EXPECT_NEAR(genericPlane.payload.curveParameter,
+                    static_cast<double>(surfacePlane.payload.segmentIndex) +
+                        surfacePlane.payload.segmentParameter, 1e-12);
+
+        const auto missLine = Geometry::SCLine3d::FromOriginAndDirection(
+            {0.5, 2.0, 1.0}, {0.0, 0.0, -1.0});
+        const auto genericLineMiss = Geometry::IntersectLineCurveWithStatus(missLine, genericCurve);
+        const auto surfaceLineMiss = Geometry::IntersectLineCurveOnSurfaceWithStatus(missLine, composed);
+        EXPECT_FALSE(genericLineMiss.payloadValid);
+        EXPECT_FALSE(surfaceLineMiss.payloadValid);
+        EXPECT_EQ(genericLineMiss.state, surfaceLineMiss.state);
+        EXPECT_EQ(genericLineMiss.evidence.reasons, surfaceLineMiss.evidence.reasons);
+
+        const auto missPlane = Geometry::SCPlane::FromPointAndNormal(
+            {0.0, 2.0, 0.0}, {0.0, 1.0, 0.0});
+        const auto genericPlaneMiss = Geometry::IntersectPlaneCurveWithStatus(missPlane, genericCurve);
+        const auto surfacePlaneMiss = Geometry::IntersectPlaneCurveOnSurfaceWithStatus(missPlane, composed);
+        EXPECT_FALSE(genericPlaneMiss.payloadValid);
+        EXPECT_FALSE(surfacePlaneMiss.payloadValid);
+        EXPECT_EQ(genericPlaneMiss.state, surfacePlaneMiss.state);
+        EXPECT_EQ(genericPlaneMiss.evidence.reasons, surfacePlaneMiss.evidence.reasons);
+        EXPECT_EQ(genericPlaneMiss.evidence.negativeCompleteness,
+                  Geometry::SCGeometryEvidenceState::Unknown);
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, PlanarSurfaceCurveCollectsMultipleVerifiedLineAndPlaneHits)
+    {
+        const auto surface = std::make_shared<Geometry::SCPlaneSurface>(
+            Geometry::SCPlaneSurface::FromPlane(
+                Geometry::SCPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1}), {-2, 2}, {-2, 2}));
+        const Geometry::SCCurveOnSurface planeCrossings(
+            surface, Geometry::SCPolyline2d({{0, 0}, {1, 0}, {0, 1}, {1, 1}}));
+        ASSERT_TRUE(planeCrossings.IsValid());
+        const Geometry::ISCCurve3d& genericPlaneCurve = planeCrossings;
+        const auto cutPlane = Geometry::SCPlane::FromPointAndNormal(
+            {0.5, 0.0, 0.0}, {1.0, 0.0, 0.0});
+        const auto planeHits = Geometry::IntersectAllPlaneCurveWithStatus(cutPlane, genericPlaneCurve);
+        ASSERT_EQ(planeHits.hits.size(), 3);
+        EXPECT_EQ(planeHits.state, Geometry::SCGeometryOperationState::HasResult);
+        EXPECT_EQ(planeHits.evidence.negativeCompleteness, Geometry::SCGeometryEvidenceState::Verified);
+        for (std::size_t index = 0; index < planeHits.hits.size(); ++index)
+        {
+            EXPECT_NEAR(planeHits.hits[index].curveParameter, static_cast<double>(index) + 0.5, 1e-12);
+        }
+
+        const Geometry::SCCurveOnSurface lineCrossings(
+            surface, Geometry::SCPolyline2d({{0, -1}, {0, 1}, {1, -1}, {1, 1}}));
+        ASSERT_TRUE(lineCrossings.IsValid());
+        const Geometry::ISCCurve3d& genericLineCurve = lineCrossings;
+        const auto cutLine = Geometry::SCLine3d::FromOriginAndDirection(
+            {0.0, 0.0, 0.0}, {1.0, 0.0, 0.0});
+        const auto lineHits = Geometry::IntersectAllLineCurveWithStatus(cutLine, genericLineCurve);
+        ASSERT_EQ(lineHits.hits.size(), 3);
+        EXPECT_EQ(lineHits.state, Geometry::SCGeometryOperationState::HasResult);
+        EXPECT_EQ(lineHits.evidence.negativeCompleteness, Geometry::SCGeometryEvidenceState::Unknown);
+        for (std::size_t index = 0; index < lineHits.hits.size(); ++index)
+        {
+            EXPECT_NEAR(lineHits.hits[index].curveParameter, static_cast<double>(index) + 0.5, 1e-12);
+        }
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, CurvedSurfaceCurveRetainsMultipleHitsWithoutCompletenessClaim)
+    {
+        const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
+            1, 1, 2, 2,
+            std::vector<Geometry::SCPoint3d>{{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 4}},
+            std::vector<double>{0, 0, 1, 1}, std::vector<double>{0, 0, 1, 1});
+        const Geometry::SCCurveOnSurface composed(
+            surface, Geometry::SCPolyline2d({{0, 0}, {1, 0}, {0, 1}, {1, 1}}));
+        ASSERT_TRUE(composed.IsValid());
+        const Geometry::ISCCurve3d& curve = composed;
+        const auto plane = Geometry::SCPlane::FromPointAndNormal(
+            {0.5, 0.0, 0.0}, {1.0, 0.0, 0.0});
+        const auto hits = Geometry::IntersectAllPlaneCurveWithStatus(plane, curve);
+        ASSERT_EQ(hits.hits.size(), 3);
+        EXPECT_EQ(hits.state, Geometry::SCGeometryOperationState::HasResult);
+        EXPECT_EQ(hits.evidence.negativeCompleteness, Geometry::SCGeometryEvidenceState::Unknown);
+        for (std::size_t index = 0; index < hits.hits.size(); ++index)
+        {
+            EXPECT_NEAR(hits.hits[index].curveParameter, static_cast<double>(index) + 0.5, 1e-12);
+            EXPECT_TRUE(hits.hits[index].point.AlmostEquals(curve.PointAt(hits.hits[index].curveParameter), 1e-12));
+        }
+
+        const Geometry::SCCurveOnSurface repeated(
+            surface, Geometry::SCPolyline2d({{0, 0}, {1, 0}, {0, 0}, {1, 0}}));
+        ASSERT_TRUE(repeated.IsValid());
+        const Geometry::ISCCurve3d& repeatedCurve = repeated;
+        const auto line = Geometry::SCLine3d::FromOriginAndDirection(
+            {0.5, 0.0, 1.0}, {0.0, 0.0, -1.0});
+        const auto lineHits = Geometry::IntersectAllLineCurveWithStatus(line, repeatedCurve);
+        ASSERT_EQ(lineHits.hits.size(), 3);
+        EXPECT_EQ(lineHits.evidence.negativeCompleteness, Geometry::SCGeometryEvidenceState::Unknown);
+        for (std::size_t index = 0; index < lineHits.hits.size(); ++index)
+        {
+            EXPECT_NEAR(lineHits.hits[index].curveParameter, static_cast<double>(index) + 0.5, 1e-8);
+        }
+
+        const auto missPlane = Geometry::SCPlane::FromPointAndNormal(
+            {2.0, 0.0, 0.0}, {1.0, 0.0, 0.0});
+        const auto noPlaneHits = Geometry::IntersectAllPlaneCurveWithStatus(missPlane, curve);
+        EXPECT_TRUE(noPlaneHits.hits.empty());
+        EXPECT_EQ(noPlaneHits.state, Geometry::SCGeometryOperationState::Unknown);
+        EXPECT_EQ(noPlaneHits.evidence.hit, Geometry::SCGeometryEvidenceState::Unknown);
+        EXPECT_EQ(noPlaneHits.evidence.negativeCompleteness, Geometry::SCGeometryEvidenceState::Unknown);
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, CurvedSingleUvSegmentRetainsTwoIsolatedRoots)
+    {
+        const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
+            2, 1, 3, 2,
+            std::vector<Geometry::SCPoint3d>{{0, 0, 1}, {0.5, 0, -3}, {1, 0, 1},
+                                             {0, 1, 1}, {0.5, 1, -3}, {1, 1, 1}},
+            std::vector<double>{0, 0, 0, 1, 1, 1}, std::vector<double>{0, 0, 1, 1});
+        const Geometry::SCCurveOnSurface composed(
+            surface, Geometry::SCPolyline2d({{0, 0.5}, {1, 0.5}}));
+        ASSERT_TRUE(composed.IsValid());
+        const Geometry::ISCCurve3d& curve = composed;
+        const auto plane = Geometry::SCPlane::FromPointAndNormal(
+            {0, 0, 0}, {0, 0, 1});
+        const auto line = Geometry::SCLine3d::FromOriginAndDirection(
+            {0, 0.5, 0}, {1, 0, 0});
+        const double first = (1.0 - std::sqrt(0.5)) * 0.5;
+        const double second = (1.0 + std::sqrt(0.5)) * 0.5;
+
+        const auto planeHits = Geometry::IntersectAllPlaneCurveWithStatus(plane, curve);
+        ASSERT_EQ(planeHits.hits.size(), 2);
+        EXPECT_NEAR(planeHits.hits[0].curveParameter, first, 1e-6);
+        EXPECT_NEAR(planeHits.hits[1].curveParameter, second, 1e-6);
+        EXPECT_EQ(planeHits.evidence.negativeCompleteness, Geometry::SCGeometryEvidenceState::Unknown);
+
+        const auto lineHits = Geometry::IntersectAllLineCurveWithStatus(line, curve);
+        ASSERT_EQ(lineHits.hits.size(), 2);
+        EXPECT_NEAR(lineHits.hits[0].curveParameter, first, 1e-6);
+        EXPECT_NEAR(lineHits.hits[1].curveParameter, second, 1e-6);
+        EXPECT_EQ(lineHits.evidence.negativeCompleteness, Geometry::SCGeometryEvidenceState::Unknown);
     }
 }

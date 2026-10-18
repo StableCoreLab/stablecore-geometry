@@ -13,6 +13,7 @@
 #include "Geometry3d/SCLineCurve3d.h"
 #include "Geometry3d/SCNurbsCurve3d.h"
 #include "Geometry3d/Detail/SurfaceNumerics.h"
+#include "../Detail/CurveOnSurfaceNumerics.h"
 
 namespace Geometry
 {
@@ -186,6 +187,81 @@ namespace Geometry
                                                        : SCGeometryEvidenceState::Verified;
             result.evidence.negativeCompleteness = SCGeometryEvidenceState::Verified;
             result.evidence.reasons = SCGeometryFailureReason::None;
+            return result;
+        }
+
+        if (const auto* surfaceCurve = dynamic_cast<const SCCurveOnSurface*>(&curve))
+        {
+            const bool planar = dynamic_cast<const SCPlaneSurface*>(surfaceCurve->SupportSurface()) != nullptr;
+            bool complete = planar;
+            const std::size_t segmentCount = surfaceCurve->UvCurve().SegmentCount();
+            const auto appendHit = [&](const SCPlaneCurveIntersection3d& hit) {
+                if (!result.hits.empty())
+                {
+                    const auto& previous = result.hits.back();
+                    if (std::abs(previous.curveParameter - hit.curveParameter) <= tolerance.parameterEpsilon &&
+                        previous.point.AlmostEquals(hit.point, tolerance.distanceEpsilon))
+                    {
+                        return;
+                    }
+                }
+                result.hits.push_back(hit);
+            };
+            for (std::size_t segment = 0; segment < segmentCount; ++segment)
+            {
+                if (planar)
+                {
+                    const auto start = Detail::EvaluateCurveOnSurfaceSegment(*surfaceCurve, segment, 0.0);
+                    const auto end = Detail::EvaluateCurveOnSurfaceSegment(*surfaceCurve, segment, 1.0);
+                    if (!start.valid || !end.valid)
+                    {
+                        complete = false;
+                        continue;
+                    }
+                    const SCLineCurve3d localCurve(
+                        SCLine3d::FromOriginAndDirection(start.point, end.point - start.point), {0.0, 1.0});
+                    if (!localCurve.IsValid(tolerance))
+                    {
+                        complete = false;
+                        continue;
+                    }
+                    const auto local = IntersectAllPlaneCurveWithStatus(plane, localCurve, tolerance);
+                    if (local.state == SCGeometryOperationState::NonUnique)
+                    {
+                        result.hits.clear();
+                        result.state = SCGeometryOperationState::NonUnique;
+                        result.evidence.hit = SCGeometryEvidenceState::Verified;
+                        result.evidence.negativeCompleteness = SCGeometryEvidenceState::NotApplicable;
+                        result.evidence.reasons = SCGeometryFailureReason::NonUnique;
+                        return result;
+                    }
+                    complete &= local.evidence.negativeCompleteness == SCGeometryEvidenceState::Verified;
+                    for (const auto& hit : local.hits)
+                    {
+                        appendHit({true, static_cast<double>(segment) + hit.curveParameter, hit.point});
+                    }
+                }
+                else
+                {
+                    const auto hits = Detail::FindPlaneCurveOnSurfaceSegmentHits(
+                        plane, *surfaceCurve, segment, tolerance);
+                    for (const auto& hit : hits)
+                    {
+                        appendHit({true, static_cast<double>(segment) + hit.parameter, hit.point});
+                    }
+                }
+            }
+            result.state = result.hits.empty() && !complete ? SCGeometryOperationState::Unknown :
+                           result.hits.empty() ? SCGeometryOperationState::NoResult :
+                                                 SCGeometryOperationState::HasResult;
+            result.evidence.hit = result.hits.empty() ?
+                (complete ? SCGeometryEvidenceState::NotApplicable : SCGeometryEvidenceState::Unknown) :
+                SCGeometryEvidenceState::Verified;
+            result.evidence.negativeCompleteness = complete ? SCGeometryEvidenceState::Verified :
+                                                              SCGeometryEvidenceState::Unknown;
+            result.evidence.reasons = complete ? SCGeometryFailureReason::None :
+                                                 SCGeometryFailureReason::SearchIncomplete |
+                                                     SCGeometryFailureReason::NoProof;
             return result;
         }
 
@@ -494,6 +570,83 @@ namespace Geometry
                 result.state = analytic.state;
                 result.evidence = analytic.evidence;
                 if (analytic.payloadValid) result.hits.push_back(analytic.payload);
+                return result;
+            }
+            if (const auto* surfaceCurve = dynamic_cast<const SCCurveOnSurface*>(&curve))
+            {
+                const bool planar = dynamic_cast<const SCPlaneSurface*>(surfaceCurve->SupportSurface()) != nullptr;
+                bool complete = planar;
+                const std::size_t segmentCount = surfaceCurve->UvCurve().SegmentCount();
+                const auto appendHit = [&](const SCLineCurveIntersection3d& hit) {
+                    if (!result.hits.empty())
+                    {
+                        const auto& previous = result.hits.back();
+                        if (std::abs(previous.curveParameter - hit.curveParameter) <= tolerance.parameterEpsilon &&
+                            previous.point.AlmostEquals(hit.point, tolerance.distanceEpsilon))
+                        {
+                            return;
+                        }
+                    }
+                    result.hits.push_back(hit);
+                };
+                for (std::size_t segment = 0; segment < segmentCount; ++segment)
+                {
+                    if (planar)
+                    {
+                        const auto start = Detail::EvaluateCurveOnSurfaceSegment(*surfaceCurve, segment, 0.0);
+                        const auto end = Detail::EvaluateCurveOnSurfaceSegment(*surfaceCurve, segment, 1.0);
+                        if (!start.valid || !end.valid)
+                        {
+                            complete = false;
+                            continue;
+                        }
+                        const SCLineCurve3d localCurve(
+                            SCLine3d::FromOriginAndDirection(start.point, end.point - start.point), {0.0, 1.0});
+                        if (!localCurve.IsValid(tolerance))
+                        {
+                            complete = false;
+                            continue;
+                        }
+                        const auto local = IntersectAllLineCurveWithStatus(line, localCurve, tolerance);
+                        if (local.state == SCGeometryOperationState::NonUnique)
+                        {
+                            result.hits.clear();
+                            result.state = SCGeometryOperationState::NonUnique;
+                            result.evidence.hit = SCGeometryEvidenceState::Verified;
+                            result.evidence.negativeCompleteness = SCGeometryEvidenceState::NotApplicable;
+                            result.evidence.reasons = SCGeometryFailureReason::NonUnique;
+                            return result;
+                        }
+                        complete &= local.evidence.negativeCompleteness == SCGeometryEvidenceState::Verified;
+                        for (const auto& hit : local.hits)
+                        {
+                            appendHit({true, hit.lineParameter,
+                                       static_cast<double>(segment) + hit.curveParameter, hit.point});
+                        }
+                    }
+                    else
+                    {
+                        const auto candidates = Detail::FindLineCurveOnSurfaceSegmentHits(
+                            line, *surfaceCurve, segment, tolerance);
+                        for (const auto& candidate : candidates)
+                        {
+                            appendHit({true, candidate.lineParameter,
+                                       static_cast<double>(segment) + candidate.sample.parameter,
+                                       candidate.sample.point});
+                        }
+                    }
+                }
+                result.state = result.hits.empty() && !complete ? SCGeometryOperationState::Unknown :
+                               result.hits.empty() ? SCGeometryOperationState::NoResult :
+                                                     SCGeometryOperationState::HasResult;
+                result.evidence.hit = result.hits.empty() ?
+                    (complete ? SCGeometryEvidenceState::NotApplicable : SCGeometryEvidenceState::Unknown) :
+                    SCGeometryEvidenceState::Verified;
+                result.evidence.negativeCompleteness = complete ? SCGeometryEvidenceState::Verified :
+                                                                  SCGeometryEvidenceState::Unknown;
+                result.evidence.reasons = complete ? SCGeometryFailureReason::None :
+                                                     SCGeometryFailureReason::SearchIncomplete |
+                                                         SCGeometryFailureReason::NoProof;
                 return result;
             }
             const auto hit = Intersect(line, curve, tolerance);

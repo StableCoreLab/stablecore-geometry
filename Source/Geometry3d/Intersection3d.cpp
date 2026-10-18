@@ -469,6 +469,16 @@ namespace Geometry
             return {true,projection.parameter,parameter,point};
         }
 
+        if (const auto* surfaceCurve = dynamic_cast<const SCCurveOnSurface*>(&curve))
+        {
+            const SCLineCurveOnSurfaceIntersection3d hit = Intersect(line, *surfaceCurve, tolerance);
+            return hit.intersects
+                ? SCLineCurveIntersection3d{true, hit.lineParameter,
+                                            static_cast<double>(hit.segmentIndex) + hit.segmentParameter,
+                                            hit.point}
+                : SCLineCurveIntersection3d{};
+        }
+
         const SCIntervald range = curve.ParameterRange();
         if (!range.IsValid())
         {
@@ -1046,6 +1056,16 @@ namespace Geometry
             return {true, hit.parameter, hit.point};
         }
 
+        if (const auto* surfaceCurve = dynamic_cast<const SCCurveOnSurface*>(&curve))
+        {
+            const SCPlaneCurveOnSurfaceIntersection3d hit = Intersect(plane, *surfaceCurve, tolerance);
+            return hit.intersects
+                ? SCPlaneCurveIntersection3d{true,
+                                             static_cast<double>(hit.segmentIndex) + hit.segmentParameter,
+                                             hit.point}
+                : SCPlaneCurveIntersection3d{};
+        }
+
         const SCIntervald range = curve.ParameterRange();
         if (!range.IsValid())
         {
@@ -1228,73 +1248,11 @@ namespace Geometry
         const std::size_t segmentCount = curveOnSurface.UvCurve().IsClosed() ? pointCount : pointCount - 1;
         for (std::size_t i = 0; i < segmentCount; ++i)
         {
-            Detail::CurveOnSurfaceSample previous{};
-            double previousDistance = 0.0;
-            constexpr int sampleCount = 32;
-            for (int sampleIndex = 0; sampleIndex <= sampleCount; ++sampleIndex)
+            const Detail::CurveOnSurfaceSample hit =
+                Detail::FindPlaneCurveOnSurfaceSegmentHit(plane, curveOnSurface, i, tolerance);
+            if (hit.valid)
             {
-                const double parameter = static_cast<double>(sampleIndex) / sampleCount;
-                const Detail::CurveOnSurfaceSample current =
-                    Detail::EvaluateCurveOnSurfaceSegment(curveOnSurface, i, parameter);
-                if (!current.valid)
-                {
-                    previous = {};
-                    continue;
-                }
-                const double distance = plane.SignedDistanceTo(current.point, tolerance.distanceEpsilon);
-                if (!std::isfinite(distance))
-                {
-                    previous = {};
-                    continue;
-                }
-                if (std::abs(distance) <= tolerance.distanceEpsilon)
-                {
-                    return {true, i, current.parameter, current.uv, current.point};
-                }
-                if (previous.valid &&
-                    ((previousDistance < 0.0 && distance > 0.0) ||
-                     (previousDistance > 0.0 && distance < 0.0)))
-                {
-                    double low = previous.parameter;
-                    double high = current.parameter;
-                    double lowDistance = previousDistance;
-                    for (int iteration = 0; iteration < 64; ++iteration)
-                    {
-                        const double middle = std::lerp(low, high, 0.5);
-                        if (middle <= low || middle >= high)
-                        {
-                            break;
-                        }
-                        const Detail::CurveOnSurfaceSample midpoint =
-                            Detail::EvaluateCurveOnSurfaceSegment(curveOnSurface, i, middle);
-                        if (!midpoint.valid)
-                        {
-                            break;
-                        }
-                        const double middleDistance =
-                            plane.SignedDistanceTo(midpoint.point, tolerance.distanceEpsilon);
-                        if (!std::isfinite(middleDistance))
-                        {
-                            break;
-                        }
-                        if (std::abs(middleDistance) <= tolerance.distanceEpsilon)
-                        {
-                            return {true, i, midpoint.parameter, midpoint.uv, midpoint.point};
-                        }
-                        if ((lowDistance < 0.0 && middleDistance < 0.0) ||
-                            (lowDistance > 0.0 && middleDistance > 0.0))
-                        {
-                            low = middle;
-                            lowDistance = middleDistance;
-                        }
-                        else
-                        {
-                            high = middle;
-                        }
-                    }
-                }
-                previous = current;
-                previousDistance = distance;
+                return {true, i, hit.parameter, hit.uv, hit.point};
             }
         }
 

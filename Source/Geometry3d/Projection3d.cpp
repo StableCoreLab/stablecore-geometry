@@ -675,8 +675,13 @@ namespace Geometry
 
     SCCurveProjection3d Detail::SolveCurveProjection(const SCPoint3d& point,
                                           const ISCCurve3d& curve,
-                                          const SCGeometryTolerance3d& tolerance)
+                                          const SCGeometryTolerance3d& tolerance,
+                                          bool* analyticComplete)
     {
+        if (analyticComplete != nullptr)
+        {
+            *analyticComplete = false;
+        }
         if (!point.IsValid() || !curve.IsValid(tolerance))
         {
             return {};
@@ -689,8 +694,23 @@ namespace Geometry
             const double parameter = std::clamp(lineProjection.parameter, range.min, range.max);
             const SCPoint3d projectedPoint = lineCurve->PointAt(parameter);
             const double squared = (point - projectedPoint).LengthSquared();
+            if (analyticComplete != nullptr)
+            {
+                *analyticComplete = true;
+            }
             return projectedPoint.IsValid() && std::isfinite(CandidateDistance(point,projectedPoint))
                 ? SCCurveProjection3d{true, projectedPoint, parameter, squared}
+                : SCCurveProjection3d{};
+        }
+
+        if (const auto* surfaceCurve = dynamic_cast<const SCCurveOnSurface*>(&curve))
+        {
+            const SCCurveOnSurfaceProjection3d projected =
+                Detail::SolveCurveOnSurfaceProjection(point, *surfaceCurve, tolerance, analyticComplete);
+            return projected.success && projected.IsValid()
+                ? SCCurveProjection3d{true, projected.point,
+                                      static_cast<double>(projected.segmentIndex) + projected.segmentParameter,
+                                      projected.distanceSquared}
                 : SCCurveProjection3d{};
         }
 
@@ -1730,9 +1750,11 @@ namespace Geometry
         const SCPoint3d& point, const ISCCurve3d& target, const SCGeometryTolerance3d& tolerance)
     {
         const bool valid = tolerance.IsValid() && point.IsValid() && target.IsValid(tolerance);
-        const auto candidate = valid ? Detail::SolveCurveProjection(point, target, tolerance) : SCCurveProjection3d{};
+        bool analyticComplete = false;
+        const auto candidate = valid ? Detail::SolveCurveProjection(point, target, tolerance, &analyticComplete)
+                                     : SCCurveProjection3d{};
         return VerifiedProjectionCandidate<SCCurveProjection3dWithStatus>(point, candidate, valid,
-            dynamic_cast<const SCLineCurve3d*>(&target) != nullptr,
+            analyticComplete,
             candidate.success ? target.PointAt(candidate.parameter) : SCPoint3d{});
     }
 

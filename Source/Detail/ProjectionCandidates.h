@@ -5,7 +5,9 @@
 namespace Geometry::Detail
 {
     // 仅供求解器和距离入口使用，success 表示有限一阶候选；平方可为 infinity。
-    [[nodiscard]] SCCurveProjection3d SolveCurveProjection(const SCPoint3d&, const ISCCurve3d&, const SCGeometryTolerance3d&);
+    [[nodiscard]] SCCurveProjection3d SolveCurveProjection(const SCPoint3d&, const ISCCurve3d&,
+                                                           const SCGeometryTolerance3d&,
+                                                           bool* analyticComplete = nullptr);
     [[nodiscard]] SCCurveOnSurfaceProjection3d SolveCurveOnSurfaceProjection(const SCPoint3d&, const SCCurveOnSurface&, const SCGeometryTolerance3d&,
                                                                              bool* analyticComplete = nullptr);
     [[nodiscard]] SCBrepFaceProjection3d SolveFaceProjection(const SCPoint3d&, const SCBrepFace&, const SCGeometryTolerance3d&,

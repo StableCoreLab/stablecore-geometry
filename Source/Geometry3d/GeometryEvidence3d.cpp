@@ -343,6 +343,20 @@ namespace Geometry
             }
             return result;
         }
+        if (const auto* surfaceCurve = dynamic_cast<const SCCurveOnSurface*>(&curve)) {
+            const auto specialized = IntersectLineCurveOnSurfaceWithStatus(line, *surfaceCurve, tolerance);
+            SCLineCurveIntersection3dWithStatus result{};
+            result.state = specialized.state;
+            result.evidence = specialized.evidence;
+            if (specialized.payloadValid) {
+                const auto& hit = specialized.payload;
+                result.payload = {true, hit.lineParameter,
+                                  static_cast<double>(hit.segmentIndex) + hit.segmentParameter,
+                                  hit.point};
+                result.payloadValid = result.payload.IsValid();
+            }
+            return result;
+        }
         const auto hit = Intersect(line, curve, tolerance);
         return LineCandidate<SCLineCurveIntersection3dWithStatus>(line, hit, hit.intersects ? curve.PointAt(hit.curveParameter) : SCPoint3d{}, tolerance, false);
     }
@@ -398,6 +412,18 @@ namespace Geometry
     {
         SCPlaneCurveIntersection3dWithStatus result{};
         if (!tolerance.IsValid() || !plane.IsValid(tolerance.distanceEpsilon) || !curve.IsValid(tolerance)) return result;
+        if (const auto* surfaceCurve = dynamic_cast<const SCCurveOnSurface*>(&curve)) {
+            const auto specialized = IntersectPlaneCurveOnSurfaceWithStatus(plane, *surfaceCurve, tolerance);
+            result.state = specialized.state;
+            result.evidence = specialized.evidence;
+            if (specialized.payloadValid) {
+                const auto& hit = specialized.payload;
+                result.payload = {true, static_cast<double>(hit.segmentIndex) + hit.segmentParameter,
+                                  hit.point};
+                result.payloadValid = result.payload.IsValid();
+            }
+            return result;
+        }
         const auto all = IntersectAllPlaneCurveWithStatus(plane, curve, tolerance);
         result.state = all.state;
         result.evidence = all.evidence;
