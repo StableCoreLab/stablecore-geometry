@@ -1,4 +1,5 @@
 
+#include <algorithm>
 #include <cmath>
 
 #include <gtest/gtest.h>
@@ -19,6 +20,65 @@ using Geometry::PolyhedronLoop3d;
 using Geometry::Section;
 using SectionContentKind3d = Geometry::SCSectionContentKind3d;
 using Geometry::SCVector3d;
+
+TEST(Section3dCapabilityTest, RebuildBrepFacePreservesUvWithShortSectionAxis)
+{
+    Geometry::SCPolyhedronSection3d section{};
+    section.success = true;
+    section.uAxis = SCVector3d{1e-6, 0.0, 0.0};
+    section.vAxis = SCVector3d{0.0, 1.0, 0.0};
+    section.polygons.emplace_back(Geometry::SCPolyline2d(
+        {{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 1.0}}, Geometry::SCPolylineClosure::Closed));
+
+    const auto rebuilt = Geometry::RebuildSectionBrepFaces(section);
+    ASSERT_TRUE(rebuilt.success);
+    ASSERT_EQ(rebuilt.faces.size(), 1U);
+    ASSERT_TRUE(rebuilt.faces.front().IsValid());
+    const auto& trim = rebuilt.faces.front().OuterTrim();
+    ASSERT_EQ(trim.PointCount(), 4U);
+    double maximumU = 0.0;
+    for (std::size_t i = 0; i < trim.PointCount(); ++i)
+    {
+        maximumU = std::max(maximumU, trim.UvPointAt(i).x);
+    }
+    EXPECT_NEAR(maximumU, 1.0, 1e-9);
+}
+
+TEST(Section3dCapabilityTest, RebuildBrepFacesRejectsSkewSectionAxes)
+{
+    Geometry::SCPolyhedronSection3d section{};
+    section.success = true;
+    section.uAxis = SCVector3d{1.0, 0.0, 0.0};
+    section.vAxis = SCVector3d{1.0, 1.0, 0.0};
+    section.polygons.emplace_back(Geometry::SCPolyline2d(
+        {{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 1.0}}, Geometry::SCPolylineClosure::Closed));
+
+    const auto rebuilt = Geometry::RebuildSectionBrepFaces(section);
+    EXPECT_FALSE(rebuilt.success);
+    EXPECT_EQ(rebuilt.issue, Geometry::SCSectionFaceRebuildIssue3d::InvalidSection);
+    EXPECT_TRUE(rebuilt.faces.empty());
+}
+
+TEST(Section3dCapabilityTest, TriangleCutHonorsSubDefaultDistanceTolerance)
+{
+    const SCPoint3d a{0.0, 0.0, -1e-11};
+    const SCPoint3d b{1.0, 0.0, 1e-11};
+    const SCPoint3d c{0.0, 1.0, 1e-11};
+    const SCPlane support = SCPlane::FromPointAndNormal(a, Geometry::Cross(b - a, c - a));
+    const PolyhedronBody body({PolyhedronFace3d(support, PolyhedronLoop3d({a, b, c}))});
+    ASSERT_TRUE(body.IsValid());
+
+    Geometry::SCGeometryTolerance3d tolerance{};
+    tolerance.distanceEpsilon = 1e-14;
+    const auto section = Section(body, SCPlane::FromPointAndNormal({}, {0.0, 0.0, 1.0}), tolerance);
+    ASSERT_TRUE(section.success);
+    ASSERT_FALSE(section.segments.empty());
+    for (const auto& segment : section.segments)
+    {
+        EXPECT_NEAR(segment.startPoint.z, 0.0, tolerance.distanceEpsilon);
+        EXPECT_NEAR(segment.endPoint.z, 0.0, tolerance.distanceEpsilon);
+    }
+}
 
 namespace
 {

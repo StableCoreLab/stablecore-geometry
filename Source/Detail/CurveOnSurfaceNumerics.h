@@ -5,12 +5,16 @@
 #include <cmath>
 #include <cstddef>
 #include <limits>
+#include <optional>
 #include <vector>
 
+#include "Core/Intersection.h"
+#include "Geometry3d/SCNurbsCurve3d.h"
 #include "Geometry3d/SCCurveOnSurface.h"
 #include "Geometry3d/SCNurbsSurface.h"
 #include "Geometry3d/SCPlaneSurface.h"
 #include "Types/Geometry3d/SCLine3d.h"
+#include "NurbsBasis.h"
 
 namespace Geometry::Detail
 {
@@ -125,6 +129,88 @@ namespace Geometry::Detail
         result.point = surface->PointAt(result.uv.x, result.uv.y);
         result.valid = result.point.IsValid();
         return result;
+    }
+
+    struct AxisAlignedNurbsSurfaceCurve
+    {
+        SCNurbsCurve3d curve{};
+        double start{0.0};
+        double end{0.0};
+    };
+
+    [[nodiscard]] inline std::optional<AxisAlignedNurbsSurfaceCurve> RestrictAxisAlignedNurbsSurfaceSegment(
+        const SCCurveOnSurface& curve, std::size_t segmentIndex, const SCGeometryTolerance3d& tolerance)
+    {
+        const auto* surface = dynamic_cast<const SCNurbsSurface*>(curve.SupportSurface());
+        if (surface == nullptr || !surface->IsValid(tolerance) ||
+            segmentIndex >= curve.UvCurve().SegmentCount())
+        {
+            return std::nullopt;
+        }
+        const SCPoint2d first = curve.UvPointAt(segmentIndex);
+        const SCPoint2d second = curve.UvPointAt((segmentIndex + 1) % curve.PointCount());
+        const bool alongU = first.y == second.y && first.x != second.x;
+        const bool alongV = first.x == second.x && first.y != second.y;
+        if (!alongU && !alongV)
+        {
+            return std::nullopt;
+        }
+
+        const std::size_t countU = surface->ControlPointCountU();
+        const std::size_t countV = surface->ControlPointCountV();
+        const std::size_t movingCount = alongU ? countU : countV;
+        const std::size_t fixedCount = alongU ? countV : countU;
+        const int fixedDegree = alongU ? surface->DegreeV() : surface->DegreeU();
+        const double fixedParameter = alongU ? first.y : first.x;
+        const auto& fixedKnots = alongU ? surface->KnotsV() : surface->KnotsU();
+        const auto basis = EvaluateNurbsBasis(fixedKnots, fixedCount, fixedDegree, fixedParameter).value;
+        const auto& surfacePoints = surface->ControlPoints();
+        const auto& surfaceWeights = surface->Weights();
+        const double weightScale = *std::max_element(surfaceWeights.begin(), surfaceWeights.end());
+        if (!(weightScale > 0.0) || !std::isfinite(weightScale))
+        {
+            return std::nullopt;
+        }
+
+        std::vector<SCPoint3d> controls;
+        std::vector<double> weights;
+        controls.reserve(movingCount);
+        weights.reserve(movingCount);
+        for (std::size_t moving = 0; moving < movingCount; ++moving)
+        {
+            double weight = 0.0;
+            SCVector3d weightedPoint{};
+            for (std::size_t fixed = 0; fixed < fixedCount; ++fixed)
+            {
+                if (!(basis[fixed] > 0.0))
+                {
+                    continue;
+                }
+                const std::size_t index = alongU ? fixed * countU + moving : moving * countU + fixed;
+                const double contribution = basis[fixed] * (surfaceWeights[index] / weightScale);
+                weight += contribution;
+                weightedPoint = weightedPoint + SCVector3d{surfacePoints[index].x, surfacePoints[index].y,
+                                                            surfacePoints[index].z} * contribution;
+            }
+            if (!(weight > 0.0) || !std::isfinite(weight))
+            {
+                return std::nullopt;
+            }
+            controls.push_back({weightedPoint.x / weight, weightedPoint.y / weight, weightedPoint.z / weight});
+            weights.push_back(weight);
+        }
+
+        SCNurbsCurve3d restricted(alongU ? surface->DegreeU() : surface->DegreeV(),
+                                  std::move(controls),
+                                  alongU ? surface->KnotsU() : surface->KnotsV(),
+                                  std::move(weights));
+        if (!restricted.IsValid(tolerance))
+        {
+            return std::nullopt;
+        }
+        return AxisAlignedNurbsSurfaceCurve{std::move(restricted),
+                                            alongU ? first.x : first.y,
+                                            alongU ? second.x : second.y};
     }
 
     template <typename Consider>
@@ -345,14 +431,13 @@ namespace Geometry::Detail
 
     [[nodiscard]] inline std::vector<CurveOnSurfaceSample> FindPlaneCurveOnSurfaceSegmentHits(
         const SCPlane& plane, const SCCurveOnSurface& curve, std::size_t segmentIndex,
-        const SCGeometryTolerance3d& tolerance);
+        const SCGeometryTolerance3d& tolerance, bool* nonUnique = nullptr);
 
     [[nodiscard]] inline std::vector<CurveOnSurfaceLineCandidate> FindLineCurveOnSurfaceSegmentHits(
         const SCLine3d& line, const SCCurveOnSurface& curve, std::size_t segmentIndex,
-        const SCGeometryTolerance3d& tolerance)
+        const SCGeometryTolerance3d& tolerance, bool* nonUnique = nullptr)
     {
         std::vector<CurveOnSurfaceLineCandidate> candidates;
-        (void)ProjectCurveOnSurfaceSegmentToLine(line, curve, segmentIndex, &candidates);
         const double directionLength = std::hypot(line.direction.x, line.direction.y, line.direction.z);
         if (!std::isfinite(directionLength) || !(directionLength > 0.0))
         {
@@ -373,6 +458,31 @@ namespace Geometry::Detail
                 ? CurveOnSurfaceLineCandidate{true, sample, parameter, distance}
                 : CurveOnSurfaceLineCandidate{};
         };
+        if (const auto restricted = RestrictAxisAlignedNurbsSurfaceSegment(curve, segmentIndex, tolerance))
+        {
+            const auto analytic = IntersectAllLineCurveWithStatus(line, restricted->curve, tolerance);
+            if (analytic.state == SCGeometryOperationState::NonUnique)
+            {
+                if (nonUnique != nullptr) *nonUnique = true;
+                return {};
+            }
+            for (const auto& hit : analytic.hits)
+            {
+                const double parameter =
+                    (hit.curveParameter - restricted->start) / (restricted->end - restricted->start);
+                if (!std::isfinite(parameter) || parameter < 0.0 || parameter > 1.0)
+                {
+                    continue;
+                }
+                const auto sample = EvaluateCurveOnSurfaceSegment(curve, segmentIndex, parameter);
+                const auto candidate = sample.valid ? distanceToLine(sample) : CurveOnSurfaceLineCandidate{};
+                if (candidate.valid)
+                {
+                    candidates.push_back(candidate);
+                }
+            }
+        }
+        (void)ProjectCurveOnSurfaceSegmentToLine(line, curve, segmentIndex, &candidates);
         {
             const SCVector3d axis = std::abs(unit.x) <= std::abs(unit.y) &&
                                             std::abs(unit.x) <= std::abs(unit.z) ? SCVector3d{1, 0, 0} :
@@ -428,9 +538,34 @@ namespace Geometry::Detail
 
     [[nodiscard]] inline std::vector<CurveOnSurfaceSample> FindPlaneCurveOnSurfaceSegmentHits(
         const SCPlane& plane, const SCCurveOnSurface& curve, std::size_t segmentIndex,
-        const SCGeometryTolerance3d& tolerance)
+        const SCGeometryTolerance3d& tolerance, bool* nonUnique)
     {
         std::vector<CurveOnSurfaceSample> hits;
+        if (const auto restricted = RestrictAxisAlignedNurbsSurfaceSegment(curve, segmentIndex, tolerance))
+        {
+            const auto analytic = IntersectAllPlaneCurveWithStatus(plane, restricted->curve, tolerance);
+            if (analytic.state == SCGeometryOperationState::NonUnique)
+            {
+                if (nonUnique != nullptr) *nonUnique = true;
+                return {};
+            }
+            for (const auto& hit : analytic.hits)
+            {
+                const double parameter =
+                    (hit.curveParameter - restricted->start) / (restricted->end - restricted->start);
+                if (!std::isfinite(parameter) || parameter < 0.0 || parameter > 1.0)
+                {
+                    continue;
+                }
+                const auto sample = EvaluateCurveOnSurfaceSegment(curve, segmentIndex, parameter);
+                if (sample.valid &&
+                    std::abs(plane.SignedDistanceTo(sample.point, tolerance.distanceEpsilon)) <=
+                        tolerance.distanceEpsilon)
+                {
+                    hits.push_back(sample);
+                }
+            }
+        }
         const auto refineCrossing = [&](double low, double high, double lowDistance) {
             CurveOnSurfaceSample best{};
             double bestDistance = std::numeric_limits<double>::infinity();

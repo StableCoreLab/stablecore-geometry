@@ -27,6 +27,14 @@ using Geometry::SCSegmentTrim2d;
 using Geometry::SCSnapResult2d;
 using Geometry::SCVector2d;
 
+TEST(CoreAlgorithmsTest, RingOrientationUsesAreaTolerance)
+{
+    const SCPolyline2d ring({{0.0, 0.0}, {1e-4, 0.0}, {1e-4, 5e-6}, {0.0, 5e-6}},
+                            SCPolylineClosure::Closed);
+    ASSERT_TRUE(ring.IsValid());
+    EXPECT_EQ(Geometry::Orientation(ring), SCRingOrientation2d::CounterClockwise);
+}
+
 TEST(CoreAlgorithmsTest, ClosestPointsKeepsSubEpsilonSquaredDistanceImprovement)
 {
     const SCLineSegment2d first({0.0, 0.0}, {1.0, 0.0});

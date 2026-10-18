@@ -31,7 +31,7 @@ namespace Geometry
         [[nodiscard]] SCPolygon2d ToPolygon() const;
         [[nodiscard]] bool AlmostEquals(const SCRectangle2d& other,
                                         double distanceEps = Geometry::kDefaultEpsilon,
-                                        double angleEps = Geometry::kDefaultEpsilon) const
+                                        double angleEps = Geometry::kDefaultAngleEpsilon) const
         {
             return std::isfinite(distanceEps) && distanceEps >= 0.0 &&
                    std::isfinite(angleEps) && angleEps >= 0.0 &&

@@ -857,12 +857,11 @@ namespace Geometry
                     return false;
                 }
 
-                const double firstLengthSquared =
-                    std::max(firstDirection.LengthSquared(), Geometry::kDefaultEpsilon);
+                const SCVector3d firstUnitDirection = firstDirection / firstLength;
                 double secondStartParameter =
-                    Dot(second.startPoint - first.startPoint, firstDirection) / firstLengthSquared;
+                    Dot(second.startPoint - first.startPoint, firstUnitDirection) / firstLength;
                 double secondEndParameter =
-                    Dot(second.endPoint - first.startPoint, firstDirection) / firstLengthSquared;
+                    Dot(second.endPoint - first.startPoint, firstUnitDirection) / firstLength;
                 if (secondEndParameter < secondStartParameter)
                 {
                     std::swap(secondStartParameter, secondEndParameter);

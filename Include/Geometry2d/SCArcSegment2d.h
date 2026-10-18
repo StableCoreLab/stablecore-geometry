@@ -37,6 +37,7 @@ namespace Geometry
         [[nodiscard]] SCPoint2d PointAt(double parameter) const override;
         [[nodiscard]] SCPoint2d PointAtLength(double distanceFromStart, bool clampToSegment = false) const override;
         [[nodiscard]] bool AlmostEquals(const SCArcSegment2d& other, double eps = Geometry::kDefaultEpsilon) const;
+        [[nodiscard]] bool AlmostEquals(const SCArcSegment2d& other, double distanceEps, double angleEps) const;
         [[nodiscard]] std::string DebugString() const override;
         [[nodiscard]] std::unique_ptr<ISCSegment2d> Clone() const override;
         [[nodiscard]] bool ContainsAngle(double angle) const;

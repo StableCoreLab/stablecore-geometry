@@ -7,6 +7,8 @@
 namespace Geometry
 {
     constexpr double kDefaultEpsilon = 1e-9;
+    constexpr double kDefaultAngleEpsilon = kDefaultEpsilon;
+    constexpr double kDefaultParameterEpsilon = kDefaultEpsilon;
     extern GEOMETRY_DATA_API const double kPi;
     extern GEOMETRY_DATA_API const double kTwoPi;
     extern GEOMETRY_DATA_API const std::array<double, 4> kArcBoundsCriticalAngles;

@@ -8,8 +8,8 @@
 
 #include "RingIntegral2d.h"
 #include "Core/Algorithms.h"
-#include "Support/Epsilon.h"
 #include "../Detail/SegmentKernel2d.h"
+#include "../Detail/TolerancePolicy2d.h"
 
 namespace Geometry
 {
@@ -25,17 +25,6 @@ namespace Geometry
             return Detail::ComputeSignedArea(ring);
         }
 
-        [[nodiscard]] SCPoint2d RingCentroid(const SCPolyline2d& ring)
-        {
-            const Detail::RingMoment2d moment = Detail::ComputeRingMoment(ring);
-            if (std::abs(moment.signedArea) <= Geometry::kDefaultEpsilon)
-            {
-                return SCPoint2d{};
-            }
-
-            return SCPoint2d{moment.firstMomentX / moment.signedArea, moment.firstMomentY / moment.signedArea};
-        }
-
     }  // namespace
 
     double Perimeter(const SCPolygon2d& polygon)
@@ -46,7 +35,7 @@ namespace Geometry
     SCRingOrientation2d Orientation(const SCPolyline2d& ring)
     {
         const double signedArea = SignedArea(ring);
-        if (std::abs(signedArea) <= Geometry::kDefaultEpsilon)
+        if (std::abs(signedArea) <= Detail::kAreaEpsilon2d)
         {
             return SCRingOrientation2d::Unknown;
         }

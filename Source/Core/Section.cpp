@@ -413,13 +413,20 @@ namespace Geometry
                                    double firstDistance,
                                    double secondDistance)
         {
-            const double denominator = firstDistance - secondDistance;
-            if (std::abs(denominator) <= Geometry::kDefaultEpsilon)
+            const double scale = std::max(std::abs(firstDistance), std::abs(secondDistance));
+            if (!(scale > 0.0) || !std::isfinite(scale))
             {
                 return first;
             }
 
-            const double parameter = firstDistance / denominator;
+            const double firstScaled = firstDistance / scale;
+            const double secondScaled = secondDistance / scale;
+            const double denominator = firstScaled - secondScaled;
+            if (denominator == 0.0)
+            {
+                return first;
+            }
+            const double parameter = firstScaled / denominator;
             return first + (second - first) * parameter;
         }
 
@@ -856,9 +863,14 @@ namespace Geometry
         SCPoint2d ProjectPointToSectionBasis(const SCPoint3d& point, const SCPolyhedronSection3d& section)
         {
             const SCVector3d delta = point - section.origin;
-            const double uDenom = std::max(section.uAxis.LengthSquared(), Geometry::kDefaultEpsilon);
-            const double vDenom = std::max(section.vAxis.LengthSquared(), Geometry::kDefaultEpsilon);
-            return SCPoint2d{Dot(delta, section.uAxis) / uDenom, Dot(delta, section.vAxis) / vDenom};
+            const double uLength = section.uAxis.Length();
+            const double vLength = section.vAxis.Length();
+            if (!(uLength > 0.0) || !(vLength > 0.0))
+            {
+                return {};
+            }
+            return SCPoint2d{Dot(delta, section.uAxis / uLength) / uLength,
+                             Dot(delta, section.vAxis / vLength) / vLength};
         }
 
         std::size_t PolygonDepth(const PolygonTopology2d& topology, std::size_t index)
@@ -2452,11 +2464,18 @@ namespace Geometry
             return result;
         }
 
+        const SCPlaneSurface sectionPlaneSurface(
+            supportPlane, section.uAxis, section.vAxis, SCIntervald{-1.0e6, 1.0e6}, SCIntervald{-1.0e6, 1.0e6});
+        SCGeometryTolerance3d surfaceTolerance{};
+        surfaceTolerance.distanceEpsilon = eps;
+        if (!sectionPlaneSurface.IsValid(surfaceTolerance))
+        {
+            result.issue = SCSectionFaceRebuildIssue3d::InvalidSection;
+            return result;
+        }
+
         for (const PolyhedronFace3d& polyFace : rebuiltFaces.faces)
         {
-            const SCPlaneSurface sectionPlaneSurface(
-                supportPlane, section.uAxis, section.vAxis, SCIntervald{-1.0e6, 1.0e6}, SCIntervald{-1.0e6, 1.0e6});
-
             std::vector<SCPoint3d> outerVertices;
             outerVertices.reserve(polyFace.OuterLoop().VertexCount());
             std::vector<SCPoint2d> outerUv;

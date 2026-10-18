@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cmath>
 #include <memory>
 #include <type_traits>
@@ -10,6 +11,7 @@
 #include "Geometry3d/ISCCurve3d.h"
 #include "Geometry2d/SCArcSegment2d.h"
 #include "Geometry3d/SCCurveOnSurface.h"
+#include "Geometry3d/SCNurbsCurve3d.h"
 #include "Geometry3d/SCNurbsSurface.h"
 #include "Geometry3d/SCPlaneSurface.h"
 
@@ -28,6 +30,29 @@ namespace
             std::vector<Geometry::SCPoint3d>{{0, 0, z0}, {0.5, 0, z1}, {1, 0, z2},
                                              {0, 1, z0}, {0.5, 1, z1}, {1, 1, z2}},
             std::vector<double>{0, 0, 0, 1, 1, 1}, std::vector<double>{0, 0, 1, 1});
+        return Geometry::SCCurveOnSurface(
+            surface, Geometry::SCPolyline2d({{0, 0.5}, {1, 0.5}}));
+    }
+
+    Geometry::SCCurveOnSurface MakeCubicHeightCurve(const std::array<double, 3>& roots)
+    {
+        // 将三个给定根的三次多项式转换为 [0, 1] 上的 Bezier 控制值。
+        const double c0 = -roots[0] * roots[1] * roots[2];
+        const double c1 = roots[0] * roots[1] + roots[0] * roots[2] + roots[1] * roots[2];
+        const double c2 = -(roots[0] + roots[1] + roots[2]);
+        const std::array<double, 4> heights{
+            c0, c0 + c1 / 3.0, c0 + 2.0 * c1 / 3.0 + c2 / 3.0, c0 + c1 + c2 + 1.0};
+        std::vector<Geometry::SCPoint3d> controls;
+        for (double v : {0.0, 1.0})
+        {
+            for (std::size_t i = 0; i < heights.size(); ++i)
+            {
+                controls.push_back({static_cast<double>(i) / 3.0, v, heights[i]});
+            }
+        }
+        const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
+            3, 1, 4, 2, std::move(controls),
+            std::vector<double>{0, 0, 0, 0, 1, 1, 1, 1}, std::vector<double>{0, 0, 1, 1});
         return Geometry::SCCurveOnSurface(
             surface, Geometry::SCPolyline2d({{0, 0.5}, {1, 0.5}}));
     }
@@ -385,5 +410,83 @@ namespace
         const auto lineHits = Geometry::IntersectAllLineCurveWithStatus(line, curve);
         ASSERT_EQ(lineHits.hits.size(), 1);
         EXPECT_NEAR(lineHits.hits.front().curveParameter, root, 1e-6);
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, CurvedUvSegmentFindsThreeRootsInsideOneSampleCell)
+    {
+        constexpr std::array<double, 3> roots{0.35, 0.355, 0.36};
+        const auto composed = MakeCubicHeightCurve(roots);
+        ASSERT_TRUE(composed.IsValid());
+        const Geometry::ISCCurve3d& curve = composed;
+        const auto plane = Geometry::SCPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1});
+        const auto line = Geometry::SCLine3d::FromOriginAndDirection({0, 0.5, 0}, {1, 0, 0});
+
+        const auto& surface = static_cast<const Geometry::SCNurbsSurface&>(*composed.SupportSurface());
+        const auto& controls = surface.ControlPoints();
+        const Geometry::SCNurbsCurve3d directCurve(
+            3, std::vector<Geometry::SCPoint3d>(controls.begin(), controls.begin() + 4), surface.KnotsU());
+        const auto directHits = Geometry::IntersectAllPlaneCurveWithStatus(plane, directCurve);
+        ASSERT_EQ(directHits.hits.size(), roots.size());
+
+        const auto planeHits = Geometry::IntersectAllPlaneCurveWithStatus(plane, curve);
+        ASSERT_EQ(planeHits.hits.size(), roots.size());
+        const auto lineHits = Geometry::IntersectAllLineCurveWithStatus(line, curve);
+        ASSERT_EQ(lineHits.hits.size(), roots.size());
+        for (std::size_t i = 0; i < roots.size(); ++i)
+        {
+            EXPECT_NEAR(planeHits.hits[i].curveParameter, roots[i], 1e-5);
+            EXPECT_NEAR(lineHits.hits[i].curveParameter, roots[i], 1e-5);
+        }
+        EXPECT_EQ(planeHits.evidence.negativeCompleteness, Geometry::SCGeometryEvidenceState::Unknown);
+        EXPECT_EQ(lineHits.evidence.negativeCompleteness, Geometry::SCGeometryEvidenceState::Unknown);
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, RationalAxisAlignedUvSegmentsPreserveReverseParameterMapping)
+    {
+        const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
+            1, 1, 2, 2,
+            std::vector<Geometry::SCPoint3d>{{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0}},
+            std::vector<double>{0, 0, 1, 1}, std::vector<double>{0, 0, 1, 1},
+            std::vector<double>{1, 2, 3, 4});
+        const Geometry::SCCurveOnSurface reverseU(
+            surface, Geometry::SCPolyline2d({{1, 0.25}, {0, 0.25}}));
+        const Geometry::SCCurveOnSurface reverseV(
+            surface, Geometry::SCPolyline2d({{0.25, 1}, {0.25, 0}}));
+        ASSERT_TRUE(reverseU.IsValid());
+        ASSERT_TRUE(reverseV.IsValid());
+
+        const auto planeX = Geometry::SCPlane::FromPointAndNormal({0.5, 0, 0}, {1, 0, 0});
+        const auto planeY = Geometry::SCPlane::FromPointAndNormal({0, 0.5, 0}, {0, 1, 0});
+        const auto uHits = Geometry::IntersectAllPlaneCurveWithStatus(planeX, reverseU);
+        const auto vHits = Geometry::IntersectAllPlaneCurveWithStatus(planeY, reverseV);
+        ASSERT_EQ(uHits.hits.size(), 1U);
+        ASSERT_EQ(vHits.hits.size(), 1U);
+        EXPECT_NEAR(uHits.hits.front().curveParameter, 0.625, 1e-7);
+        EXPECT_NEAR(vHits.hits.front().curveParameter, 1.0 - 1.25 / 4.5, 1e-7);
+        EXPECT_TRUE(uHits.hits.front().point.AlmostEquals(
+            reverseU.PointAt(uHits.hits.front().curveParameter), 1e-9));
+        EXPECT_TRUE(vHits.hits.front().point.AlmostEquals(
+            reverseV.PointAt(vHits.hits.front().curveParameter), 1e-9));
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, AxisAlignedNurbsOverlapReportsNonUnique)
+    {
+        const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
+            1, 1, 2, 2,
+            std::vector<Geometry::SCPoint3d>{{0, 0, 0}, {1, 0, 0},
+                                             {0, 1, 1}, {1, 1, 1}},
+            std::vector<double>{0, 0, 1, 1}, std::vector<double>{0, 0, 1, 1});
+        const Geometry::SCCurveOnSurface curve(
+            surface, Geometry::SCPolyline2d({{0, 0.5}, {1, 0.5}}));
+        ASSERT_TRUE(curve.IsValid());
+        const auto plane = Geometry::SCPlane::FromPointAndNormal({0, 0, 0.5}, {0, 0, 1});
+        const auto line = Geometry::SCLine3d::FromOriginAndDirection({0, 0.5, 0.5}, {1, 0, 0});
+
+        const auto planeHits = Geometry::IntersectAllPlaneCurveWithStatus(plane, curve);
+        const auto lineHits = Geometry::IntersectAllLineCurveWithStatus(line, curve);
+        EXPECT_EQ(planeHits.state, Geometry::SCGeometryOperationState::NonUnique);
+        EXPECT_TRUE(planeHits.hits.empty());
+        EXPECT_EQ(lineHits.state, Geometry::SCGeometryOperationState::NonUnique);
+        EXPECT_TRUE(lineHits.hits.empty());
     }
 }

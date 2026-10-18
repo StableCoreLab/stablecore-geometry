@@ -16,6 +16,20 @@ using Geometry::SCPolygon2d;
 using Geometry::SCPolyline2d;
 using Geometry::SCPolylineClosure;
 
+TEST(OffsetTest, SmallPerpendicularSegmentsKeepMiterJoin)
+{
+    constexpr double length = 1e-5;
+    constexpr double distance = 1e-6;
+    const SCPolyline2d path({{0.0, 0.0}, {length, 0.0}, {length, length}}, SCPolylineClosure::Open);
+    ASSERT_TRUE(path.IsValid());
+
+    const SCPolyline2d shifted = Offset(path, distance);
+    ASSERT_TRUE(shifted.IsValid());
+    ASSERT_EQ(shifted.PointCount(), 3U);
+    EXPECT_NEAR(shifted.VertexAt(1).x, length - distance, 1e-12);
+    EXPECT_NEAR(shifted.VertexAt(1).y, distance, 1e-12);
+}
+
 TEST(OffsetTest, OffsetsLineSegment)
 {
     const SCLineSegment2d line(SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0});

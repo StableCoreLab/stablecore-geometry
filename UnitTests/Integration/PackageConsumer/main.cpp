@@ -32,6 +32,7 @@ int main()
     const SCLineSegment2d cornerExit{{10.0, 0.0}, {10.0, 1.0}};
     const auto corner = EvaluateCornerGeometry(first, cornerExit, pathTolerance);
     const auto legacyOffset = Offset(first, 1.0);
+    const SCArcSegment2d planarArc({0.0, 0.0}, 1.0, 0.0, std::numbers::pi_v<double> / 2.0);
     const auto normalized = Normalize(path);
     const SCNurbsCurve3d nurbsCurve(1, {{0, 0, 0}, {2, 0, 0}}, {0, 0, 1, 1});
     const SCNurbsSurface nurbsSurface(1, 1, 2, 2,
@@ -54,7 +55,8 @@ int main()
                    Contains(box, path) && Intersects(box, path) && area.success &&
                    area.hasPositiveAreaIntersection && fittedPlane.success && arc.success &&
                    projectedArc.success && mappedOffset.success && corner.success &&
-                   legacyOffset.IsValid() && normalized.IsValid() && nurbsAvailable && genericCurveAvailable &&
+                   legacyOffset.IsValid() && planarArc.AlmostEquals(planarArc, kDefaultEpsilon, kDefaultAngleEpsilon) &&
+                   normalized.IsValid() && nurbsAvailable && genericCurveAvailable &&
                    offsetAvailable
                ? 0
                : 1;

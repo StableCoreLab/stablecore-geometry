@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 #include <concepts>
+#include <limits>
 #include <type_traits>
 
 #include "Geometry2d/SCArcSegment2d.h"
@@ -14,6 +15,20 @@ using Geometry::SCLineSegment2d;
 using Geometry::SCPoint2d;
 using Geometry::ISCSegment2d;
 using Geometry::SCSegmentKind2;
+
+TEST(SegmentTest, ArcComparisonSeparatesDistanceAndAngleTolerance)
+{
+    const SCArcSegment2d arc({0.0, 0.0}, 2.0, 0.25, 1.0);
+    const SCArcSegment2d rotated({0.0, 0.0}, 2.0, 0.2501, 1.0);
+    const SCArcSegment2d moved({2e-6, 0.0}, 2.0, 0.25, 1.0);
+
+    EXPECT_TRUE(arc.AlmostEquals(rotated, 1e-6, 1e-3));
+    EXPECT_FALSE(arc.AlmostEquals(rotated, 1e-6, 1e-5));
+    EXPECT_FALSE(arc.AlmostEquals(moved, 1e-6, 1e-3));
+    EXPECT_FALSE(arc.AlmostEquals(arc, -1.0, 1e-3));
+    EXPECT_FALSE(arc.AlmostEquals(arc, 1e-3, std::numeric_limits<double>::infinity()));
+    EXPECT_TRUE(arc.AlmostEquals(rotated, 1e-3));
+}
 
 TEST(SegmentTest, CoversCurrentCapabilities)
 {

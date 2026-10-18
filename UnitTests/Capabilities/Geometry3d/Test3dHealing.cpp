@@ -806,21 +806,23 @@ TEST(Healing3dCapabilityTest, AggressiveHealingSkipsGeometricallyCoincidentBound
 
 TEST(Healing3dCapabilityTest, AggressiveHealingSkipsPartiallyOverlappedBoundaryLoopShells)
 {
+    // Keep the partially overlapping horizontal edges shorter than sqrt(default epsilon).
+    constexpr double xScale = 1e-6;
     std::vector<SCBrepVertex> vertices{// Partial-overlap shell A.
                                        SCBrepVertex(SCPoint3d{0.0, 0.0, 0.0}),
-                                       SCBrepVertex(SCPoint3d{1.0, 0.0, 0.0}),
-                                       SCBrepVertex(SCPoint3d{1.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0 * xScale, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.0 * xScale, 1.0, 0.0}),
                                        SCBrepVertex(SCPoint3d{0.0, 1.0, 0.0}),
-                                       SCBrepVertex(SCPoint3d{2.0, 0.0, 0.0}),
-                                       SCBrepVertex(SCPoint3d{2.0, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0 * xScale, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.0 * xScale, 1.0, 0.0}),
                                        // Partial-overlap shell B. Its boundary only overlaps shell A on a
                                        // sub-interval, never on a whole boundary edge.
-                                       SCBrepVertex(SCPoint3d{0.5, 0.0, 0.0}),
-                                       SCBrepVertex(SCPoint3d{1.5, 0.0, 0.0}),
-                                       SCBrepVertex(SCPoint3d{1.5, 1.0, 0.0}),
-                                       SCBrepVertex(SCPoint3d{0.5, 1.0, 0.0}),
-                                       SCBrepVertex(SCPoint3d{2.5, 0.0, 0.0}),
-                                       SCBrepVertex(SCPoint3d{2.5, 1.0, 0.0})};
+                                       SCBrepVertex(SCPoint3d{0.5 * xScale, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.5 * xScale, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{1.5 * xScale, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{0.5 * xScale, 1.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.5 * xScale, 0.0, 0.0}),
+                                       SCBrepVertex(SCPoint3d{2.5 * xScale, 1.0, 0.0})};
 
     std::vector<SCBrepEdge> edges;
     auto addEdge = [&](std::size_t start, std::size_t end) {

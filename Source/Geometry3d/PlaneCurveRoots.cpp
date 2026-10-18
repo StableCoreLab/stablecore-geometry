@@ -243,8 +243,18 @@ namespace Geometry
                 }
                 else
                 {
+                    bool nonUnique = false;
                     const auto hits = Detail::FindPlaneCurveOnSurfaceSegmentHits(
-                        plane, *surfaceCurve, segment, tolerance);
+                        plane, *surfaceCurve, segment, tolerance, &nonUnique);
+                    if (nonUnique)
+                    {
+                        result.hits.clear();
+                        result.state = SCGeometryOperationState::NonUnique;
+                        result.evidence.hit = SCGeometryEvidenceState::Verified;
+                        result.evidence.negativeCompleteness = SCGeometryEvidenceState::NotApplicable;
+                        result.evidence.reasons = SCGeometryFailureReason::NonUnique;
+                        return result;
+                    }
                     for (const auto& hit : hits)
                     {
                         appendHit({true, static_cast<double>(segment) + hit.parameter, hit.point});
@@ -626,8 +636,18 @@ namespace Geometry
                     }
                     else
                     {
+                        bool nonUnique = false;
                         const auto candidates = Detail::FindLineCurveOnSurfaceSegmentHits(
-                            line, *surfaceCurve, segment, tolerance);
+                            line, *surfaceCurve, segment, tolerance, &nonUnique);
+                        if (nonUnique)
+                        {
+                            result.hits.clear();
+                            result.state = SCGeometryOperationState::NonUnique;
+                            result.evidence.hit = SCGeometryEvidenceState::Verified;
+                            result.evidence.negativeCompleteness = SCGeometryEvidenceState::NotApplicable;
+                            result.evidence.reasons = SCGeometryFailureReason::NonUnique;
+                            return result;
+                        }
                         for (const auto& candidate : candidates)
                         {
                             appendHit({true, candidate.lineParameter,

@@ -49,8 +49,8 @@ namespace Geometry
     bool SCArcSegment2d::IsValid() const
     {
         return center.IsValid() && std::isfinite(radius) && std::isfinite(startAngle) && std::isfinite(sweepAngle) &&
-               radius > 0.0 && std::abs(sweepAngle) > Geometry::kDefaultEpsilon &&
-               std::abs(sweepAngle) <= 2.0 * std::numbers::pi_v<double> + Geometry::kDefaultEpsilon;
+               radius > 0.0 && std::abs(sweepAngle) > Geometry::kDefaultAngleEpsilon &&
+               std::abs(sweepAngle) <= 2.0 * std::numbers::pi_v<double> + Geometry::kDefaultAngleEpsilon;
     }
 
     SCArcDirection SCArcSegment2d::Direction() const
@@ -139,8 +139,17 @@ namespace Geometry
 
     bool SCArcSegment2d::AlmostEquals(const SCArcSegment2d& other, double eps) const
     {
-        return center.AlmostEquals(other.center, eps) && std::abs(radius - other.radius) <= eps &&
-               std::abs(startAngle - other.startAngle) <= eps && std::abs(sweepAngle - other.sweepAngle) <= eps;
+        return AlmostEquals(other, eps, eps);
+    }
+
+    bool SCArcSegment2d::AlmostEquals(const SCArcSegment2d& other, double distanceEps, double angleEps) const
+    {
+        return std::isfinite(distanceEps) && distanceEps >= 0.0 &&
+               std::isfinite(angleEps) && angleEps >= 0.0 &&
+               center.AlmostEquals(other.center, distanceEps) &&
+               std::abs(radius - other.radius) <= distanceEps &&
+               std::abs(startAngle - other.startAngle) <= angleEps &&
+               std::abs(sweepAngle - other.sweepAngle) <= angleEps;
     }
 
     std::string SCArcSegment2d::DebugString() const
@@ -176,11 +185,11 @@ namespace Geometry
         if (sweepAngle >= 0.0)
         {
             const double delta = NormalizeAngle(candidateAngle - startAngle);
-            return delta <= sweepAngle + Geometry::kDefaultEpsilon;
+            return delta <= sweepAngle + Geometry::kDefaultAngleEpsilon;
         }
 
         const double delta = NormalizeAngle(startAngle - candidateAngle);
-        return delta <= (-sweepAngle) + Geometry::kDefaultEpsilon;
+        return delta <= (-sweepAngle) + Geometry::kDefaultAngleEpsilon;
     }
 
     SCPoint2d SCArcSegment2d::PointAtAngle(double angle) const

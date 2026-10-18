@@ -129,17 +129,26 @@ namespace Geometry
                                              const SCVector2d& secondDirection,
                                              bool& success)
         {
-            const double denom = firstDirection.x * secondDirection.y - firstDirection.y * secondDirection.x;
-            if (std::abs(denom) <= Geometry::kDefaultEpsilon)
+            const double firstLength = firstDirection.Length();
+            const double secondLength = secondDirection.Length();
+            if (!(firstLength > Geometry::kDefaultEpsilon) || !(secondLength > Geometry::kDefaultEpsilon))
+            {
+                success = false;
+                return SCPoint2d{};
+            }
+            const SCVector2d firstUnit = firstDirection / firstLength;
+            const SCVector2d secondUnit = secondDirection / secondLength;
+            const double denom = firstUnit.x * secondUnit.y - firstUnit.y * secondUnit.x;
+            if (std::abs(denom) <= Geometry::Detail::kParallelDirectionSineEpsilon2d)
             {
                 success = false;
                 return SCPoint2d{};
             }
 
             const SCVector2d delta = secondPoint - firstPoint;
-            const double t = (delta.x * secondDirection.y - delta.y * secondDirection.x) / denom;
+            const double t = (delta.x * secondUnit.y - delta.y * secondUnit.x) / denom;
             success = std::isfinite(t);
-            return SCPoint2d{firstPoint.x + firstDirection.x * t, firstPoint.y + firstDirection.y * t};
+            return SCPoint2d{firstPoint.x + firstUnit.x * t, firstPoint.y + firstUnit.y * t};
         }
 
         [[nodiscard]] std::vector<SCPoint2d> BuildOffsetVertices(const std::vector<SCPoint2d>& vertices,

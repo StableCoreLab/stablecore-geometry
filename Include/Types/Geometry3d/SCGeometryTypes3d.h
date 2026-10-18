@@ -12,8 +12,8 @@ namespace Geometry
     struct GEOMETRY_API SCGeometryTolerance3d
     {
         double distanceEpsilon{Geometry::kDefaultEpsilon};
-        double angleEpsilon{Geometry::kDefaultEpsilon};
-        double parameterEpsilon{Geometry::kDefaultEpsilon};
+        double angleEpsilon{Geometry::kDefaultAngleEpsilon};
+        double parameterEpsilon{Geometry::kDefaultParameterEpsilon};
         double boxPadding{Geometry::kDefaultEpsilon};
 
         [[nodiscard]] bool IsValid() const
