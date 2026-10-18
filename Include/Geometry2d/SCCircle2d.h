@@ -1,8 +1,10 @@
 #pragma once
 
+#include <cmath>
 #include <string>
 #include "Export/GeometryExport.h"
 #include "Geometry2d/SCPolygon2d.h"
+#include "Support/Epsilon.h"
 
 namespace Geometry
 {
@@ -21,6 +23,12 @@ namespace Geometry
         [[nodiscard]] SCBox2d Bounds() const;
         [[nodiscard]] SCPoint2d PointAtAngle(double angleRadians) const;
         [[nodiscard]] SCPolygon2d ToPolygon(std::size_t segmentCount = 64) const;
+        [[nodiscard]] bool AlmostEquals(const SCCircle2d& other, double eps = Geometry::kDefaultEpsilon) const
+        {
+            return std::isfinite(eps) && eps >= 0.0 && center.AlmostEquals(other.center, eps) &&
+                   std::abs(radius - other.radius) <= eps;
+        }
+        [[nodiscard]] bool operator==(const SCCircle2d& other) const = default;
         [[nodiscard]] std::string DebugString() const;
     };
 }  // namespace Geometry

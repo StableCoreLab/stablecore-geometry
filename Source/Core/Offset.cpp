@@ -350,8 +350,8 @@ namespace Geometry
             const SCPolyline2d& outer = polygon.OuterRing();
             for (std::size_t i = 0; i < outer.PointCount(); ++i)
             {
-                const SCPoint2d start = outer.PointAt(i);
-                const SCPoint2d end = outer.PointAt((i + 1) % outer.PointCount());
+                const SCPoint2d start = outer.VertexAt(i);
+                const SCPoint2d end = outer.VertexAt((i + 1) % outer.PointCount());
                 const SCPoint2d midpoint{std::midpoint(start.x, end.x), std::midpoint(start.y, end.y)};
                 if (LocatePoint(midpoint, polygon, eps) != SCPointContainment2d::Outside)
                 {
@@ -359,7 +359,7 @@ namespace Geometry
                 }
             }
 
-            return outer.PointAt(0);
+            return outer.VertexAt(0);
         }
 
         [[nodiscard]] SCPolygon2d SelectBestOffsetPolygon(const SCPolygon2d& source,
@@ -720,7 +720,7 @@ namespace Geometry
         vertices.reserve(polyline.PointCount());
         for (std::size_t i = 0; i < polyline.PointCount(); ++i)
         {
-            vertices.push_back(polyline.PointAt(i));
+            vertices.push_back(polyline.VertexAt(i));
         }
 
         return BuildPolylineFromVertices(BuildOffsetVertices(vertices, polyline.IsClosed(), distance, options),

@@ -23,13 +23,13 @@ namespace Geometry
 
         [[nodiscard]] SCPoint2d MirrorPoint(const SCPoint2d& point, const SCPoint2d& linePoint, const SCVector2d& lineDir)
         {
-            const double lengthSquared = lineDir.LengthSquared();
-            if (lengthSquared <= Geometry::kDefaultEpsilon)
+            const double length = std::hypot(lineDir.x, lineDir.y);
+            if (!std::isfinite(length) || length <= Geometry::kDefaultEpsilon)
             {
                 return point;
             }
             const SCVector2d local = point - linePoint;
-            const SCVector2d unit = lineDir / std::sqrt(lengthSquared);
+            const SCVector2d unit = lineDir / length;
             const double along = Dot(local, unit);
             const SCPoint2d projected = linePoint + unit * along;
             return projected + (projected - point);

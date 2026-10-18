@@ -195,7 +195,7 @@ namespace Geometry
             auto ringContainsVertex = [&](const SCPolyline2d& ring) {
                 for (std::size_t i = 0; i < ring.PointCount(); ++i)
                 {
-                    if (ring.PointAt(i).AlmostEquals(projected, boundaryEps))
+                    if (ring.VertexAt(i).AlmostEquals(projected, boundaryEps))
                     {
                         return true;
                     }
@@ -620,7 +620,7 @@ namespace Geometry
             contour3d.reserve(contour.PointCount());
             for (std::size_t i = 0; i < contour.PointCount(); ++i)
             {
-                const SCPoint2d point2d = contour.PointAt(i);
+                const SCPoint2d point2d = contour.VertexAt(i);
                 contour2d.push_back(point2d);
                 contour3d.push_back(LiftFromSectionPlane(point2d, origin, uAxis, vAxis));
             }
@@ -704,7 +704,7 @@ namespace Geometry
                 outer2d.reserve(polygon.OuterRing().PointCount());
                 for (std::size_t i = 0; i < polygon.OuterRing().PointCount(); ++i)
                 {
-                    const SCPoint2d point2d = polygon.OuterRing().PointAt(i);
+                    const SCPoint2d point2d = polygon.OuterRing().VertexAt(i);
                     outer2d.push_back(point2d);
                     outer3d.push_back(LiftFromSectionPlane(point2d, result.origin, result.uAxis, result.vAxis));
                 }
@@ -720,7 +720,7 @@ namespace Geometry
                     hole2d.reserve(hole.PointCount());
                     for (std::size_t i = 0; i < hole.PointCount(); ++i)
                     {
-                        const SCPoint2d point2d = hole.PointAt(i);
+                        const SCPoint2d point2d = hole.VertexAt(i);
                         hole2d.push_back(point2d);
                         hole3d.push_back(LiftFromSectionPlane(point2d, result.origin, result.uAxis, result.vAxis));
                     }
@@ -977,7 +977,7 @@ namespace Geometry
 
                 for (std::size_t i = 0; i + 1 < ring.PointCount(); ++i)
                 {
-                    const SCVector2d delta = ring.PointAt(i + 1) - ring.PointAt(i);
+                    const SCVector2d delta = ring.VertexAt(i + 1) - ring.VertexAt(i);
                     if (std::abs(delta.x) > mergeEps && std::abs(delta.y) > mergeEps)
                     {
                         return false;
@@ -1021,8 +1021,8 @@ namespace Geometry
                 const SCPolyline2d outer = polygon.OuterRing();
                 for (std::size_t i = 0; i < outer.PointCount(); ++i)
                 {
-                    addCoordinate(xs, outer.PointAt(i).x);
-                    addCoordinate(ys, outer.PointAt(i).y);
+                    addCoordinate(xs, outer.VertexAt(i).x);
+                    addCoordinate(ys, outer.VertexAt(i).y);
                 }
 
                 for (std::size_t holeIndex = 0; holeIndex < polygon.HoleCount(); ++holeIndex)
@@ -1030,8 +1030,8 @@ namespace Geometry
                     const SCPolyline2d hole = polygon.HoleAt(holeIndex);
                     for (std::size_t i = 0; i < hole.PointCount(); ++i)
                     {
-                        addCoordinate(xs, hole.PointAt(i).x);
-                        addCoordinate(ys, hole.PointAt(i).y);
+                        addCoordinate(xs, hole.VertexAt(i).x);
+                        addCoordinate(ys, hole.VertexAt(i).y);
                     }
                 }
             }
@@ -1329,7 +1329,7 @@ namespace Geometry
                 outer2d.reserve(outer.PointCount());
                 for (std::size_t i = 0; i < outer.PointCount(); ++i)
                 {
-                    const SCPoint2d point2d = outer.PointAt(i);
+                    const SCPoint2d point2d = outer.VertexAt(i);
                     outer2d.push_back(point2d);
                     outer3d.push_back(LiftFromSectionPlane(point2d, section.origin, section.uAxis, section.vAxis));
                 }
@@ -1358,7 +1358,7 @@ namespace Geometry
                     hole2d.reserve(hole.PointCount());
                     for (std::size_t i = 0; i < hole.PointCount(); ++i)
                     {
-                        const SCPoint2d point2d = hole.PointAt(i);
+                        const SCPoint2d point2d = hole.VertexAt(i);
                         hole2d.push_back(point2d);
                         hole3d.push_back(LiftFromSectionPlane(point2d, section.origin, section.uAxis, section.vAxis));
                     }
@@ -2382,7 +2382,7 @@ namespace Geometry
             for (std::size_t i = 0; i < outerRing.PointCount(); ++i)
             {
                 outerVertices.push_back(
-                    LiftFromSectionPlane(outerRing.PointAt(i), section.origin, section.uAxis, section.vAxis));
+                    LiftFromSectionPlane(outerRing.VertexAt(i), section.origin, section.uAxis, section.vAxis));
             }
 
             std::vector<PolyhedronLoop3d> holes;
@@ -2397,7 +2397,7 @@ namespace Geometry
                 for (std::size_t i = 0; i < holeRing.PointCount(); ++i)
                 {
                     holeVertices.push_back(
-                        LiftFromSectionPlane(holeRing.PointAt(i), section.origin, section.uAxis, section.vAxis));
+                        LiftFromSectionPlane(holeRing.VertexAt(i), section.origin, section.uAxis, section.vAxis));
                 }
                 holes.emplace_back(std::move(holeVertices));
             }
@@ -2415,7 +2415,7 @@ namespace Geometry
                 for (std::size_t i = 0; i < holeRing.PointCount(); ++i)
                 {
                     holeVertices.push_back(
-                        LiftFromSectionPlane(holeRing.PointAt(i), section.origin, section.uAxis, section.vAxis));
+                        LiftFromSectionPlane(holeRing.VertexAt(i), section.origin, section.uAxis, section.vAxis));
                 }
                 holes.emplace_back(std::move(holeVertices));
                 mapping.holePolygonIndices.push_back(childIndex);

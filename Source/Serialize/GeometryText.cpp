@@ -217,7 +217,7 @@ namespace Geometry::Serialize
             << ' ' << value.PointCount();
         for (std::size_t i = 0; i < value.PointCount(); ++i)
         {
-            const Geometry::SCPoint2d point = value.PointAt(i);
+            const Geometry::SCPoint2d point = value.VertexAt(i);
             oss << ' ' << point.x << ' ' << point.y;
         }
         return oss.str();

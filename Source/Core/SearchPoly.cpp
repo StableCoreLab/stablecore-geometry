@@ -117,8 +117,8 @@ namespace Geometry
                 const std::size_t segmentCount = line.IsClosed() ? line.PointCount() : line.PointCount() - 1;
                 for (std::size_t segmentIndex = 0; segmentIndex < segmentCount; ++segmentIndex)
                 {
-                    const SCPoint2d start = line.PointAt(segmentIndex);
-                    const SCPoint2d end = line.PointAt((segmentIndex + 1) % line.PointCount());
+                    const SCPoint2d start = line.VertexAt(segmentIndex);
+                    const SCPoint2d end = line.VertexAt((segmentIndex + 1) % line.PointCount());
                     if (start.AlmostEquals(end, epsilon))
                     {
                         continue;
@@ -469,8 +469,8 @@ namespace Geometry
             const std::size_t segmentCount = ring.PointCount();
             for (std::size_t segmentIndex = 0; segmentIndex < segmentCount; ++segmentIndex)
             {
-                const SCPoint2d start = ring.PointAt(segmentIndex);
-                const SCPoint2d end = ring.PointAt((segmentIndex + 1) % segmentCount);
+                const SCPoint2d start = ring.VertexAt(segmentIndex);
+                const SCPoint2d end = ring.VertexAt((segmentIndex + 1) % segmentCount);
                 if (start.AlmostEquals(end, epsilon))
                 {
                     continue;

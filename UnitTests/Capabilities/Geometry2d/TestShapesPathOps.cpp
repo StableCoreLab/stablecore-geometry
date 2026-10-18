@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <limits>
 #include <numbers>
 
 #include "Geometry.h"
@@ -30,7 +31,7 @@ TEST(ShapesPathopsTest, BuildsPrimitiveShapeContracts)
     const SCRectangle2d rectangle(SCPoint2d{0.0, 0.0}, 4.0, 2.0, 0.0);
     ASSERT_TRUE(rectangle.IsValid());
     EXPECT_NEAR(rectangle.Area(), 8.0, 1e-12);
-    EXPECT_TRUE(rectangle.ToPolygon().OuterRing().PointAt(0).AlmostEquals(SCPoint2d{-2.0, -1.0}, 1e-12));
+    EXPECT_TRUE(rectangle.ToPolygon().OuterRing().VertexAt(0).AlmostEquals(SCPoint2d{-2.0, -1.0}, 1e-12));
 
     const SCEllipse2d ellipse(SCPoint2d{0.0, 0.0}, 3.0, 2.0, 0.0);
     ASSERT_TRUE(ellipse.IsValid());
@@ -52,13 +53,45 @@ TEST(ShapesPathopsTest, RotatedEllipseBoundsContainAnalyticExtrema)
     EXPECT_FALSE(ellipse.Bounds(7).IsValid());
 }
 
+TEST(ShapesPathopsTest, PrimitiveShapeComparisonUsesStoredParameters)
+{
+    const SCCircle2d circle({1.0, 2.0}, 3.0);
+    EXPECT_TRUE(circle == SCCircle2d({1.0, 2.0}, 3.0));
+    EXPECT_FALSE(circle == SCCircle2d({1.0, 2.0}, 3.1));
+    EXPECT_TRUE(circle.AlmostEquals(SCCircle2d({1.0 + 1e-8, 2.0}, 3.0 + 1e-8), 2e-8));
+    EXPECT_FALSE(circle.AlmostEquals(SCCircle2d({1.0, 2.0}, 3.0), -1.0));
+    EXPECT_FALSE(circle.AlmostEquals(SCCircle2d({1.0, 2.0}, 3.0),
+                                     std::numeric_limits<double>::infinity()));
+
+    const SCEllipse2d ellipse({0.0, 0.0}, 3.0, 2.0, 0.25);
+    EXPECT_TRUE(ellipse == SCEllipse2d({0.0, 0.0}, 3.0, 2.0, 0.25));
+    EXPECT_TRUE(ellipse.AlmostEquals(SCEllipse2d({1e-8, 0.0}, 3.0 + 1e-8, 2.0, 0.25 + 1e-8),
+                                     2e-8, 2e-8));
+    EXPECT_FALSE(ellipse.AlmostEquals(SCEllipse2d({1e-8, 0.0}, 3.0 + 1e-8, 2.0, 0.25 + 1e-8),
+                                      2e-8, 1e-10));
+    EXPECT_FALSE(ellipse.AlmostEquals(SCEllipse2d({0.0, 0.0}, 3.0, 2.0, 0.25 + 2.0 * std::numbers::pi),
+                                      1e-8));
+    EXPECT_FALSE(ellipse == SCEllipse2d({0.0, 0.0}, 2.0, 3.0, 0.25));
+
+    const SCRectangle2d rectangle({2.0, -1.0}, 4.0, 2.0, 0.5);
+    EXPECT_TRUE(rectangle == SCRectangle2d({2.0, -1.0}, 4.0, 2.0, 0.5));
+    EXPECT_TRUE(rectangle.AlmostEquals(SCRectangle2d({2.0, -1.0 + 1e-8}, 4.0, 2.0 + 1e-8, 0.5),
+                                       2e-8));
+    EXPECT_TRUE(rectangle.AlmostEquals(SCRectangle2d({2.0, -1.0}, 4.0, 2.0, 0.5 + 1e-8),
+                                       1e-10, 2e-8));
+    EXPECT_FALSE(rectangle.AlmostEquals(SCRectangle2d({2.0, -1.0}, 4.0, 2.0, 0.5 + 1e-8),
+                                        2e-8, 1e-10));
+    EXPECT_FALSE(rectangle.AlmostEquals(SCRectangle2d({2.0, -1.0}, 4.0, 2.0, 0.6), 1e-8));
+    EXPECT_FALSE(rectangle == SCRectangle2d({2.0, -1.0}, 2.0, 4.0, 0.5));
+}
+
 TEST(ShapesPathopsTest, ExtractsPolylineSubpaths)
 {
     const SCPolyline2d path({SCPoint2d{0.0, 0.0}, SCPoint2d{3.0, 0.0}, SCPoint2d{3.0, 4.0}}, SCPolylineClosure::Open);
     const SCPolyline2d sub = SubPolyline(path, 2.0, 5.0);
     ASSERT_TRUE(sub.IsValid());
-    EXPECT_TRUE(sub.PointAt(0).AlmostEquals(SCPoint2d{2.0, 0.0}, 1e-12));
-    EXPECT_TRUE(sub.PointAt(sub.PointCount() - 1).AlmostEquals(SCPoint2d{3.0, 2.0}, 1e-12));
+    EXPECT_TRUE(sub.VertexAt(0).AlmostEquals(SCPoint2d{2.0, 0.0}, 1e-12));
+    EXPECT_TRUE(sub.VertexAt(sub.PointCount() - 1).AlmostEquals(SCPoint2d{3.0, 2.0}, 1e-12));
 
 }
 

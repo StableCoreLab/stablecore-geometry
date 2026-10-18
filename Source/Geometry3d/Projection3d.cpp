@@ -1319,7 +1319,7 @@ namespace Geometry
                 const auto center=polygon.Centroid();
                 const auto ringSeeds=[&](const SCPolyline2d& ring) {
                     for (std::size_t i=0;i<ring.PointCount();++i) {
-                        const auto p=ring.PointAt(i);
+                        const auto p=ring.VertexAt(i);
                         seeds.push_back({std::lerp(p.x,center.x,0.01),std::lerp(p.y,center.y,0.01)});
                     }
                 };

@@ -178,22 +178,22 @@ TEST(SerializeTest, CoversCurrentCapabilities)
     EXPECT_EQ(parsedPolyline.IsClosed(), polyline.IsClosed());
     for (std::size_t i = 0; i < polyline.PointCount(); ++i)
     {
-        EXPECT_TRUE(parsedPolyline.PointAt(i).AlmostEquals(polyline.PointAt(i), 1e-12));
+        EXPECT_TRUE(parsedPolyline.VertexAt(i).AlmostEquals(polyline.VertexAt(i), 1e-12));
     }
 
     ASSERT_EQ(parsedPolygon.HoleCount(), polygon.HoleCount());
     ASSERT_EQ(parsedPolygon.OuterRing().PointCount(), polygon.OuterRing().PointCount());
     for (std::size_t i = 0; i < polygon.OuterRing().PointCount(); ++i)
     {
-        EXPECT_TRUE(parsedPolygon.OuterRing().PointAt(i).AlmostEquals(polygon.OuterRing().PointAt(i), 1e-12));
+        EXPECT_TRUE(parsedPolygon.OuterRing().VertexAt(i).AlmostEquals(polygon.OuterRing().VertexAt(i), 1e-12));
     }
     for (std::size_t holeIndex = 0; holeIndex < polygon.HoleCount(); ++holeIndex)
     {
         ASSERT_EQ(parsedPolygon.HoleAt(holeIndex).PointCount(), polygon.HoleAt(holeIndex).PointCount());
         for (std::size_t pointIndex = 0; pointIndex < polygon.HoleAt(holeIndex).PointCount(); ++pointIndex)
         {
-            EXPECT_TRUE(parsedPolygon.HoleAt(holeIndex).PointAt(pointIndex)
-                            .AlmostEquals(polygon.HoleAt(holeIndex).PointAt(pointIndex), 1e-12));
+            EXPECT_TRUE(parsedPolygon.HoleAt(holeIndex).VertexAt(pointIndex)
+                            .AlmostEquals(polygon.HoleAt(holeIndex).VertexAt(pointIndex), 1e-12));
         }
     }
 

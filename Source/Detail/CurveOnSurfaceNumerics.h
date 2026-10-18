@@ -343,12 +343,57 @@ namespace Geometry::Detail
         return best;
     }
 
+    [[nodiscard]] inline std::vector<CurveOnSurfaceSample> FindPlaneCurveOnSurfaceSegmentHits(
+        const SCPlane& plane, const SCCurveOnSurface& curve, std::size_t segmentIndex,
+        const SCGeometryTolerance3d& tolerance);
+
     [[nodiscard]] inline std::vector<CurveOnSurfaceLineCandidate> FindLineCurveOnSurfaceSegmentHits(
         const SCLine3d& line, const SCCurveOnSurface& curve, std::size_t segmentIndex,
         const SCGeometryTolerance3d& tolerance)
     {
         std::vector<CurveOnSurfaceLineCandidate> candidates;
         (void)ProjectCurveOnSurfaceSegmentToLine(line, curve, segmentIndex, &candidates);
+        const double directionLength = std::hypot(line.direction.x, line.direction.y, line.direction.z);
+        if (!std::isfinite(directionLength) || !(directionLength > 0.0))
+        {
+            return {};
+        }
+        const SCVector3d unit = line.direction / directionLength;
+        const auto distanceToLine = [&](const CurveOnSurfaceSample& sample) {
+            const double parameter = Dot(sample.point - line.origin, unit) / directionLength;
+            const SCPoint3d linePoint = line.PointAt(parameter);
+            if (!std::isfinite(parameter) || !linePoint.IsValid())
+            {
+                return CurveOnSurfaceLineCandidate{};
+            }
+            const double distance = std::hypot(sample.point.x - linePoint.x,
+                                               sample.point.y - linePoint.y,
+                                               sample.point.z - linePoint.z);
+            return std::isfinite(distance)
+                ? CurveOnSurfaceLineCandidate{true, sample, parameter, distance}
+                : CurveOnSurfaceLineCandidate{};
+        };
+        {
+            const SCVector3d axis = std::abs(unit.x) <= std::abs(unit.y) &&
+                                            std::abs(unit.x) <= std::abs(unit.z) ? SCVector3d{1, 0, 0} :
+                                        std::abs(unit.y) <= std::abs(unit.z) ? SCVector3d{0, 1, 0} :
+                                                                               SCVector3d{0, 0, 1};
+            const SCVector3d firstNormal = Cross(unit, axis);
+            const SCVector3d secondNormal = Cross(unit, firstNormal);
+            for (const SCVector3d& normal : {firstNormal, secondNormal})
+            {
+                const SCPlane plane = SCPlane::FromPointAndNormal(line.origin, normal);
+                for (const auto& sample : FindPlaneCurveOnSurfaceSegmentHits(
+                         plane, curve, segmentIndex, tolerance))
+                {
+                    const auto candidate = distanceToLine(sample);
+                    if (candidate.valid)
+                    {
+                        candidates.push_back(candidate);
+                    }
+                }
+            }
+        }
         std::sort(candidates.begin(), candidates.end(), [](const auto& lhs, const auto& rhs) {
             return lhs.sample.parameter < rhs.sample.parameter;
         });
@@ -361,14 +406,20 @@ namespace Geometry::Detail
             }
             if (!hits.empty() &&
                 std::abs(hits.back().sample.parameter - candidate.sample.parameter) <=
-                    std::max(tolerance.parameterEpsilon, 1e-8) &&
-                hits.back().sample.point.AlmostEquals(candidate.sample.point, tolerance.distanceEpsilon))
+                    std::max(tolerance.parameterEpsilon, 1e-8))
             {
-                if (candidate.distance < hits.back().distance)
+                const auto middle = EvaluateCurveOnSurfaceSegment(
+                    curve, segmentIndex,
+                    std::lerp(hits.back().sample.parameter, candidate.sample.parameter, 0.5));
+                const auto middleCandidate = middle.valid ? distanceToLine(middle) : CurveOnSurfaceLineCandidate{};
+                if (middleCandidate.valid && middleCandidate.distance <= tolerance.distanceEpsilon)
                 {
-                    hits.back() = candidate;
+                    if (candidate.distance < hits.back().distance)
+                    {
+                        hits.back() = candidate;
+                    }
+                    continue;
                 }
-                continue;
             }
             hits.push_back(candidate);
         }
@@ -380,19 +431,52 @@ namespace Geometry::Detail
         const SCGeometryTolerance3d& tolerance)
     {
         std::vector<CurveOnSurfaceSample> hits;
-        const auto appendHit = [&](const CurveOnSurfaceSample& sample) {
-            if (!hits.empty() &&
-                std::abs(hits.back().parameter - sample.parameter) <=
-                    std::max(tolerance.parameterEpsilon, 1e-8) &&
-                hits.back().point.AlmostEquals(sample.point, tolerance.distanceEpsilon))
+        const auto refineCrossing = [&](double low, double high, double lowDistance) {
+            CurveOnSurfaceSample best{};
+            double bestDistance = std::numeric_limits<double>::infinity();
+            for (int iteration = 0; iteration < 64; ++iteration)
             {
-                return;
+                const double middle = std::lerp(low, high, 0.5);
+                if (middle <= low || middle >= high)
+                {
+                    break;
+                }
+                const CurveOnSurfaceSample midpoint =
+                    EvaluateCurveOnSurfaceSegment(curve, segmentIndex, middle);
+                if (!midpoint.valid)
+                {
+                    break;
+                }
+                const double middleDistance =
+                    plane.SignedDistanceTo(midpoint.point, tolerance.distanceEpsilon);
+                if (!std::isfinite(middleDistance))
+                {
+                    break;
+                }
+                if (std::abs(middleDistance) < bestDistance)
+                {
+                    best = midpoint;
+                    bestDistance = std::abs(middleDistance);
+                }
+                if ((lowDistance < 0.0 && middleDistance < 0.0) ||
+                    (lowDistance > 0.0 && middleDistance > 0.0))
+                {
+                    low = middle;
+                    lowDistance = middleDistance;
+                }
+                else
+                {
+                    high = middle;
+                }
             }
-            hits.push_back(sample);
+            return best.valid && bestDistance <= tolerance.distanceEpsilon
+                ? best : CurveOnSurfaceSample{};
         };
         CurveOnSurfaceSample previous{};
         double previousDistance = 0.0;
         constexpr int sampleCount = 32;
+        std::array<double, sampleCount + 1> distances{};
+        distances.fill(std::numeric_limits<double>::infinity());
         for (int sampleIndex = 0; sampleIndex <= sampleCount; ++sampleIndex)
         {
             const double parameter = static_cast<double>(sampleIndex) / sampleCount;
@@ -409,56 +493,94 @@ namespace Geometry::Detail
                 previous = {};
                 continue;
             }
+            distances[sampleIndex] = distance;
             if (std::abs(distance) <= tolerance.distanceEpsilon)
             {
-                appendHit(current);
+                hits.push_back(current);
             }
             else if (previous.valid && std::abs(previousDistance) > tolerance.distanceEpsilon &&
                 ((previousDistance < 0.0 && distance > 0.0) ||
                  (previousDistance > 0.0 && distance < 0.0)))
             {
-                double low = previous.parameter;
-                double high = current.parameter;
-                double lowDistance = previousDistance;
-                for (int iteration = 0; iteration < 64; ++iteration)
+                const auto root = refineCrossing(previous.parameter, current.parameter, previousDistance);
+                if (root.valid)
                 {
-                    const double middle = std::lerp(low, high, 0.5);
-                    if (middle <= low || middle >= high)
-                    {
-                        break;
-                    }
-                    const CurveOnSurfaceSample midpoint =
-                        EvaluateCurveOnSurfaceSegment(curve, segmentIndex, middle);
-                    if (!midpoint.valid)
-                    {
-                        break;
-                    }
-                    const double middleDistance =
-                        plane.SignedDistanceTo(midpoint.point, tolerance.distanceEpsilon);
-                    if (!std::isfinite(middleDistance))
-                    {
-                        break;
-                    }
-                    if (std::abs(middleDistance) <= tolerance.distanceEpsilon)
-                    {
-                        appendHit(midpoint);
-                        break;
-                    }
-                    if ((lowDistance < 0.0 && middleDistance < 0.0) ||
-                        (lowDistance > 0.0 && middleDistance > 0.0))
-                    {
-                        low = middle;
-                        lowDistance = middleDistance;
-                    }
-                    else
-                    {
-                        high = middle;
-                    }
+                    hits.push_back(root);
                 }
             }
             previous = current;
             previousDistance = distance;
         }
+        for (int i = 0; i <= sampleCount; ++i)
+        {
+            const int leftIndex = std::max(i - 1, 0);
+            const int rightIndex = std::min(i + 1, sampleCount);
+            const double leftDistance = distances[leftIndex];
+            const double middleDistance = distances[i];
+            const double rightDistance = distances[rightIndex];
+            if (!std::isfinite(leftDistance) || !std::isfinite(middleDistance) ||
+                !std::isfinite(rightDistance) || std::abs(middleDistance) <= tolerance.distanceEpsilon ||
+                !((leftDistance > 0.0 && middleDistance > 0.0 && rightDistance > 0.0) ||
+                  (leftDistance < 0.0 && middleDistance < 0.0 && rightDistance < 0.0)) ||
+                std::abs(middleDistance) > std::abs(leftDistance) ||
+                std::abs(middleDistance) > std::abs(rightDistance))
+            {
+                continue;
+            }
+            CurveOnSurfaceSample best{};
+            double bestValue = std::numeric_limits<double>::infinity();
+            const double sign = middleDistance > 0.0 ? 1.0 : -1.0;
+            const auto consider = [&](double parameter) {
+                const auto sample = EvaluateCurveOnSurfaceSegment(curve, segmentIndex, parameter);
+                if (!sample.valid)
+                {
+                    return std::numeric_limits<double>::infinity();
+                }
+                const double value =
+                    sign * plane.SignedDistanceTo(sample.point, tolerance.distanceEpsilon);
+                if (std::isfinite(value) && value < bestValue)
+                {
+                    best = sample;
+                    bestValue = value;
+                }
+                return value;
+            };
+            const double left = static_cast<double>(leftIndex) / sampleCount;
+            const double right = static_cast<double>(rightIndex) / sampleCount;
+            consider(left);
+            consider(right);
+            RefineCurveOnSurfaceInterval(left, right, consider);
+            if (!best.valid)
+            {
+                continue;
+            }
+            if (std::abs(bestValue) <= tolerance.distanceEpsilon)
+            {
+                hits.push_back(best);
+            }
+            else if (bestValue < -tolerance.distanceEpsilon)
+            {
+                const auto firstRoot = refineCrossing(left, best.parameter, leftDistance);
+                const auto secondRoot = refineCrossing(best.parameter, right, sign * bestValue);
+                if (firstRoot.valid) hits.push_back(firstRoot);
+                if (secondRoot.valid) hits.push_back(secondRoot);
+            }
+        }
+        std::sort(hits.begin(), hits.end(), [](const auto& lhs, const auto& rhs) {
+            return lhs.parameter < rhs.parameter;
+        });
+        hits.erase(std::unique(hits.begin(), hits.end(), [&](const auto& lhs, const auto& rhs) {
+            if (std::abs(lhs.parameter - rhs.parameter) >
+                std::max(tolerance.parameterEpsilon, 1e-8))
+            {
+                return false;
+            }
+            const auto middle = EvaluateCurveOnSurfaceSegment(
+                curve, segmentIndex, std::lerp(lhs.parameter, rhs.parameter, 0.5));
+            return middle.valid &&
+                   std::abs(plane.SignedDistanceTo(middle.point, tolerance.distanceEpsilon)) <=
+                       tolerance.distanceEpsilon;
+        }), hits.end());
         return hits;
     }
 

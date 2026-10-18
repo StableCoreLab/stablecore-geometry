@@ -175,7 +175,7 @@ namespace Geometry
                 return false;
             }
 
-            if (LocatePoint(hole.PointAt(0), impl_->outerRing, Geometry::kDefaultEpsilon) != SCPointContainment2d::Inside)
+            if (LocatePoint(hole.VertexAt(0), impl_->outerRing, Geometry::kDefaultEpsilon) != SCPointContainment2d::Inside)
             {
                 return false;
             }
@@ -195,9 +195,9 @@ namespace Geometry
                     return false;
                 }
 
-                if (LocatePoint(impl_->holes[i].PointAt(0), impl_->holes[j], Geometry::kDefaultEpsilon) ==
+                if (LocatePoint(impl_->holes[i].VertexAt(0), impl_->holes[j], Geometry::kDefaultEpsilon) ==
                         SCPointContainment2d::Inside ||
-                    LocatePoint(impl_->holes[j].PointAt(0), impl_->holes[i], Geometry::kDefaultEpsilon) ==
+                    LocatePoint(impl_->holes[j].VertexAt(0), impl_->holes[i], Geometry::kDefaultEpsilon) ==
                         SCPointContainment2d::Inside)
                 {
                     return false;

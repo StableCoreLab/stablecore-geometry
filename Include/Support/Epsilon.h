@@ -29,64 +29,23 @@ namespace Geometry
     // converted vertices onto shared output topology.
     extern GEOMETRY_DATA_API const double kBrepVertexDedupEpsilon;
 
-    // Plane projection uses the default distance epsilon when building 2D
-    // trims.
-    extern GEOMETRY_DATA_API const double kPlaneProjectionEpsilon;
-
-    // Body-boolean internals use the default geometric epsilon for option
-    // fallbacks and deterministic result ordering.
-    extern GEOMETRY_DATA_API const double kBodyBooleanDefaultEpsilon;
-
-    // 2D/3D intersection internals use the default geometric epsilon for their
-    // local degeneracy, projection, and update checks.
-    extern GEOMETRY_DATA_API const double kIntersectionDefaultEpsilon;
-
-    // Projection helpers use the default geometric epsilon for endpoint and
-    // parameter checks.
-    extern GEOMETRY_DATA_API const double kProjectionDefaultEpsilon;
-
-    // Path operations use the default geometric epsilon for clipping and
-    // normalization helpers.
-    extern GEOMETRY_DATA_API const double kPathOpsDefaultEpsilon;
-
-    // Offset helpers use the default geometric epsilon for degeneracy checks
-    // and polygon rebuild fallbacks.
-    extern GEOMETRY_DATA_API const double kOffsetDefaultEpsilon;
-
-    // Axis operations use the default geometric epsilon for segment and arc
-    // parameterization checks.
-    extern GEOMETRY_DATA_API const double kAxisOpsDefaultEpsilon;
-
-    // Shared geometry algorithms use the default geometric epsilon for
-    // parameter clamping checks.
-    extern GEOMETRY_DATA_API const double kAlgorithmsDefaultEpsilon;
-
-    // Arc-segment helpers use the default geometric epsilon for validity and
-    // arc endpoint checks.
-    extern GEOMETRY_DATA_API const double kArcSegmentDefaultEpsilon;
-
-    // Healing and repair helpers use the default geometric epsilon for fallback
-    // validity checks.
-    extern GEOMETRY_DATA_API const double kHealingDefaultEpsilon;
-
-    // Mesh conversion helpers use the default geometric epsilon for coordinate
-    // comparisons during ordering and deduplication.
-    extern GEOMETRY_DATA_API const double kMeshConversionDefaultEpsilon;
-
-    // Shape helpers use the default geometric epsilon for signed-area checks.
-    extern GEOMETRY_DATA_API const double kShapeOpsDefaultEpsilon;
-
-    // Transform helpers use the default geometric epsilon for invertibility and
-    // zero-length checks.
-    extern GEOMETRY_DATA_API const double kTransformDefaultEpsilon;
-
-    // Section helpers use the default geometric epsilon for plane and axis
-    // normalization checks.
-    extern GEOMETRY_DATA_API const double kSectionDefaultEpsilon;
-
-    // Search helpers use the default geometric epsilon for clustering and
-    // candidate ranking.
-    extern GEOMETRY_DATA_API const double kSearchPolyDefaultEpsilon;
+    // 以下模块级默认别名仅为源码和二进制兼容保留；新代码按容差量纲使用
+    // kDefaultEpsilon、调用者传入的容差或 SCGeometryTolerance3d。
+    [[deprecated("Use a dimension-appropriate tolerance")]] extern GEOMETRY_DATA_API const double kPlaneProjectionEpsilon;
+    [[deprecated("Use a dimension-appropriate tolerance")]] extern GEOMETRY_DATA_API const double kBodyBooleanDefaultEpsilon;
+    [[deprecated("Use a dimension-appropriate tolerance")]] extern GEOMETRY_DATA_API const double kIntersectionDefaultEpsilon;
+    [[deprecated("Use a dimension-appropriate tolerance")]] extern GEOMETRY_DATA_API const double kProjectionDefaultEpsilon;
+    [[deprecated("Use a dimension-appropriate tolerance")]] extern GEOMETRY_DATA_API const double kPathOpsDefaultEpsilon;
+    [[deprecated("Use a dimension-appropriate tolerance")]] extern GEOMETRY_DATA_API const double kOffsetDefaultEpsilon;
+    [[deprecated("Use a dimension-appropriate tolerance")]] extern GEOMETRY_DATA_API const double kAxisOpsDefaultEpsilon;
+    [[deprecated("Use a dimension-appropriate tolerance")]] extern GEOMETRY_DATA_API const double kAlgorithmsDefaultEpsilon;
+    [[deprecated("Use a dimension-appropriate tolerance")]] extern GEOMETRY_DATA_API const double kArcSegmentDefaultEpsilon;
+    [[deprecated("Use a dimension-appropriate tolerance")]] extern GEOMETRY_DATA_API const double kHealingDefaultEpsilon;
+    [[deprecated("Use a dimension-appropriate tolerance")]] extern GEOMETRY_DATA_API const double kMeshConversionDefaultEpsilon;
+    [[deprecated("Use a dimension-appropriate tolerance")]] extern GEOMETRY_DATA_API const double kShapeOpsDefaultEpsilon;
+    [[deprecated("Use a dimension-appropriate tolerance")]] extern GEOMETRY_DATA_API const double kTransformDefaultEpsilon;
+    [[deprecated("Use a dimension-appropriate tolerance")]] extern GEOMETRY_DATA_API const double kSectionDefaultEpsilon;
+    [[deprecated("Use a dimension-appropriate tolerance")]] extern GEOMETRY_DATA_API const double kSearchPolyDefaultEpsilon;
 
     // 兼容旧的模块专用常量名；内部二维算法的固定下限统一定义于
     // Source/Detail/TolerancePolicy2d.h，并保持这些导出符号的既有值。

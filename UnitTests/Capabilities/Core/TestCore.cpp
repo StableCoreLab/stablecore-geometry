@@ -220,7 +220,7 @@ TEST(GeometryTest, CoversTwoDimensionalPrimitives)
     ASSERT_EQ(openPath.PointCount(), 3);
     ASSERT_EQ(openPath.SegmentCount(), 2);
     const SCPoint2d openMidPoint{3.0, 0.0};
-    EXPECT_TRUE(openPath.PointAt(1).AlmostEquals(openMidPoint, 1e-12));
+    EXPECT_TRUE(openPath.VertexAt(1).AlmostEquals(openMidPoint, 1e-12));
     EXPECT_TRUE(openPath.Bounds().AlmostEquals(SCBox2d::FromMinMax(SCPoint2d{0.0, 0.0}, SCPoint2d{3.0, 4.0}), 1e-12));
     ASSERT_EQ(openPath.DebugString().find("SCPolyline2d{closure=Open"), 0);
 
@@ -237,8 +237,8 @@ TEST(GeometryTest, CoversTwoDimensionalPrimitives)
     ASSERT_EQ(polygon.HoleAt(0).PointCount(), holeRing.PointCount());
     for (std::size_t i = 0; i < outerRing.PointCount(); ++i)
     {
-        EXPECT_TRUE(polygon.OuterRing().PointAt(i).AlmostEquals(outerRing.PointAt(i), 1e-12));
-        EXPECT_TRUE(polygon.HoleAt(0).PointAt(i).AlmostEquals(holeRing.PointAt(i), 1e-12));
+        EXPECT_TRUE(polygon.OuterRing().VertexAt(i).AlmostEquals(outerRing.VertexAt(i), 1e-12));
+        EXPECT_TRUE(polygon.HoleAt(0).VertexAt(i).AlmostEquals(holeRing.VertexAt(i), 1e-12));
     }
     EXPECT_TRUE(polygon.Bounds().AlmostEquals(SCBox2d::FromMinMax(SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 4.0}), 1e-12));
     ASSERT_EQ(polygon.DebugString().find("SCPolygon2d{holeCount=1"), 0);

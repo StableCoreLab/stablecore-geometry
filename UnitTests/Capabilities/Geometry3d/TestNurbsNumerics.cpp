@@ -1699,7 +1699,7 @@ namespace
         const SCPolyline2d ring({{0,0},{spans,0},{spans,1},{0,1}},SCPolylineClosure::Closed);
         std::vector<SCBrepVertex> vertices;
         std::vector<SCBrepEdge> edges;
-        for (std::size_t i=0;i<4;++i) vertices.emplace_back(surface->PointAt(ring.PointAt(i).x,ring.PointAt(i).y));
+        for (std::size_t i=0;i<4;++i) vertices.emplace_back(surface->PointAt(ring.VertexAt(i).x,ring.VertexAt(i).y));
         for (std::size_t i=0;i<4;++i) {
             const auto a=vertices[i].Point(), b=vertices[(i+1)%4].Point();
             const auto delta=b-a;

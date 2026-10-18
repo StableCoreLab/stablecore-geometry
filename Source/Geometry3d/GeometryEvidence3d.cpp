@@ -123,8 +123,8 @@ namespace Geometry
             const auto cross = [](const auto& a, const auto& b) { return a.x*b.y-a.y*b.x; };
             const auto appendRing = [&](const SCPolyline2d& ring) {
                 for (std::size_t i=0; i<ring.PointCount(); ++i) {
-                    const auto a = ring.PointAt(i);
-                    const auto b = ring.PointAt((i+1)%ring.PointCount());
+                    const auto a = ring.VertexAt(i);
+                    const auto b = ring.VertexAt((i+1)%ring.PointCount());
                     const auto edge = b-a;
                     const double det = cross(delta, edge);
                     if (!std::isfinite(det)) return false;

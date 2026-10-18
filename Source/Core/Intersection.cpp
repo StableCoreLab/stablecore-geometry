@@ -228,7 +228,7 @@ namespace Geometry
                            double secondParameter)
         {
             const double distanceSquared = DistanceSquaredPoints(firstPoint, secondPoint);
-            if (!hasBest || distanceSquared + Geometry::kDefaultEpsilon < best.distanceSquared)
+            if (!hasBest || distanceSquared < best.distanceSquared)
             {
                 best = MakeClosestPoints(firstPoint, secondPoint, firstParameter, secondParameter, distanceSquared);
                 hasBest = true;

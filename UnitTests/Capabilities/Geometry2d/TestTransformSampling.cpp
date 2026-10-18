@@ -68,5 +68,16 @@ TEST(TransformSamplingTest, CoversCurrentCapabilities)
     const SCPolygon2d polygon(SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}, SCPoint2d{4.0, 4.0}, SCPoint2d{0.0, 4.0}},
                                        SCPolylineClosure::Closed));
     const auto movedPolygon = Translate(polygon, SCVector2d{1.0, 0.0});
-    EXPECT_TRUE(movedPolygon.OuterRing().PointAt(0).AlmostEquals(SCPoint2d{1.0, 0.0}, 1e-12));
+    EXPECT_TRUE(movedPolygon.OuterRing().VertexAt(0).AlmostEquals(SCPoint2d{1.0, 0.0}, 1e-12));
+}
+
+TEST(TransformSamplingTest, MirrorDirectionScalePreservesAxis)
+{
+    const SCPoint2d point{1.0, 2.0};
+    const SCPoint2d origin{0.0, 0.0};
+    const SCPoint2d expected{1.0, -2.0};
+    EXPECT_TRUE(Mirror(point, origin, SCVector2d{1.0, 0.0}).AlmostEquals(expected, 1e-12));
+    EXPECT_TRUE(Mirror(point, origin, SCVector2d{1e-6, 0.0}).AlmostEquals(expected, 1e-12));
+    EXPECT_TRUE(Mirror(point, origin, SCVector2d{1e6, 0.0}).AlmostEquals(expected, 1e-12));
+    EXPECT_TRUE(Mirror(point, origin, SCVector2d{1e-10, 0.0}).AlmostEquals(point, 1e-12));
 }

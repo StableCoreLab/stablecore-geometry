@@ -105,13 +105,13 @@ namespace Geometry
             }
 
             const SCPolyline2d outer = polygon.OuterRing();
-            box.minX = outer.PointAt(0).x;
-            box.minY = outer.PointAt(0).y;
+            box.minX = outer.VertexAt(0).x;
+            box.minY = outer.VertexAt(0).y;
             box.maxX = box.minX;
             box.maxY = box.minY;
             for (std::size_t i = 1; i < outer.PointCount(); ++i)
             {
-                const SCPoint2d point = outer.PointAt(i);
+                const SCPoint2d point = outer.VertexAt(i);
                 box.minX = std::min(box.minX, point.x);
                 box.minY = std::min(box.minY, point.y);
                 box.maxX = std::max(box.maxX, point.x);
@@ -121,8 +121,8 @@ namespace Geometry
             const double tol = std::max(Geometry::Detail::kComparisonEpsilon2d, 0.05 * eps);
             for (std::size_t i = 0; i < outer.PointCount(); ++i)
             {
-                const SCPoint2d current = outer.PointAt(i);
-                const SCPoint2d next = outer.PointAt((i + 1) % outer.PointCount());
+                const SCPoint2d current = outer.VertexAt(i);
+                const SCPoint2d next = outer.VertexAt((i + 1) % outer.PointCount());
                 const double dx = std::abs(next.x - current.x);
                 const double dy = std::abs(next.y - current.y);
                 if (dx > tol && dy > tol)
@@ -257,7 +257,7 @@ namespace Geometry
             subjectPoints.reserve(outer.PointCount());
             for (std::size_t i = 0; i < outer.PointCount(); ++i)
             {
-                subjectPoints.push_back(outer.PointAt(i));
+                subjectPoints.push_back(outer.VertexAt(i));
             }
 
             std::vector<SCPoint2d> clipped = ClipPointsToAxisAlignedBox(subjectPoints, box, eps);
@@ -382,8 +382,8 @@ namespace Geometry
                 normalized.IsClosed() ? normalized.PointCount() : normalized.PointCount() - 1;
             for (std::size_t i = 0; i < segmentCount; ++i)
             {
-                const SCPoint2d start = normalized.PointAt(i);
-                const SCPoint2d end = normalized.PointAt((i + 1) % normalized.PointCount());
+                const SCPoint2d start = normalized.VertexAt(i);
+                const SCPoint2d end = normalized.VertexAt((i + 1) % normalized.PointCount());
                 if (!start.AlmostEquals(end, eps))
                 {
                     segments.push_back(RawSegment{start, end});
@@ -469,7 +469,7 @@ namespace Geometry
             outerPoints.reserve(outer.PointCount());
             for (std::size_t i = 0; i < outer.PointCount(); ++i)
             {
-                outerPoints.push_back(outer.PointAt(i));
+                outerPoints.push_back(outer.VertexAt(i));
             }
 
             const double simplifyEps = std::max(Geometry::Detail::kComparisonEpsilon2d, 8.0 * eps);
@@ -1011,13 +1011,13 @@ namespace Geometry
                 return 0.0;
             }
 
-            double minX = outer.PointAt(0).x;
-            double minY = outer.PointAt(0).y;
+            double minX = outer.VertexAt(0).x;
+            double minY = outer.VertexAt(0).y;
             double maxX = minX;
             double maxY = minY;
             for (std::size_t i = 1; i < outer.PointCount(); ++i)
             {
-                const SCPoint2d point = outer.PointAt(i);
+                const SCPoint2d point = outer.VertexAt(i);
                 minX = std::min(minX, point.x);
                 minY = std::min(minY, point.y);
                 maxX = std::max(maxX, point.x);
@@ -1046,13 +1046,13 @@ namespace Geometry
                 return bounds;
             }
 
-            bounds.minX = outer.PointAt(0).x;
-            bounds.minY = outer.PointAt(0).y;
+            bounds.minX = outer.VertexAt(0).x;
+            bounds.minY = outer.VertexAt(0).y;
             bounds.maxX = bounds.minX;
             bounds.maxY = bounds.minY;
             for (std::size_t i = 1; i < outer.PointCount(); ++i)
             {
-                const SCPoint2d point = outer.PointAt(i);
+                const SCPoint2d point = outer.VertexAt(i);
                 bounds.minX = std::min(bounds.minX, point.x);
                 bounds.minY = std::min(bounds.minY, point.y);
                 bounds.maxX = std::max(bounds.maxX, point.x);
@@ -1358,13 +1358,13 @@ namespace Geometry
             }
 
             const SCPolyline2d outer = polygon.OuterRing();
-            double minX = outer.PointAt(0).x;
-            double minY = outer.PointAt(0).y;
+            double minX = outer.VertexAt(0).x;
+            double minY = outer.VertexAt(0).y;
             double maxX = minX;
             double maxY = minY;
             for (std::size_t i = 1; i < outer.PointCount(); ++i)
             {
-                const SCPoint2d point = outer.PointAt(i);
+                const SCPoint2d point = outer.VertexAt(i);
                 minX = std::min(minX, point.x);
                 minY = std::min(minY, point.y);
                 maxX = std::max(maxX, point.x);
@@ -1376,8 +1376,8 @@ namespace Geometry
             const double maxStep = std::max(128.0 * eps, 0.1 * polygonScale);
             for (std::size_t i = 0; i < outer.PointCount(); ++i)
             {
-                const SCPoint2d start = outer.PointAt(i);
-                const SCPoint2d end = outer.PointAt((i + 1) % outer.PointCount());
+                const SCPoint2d start = outer.VertexAt(i);
+                const SCPoint2d end = outer.VertexAt((i + 1) % outer.PointCount());
                 const SCVector2d edge = end - start;
                 const double length = edge.Length();
                 if (length <= eps)
@@ -1397,9 +1397,9 @@ namespace Geometry
 
             for (std::size_t i = 0; i < outer.PointCount(); ++i)
             {
-                const SCPoint2d prev = outer.PointAt((i + outer.PointCount() - 1) % outer.PointCount());
-                const SCPoint2d current = outer.PointAt(i);
-                const SCPoint2d next = outer.PointAt((i + 1) % outer.PointCount());
+                const SCPoint2d prev = outer.VertexAt((i + outer.PointCount() - 1) % outer.PointCount());
+                const SCPoint2d current = outer.VertexAt(i);
+                const SCPoint2d next = outer.VertexAt((i + 1) % outer.PointCount());
                 const SCVector2d incoming = current - prev;
                 const SCVector2d outgoing = next - current;
                 const double incomingLength = incoming.Length();
@@ -1440,7 +1440,7 @@ namespace Geometry
                 }
             }
 
-            return polygon.OuterRing().PointAt(0);
+            return polygon.OuterRing().VertexAt(0);
         }
 
         void AppendFaceBoundaries(const SCPolygon2d& polygon, SCMultiPolyline2d& polylines)

@@ -27,6 +27,17 @@ using Geometry::SCSegmentTrim2d;
 using Geometry::SCSnapResult2d;
 using Geometry::SCVector2d;
 
+TEST(CoreAlgorithmsTest, ClosestPointsKeepsSubEpsilonSquaredDistanceImprovement)
+{
+    const SCLineSegment2d first({0.0, 0.0}, {1.0, 0.0});
+    const SCLineSegment2d second({0.0, 2e-5}, {1.0, 1e-5});
+    const auto closest = ClosestPoints(first, second);
+    ASSERT_TRUE(closest.IsValid());
+    EXPECT_NEAR(closest.distanceSquared, 1e-10, 1e-15);
+    EXPECT_NEAR(closest.parameterOnFirst, 1.0, 1e-9);
+    EXPECT_NEAR(closest.parameterOnSecond, 1.0, 1e-9);
+}
+
 TEST(CoreAlgorithmsTest, CoversCurrentCapabilities)
 {
     const SCLineSegment2d line(SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0});

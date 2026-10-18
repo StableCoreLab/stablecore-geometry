@@ -43,13 +43,13 @@ TEST(OffsetTest, OffsetsLineAndArcSegments)
     const SCPolyline2d openOffset = Offset(openPath, 1.0);
     ASSERT_TRUE(openOffset.IsValid());
     ASSERT_EQ(openOffset.PointCount(), 3);
-    const SCPoint2d firstOpenOffsetPoint = openOffset.PointAt(0);
+    const SCPoint2d firstOpenOffsetPoint = openOffset.VertexAt(0);
     EXPECT_NEAR(firstOpenOffsetPoint.x, 0.0, 1e-12);
     EXPECT_NEAR(firstOpenOffsetPoint.y, 1.0, 1e-12);
-    const SCPoint2d secondOpenOffsetPoint = openOffset.PointAt(1);
+    const SCPoint2d secondOpenOffsetPoint = openOffset.VertexAt(1);
     EXPECT_NEAR(secondOpenOffsetPoint.x, 3.0, 1e-12);
     EXPECT_NEAR(secondOpenOffsetPoint.y, 1.0, 1e-12);
-    const SCPoint2d thirdOpenOffsetPoint = openOffset.PointAt(2);
+    const SCPoint2d thirdOpenOffsetPoint = openOffset.VertexAt(2);
     EXPECT_NEAR(thirdOpenOffsetPoint.x, 3.0, 1e-12);
     EXPECT_NEAR(thirdOpenOffsetPoint.y, 3.0, 1e-12);
 
@@ -62,10 +62,10 @@ TEST(OffsetTest, OffsetsPolygonAndMultiPolygonShapes)
     const SCPolygon2d polygon(ccwRing);
     const SCPolygon2d grownPolygon = Offset(polygon, 1.0);
     ASSERT_TRUE(grownPolygon.IsValid());
-    const SCPoint2d firstGrownPoint = grownPolygon.OuterRing().PointAt(0);
+    const SCPoint2d firstGrownPoint = grownPolygon.OuterRing().VertexAt(0);
     EXPECT_NEAR(firstGrownPoint.x, -1.0, 1e-12);
     EXPECT_NEAR(firstGrownPoint.y, -1.0, 1e-12);
-    const SCPoint2d thirdGrownPoint = grownPolygon.OuterRing().PointAt(2);
+    const SCPoint2d thirdGrownPoint = grownPolygon.OuterRing().VertexAt(2);
     EXPECT_NEAR(thirdGrownPoint.x, 5.0, 1e-12);
     EXPECT_NEAR(thirdGrownPoint.y, 5.0, 1e-12);
 
@@ -75,10 +75,10 @@ TEST(OffsetTest, OffsetsPolygonAndMultiPolygonShapes)
     const SCPolygon2d offsetWithHole = Offset(polygonWithHole, 0.25);
     ASSERT_TRUE(offsetWithHole.IsValid());
     ASSERT_GT(offsetWithHole.Area(), polygonWithHole.Area());
-    const SCPoint2d firstOffsetPoint = offsetWithHole.OuterRing().PointAt(0);
+    const SCPoint2d firstOffsetPoint = offsetWithHole.OuterRing().VertexAt(0);
     EXPECT_NEAR(firstOffsetPoint.x, -0.25, 1e-12);
     EXPECT_NEAR(firstOffsetPoint.y, -0.25, 1e-12);
-    const SCPoint2d thirdOffsetPoint = offsetWithHole.OuterRing().PointAt(2);
+    const SCPoint2d thirdOffsetPoint = offsetWithHole.OuterRing().VertexAt(2);
     EXPECT_NEAR(thirdOffsetPoint.x, 4.25, 1e-12);
     EXPECT_NEAR(thirdOffsetPoint.y, 4.25, 1e-12);
 
@@ -117,7 +117,7 @@ TEST(OffsetTest, OffsetsPolygonAndMultiPolygonShapes)
     ASSERT_LT(inwardRecovered.Area(), narrowDonut.Area());
     for (std::size_t i = 0; i < inwardRecovered.OuterRing().PointCount(); ++i)
     {
-        const SCPointContainment2d containment = LocatePoint(inwardRecovered.OuterRing().PointAt(i), narrowDonut);
+        const SCPointContainment2d containment = LocatePoint(inwardRecovered.OuterRing().VertexAt(i), narrowDonut);
         ASSERT_NE(containment, SCPointContainment2d::Outside);
     }
 
@@ -132,7 +132,7 @@ TEST(OffsetTest, OffsetsPolygonAndMultiPolygonShapes)
         const SCPolygon2d& recovered = inwardMultiRecovered[polygonIndex];
         for (std::size_t pointIndex = 0; pointIndex < recovered.OuterRing().PointCount(); ++pointIndex)
         {
-            const SCPoint2d point = recovered.OuterRing().PointAt(pointIndex);
+            const SCPoint2d point = recovered.OuterRing().VertexAt(pointIndex);
             const bool inFirst = LocatePoint(point, narrowDonut) != SCPointContainment2d::Outside;
             const bool inSecond = LocatePoint(point, multiWithHole[1]) != SCPointContainment2d::Outside;
             ASSERT_TRUE(inFirst || inSecond);
@@ -151,10 +151,10 @@ TEST(OffsetTest, PreservesSinglePolygonHoleSemanticsAfterRebuild)
     ASSERT_TRUE(outward.IsValid());
     ASSERT_EQ(outward.HoleCount(), 1);
     ASSERT_GT(outward.Area(), source.Area());
-    const SCPoint2d firstOutwardPoint = outward.OuterRing().PointAt(0);
+    const SCPoint2d firstOutwardPoint = outward.OuterRing().VertexAt(0);
     EXPECT_NEAR(firstOutwardPoint.x, -0.5, 1e-9);
     EXPECT_NEAR(firstOutwardPoint.y, -0.5, 1e-9);
-    const SCPoint2d thirdOutwardPoint = outward.OuterRing().PointAt(2);
+    const SCPoint2d thirdOutwardPoint = outward.OuterRing().VertexAt(2);
     EXPECT_NEAR(thirdOutwardPoint.x, 4.5, 1e-9);
     EXPECT_NEAR(thirdOutwardPoint.y, 4.5, 1e-9);
 
@@ -171,7 +171,7 @@ TEST(OffsetTest, PreservesSinglePolygonHoleSemanticsAfterRebuild)
     ASSERT_LT(inward.Area(), source.Area());
     for (std::size_t i = 0; i < inward.OuterRing().PointCount(); ++i)
     {
-        ASSERT_NE(LocatePoint(inward.OuterRing().PointAt(i), source), SCPointContainment2d::Outside);
+        ASSERT_NE(LocatePoint(inward.OuterRing().VertexAt(i), source), SCPointContainment2d::Outside);
     }
 }
 
@@ -196,7 +196,7 @@ TEST(OffsetTest, RecoversRepresentativeReverseEdgeSelfIntersectionCase)
     ASSERT_LT(inward.Area(), source.Area());
     for (std::size_t i = 0; i < inward.OuterRing().PointCount(); ++i)
     {
-        ASSERT_NE(LocatePoint(inward.OuterRing().PointAt(i), source), SCPointContainment2d::Outside);
+        ASSERT_NE(LocatePoint(inward.OuterRing().VertexAt(i), source), SCPointContainment2d::Outside);
     }
 }
 
@@ -225,7 +225,7 @@ TEST(OffsetTest, SupportsNarrowBridgeSplitViaMultiPolygonOffsetApi)
         ASSERT_TRUE(piece.IsValid());
         for (std::size_t pointIndex = 0; pointIndex < piece.OuterRing().PointCount(); ++pointIndex)
         {
-            ASSERT_NE(LocatePoint(piece.OuterRing().PointAt(pointIndex), source), SCPointContainment2d::Outside);
+            ASSERT_NE(LocatePoint(piece.OuterRing().VertexAt(pointIndex), source), SCPointContainment2d::Outside);
         }
     }
 }

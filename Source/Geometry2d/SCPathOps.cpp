@@ -84,7 +84,7 @@ namespace Geometry
             double cursor = 0.0;
             for (std::size_t i = 0; i + 1 < polyline.PointCount(); ++i)
             {
-                const SCLineSegment2d segment(polyline.PointAt(i), polyline.PointAt(i + 1));
+                const SCLineSegment2d segment(polyline.VertexAt(i), polyline.VertexAt(i + 1));
                 const double segLen = segment.Length();
                 const double segStart = cursor;
                 const double segEnd = cursor + segLen;
@@ -196,8 +196,8 @@ namespace Geometry
                 normalized.IsClosed() ? normalized.PointCount() : normalized.PointCount() - 1;
             for (std::size_t i = 0; i < segmentCount; ++i)
             {
-                const SCPoint2d start = normalized.PointAt(i);
-                const SCPoint2d end = normalized.PointAt((i + 1) % normalized.PointCount());
+                const SCPoint2d start = normalized.VertexAt(i);
+                const SCPoint2d end = normalized.VertexAt((i + 1) % normalized.PointCount());
                 if (!start.AlmostEquals(end, eps))
                 {
                     segments.push_back(RawSegment{start, end, false});
@@ -271,7 +271,7 @@ namespace Geometry
                 points.reserve(boundary.PointCount());
                 for (std::size_t pointIndex = 0; pointIndex < boundary.PointCount(); ++pointIndex)
                 {
-                    points.push_back(boundary.PointAt(pointIndex));
+                    points.push_back(boundary.VertexAt(pointIndex));
                 }
 
                 std::vector<SCPoint2d> simplifiedPoints = SimplifyRingVertices(std::move(points), eps);
@@ -378,8 +378,8 @@ namespace Geometry
                 const std::size_t count = line.IsClosed() ? line.PointCount() : line.PointCount() - 1;
                 for (std::size_t i = 0; i < count; ++i)
                 {
-                    const SCPoint2d start = line.PointAt(i);
-                    const SCPoint2d end = line.PointAt((i + 1) % line.PointCount());
+                    const SCPoint2d start = line.VertexAt(i);
+                    const SCPoint2d end = line.VertexAt((i + 1) % line.PointCount());
                     if (!start.AlmostEquals(end, eps)) segments.push_back({start, end, false});
                 }
             }

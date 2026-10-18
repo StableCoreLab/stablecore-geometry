@@ -30,7 +30,7 @@ namespace Geometry
 
             for (std::size_t i = 0; i < ring.PointCount(); ++i)
             {
-                segments.emplace_back(ring.PointAt(i), ring.PointAt((i + 1) % ring.PointCount()));
+                segments.emplace_back(ring.VertexAt(i), ring.VertexAt((i + 1) % ring.PointCount()));
             }
         }
 
@@ -108,8 +108,8 @@ namespace Geometry
             const SCRingOrientation2d orientation = Orientation(ring);
             for (std::size_t i = 0; i < ring.PointCount(); ++i)
             {
-                const SCPoint2d start = ring.PointAt(i);
-                const SCPoint2d end = ring.PointAt((i + 1) % ring.PointCount());
+                const SCPoint2d start = ring.VertexAt(i);
+                const SCPoint2d end = ring.VertexAt((i + 1) % ring.PointCount());
                 const SCVector2d edge = end - start;
                 const double length = edge.Length();
                 if (length <= eps)
@@ -148,13 +148,13 @@ namespace Geometry
             const SCPolyline2d& ring = candidate.OuterRing();
             for (std::size_t i = 0; i < ring.PointCount(); ++i)
             {
-                const SCPoint2d point = ring.PointAt(i);
+                const SCPoint2d point = ring.VertexAt(i);
                 if (LocatePoint(point, container, eps) == SCPointContainment2d::Inside)
                 {
                     return true;
                 }
 
-                const SCPoint2d next = ring.PointAt((i + 1) % ring.PointCount());
+                const SCPoint2d next = ring.VertexAt((i + 1) % ring.PointCount());
                 const SCPoint2d midpoint{std::midpoint(point.x, next.x), std::midpoint(point.y, next.y)};
                 if (LocatePoint(midpoint, container, eps) == SCPointContainment2d::Inside)
                 {
@@ -300,7 +300,7 @@ namespace Geometry
 
         for (std::size_t i = 0; i < normalizedInner.OuterRing().PointCount(); ++i)
         {
-            if (LocatePoint(normalizedInner.OuterRing().PointAt(i), normalizedOuter, eps) ==
+            if (LocatePoint(normalizedInner.OuterRing().VertexAt(i), normalizedOuter, eps) ==
                 SCPointContainment2d::Outside)
             {
                 return false;

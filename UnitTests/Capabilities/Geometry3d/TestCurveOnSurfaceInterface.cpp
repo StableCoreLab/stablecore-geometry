@@ -17,6 +17,21 @@ static_assert(std::is_base_of_v<Geometry::ISCCurve3d, Geometry::SCCurveOnSurface
 
 namespace
 {
+    Geometry::SCCurveOnSurface MakeQuadraticHeightCurve(double center, double offset)
+    {
+        // 沿 UV 线段的高度为 (u - center)^2 - offset。
+        const double z0 = center * center - offset;
+        const double z1 = z0 - center;
+        const double z2 = (1.0 - center) * (1.0 - center) - offset;
+        const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
+            2, 1, 3, 2,
+            std::vector<Geometry::SCPoint3d>{{0, 0, z0}, {0.5, 0, z1}, {1, 0, z2},
+                                             {0, 1, z0}, {0.5, 1, z1}, {1, 1, z2}},
+            std::vector<double>{0, 0, 0, 1, 1, 1}, std::vector<double>{0, 0, 1, 1});
+        return Geometry::SCCurveOnSurface(
+            surface, Geometry::SCPolyline2d({{0, 0.5}, {1, 0.5}}));
+    }
+
     TEST(CurveOnSurfaceInterfaceTest, GenericCurveUsesUvSegmentParametersAndSurfaceDerivatives)
     {
         auto surface = std::make_shared<Geometry::SCNurbsSurface>(
@@ -310,5 +325,65 @@ namespace
         EXPECT_NEAR(lineHits.hits[0].curveParameter, first, 1e-6);
         EXPECT_NEAR(lineHits.hits[1].curveParameter, second, 1e-6);
         EXPECT_EQ(lineHits.evidence.negativeCompleteness, Geometry::SCGeometryEvidenceState::Unknown);
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, CurvedSingleUvSegmentFindsOffGridTangency)
+    {
+        constexpr double root = 0.37;
+        const auto composed = MakeQuadraticHeightCurve(root, 0.0);
+        ASSERT_TRUE(composed.IsValid());
+        const Geometry::ISCCurve3d& curve = composed;
+        const auto plane = Geometry::SCPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1});
+        const auto line = Geometry::SCLine3d::FromOriginAndDirection({0, 0.5, 0}, {1, 0, 0});
+
+        const auto planeHits = Geometry::IntersectAllPlaneCurveWithStatus(plane, curve);
+        ASSERT_EQ(planeHits.hits.size(), 1);
+        EXPECT_NEAR(planeHits.hits.front().curveParameter, root, 1e-6);
+        EXPECT_EQ(planeHits.evidence.negativeCompleteness, Geometry::SCGeometryEvidenceState::Unknown);
+
+        const auto lineHits = Geometry::IntersectAllLineCurveWithStatus(line, curve);
+        ASSERT_EQ(lineHits.hits.size(), 1);
+        EXPECT_NEAR(lineHits.hits.front().curveParameter, root, 1e-6);
+        EXPECT_EQ(lineHits.evidence.negativeCompleteness, Geometry::SCGeometryEvidenceState::Unknown);
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, CurvedSingleUvSegmentFindsNarrowOffGridPair)
+    {
+        constexpr double center = 0.37;
+        constexpr double radius = 0.003;
+        const auto composed = MakeQuadraticHeightCurve(center, radius * radius);
+        ASSERT_TRUE(composed.IsValid());
+        const Geometry::ISCCurve3d& curve = composed;
+        const auto plane = Geometry::SCPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1});
+        const auto line = Geometry::SCLine3d::FromOriginAndDirection({0, 0.5, 0}, {1, 0, 0});
+
+        const auto planeHits = Geometry::IntersectAllPlaneCurveWithStatus(plane, curve);
+        ASSERT_EQ(planeHits.hits.size(), 2);
+        EXPECT_NEAR(planeHits.hits[0].curveParameter, center - radius, 1e-6);
+        EXPECT_NEAR(planeHits.hits[1].curveParameter, center + radius, 1e-6);
+        EXPECT_EQ(planeHits.evidence.negativeCompleteness, Geometry::SCGeometryEvidenceState::Unknown);
+
+        const auto lineHits = Geometry::IntersectAllLineCurveWithStatus(line, curve);
+        ASSERT_EQ(lineHits.hits.size(), 2);
+        EXPECT_NEAR(lineHits.hits[0].curveParameter, center - radius, 1e-6);
+        EXPECT_NEAR(lineHits.hits[1].curveParameter, center + radius, 1e-6);
+        EXPECT_EQ(lineHits.evidence.negativeCompleteness, Geometry::SCGeometryEvidenceState::Unknown);
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, CurvedUvSegmentFindsNearEndpointTangency)
+    {
+        constexpr double root = 0.01;
+        const auto composed = MakeQuadraticHeightCurve(root, 0.0);
+        ASSERT_TRUE(composed.IsValid());
+        const Geometry::ISCCurve3d& curve = composed;
+        const auto plane = Geometry::SCPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1});
+        const auto line = Geometry::SCLine3d::FromOriginAndDirection({0, 0.5, 0}, {1, 0, 0});
+
+        const auto planeHits = Geometry::IntersectAllPlaneCurveWithStatus(plane, curve);
+        ASSERT_EQ(planeHits.hits.size(), 1);
+        EXPECT_NEAR(planeHits.hits.front().curveParameter, root, 1e-6);
+        const auto lineHits = Geometry::IntersectAllLineCurveWithStatus(line, curve);
+        ASSERT_EQ(lineHits.hits.size(), 1);
+        EXPECT_NEAR(lineHits.hits.front().curveParameter, root, 1e-6);
     }
 }

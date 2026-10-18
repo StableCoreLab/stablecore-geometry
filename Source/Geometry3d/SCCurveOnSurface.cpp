@@ -78,8 +78,8 @@ namespace Geometry
                                       ? segmentCount - 1
                                       : static_cast<std::size_t>(parameter);
         const double local = parameter - static_cast<double>(index);
-        const SCPoint2d first = uvCurve_.PointAt(index);
-        const SCPoint2d second = uvCurve_.PointAt((index + 1) % uvCurve_.PointCount());
+        const SCPoint2d first = uvCurve_.VertexAt(index);
+        const SCPoint2d second = uvCurve_.VertexAt((index + 1) % uvCurve_.PointCount());
         return {std::lerp(first.x, second.x, local), std::lerp(first.y, second.y, local)};
     }
 
@@ -97,8 +97,8 @@ namespace Geometry
         const std::size_t index = parameter == static_cast<double>(segmentCount)
                                       ? segmentCount - 1
                                       : static_cast<std::size_t>(parameter);
-        const SCPoint2d first = uvCurve_.PointAt(index);
-        const SCPoint2d second = uvCurve_.PointAt((index + 1) % uvCurve_.PointCount());
+        const SCPoint2d first = uvCurve_.VertexAt(index);
+        const SCPoint2d second = uvCurve_.VertexAt((index + 1) % uvCurve_.PointCount());
         const SCPoint2d uv = UvAt(parameter);
 
         const int requestedOrder = std::clamp(derivativeOrder, 0, 1);

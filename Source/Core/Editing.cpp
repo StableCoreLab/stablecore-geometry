@@ -20,7 +20,7 @@ namespace Geometry
             points.reserve(polyline.PointCount());
             for (std::size_t i = 0; i < polyline.PointCount(); ++i)
             {
-                const SCPoint2d point = polyline.PointAt(i);
+                const SCPoint2d point = polyline.VertexAt(i);
                 if (!points.empty() && points.back().AlmostEquals(point, eps))
                 {
                     continue;
@@ -63,13 +63,13 @@ namespace Geometry
         const std::size_t segmentCount = polyline.IsClosed() ? n : (n > 0 ? n - 1 : 0);
         for (std::size_t i = 0; i < n; ++i)
         {
-            points.push_back(polyline.PointAt(i));
+            points.push_back(polyline.VertexAt(i));
             if (!inserted && i < segmentCount)
             {
-                const SCPoint2d next = polyline.PointAt((i + 1) % n);
-                if (LocatePoint(point, SCLineSegment2d(polyline.PointAt(i), next), eps) ==
+                const SCPoint2d next = polyline.VertexAt((i + 1) % n);
+                if (LocatePoint(point, SCLineSegment2d(polyline.VertexAt(i), next), eps) ==
                         SCPointContainment2d::OnBoundary &&
-                    !point.AlmostEquals(polyline.PointAt(i), eps) && !point.AlmostEquals(next, eps))
+                    !point.AlmostEquals(polyline.VertexAt(i), eps) && !point.AlmostEquals(next, eps))
                 {
                     points.push_back(point);
                     inserted = true;

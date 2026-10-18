@@ -47,7 +47,7 @@ namespace Geometry
 
         [[nodiscard]] SCPoint2d UvPointAt(std::size_t index) const
         {
-            return uvCurve_.PointAt(index);
+            return uvCurve_.VertexAt(index);
         }
 
         [[nodiscard]] SCPoint2d UvAt(double parameter) const;
@@ -59,7 +59,7 @@ namespace Geometry
                 return {};
             }
 
-            const SCPoint2d uv = uvCurve_.PointAt(index);
+            const SCPoint2d uv = uvCurve_.VertexAt(index);
             return supportSurface_->PointAt(uv.x, uv.y);
         }
 

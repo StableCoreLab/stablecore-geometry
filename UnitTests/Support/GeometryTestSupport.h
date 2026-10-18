@@ -55,9 +55,6 @@ namespace Geometry::Test
                                 };
 
         template <typename T>
-        concept HasPointAt = requires(const T& value, std::size_t index) { value.PointAt(index); };
-
-        template <typename T>
         concept HasHoleCount = requires(const T& value) {
                                    {
                                        value.HoleCount()
@@ -187,7 +184,7 @@ namespace Geometry::Test
                 {
                     out << ", ";
                 }
-                out << DescribePointLike(value.PointAt(i));
+                out << DescribePointLike(value.VertexAt(i));
             }
             out << "]}";
             return out.str();
@@ -366,7 +363,7 @@ namespace Geometry::Test
 
         for (std::size_t i = 0; i < actual.PointCount(); ++i)
         {
-            AssertPointNear(actual.PointAt(i), expected.PointAt(i), eps, actualExpr, expectedExpr, file, line);
+            AssertPointNear(actual.VertexAt(i), expected.VertexAt(i), eps, actualExpr, expectedExpr, file, line);
         }
     }
 
