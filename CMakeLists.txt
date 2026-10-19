@@ -246,6 +246,7 @@ set(SCGEOMETRY_INTERNAL_HEADERS
     Detail/GeometryContainerOps.h
     Detail/LineFaceHits.h
     Detail/NurbsBasis.h
+    Detail/NurbsRootLimits.h
     Detail/ParametricSeeds.h
     Detail/PathNumerics3d.h
     Detail/PolygonNesting2d.h

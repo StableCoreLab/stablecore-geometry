@@ -14,6 +14,7 @@
 #include "Geometry3d/SCNurbsCurve3d.h"
 #include "Geometry3d/Detail/SurfaceNumerics.h"
 #include "../Detail/CurveOnSurfaceNumerics.h"
+#include "../Detail/NurbsRootLimits.h"
 
 namespace Geometry
 {
@@ -47,7 +48,7 @@ namespace Geometry
                                                        std::vector<PlaneCurveSpan>& spans)
         {
             const int degree = curve.Degree();
-            if (degree < 1 || degree > 16) return false;
+            if (degree < 1 || degree > Detail::kMaxNurbsRootDegree) return false;
             std::vector<double> knots = curve.Knots();
             std::vector<PlaneCurveControl> controls;
             controls.reserve(curve.ControlPoints().size());
@@ -288,7 +289,7 @@ namespace Geometry
             return result;
         }
 
-        if (nurbs->Degree() < 1 || nurbs->Degree() > 16 ||
+        if (nurbs->Degree() < 1 || nurbs->Degree() > Detail::kMaxNurbsRootDegree ||
             std::count(nurbs->Knots().begin(), nurbs->Knots().end(), range.min) < nurbs->Degree() + 1 ||
             std::count(nurbs->Knots().begin(), nurbs->Knots().end(), range.max) < nurbs->Degree() + 1)
         {
@@ -532,10 +533,16 @@ namespace Geometry
         std::vector<SCPlaneCurveIntersection3d> distinct;
         for (const auto& hit : result.hits)
         {
+            const double separation = distinct.empty() ? std::numeric_limits<double>::infinity() :
+                hit.curveParameter - distinct.back().curveParameter;
+            const double midpointDistance = distinct.empty() ? std::numeric_limits<double>::infinity() :
+                std::abs(signedDistanceAt(std::midpoint(hit.curveParameter,
+                                                        distinct.back().curveParameter)));
+            if (!distinct.empty() && !std::isfinite(midpointDistance)) complete = false;
             if (distinct.empty() ||
-                hit.curveParameter - distinct.back().curveParameter >
-                    std::max(rootResolution(hit.curveParameter),
-                             rootResolution(distinct.back().curveParameter)))
+                separation > std::max(rootResolution(hit.curveParameter),
+                                      rootResolution(distinct.back().curveParameter)) ||
+                !std::isfinite(midpointDistance) || midpointDistance > tolerance.distanceEpsilon)
             {
                 distinct.push_back(hit);
             }

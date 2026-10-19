@@ -193,12 +193,13 @@ namespace Geometry
             };
 
             std::vector<SCPoint2d> output = points;
+            // 两端的内外状态不同意味着当前裁剪轴上的坐标差非零。
             output = clipHalfPlane(
                 output,
                 [&box, eps](const SCPoint2d& p) { return p.x >= box.minX - eps; },
                 [&box](const SCPoint2d& a, const SCPoint2d& b) {
                     const double dx = b.x - a.x;
-                    const double t = std::abs(dx) <= 1e-15 ? 0.0 : (box.minX - a.x) / dx;
+                    const double t = (box.minX - a.x) / dx;
                     return SCPoint2d{box.minX, a.y + t * (b.y - a.y)};
                 });
             output = clipHalfPlane(
@@ -206,7 +207,7 @@ namespace Geometry
                 [&box, eps](const SCPoint2d& p) { return p.x <= box.maxX + eps; },
                 [&box](const SCPoint2d& a, const SCPoint2d& b) {
                     const double dx = b.x - a.x;
-                    const double t = std::abs(dx) <= 1e-15 ? 0.0 : (box.maxX - a.x) / dx;
+                    const double t = (box.maxX - a.x) / dx;
                     return SCPoint2d{box.maxX, a.y + t * (b.y - a.y)};
                 });
             output = clipHalfPlane(
@@ -214,7 +215,7 @@ namespace Geometry
                 [&box, eps](const SCPoint2d& p) { return p.y >= box.minY - eps; },
                 [&box](const SCPoint2d& a, const SCPoint2d& b) {
                     const double dy = b.y - a.y;
-                    const double t = std::abs(dy) <= 1e-15 ? 0.0 : (box.minY - a.y) / dy;
+                    const double t = (box.minY - a.y) / dy;
                     return SCPoint2d{a.x + t * (b.x - a.x), box.minY};
                 });
             output = clipHalfPlane(
@@ -222,7 +223,7 @@ namespace Geometry
                 [&box, eps](const SCPoint2d& p) { return p.y <= box.maxY + eps; },
                 [&box](const SCPoint2d& a, const SCPoint2d& b) {
                     const double dy = b.y - a.y;
-                    const double t = std::abs(dy) <= 1e-15 ? 0.0 : (box.maxY - a.y) / dy;
+                    const double t = (box.maxY - a.y) / dy;
                     return SCPoint2d{a.x + t * (b.x - a.x), box.maxY};
                 });
 
@@ -304,7 +305,8 @@ namespace Geometry
                 clippedPolygon = best;
             }
             const auto smallArea=Detail::MagnitudeWithinPower(std::abs(clippedPolygon.Area()),eps,2,64);
-            if (!smallArea || *smallArea || std::abs(clippedPolygon.Area())<=1e-14)
+            if (!smallArea || *smallArea ||
+                std::abs(clippedPolygon.Area()) <= Detail::kAxisBoxIntersectionMinArea2d)
             {
                 return fallback;
             }

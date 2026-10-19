@@ -5,6 +5,8 @@
 #include <cmath>
 #include <cstddef>
 #include <limits>
+#include <memory>
+#include <numeric>
 #include <optional>
 #include <vector>
 
@@ -15,6 +17,7 @@
 #include "Geometry3d/SCPlaneSurface.h"
 #include "Types/Geometry3d/SCLine3d.h"
 #include "NurbsBasis.h"
+#include "NurbsRootLimits.h"
 
 namespace Geometry::Detail
 {
@@ -136,6 +139,8 @@ namespace Geometry::Detail
         SCNurbsCurve3d curve{};
         double start{0.0};
         double end{0.0};
+        double segmentStart{0.0};
+        double segmentEnd{1.0};
     };
 
     struct HomogeneousSurfaceControl
@@ -261,7 +266,8 @@ namespace Geometry::Detail
         const int degreeU = surface->DegreeU();
         const int degreeV = surface->DegreeV();
         const int degree = degreeU + degreeV;
-        if (degree > 16 || surface->ControlPointCountU() != static_cast<std::size_t>(degreeU + 1) ||
+        if (degree > kMaxNurbsRootDegree ||
+            surface->ControlPointCountU() != static_cast<std::size_t>(degreeU + 1) ||
             surface->ControlPointCountV() != static_cast<std::size_t>(degreeV + 1) ||
             !surface->IsValid(tolerance))
         {
@@ -460,6 +466,249 @@ namespace Geometry::Detail
         return RestrictedNurbsSurfaceCurve{std::move(restricted),
                                             alongU ? first.x : first.y,
                                             alongU ? second.x : second.y};
+    }
+
+    struct RefinedNurbsSurfaceNet
+    {
+        std::size_t countU{0};
+        std::size_t countV{0};
+        std::vector<HomogeneousSurfaceControl> controls;
+        std::vector<double> knotsU;
+        std::vector<double> knotsV;
+    };
+
+    [[nodiscard]] inline std::vector<HomogeneousSurfaceControl> InsertNurbsControlKnot(
+        const std::vector<HomogeneousSurfaceControl>& controls,
+        const std::vector<double>& knots, int degree, double knot)
+    {
+        const std::size_t span = static_cast<std::size_t>(
+            std::upper_bound(knots.begin(), knots.end(), knot) - knots.begin() - 1);
+        const std::size_t multiplicity = static_cast<std::size_t>(std::count(knots.begin(), knots.end(), knot));
+        std::vector<HomogeneousSurfaceControl> inserted(controls.size() + 1);
+        const std::size_t firstBlend = span - static_cast<std::size_t>(degree) + 1;
+        const std::size_t lastBlend = span - multiplicity;
+        for (std::size_t index = 0; index < firstBlend; ++index)
+        {
+            inserted[index] = controls[index];
+        }
+        for (std::size_t index = lastBlend; index < controls.size(); ++index)
+        {
+            inserted[index + 1] = controls[index];
+        }
+        for (std::size_t index = firstBlend; index <= lastBlend; ++index)
+        {
+            const double denominator = knots[index + static_cast<std::size_t>(degree)] - knots[index];
+            const double alpha = (knot - knots[index]) / denominator;
+            inserted[index] = LerpSurfaceControl(controls[index - 1], controls[index], alpha);
+        }
+        return inserted;
+    }
+
+    inline void RefineNurbsSurfaceAxis(RefinedNurbsSurfaceNet& net, int degree, bool alongU)
+    {
+        auto& knots = alongU ? net.knotsU : net.knotsV;
+        const std::size_t count = alongU ? net.countU : net.countV;
+        const std::vector<double> originalKnots = knots;
+        for (std::size_t knotIndex = static_cast<std::size_t>(degree);
+             knotIndex <= count; ++knotIndex)
+        {
+            const double knot = originalKnots[knotIndex];
+            if (knotIndex > static_cast<std::size_t>(degree) &&
+                knot == originalKnots[knotIndex - 1])
+            {
+                continue;
+            }
+            while (std::count(knots.begin(), knots.end(), knot) < degree)
+            {
+                const std::size_t span = static_cast<std::size_t>(
+                    std::upper_bound(knots.begin(), knots.end(), knot) - knots.begin() - 1);
+                std::vector<HomogeneousSurfaceControl> inserted;
+                inserted.reserve(net.controls.size() + (alongU ? net.countV : net.countU));
+                if (alongU)
+                {
+                    for (std::size_t v = 0; v < net.countV; ++v)
+                    {
+                        const auto begin = net.controls.begin() + v * net.countU;
+                        const std::vector<HomogeneousSurfaceControl> row(begin, begin + net.countU);
+                        const auto refined = InsertNurbsControlKnot(row, knots, degree, knot);
+                        inserted.insert(inserted.end(), refined.begin(), refined.end());
+                    }
+                    ++net.countU;
+                }
+                else
+                {
+                    inserted.resize(net.countU * (net.countV + 1));
+                    for (std::size_t u = 0; u < net.countU; ++u)
+                    {
+                        std::vector<HomogeneousSurfaceControl> column;
+                        column.reserve(net.countV);
+                        for (std::size_t v = 0; v < net.countV; ++v)
+                        {
+                            column.push_back(net.controls[v * net.countU + u]);
+                        }
+                        const auto refined = InsertNurbsControlKnot(column, knots, degree, knot);
+                        for (std::size_t v = 0; v <= net.countV; ++v)
+                        {
+                            inserted[v * net.countU + u] = refined[v];
+                        }
+                    }
+                    ++net.countV;
+                }
+                net.controls = std::move(inserted);
+                knots.insert(knots.begin() + static_cast<std::ptrdiff_t>(span + 1), knot);
+            }
+        }
+    }
+
+    [[nodiscard]] inline std::vector<RestrictedNurbsSurfaceCurve> RestrictNurbsSurfaceSegmentPieces(
+        const SCCurveOnSurface& curve, std::size_t segmentIndex, const SCGeometryTolerance3d& tolerance)
+    {
+        if (auto axis = RestrictAxisAlignedNurbsSurfaceSegment(curve, segmentIndex, tolerance))
+        {
+            const auto& knots = axis->curve.Knots();
+            const auto range = axis->curve.ParameterRange();
+            const int degree = axis->curve.Degree();
+            if (std::count(knots.begin(), knots.end(), range.min) >= degree + 1 &&
+                std::count(knots.begin(), knots.end(), range.max) >= degree + 1)
+            {
+                std::vector<RestrictedNurbsSurfaceCurve> result;
+                result.push_back(std::move(*axis));
+                return result;
+            }
+        }
+        if (auto bezier = RestrictBezierNurbsSurfaceSegment(curve, segmentIndex, tolerance))
+        {
+            std::vector<RestrictedNurbsSurfaceCurve> result;
+            result.push_back(std::move(*bezier));
+            return result;
+        }
+
+        const auto* surface = dynamic_cast<const SCNurbsSurface*>(curve.SupportSurface());
+        if (surface == nullptr || segmentIndex >= curve.UvCurve().SegmentCount() ||
+            !surface->IsValid(tolerance) ||
+            surface->DegreeU() + surface->DegreeV() > kMaxNurbsRootDegree)
+        {
+            return {};
+        }
+        const auto& originalU = surface->KnotsU();
+        const auto& originalV = surface->KnotsV();
+
+        const SCPoint2d first = curve.UvPointAt(segmentIndex);
+        const SCPoint2d second = curve.UvPointAt((segmentIndex + 1) % curve.PointCount());
+        const auto inside = [](double value, const std::vector<double>& knots,
+                               int degree, std::size_t count) {
+            return std::isfinite(value) && value >= knots[static_cast<std::size_t>(degree)] &&
+                   value <= knots[count];
+        };
+        if (!inside(first.x, originalU, surface->DegreeU(), surface->ControlPointCountU()) ||
+            !inside(second.x, originalU, surface->DegreeU(), surface->ControlPointCountU()) ||
+            !inside(first.y, originalV, surface->DegreeV(), surface->ControlPointCountV()) ||
+            !inside(second.y, originalV, surface->DegreeV(), surface->ControlPointCountV()))
+        {
+            return {};
+        }
+
+        RefinedNurbsSurfaceNet net{surface->ControlPointCountU(), surface->ControlPointCountV(),
+                                   {}, originalU, originalV};
+        const auto& points = surface->ControlPoints();
+        const auto& weights = surface->Weights();
+        const double weightScale = *std::max_element(weights.begin(), weights.end());
+        if (!(weightScale > 0.0) || !std::isfinite(weightScale))
+        {
+            return {};
+        }
+        net.controls.reserve(points.size());
+        for (std::size_t index = 0; index < points.size(); ++index)
+        {
+            const double weight = weights[index] / weightScale;
+            net.controls.push_back({points[index].x * weight, points[index].y * weight,
+                                    points[index].z * weight, weight});
+        }
+        RefineNurbsSurfaceAxis(net, surface->DegreeU(), true);
+        RefineNurbsSurfaceAxis(net, surface->DegreeV(), false);
+
+        std::vector<double> breaks{0.0, 1.0};
+        const auto addBreaks = [&](const std::vector<double>& knots, double start, double end) {
+            if (start == end) return;
+            for (double knot : knots)
+            {
+                const double parameter = (knot - start) / (end - start);
+                if (parameter > 0.0 && parameter < 1.0)
+                {
+                    breaks.push_back(parameter);
+                }
+            }
+        };
+        addBreaks(net.knotsU, first.x, second.x);
+        addBreaks(net.knotsV, first.y, second.y);
+        std::sort(breaks.begin(), breaks.end());
+        breaks.erase(std::unique(breaks.begin(), breaks.end()), breaks.end());
+
+        std::vector<RestrictedNurbsSurfaceCurve> pieces;
+        for (std::size_t index = 1; index < breaks.size(); ++index)
+        {
+            const double start = breaks[index - 1];
+            const double end = breaks[index];
+            const double middle = std::midpoint(start, end);
+            const SCPoint2d middleUv{std::lerp(first.x, second.x, middle),
+                                     std::lerp(first.y, second.y, middle)};
+            const auto spanAt = [](const std::vector<double>& knots, double value) {
+                return static_cast<std::size_t>(
+                    std::upper_bound(knots.begin(), knots.end(), value) - knots.begin() - 1);
+            };
+            const std::size_t spanU = spanAt(net.knotsU, middleUv.x);
+            const std::size_t spanV = spanAt(net.knotsV, middleUv.y);
+            const int degreeU = surface->DegreeU();
+            const int degreeV = surface->DegreeV();
+            if (spanU < static_cast<std::size_t>(degreeU) ||
+                spanV < static_cast<std::size_t>(degreeV) ||
+                spanU + 1 >= net.knotsU.size() || spanV + 1 >= net.knotsV.size())
+            {
+                return {};
+            }
+            const double lowU = net.knotsU[spanU];
+            const double highU = net.knotsU[spanU + 1];
+            const double lowV = net.knotsV[spanV];
+            const double highV = net.knotsV[spanV + 1];
+            if (!(highU > lowU) || !(highV > lowV)) return {};
+
+            std::vector<SCPoint3d> patchPoints;
+            std::vector<double> patchWeights;
+            for (int v = 0; v <= degreeV; ++v)
+            {
+                for (int u = 0; u <= degreeU; ++u)
+                {
+                    const auto& control = net.controls[
+                        (spanV - degreeV + v) * net.countU + spanU - degreeU + u];
+                    if (!(control.w > 0.0) || !std::isfinite(control.w)) return {};
+                    patchPoints.push_back({control.x / control.w,
+                                           control.y / control.w, control.z / control.w});
+                    patchWeights.push_back(control.w);
+                }
+            }
+            const auto patchKnots = [](int degree) {
+                std::vector<double> knots(static_cast<std::size_t>(2 * (degree + 1)), 1.0);
+                std::fill(knots.begin(), knots.begin() + degree + 1, 0.0);
+                return knots;
+            };
+            const auto patch = std::make_shared<SCNurbsSurface>(
+                degreeU, degreeV, static_cast<std::size_t>(degreeU + 1),
+                static_cast<std::size_t>(degreeV + 1), std::move(patchPoints),
+                patchKnots(degreeU), patchKnots(degreeV), std::move(patchWeights));
+            const auto localUv = [&](double parameter) {
+                return SCPoint2d{
+                    std::clamp((std::lerp(first.x, second.x, parameter) - lowU) / (highU - lowU), 0.0, 1.0),
+                    std::clamp((std::lerp(first.y, second.y, parameter) - lowV) / (highV - lowV), 0.0, 1.0)};
+            };
+            const SCCurveOnSurface patchSegment(
+                patch, SCPolyline2d({localUv(start), localUv(end)}));
+            auto restricted = RestrictBezierNurbsSurfaceSegment(patchSegment, 0, tolerance);
+            if (!restricted) return {};
+            restricted->segmentStart = start;
+            restricted->segmentEnd = end;
+            pieces.push_back(std::move(*restricted));
+        }
+        return pieces;
     }
 
     template <typename Consider>
@@ -707,14 +956,9 @@ namespace Geometry::Detail
                 ? CurveOnSurfaceLineCandidate{true, sample, parameter, distance}
                 : CurveOnSurfaceLineCandidate{};
         };
-        auto restricted = RestrictAxisAlignedNurbsSurfaceSegment(curve, segmentIndex, tolerance);
-        if (!restricted)
+        for (const auto& restricted : RestrictNurbsSurfaceSegmentPieces(curve, segmentIndex, tolerance))
         {
-            restricted = RestrictBezierNurbsSurfaceSegment(curve, segmentIndex, tolerance);
-        }
-        if (restricted)
-        {
-            const auto analytic = IntersectAllLineCurveWithStatus(line, restricted->curve, tolerance);
+            const auto analytic = IntersectAllLineCurveWithStatus(line, restricted.curve, tolerance);
             if (analytic.state == SCGeometryOperationState::NonUnique)
             {
                 if (nonUnique != nullptr) *nonUnique = true;
@@ -722,8 +966,9 @@ namespace Geometry::Detail
             }
             for (const auto& hit : analytic.hits)
             {
-                const double parameter =
-                    (hit.curveParameter - restricted->start) / (restricted->end - restricted->start);
+                const double parameter = std::lerp(
+                    restricted.segmentStart, restricted.segmentEnd,
+                    (hit.curveParameter - restricted.start) / (restricted.end - restricted.start));
                 if (!std::isfinite(parameter) || parameter < 0.0 || parameter > 1.0)
                 {
                     continue;
@@ -795,14 +1040,9 @@ namespace Geometry::Detail
         const SCGeometryTolerance3d& tolerance, bool* nonUnique)
     {
         std::vector<CurveOnSurfaceSample> hits;
-        auto restricted = RestrictAxisAlignedNurbsSurfaceSegment(curve, segmentIndex, tolerance);
-        if (!restricted)
+        for (const auto& restricted : RestrictNurbsSurfaceSegmentPieces(curve, segmentIndex, tolerance))
         {
-            restricted = RestrictBezierNurbsSurfaceSegment(curve, segmentIndex, tolerance);
-        }
-        if (restricted)
-        {
-            const auto analytic = IntersectAllPlaneCurveWithStatus(plane, restricted->curve, tolerance);
+            const auto analytic = IntersectAllPlaneCurveWithStatus(plane, restricted.curve, tolerance);
             if (analytic.state == SCGeometryOperationState::NonUnique)
             {
                 if (nonUnique != nullptr) *nonUnique = true;
@@ -810,8 +1050,9 @@ namespace Geometry::Detail
             }
             for (const auto& hit : analytic.hits)
             {
-                const double parameter =
-                    (hit.curveParameter - restricted->start) / (restricted->end - restricted->start);
+                const double parameter = std::lerp(
+                    restricted.segmentStart, restricted.segmentEnd,
+                    (hit.curveParameter - restricted.start) / (restricted.end - restricted.start));
                 if (!std::isfinite(parameter) || parameter < 0.0 || parameter > 1.0)
                 {
                     continue;

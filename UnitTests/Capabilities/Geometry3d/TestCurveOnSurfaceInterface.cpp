@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <memory>
@@ -555,6 +556,242 @@ namespace
             EXPECT_TRUE(restricted->curve.PointAt(parameter).AlmostEquals(
                 diagonal.PointAt(parameter), 1e-12)) << "parameter=" << parameter;
         }
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, DiagonalUvSegmentAcrossKnotFindsAllCloseRoots)
+    {
+        constexpr std::array<double, 3> roots{0.35, 0.355, 0.36};
+        const auto single = MakeCubicHeightCurve(roots);
+        const auto* singleSurface = static_cast<const Geometry::SCNurbsSurface*>(single.SupportSurface());
+        ASSERT_NE(singleSurface, nullptr);
+        const auto& firstPatch = singleSurface->ControlPoints();
+        const double trailingHeight = firstPatch[3].z;
+
+        std::vector<Geometry::SCPoint3d> controls;
+        for (double v : {0.0, 1.0})
+        {
+            for (int u = 0; u < 7; ++u)
+            {
+                controls.push_back({static_cast<double>(u) / 6.0, v,
+                                    u < 4 ? firstPatch[u].z : trailingHeight});
+            }
+        }
+        const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
+            3, 1, 7, 2, std::move(controls),
+            std::vector<double>{0, 0, 0, 0, 0.5, 0.5, 0.5, 1, 1, 1, 1},
+            std::vector<double>{0, 0, 1, 1});
+        const Geometry::SCCurveOnSurface diagonal(
+            surface, Geometry::SCPolyline2d({{0, 0}, {1, 1}}));
+        ASSERT_TRUE(diagonal.IsValid());
+
+        const auto plane = Geometry::SCPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1});
+        const auto line = Geometry::SCLine3d::FromOriginAndDirection({0, 0, 0}, {1, 1, 0});
+        const Geometry::ISCCurve3d& curve = diagonal;
+        const auto planeHits = Geometry::IntersectAllPlaneCurveWithStatus(plane, curve);
+        const auto lineHits = Geometry::IntersectAllLineCurveWithStatus(line, curve);
+        ASSERT_EQ(planeHits.hits.size(), roots.size());
+        ASSERT_EQ(lineHits.hits.size(), roots.size());
+        for (std::size_t index = 0; index < roots.size(); ++index)
+        {
+            const double expected = 0.5 * roots[index];
+            EXPECT_NEAR(planeHits.hits[index].curveParameter, expected, 1e-5);
+            EXPECT_NEAR(lineHits.hits[index].curveParameter, expected, 1e-5);
+        }
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, CrossKnotRestrictionMatchesRationalSurfaceOnBothAxes)
+    {
+        std::vector<Geometry::SCPoint3d> controls;
+        std::vector<double> weights;
+        for (int v = 0; v < 4; ++v)
+        {
+            for (int u = 0; u < 4; ++u)
+            {
+                controls.push_back({0.3 * u, 0.2 * v, 0.1 * u * v + 0.05 * u * u});
+                weights.push_back(1.0 + 0.1 * u + 0.15 * v);
+            }
+        }
+        const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
+            2, 2, 4, 4, std::move(controls),
+            std::vector<double>{0, 0, 0, 0.5, 1, 1, 1},
+            std::vector<double>{0, 0, 0, 0.6, 1, 1, 1}, std::move(weights));
+        const Geometry::SCCurveOnSurface diagonal(
+            surface, Geometry::SCPolyline2d({{0.9, 0.95}, {0.1, 0.05}}));
+        ASSERT_TRUE(diagonal.IsValid());
+        const auto pieces = Geometry::Detail::RestrictNurbsSurfaceSegmentPieces(diagonal, 0, {});
+        ASSERT_EQ(pieces.size(), 3U);
+        for (const auto& piece : pieces)
+        {
+            for (const double local : {0.0, 0.25, 0.5, 0.75, 1.0})
+            {
+                const double parameter = std::lerp(piece.segmentStart, piece.segmentEnd, local);
+                EXPECT_TRUE(piece.curve.PointAt(local).AlmostEquals(
+                    diagonal.PointAt(parameter), 1e-11)) << "parameter=" << parameter;
+            }
+        }
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, NonClampedCrossKnotRestrictionMatchesRationalSurface)
+    {
+        std::vector<Geometry::SCPoint3d> controls;
+        std::vector<double> weights;
+        for (int v = 0; v < 4; ++v)
+        {
+            for (int u = 0; u < 4; ++u)
+            {
+                controls.push_back({0.3 * u, 0.2 * v, 0.1 * u * v + 0.05 * u * u});
+                weights.push_back(1.0 + 0.1 * u + 0.15 * v);
+            }
+        }
+        const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
+            2, 2, 4, 4, std::move(controls),
+            std::vector<double>{0, 0, 0.2, 0.5, 0.8, 1, 1},
+            std::vector<double>{-1, -1, 0.1, 0.6, 0.9, 2, 2}, std::move(weights));
+        const Geometry::SCCurveOnSurface diagonal(
+            surface, Geometry::SCPolyline2d({{0.8, 0.9}, {0.2, 0.1}}));
+        ASSERT_TRUE(diagonal.IsValid());
+        const auto pieces = Geometry::Detail::RestrictNurbsSurfaceSegmentPieces(diagonal, 0, {});
+        ASSERT_EQ(pieces.size(), 3U);
+        for (const auto& piece : pieces)
+        {
+            for (const double local : {0.0, 0.25, 0.5, 0.75, 1.0})
+            {
+                const double parameter = std::lerp(piece.segmentStart, piece.segmentEnd, local);
+                EXPECT_TRUE(piece.curve.PointAt(local).AlmostEquals(
+                    diagonal.PointAt(parameter), 1e-11)) << "parameter=" << parameter;
+            }
+        }
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, NonClampedAxisSegmentUsesClampedRootPieces)
+    {
+        std::vector<Geometry::SCPoint3d> controls;
+        for (double v : {0.0, 1.0})
+        {
+            controls.insert(controls.end(), {{0.0, v, 0.2}, {0.3, v, -0.1},
+                                             {0.6, v, 0.1}, {0.9, v, -0.2}});
+        }
+        const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
+            2, 1, 4, 2, std::move(controls),
+            std::vector<double>{0, 0, 0.2, 0.5, 0.8, 1, 1},
+            std::vector<double>{0, 0, 1, 1});
+        const Geometry::SCCurveOnSurface axis(
+            surface, Geometry::SCPolyline2d({{0.2, 0.5}, {0.8, 0.5}}));
+        ASSERT_TRUE(axis.IsValid());
+        const auto pieces = Geometry::Detail::RestrictNurbsSurfaceSegmentPieces(axis, 0, {});
+        ASSERT_EQ(pieces.size(), 2U);
+        for (const auto& piece : pieces)
+        {
+            const auto& knots = piece.curve.Knots();
+            const int degree = piece.curve.Degree();
+            ASSERT_EQ(std::count(knots.begin(), knots.end(), 0.0), degree + 1);
+            ASSERT_EQ(std::count(knots.begin(), knots.end(), 1.0), degree + 1);
+            for (double local : {0.0, 0.25, 0.5, 0.75, 1.0})
+            {
+                const double parameter = std::lerp(piece.segmentStart, piece.segmentEnd, local);
+                EXPECT_TRUE(piece.curve.PointAt(local).AlmostEquals(
+                    axis.PointAt(parameter), 1e-11));
+            }
+        }
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, DegreeEighteenRationalRestrictionFindsCloseRoots)
+    {
+        constexpr std::array<double, 3> roots{0.35, 0.355, 0.36};
+        const auto cubic = MakeCubicHeightCurve(roots);
+        const auto* cubicSurface = static_cast<const Geometry::SCNurbsSurface*>(cubic.SupportSurface());
+        ASSERT_NE(cubicSurface, nullptr);
+        std::vector<double> heights;
+        for (int u = 0; u < 4; ++u)
+        {
+            heights.push_back(cubicSurface->ControlPoints()[u].z);
+        }
+        for (int degree = 3; degree < 9; ++degree)
+        {
+            std::vector<double> elevated(static_cast<std::size_t>(degree + 2));
+            elevated.front() = heights.front();
+            elevated.back() = heights.back();
+            for (int u = 1; u <= degree; ++u)
+            {
+                elevated[u] = std::lerp(heights[u], heights[u - 1],
+                                        static_cast<double>(u) / (degree + 1));
+            }
+            heights = std::move(elevated);
+        }
+
+        std::vector<Geometry::SCPoint3d> controls;
+        std::vector<double> weights;
+        for (int v = 0; v <= 9; ++v)
+        {
+            for (int u = 0; u <= 9; ++u)
+            {
+                const double weight = 1.0 + 0.1 * ((u + v) % 3) + 0.05 * u * v / 81.0;
+                controls.push_back({static_cast<double>(u) / 9.0,
+                                    static_cast<double>(v) / 9.0, heights[u] / weight});
+                weights.push_back(weight);
+            }
+        }
+        std::vector<double> knots(20, 1.0);
+        std::fill(knots.begin(), knots.begin() + 10, 0.0);
+        const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
+            9, 9, 10, 10, std::move(controls), knots, knots, std::move(weights));
+        const Geometry::SCCurveOnSurface diagonal(
+            surface, Geometry::SCPolyline2d({{0, 0}, {1, 1}}));
+        ASSERT_TRUE(diagonal.IsValid());
+        const auto restricted = Geometry::Detail::RestrictBezierNurbsSurfaceSegment(diagonal, 0, {});
+        ASSERT_TRUE(restricted.has_value());
+        ASSERT_EQ(restricted->curve.Degree(), 18);
+        for (const double parameter : {0.0, 0.2, 0.5, 0.8, 1.0})
+        {
+            EXPECT_TRUE(restricted->curve.PointAt(parameter).AlmostEquals(
+                diagonal.PointAt(parameter), 1e-10));
+        }
+        const auto plane = Geometry::SCPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1});
+        const auto line = Geometry::SCLine3d::FromOriginAndDirection({0, 0, 0}, {1, 1, 0});
+        const Geometry::ISCCurve3d& curve = diagonal;
+        const auto restrictedHits = Geometry::IntersectAllPlaneCurveWithStatus(plane, restricted->curve);
+        ASSERT_EQ(restrictedHits.hits.size(), roots.size());
+        const auto planeHits = Geometry::IntersectAllPlaneCurveWithStatus(plane, curve);
+        const auto lineHits = Geometry::IntersectAllLineCurveWithStatus(line, curve);
+        ASSERT_EQ(planeHits.hits.size(), roots.size());
+        ASSERT_EQ(lineHits.hits.size(), roots.size());
+        for (std::size_t index = 0; index < roots.size(); ++index)
+        {
+            EXPECT_NEAR(planeHits.hits[index].curveParameter, roots[index], 1e-5);
+            EXPECT_NEAR(lineHits.hits[index].curveParameter, roots[index], 1e-5);
+        }
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, DegreeThirtyTwoRationalRestrictionUsesRootKernel)
+    {
+        std::vector<Geometry::SCPoint3d> controls;
+        std::vector<double> weights;
+        for (int v = 0; v <= 16; ++v)
+        {
+            for (int u = 0; u <= 16; ++u)
+            {
+                const double weight = 1.0 + 0.1 * ((u + v) % 3);
+                controls.push_back({static_cast<double>(u) / 16.0,
+                                    static_cast<double>(v) / 16.0,
+                                    (static_cast<double>(u) / 16.0 - 0.5) / weight});
+                weights.push_back(weight);
+            }
+        }
+        std::vector<double> knots(34, 1.0);
+        std::fill(knots.begin(), knots.begin() + 17, 0.0);
+        const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
+            16, 16, 17, 17, std::move(controls), knots, knots, std::move(weights));
+        const Geometry::SCCurveOnSurface diagonal(
+            surface, Geometry::SCPolyline2d({{0, 0}, {1, 1}}));
+        ASSERT_TRUE(diagonal.IsValid());
+        const auto restricted = Geometry::Detail::RestrictBezierNurbsSurfaceSegment(diagonal, 0, {});
+        ASSERT_TRUE(restricted.has_value());
+        ASSERT_EQ(restricted->curve.Degree(), 32);
+        const auto hits = Geometry::IntersectAllPlaneCurveWithStatus(
+            Geometry::SCPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1}),
+            static_cast<const Geometry::ISCCurve3d&>(diagonal));
+        ASSERT_EQ(hits.hits.size(), 1U);
+        EXPECT_NEAR(hits.hits.front().curveParameter, 0.5, 1e-6);
     }
 
     TEST(CurveOnSurfaceInterfaceTest, RationalAxisAlignedUvSegmentsPreserveReverseParameterMapping)
