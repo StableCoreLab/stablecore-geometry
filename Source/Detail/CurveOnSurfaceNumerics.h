@@ -131,14 +131,263 @@ namespace Geometry::Detail
         return result;
     }
 
-    struct AxisAlignedNurbsSurfaceCurve
+    struct RestrictedNurbsSurfaceCurve
     {
         SCNurbsCurve3d curve{};
         double start{0.0};
         double end{0.0};
     };
 
-    [[nodiscard]] inline std::optional<AxisAlignedNurbsSurfaceCurve> RestrictAxisAlignedNurbsSurfaceSegment(
+    struct HomogeneousSurfaceControl
+    {
+        double x{0.0};
+        double y{0.0};
+        double z{0.0};
+        double w{0.0};
+    };
+
+    [[nodiscard]] inline HomogeneousSurfaceControl LerpSurfaceControl(
+        const HomogeneousSurfaceControl& first, const HomogeneousSurfaceControl& second, double parameter)
+    {
+        return {std::lerp(first.x, second.x, parameter),
+                std::lerp(first.y, second.y, parameter),
+                std::lerp(first.z, second.z, parameter),
+                std::lerp(first.w, second.w, parameter)};
+    }
+
+    [[nodiscard]] inline std::vector<HomogeneousSurfaceControl> RestrictBezierControls(
+        const std::vector<HomogeneousSurfaceControl>& controls, double first, double second)
+    {
+        if (first > second)
+        {
+            auto reversed = RestrictBezierControls(controls, second, first);
+            std::reverse(reversed.begin(), reversed.end());
+            return reversed;
+        }
+
+        const auto splitLeft = [](const std::vector<HomogeneousSurfaceControl>& input,
+                                  double parameter, bool retainRight) {
+            const std::size_t degree = input.size() - 1;
+            auto work = input;
+            std::vector<HomogeneousSurfaceControl> output(input.size());
+            output[retainRight ? degree : 0] = work[retainRight ? degree : 0];
+            for (std::size_t level = 1; level <= degree; ++level)
+            {
+                for (std::size_t index = 0; index <= degree - level; ++index)
+                {
+                    work[index] = LerpSurfaceControl(work[index], work[index + 1], parameter);
+                }
+                output[retainRight ? degree - level : level] =
+                    work[retainRight ? degree - level : 0];
+            }
+            return output;
+        };
+
+        const auto right = splitLeft(controls, first, true);
+        const double relative = first == 1.0 ? 0.0 : (second - first) / (1.0 - first);
+        return splitLeft(right, relative, false);
+    }
+
+    [[nodiscard]] inline double BinomialCoefficient(int degree, int index)
+    {
+        double result = 1.0;
+        for (int i = 1; i <= index; ++i)
+        {
+            result *= static_cast<double>(degree - index + i) / static_cast<double>(i);
+        }
+        return result;
+    }
+
+    [[nodiscard]] inline bool TryReduceBezierControlDegree(std::vector<HomogeneousSurfaceControl>& controls)
+    {
+        const int degree = static_cast<int>(controls.size()) - 1;
+        if (degree <= 1)
+        {
+            return false;
+        }
+        std::vector<HomogeneousSurfaceControl> reduced(static_cast<std::size_t>(degree));
+        reduced.front() = controls.front();
+        for (int index = 1; index < degree; ++index)
+        {
+            const double fraction = static_cast<double>(index) / degree;
+            const double inverse = 1.0 / (1.0 - fraction);
+            const auto& current = controls[index];
+            const auto& previous = reduced[index - 1];
+            reduced[index] = {(current.x - fraction * previous.x) * inverse,
+                              (current.y - fraction * previous.y) * inverse,
+                              (current.z - fraction * previous.z) * inverse,
+                              (current.w - fraction * previous.w) * inverse};
+        }
+
+        HomogeneousSurfaceControl scale{};
+        for (const auto& control : controls)
+        {
+            scale.x = std::max(scale.x, std::abs(control.x));
+            scale.y = std::max(scale.y, std::abs(control.y));
+            scale.z = std::max(scale.z, std::abs(control.z));
+            scale.w = std::max(scale.w, std::abs(control.w));
+        }
+        const auto close = [](double actual, double expected, double magnitude) {
+            return std::isfinite(expected) &&
+                   std::abs(actual - expected) <=
+                       64.0 * std::numeric_limits<double>::epsilon() *
+                           std::max(magnitude, std::numeric_limits<double>::min());
+        };
+        for (int index = 0; index <= degree; ++index)
+        {
+            const HomogeneousSurfaceControl expected =
+                index == 0 ? reduced.front() :
+                index == degree ? reduced.back() :
+                LerpSurfaceControl(reduced[index], reduced[index - 1], static_cast<double>(index) / degree);
+            const auto& actual = controls[index];
+            if (!close(actual.x, expected.x, scale.x) || !close(actual.y, expected.y, scale.y) ||
+                !close(actual.z, expected.z, scale.z) || !close(actual.w, expected.w, scale.w))
+            {
+                return false;
+            }
+        }
+        controls = std::move(reduced);
+        return true;
+    }
+
+    [[nodiscard]] inline std::optional<RestrictedNurbsSurfaceCurve> RestrictBezierNurbsSurfaceSegment(
+        const SCCurveOnSurface& curve, std::size_t segmentIndex, const SCGeometryTolerance3d& tolerance)
+    {
+        const auto* surface = dynamic_cast<const SCNurbsSurface*>(curve.SupportSurface());
+        if (surface == nullptr || segmentIndex >= curve.UvCurve().SegmentCount())
+        {
+            return std::nullopt;
+        }
+        const int degreeU = surface->DegreeU();
+        const int degreeV = surface->DegreeV();
+        const int degree = degreeU + degreeV;
+        if (degree > 16 || surface->ControlPointCountU() != static_cast<std::size_t>(degreeU + 1) ||
+            surface->ControlPointCountV() != static_cast<std::size_t>(degreeV + 1) ||
+            !surface->IsValid(tolerance))
+        {
+            return std::nullopt;
+        }
+
+        const auto& knotsU = surface->KnotsU();
+        const auto& knotsV = surface->KnotsV();
+        const auto clampedBezier = [](const std::vector<double>& knots, int axisDegree) {
+            return knots.size() == static_cast<std::size_t>(2 * (axisDegree + 1)) &&
+                   std::all_of(knots.begin(), knots.begin() + axisDegree + 1,
+                               [&](double knot) { return knot == knots.front(); }) &&
+                   std::all_of(knots.begin() + axisDegree + 1, knots.end(),
+                               [&](double knot) { return knot == knots.back(); }) &&
+                   knots.front() < knots.back();
+        };
+        if (!clampedBezier(knotsU, degreeU) || !clampedBezier(knotsV, degreeV))
+        {
+            return std::nullopt;
+        }
+
+        const SCPoint2d first = curve.UvPointAt(segmentIndex);
+        const SCPoint2d second = curve.UvPointAt((segmentIndex + 1) % curve.PointCount());
+        const double firstU = (first.x - knotsU.front()) / (knotsU.back() - knotsU.front());
+        const double secondU = (second.x - knotsU.front()) / (knotsU.back() - knotsU.front());
+        const double firstV = (first.y - knotsV.front()) / (knotsV.back() - knotsV.front());
+        const double secondV = (second.y - knotsV.front()) / (knotsV.back() - knotsV.front());
+        if (!std::isfinite(firstU) || !std::isfinite(secondU) ||
+            !std::isfinite(firstV) || !std::isfinite(secondV) ||
+            firstU < 0.0 || firstU > 1.0 || secondU < 0.0 || secondU > 1.0 ||
+            firstV < 0.0 || firstV > 1.0 || secondV < 0.0 || secondV > 1.0)
+        {
+            return std::nullopt;
+        }
+
+        const auto& points = surface->ControlPoints();
+        const auto& surfaceWeights = surface->Weights();
+        const double weightScale = *std::max_element(surfaceWeights.begin(), surfaceWeights.end());
+        if (!(weightScale > 0.0) || !std::isfinite(weightScale))
+        {
+            return std::nullopt;
+        }
+
+        std::vector<std::vector<HomogeneousSurfaceControl>> uRestricted(degreeV + 1);
+        for (int v = 0; v <= degreeV; ++v)
+        {
+            std::vector<HomogeneousSurfaceControl> row;
+            row.reserve(degreeU + 1);
+            for (int u = 0; u <= degreeU; ++u)
+            {
+                const std::size_t index = static_cast<std::size_t>(v * (degreeU + 1) + u);
+                const double weight = surfaceWeights[index] / weightScale;
+                row.push_back({points[index].x * weight, points[index].y * weight,
+                               points[index].z * weight, weight});
+            }
+            uRestricted[v] = RestrictBezierControls(row, firstU, secondU);
+        }
+
+        std::vector<std::vector<HomogeneousSurfaceControl>> restricted(degreeU + 1);
+        for (int u = 0; u <= degreeU; ++u)
+        {
+            std::vector<HomogeneousSurfaceControl> column;
+            column.reserve(degreeV + 1);
+            for (int v = 0; v <= degreeV; ++v)
+            {
+                column.push_back(uRestricted[v][u]);
+            }
+            restricted[u] = RestrictBezierControls(column, firstV, secondV);
+        }
+
+        std::vector<HomogeneousSurfaceControl> diagonalControls;
+        diagonalControls.reserve(degree + 1);
+        for (int index = 0; index <= degree; ++index)
+        {
+            HomogeneousSurfaceControl control{};
+            const double denominator = BinomialCoefficient(degree, index);
+            for (int u = std::max(0, index - degreeV); u <= std::min(degreeU, index); ++u)
+            {
+                const int v = index - u;
+                const double factor =
+                    BinomialCoefficient(degreeU, u) * BinomialCoefficient(degreeV, v) / denominator;
+                const auto& term = restricted[u][v];
+                control.x += factor * term.x;
+                control.y += factor * term.y;
+                control.z += factor * term.z;
+                control.w += factor * term.w;
+            }
+            if (!(control.w > 0.0) || !std::isfinite(control.w) ||
+                !std::isfinite(control.x) || !std::isfinite(control.y) || !std::isfinite(control.z))
+            {
+                return std::nullopt;
+            }
+            diagonalControls.push_back(control);
+        }
+        while (TryReduceBezierControlDegree(diagonalControls))
+        {
+            // 消除张量积升阶产生的冗余次数，保留等价的有理控制多项式。
+        }
+
+        const int restrictedDegree = static_cast<int>(diagonalControls.size()) - 1;
+        std::vector<SCPoint3d> controls;
+        std::vector<double> weights;
+        controls.reserve(diagonalControls.size());
+        weights.reserve(diagonalControls.size());
+        for (const auto& control : diagonalControls)
+        {
+            const SCPoint3d point{control.x / control.w, control.y / control.w, control.z / control.w};
+            if (!point.IsValid())
+            {
+                return std::nullopt;
+            }
+            controls.push_back(point);
+            weights.push_back(control.w);
+        }
+
+        std::vector<double> knots(static_cast<std::size_t>(2 * (restrictedDegree + 1)), 1.0);
+        std::fill(knots.begin(), knots.begin() + restrictedDegree + 1, 0.0);
+        SCNurbsCurve3d restrictedCurve(restrictedDegree, std::move(controls), std::move(knots), std::move(weights));
+        if (!restrictedCurve.IsValid(tolerance))
+        {
+            return std::nullopt;
+        }
+        return RestrictedNurbsSurfaceCurve{std::move(restrictedCurve), 0.0, 1.0};
+    }
+
+    [[nodiscard]] inline std::optional<RestrictedNurbsSurfaceCurve> RestrictAxisAlignedNurbsSurfaceSegment(
         const SCCurveOnSurface& curve, std::size_t segmentIndex, const SCGeometryTolerance3d& tolerance)
     {
         const auto* surface = dynamic_cast<const SCNurbsSurface*>(curve.SupportSurface());
@@ -208,7 +457,7 @@ namespace Geometry::Detail
         {
             return std::nullopt;
         }
-        return AxisAlignedNurbsSurfaceCurve{std::move(restricted),
+        return RestrictedNurbsSurfaceCurve{std::move(restricted),
                                             alongU ? first.x : first.y,
                                             alongU ? second.x : second.y};
     }
@@ -458,7 +707,12 @@ namespace Geometry::Detail
                 ? CurveOnSurfaceLineCandidate{true, sample, parameter, distance}
                 : CurveOnSurfaceLineCandidate{};
         };
-        if (const auto restricted = RestrictAxisAlignedNurbsSurfaceSegment(curve, segmentIndex, tolerance))
+        auto restricted = RestrictAxisAlignedNurbsSurfaceSegment(curve, segmentIndex, tolerance);
+        if (!restricted)
+        {
+            restricted = RestrictBezierNurbsSurfaceSegment(curve, segmentIndex, tolerance);
+        }
+        if (restricted)
         {
             const auto analytic = IntersectAllLineCurveWithStatus(line, restricted->curve, tolerance);
             if (analytic.state == SCGeometryOperationState::NonUnique)
@@ -541,7 +795,12 @@ namespace Geometry::Detail
         const SCGeometryTolerance3d& tolerance, bool* nonUnique)
     {
         std::vector<CurveOnSurfaceSample> hits;
-        if (const auto restricted = RestrictAxisAlignedNurbsSurfaceSegment(curve, segmentIndex, tolerance))
+        auto restricted = RestrictAxisAlignedNurbsSurfaceSegment(curve, segmentIndex, tolerance);
+        if (!restricted)
+        {
+            restricted = RestrictBezierNurbsSurfaceSegment(curve, segmentIndex, tolerance);
+        }
+        if (restricted)
         {
             const auto analytic = IntersectAllPlaneCurveWithStatus(plane, restricted->curve, tolerance);
             if (analytic.state == SCGeometryOperationState::NonUnique)

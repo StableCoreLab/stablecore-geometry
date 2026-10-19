@@ -3,6 +3,7 @@
 #include <array>
 #include <cmath>
 #include <memory>
+#include <numeric>
 #include <type_traits>
 #include <vector>
 
@@ -14,6 +15,7 @@
 #include "Geometry3d/SCNurbsCurve3d.h"
 #include "Geometry3d/SCNurbsSurface.h"
 #include "Geometry3d/SCPlaneSurface.h"
+#include "../../../Source/Detail/CurveOnSurfaceNumerics.h"
 
 static_assert(std::is_base_of_v<Geometry::ISCCurve3d, Geometry::SCCurveOnSurface>);
 
@@ -439,6 +441,120 @@ namespace
         }
         EXPECT_EQ(planeHits.evidence.negativeCompleteness, Geometry::SCGeometryEvidenceState::Unknown);
         EXPECT_EQ(lineHits.evidence.negativeCompleteness, Geometry::SCGeometryEvidenceState::Unknown);
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, DiagonalUvSegmentFindsThreeRootsInsideOneSampleCell)
+    {
+        constexpr std::array<double, 3> roots{0.35, 0.355, 0.36};
+        const auto axial = MakeCubicHeightCurve(roots);
+        const auto* sourceSurface = static_cast<const Geometry::SCNurbsSurface*>(axial.SupportSurface());
+        ASSERT_NE(sourceSurface, nullptr);
+        const auto surface = std::make_shared<Geometry::SCNurbsSurface>(*sourceSurface);
+        const Geometry::SCCurveOnSurface diagonal(
+            surface, Geometry::SCPolyline2d({{0, 0}, {1, 1}}));
+        ASSERT_TRUE(diagonal.IsValid());
+
+        const auto plane = Geometry::SCPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1});
+        const auto line = Geometry::SCLine3d::FromOriginAndDirection({0, 0, 0}, {1, 1, 0});
+        const Geometry::ISCCurve3d& curve = diagonal;
+        const auto restricted = Geometry::Detail::RestrictBezierNurbsSurfaceSegment(diagonal, 0, {});
+        ASSERT_TRUE(restricted.has_value());
+        EXPECT_EQ(restricted->curve.Degree(), 3);
+        for (const double parameter : {0.0, 0.2, 0.5, 0.8, 1.0})
+        {
+            EXPECT_TRUE(restricted->curve.PointAt(parameter).AlmostEquals(diagonal.PointAt(parameter), 1e-12));
+        }
+        const auto restrictedHits = Geometry::IntersectAllPlaneCurveWithStatus(plane, restricted->curve);
+        EXPECT_EQ(restrictedHits.hits.size(), roots.size());
+        const auto planeHits = Geometry::IntersectAllPlaneCurveWithStatus(plane, curve);
+        const auto lineHits = Geometry::IntersectAllLineCurveWithStatus(line, curve);
+        ASSERT_EQ(planeHits.hits.size(), roots.size());
+        ASSERT_EQ(lineHits.hits.size(), roots.size());
+        for (std::size_t i = 0; i < roots.size(); ++i)
+        {
+            EXPECT_NEAR(planeHits.hits[i].curveParameter, roots[i], 1e-5);
+            EXPECT_NEAR(lineHits.hits[i].curveParameter, roots[i], 1e-5);
+        }
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, RationalDiagonalUvSegmentPreservesReverseParameterMapping)
+    {
+        const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
+            1, 1, 2, 2,
+            std::vector<Geometry::SCPoint3d>{{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0}},
+            std::vector<double>{2, 2, 5, 5}, std::vector<double>{-1, -1, 3, 3},
+            std::vector<double>{1, 2, 3, 4});
+        const Geometry::SCCurveOnSurface diagonal(
+            surface, Geometry::SCPolyline2d({{5, 3}, {2, -1}}));
+        ASSERT_TRUE(diagonal.IsValid());
+        const auto restricted = Geometry::Detail::RestrictBezierNurbsSurfaceSegment(diagonal, 0, {});
+        ASSERT_TRUE(restricted.has_value());
+        EXPECT_EQ(restricted->curve.Degree(), 2);
+        for (const double parameter : {0.0, 0.2, 0.5, 0.8, 1.0})
+        {
+            EXPECT_TRUE(restricted->curve.PointAt(parameter).AlmostEquals(diagonal.PointAt(parameter), 1e-12));
+        }
+
+        const auto plane = Geometry::SCPlane::FromPointAndNormal({0.5, 0, 0}, {1, 0, 0});
+        const auto line = Geometry::SCLine3d::FromOriginAndDirection({0.5, 0, 0}, {0, 1, 0});
+        double lower = 0.0;
+        double upper = 1.0;
+        for (int iteration = 0; iteration < 60; ++iteration)
+        {
+            const double middle = std::midpoint(lower, upper);
+            if (diagonal.PointAt(middle).x > 0.5)
+            {
+                lower = middle;
+            }
+            else
+            {
+                upper = middle;
+            }
+        }
+        const double expected = std::midpoint(lower, upper);
+        const Geometry::ISCCurve3d& curve = diagonal;
+        const auto planeHits = Geometry::IntersectAllPlaneCurveWithStatus(plane, curve);
+        const auto lineHits = Geometry::IntersectAllLineCurveWithStatus(line, curve);
+        ASSERT_EQ(planeHits.hits.size(), 1U);
+        ASSERT_EQ(lineHits.hits.size(), 1U);
+        EXPECT_NEAR(planeHits.hits.front().curveParameter, expected, 1e-8);
+        EXPECT_NEAR(lineHits.hits.front().curveParameter, expected, 1e-8);
+        EXPECT_TRUE(planeHits.hits.front().point.AlmostEquals(diagonal.PointAt(expected), 1e-8));
+        const auto overlap = Geometry::IntersectAllPlaneCurveWithStatus(
+            Geometry::SCPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1}), curve);
+        EXPECT_EQ(overlap.state, Geometry::SCGeometryOperationState::NonUnique);
+        EXPECT_TRUE(overlap.hits.empty());
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, TensorBezierDiagonalRestrictionMatchesRationalSurface)
+    {
+        std::vector<Geometry::SCPoint3d> controls;
+        std::vector<double> weights;
+        for (int v = 0; v < 3; ++v)
+        {
+            for (int u = 0; u < 3; ++u)
+            {
+                controls.push_back({0.5 * u, 0.5 * v,
+                                    0.1 * u * u + 0.2 * u * v - 0.15 * v});
+                weights.push_back(1.0 + 0.2 * u + 0.3 * v + 0.1 * u * v);
+            }
+        }
+        const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
+            2, 2, 3, 3, std::move(controls),
+            std::vector<double>{0, 0, 0, 1, 1, 1},
+            std::vector<double>{0, 0, 0, 1, 1, 1}, std::move(weights));
+        const Geometry::SCCurveOnSurface diagonal(
+            surface, Geometry::SCPolyline2d({{0.1, 0.2}, {0.9, 0.7}}));
+        ASSERT_TRUE(diagonal.IsValid());
+        const auto restricted = Geometry::Detail::RestrictBezierNurbsSurfaceSegment(diagonal, 0, {});
+        ASSERT_TRUE(restricted.has_value());
+        EXPECT_EQ(restricted->curve.Degree(), 4);
+        for (int index = 0; index <= 10; ++index)
+        {
+            const double parameter = 0.1 * index;
+            EXPECT_TRUE(restricted->curve.PointAt(parameter).AlmostEquals(
+                diagonal.PointAt(parameter), 1e-12)) << "parameter=" << parameter;
+        }
     }
 
     TEST(CurveOnSurfaceInterfaceTest, RationalAxisAlignedUvSegmentsPreserveReverseParameterMapping)

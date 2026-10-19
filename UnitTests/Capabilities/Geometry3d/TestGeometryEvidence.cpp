@@ -282,6 +282,37 @@ namespace
         EXPECT_TRUE(std::isinf(Geometry::DistanceSquared(point,plane)));
     }
 
+    TEST(GeometryEvidenceTest, ObliquePlaneProjectionUsesAngularToleranceInRadians)
+    {
+        using namespace Geometry;
+        const SCPlaneSurface surface(
+            SCPlane::FromPointAndNormal({}, {0.0, 0.0, 1.0}),
+            {1.0, 0.0, 0.0}, {std::cos(1.0), std::sin(1.0), 0.0},
+            {0.0, 1.0}, {0.0, 1.0});
+        SCGeometryTolerance3d tolerance{};
+        tolerance.angleEpsilon = 0.9;
+        ASSERT_TRUE(surface.IsValid(tolerance));
+
+        const SCPoint3d onSurface = surface.PointAt(0.4, 0.6);
+        const SCPoint3d query{onSurface.x, onSurface.y, 1.0};
+        const auto projection = ProjectPointToSurfaceWithStatus(query, surface, tolerance);
+        ASSERT_EQ(projection.state, SCGeometryOperationState::HasResult);
+        ASSERT_TRUE(projection.payloadValid);
+        EXPECT_NEAR(projection.payload.u, 0.4, 1e-12);
+        EXPECT_NEAR(projection.payload.v, 0.6, 1e-12);
+    }
+
+    TEST(GeometryEvidenceTest, SurfaceTangentIndependenceUsesAngularToleranceInRadians)
+    {
+        Geometry::SCSurfaceEval3d evaluation{};
+        evaluation.derivativeOrder = 1;
+        evaluation.normal = {0.0, 0.0, 1.0};
+        evaluation.derivativeU = {1.0, 0.0, 0.0};
+        evaluation.derivativeV = {std::cos(1.0), std::sin(1.0), 0.0};
+        EXPECT_TRUE(Geometry::Detail::HasIndependentSurfaceTangents(evaluation, 0.9));
+        EXPECT_FALSE(Geometry::Detail::HasIndependentSurfaceTangents(evaluation, 1.1));
+    }
+
     TEST(GeometryEvidenceTest, OpenObjectsKeepIntersectionAndBoundaryButCannotClassifyVolume)
     {
         using namespace Geometry;
@@ -376,6 +407,15 @@ namespace
         EXPECT_EQ(continuum.state,SCGeometryOperationState::NonUnique);
         EXPECT_FALSE(continuum.payloadValid);
         EXPECT_EQ(continuum.evidence.hit,SCGeometryEvidenceState::Verified);
+
+        SCGeometryTolerance3d wideAngleTolerance{};
+        wideAngleTolerance.angleEpsilon = 0.9;
+        const auto slanted = IntersectLineBrepFaceWithStatus(
+            SCLine3d::FromOriginAndDirection({0,0,1}, {std::cos(1.0),0,-std::sin(1.0)}),
+            face, wideAngleTolerance);
+        ASSERT_EQ(slanted.state, SCGeometryOperationState::HasResult);
+        ASSERT_EQ(slanted.hits.size(), 1U);
+        EXPECT_NEAR(slanted.hits.front().point.z, 0.0, wideAngleTolerance.distanceEpsilon);
     }
 
     TEST(GeometryEvidenceTest, PlanarTrimProjectionKeepsAnalyticEvidenceAcrossSquaredLengthOverflow)
@@ -476,6 +516,56 @@ namespace
         EXPECT_EQ(IntersectLineBrepVertexWithStatus(line,vertex).state,SCGeometryOperationState::HasResult);
         EXPECT_EQ(IntersectPlaneBrepVertexWithStatus(plane,vertex).state,SCGeometryOperationState::HasResult);
         EXPECT_EQ(IntersectPlaneBrepVertexWithStatus(plane,SCBrepVertex({0,0,1})).state,SCGeometryOperationState::NoResult);
+    }
+
+    TEST(GeometryEvidenceTest, LinePlaneIntersectionUsesAngularToleranceInRadians)
+    {
+        using namespace Geometry;
+        const SCPlane plane = SCPlane::FromPointAndNormal({}, {0.0, 0.0, 1.0});
+        const SCLine3d line = SCLine3d::FromOriginAndDirection(
+            {0.0, 0.0, 1.0}, {std::cos(1.0), 0.0, -std::sin(1.0)});
+        SCGeometryTolerance3d tolerance{};
+        tolerance.angleEpsilon = 0.9;
+
+        const auto hit = Intersect(line, plane, tolerance);
+        EXPECT_TRUE(hit.intersects);
+        EXPECT_FALSE(hit.isParallel);
+        EXPECT_NEAR(hit.point.z, 0.0, tolerance.distanceEpsilon);
+        EXPECT_EQ(IntersectLinePlaneWithStatus(line, plane, tolerance).state,
+                  SCGeometryOperationState::HasResult);
+    }
+
+    TEST(GeometryEvidenceTest, PlanePlaneIntersectionUsesAngularToleranceInRadians)
+    {
+        using namespace Geometry;
+        const SCPlane first = SCPlane::FromPointAndNormal({}, {0.0, 0.0, 1.0});
+        const SCPlane second = SCPlane::FromPointAndNormal(
+            {}, {std::sin(1.0), 0.0, std::cos(1.0)});
+        SCGeometryTolerance3d tolerance{};
+        tolerance.angleEpsilon = 0.9;
+
+        const auto hit = IntersectPlanePlaneWithStatus(first, second, tolerance);
+        ASSERT_EQ(hit.state, SCGeometryOperationState::HasResult);
+        ASSERT_TRUE(hit.payloadValid);
+        EXPECT_TRUE(hit.payload.intersects);
+    }
+
+    TEST(GeometryEvidenceTest, LineCurveIntersectionUsesAngularToleranceInRadians)
+    {
+        using namespace Geometry;
+        const SCLine3d line = SCLine3d::FromOriginAndDirection({}, {1.0, 0.0, 0.0});
+        const SCVector3d direction{std::cos(1.0), std::sin(1.0), 0.0};
+        const SCLineCurve3d curve = SCLineCurve3d::FromLine(
+            SCLine3d::FromOriginAndDirection(
+                {0.5 - 0.5 * direction.x, -0.5 * direction.y, 0.0}, direction),
+            {0.0, 1.0});
+        SCGeometryTolerance3d tolerance{};
+        tolerance.angleEpsilon = 0.9;
+
+        const auto hit = Intersect(line, curve, tolerance);
+        ASSERT_TRUE(hit.intersects);
+        EXPECT_NEAR(hit.curveParameter, 0.5, 1e-12);
+        EXPECT_NEAR(hit.point.x, 0.5, 1e-12);
     }
 
     TEST(GeometryEvidenceTest, ClosedCubeRayUsesHalfOpenSharedEdgeAndVertexOwnership)

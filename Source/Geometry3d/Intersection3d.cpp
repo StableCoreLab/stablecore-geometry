@@ -149,7 +149,7 @@ namespace Geometry
             }
             const double uv = Dot(unitU, unitV);
             const double denominator = std::fma(-uv, uv, 1.0);
-            if (!(denominator > tolerance.angleEpsilon * tolerance.angleEpsilon))
+            if (!(std::asin(std::sqrt(std::clamp(denominator, 0.0, 1.0))) > tolerance.angleEpsilon))
             {
                 return false;
             }
@@ -229,10 +229,10 @@ namespace Geometry
                 const SCVector3d columnV = -surfaceEval.derivativeV / scaleV;
                 const double determinant = Dot(columnT, Cross(columnU, columnV));
                 const double determinantScale = Norm(columnT) * Norm(columnU) * Norm(columnV);
-                if (!std::isfinite(determinant) ||
-                    std::abs(determinant) <=
-                        std::max(tolerance.angleEpsilon, std::numeric_limits<double>::epsilon()) *
-                            determinantScale) return {};
+                if (!std::isfinite(determinant) || !(determinantScale > 0.0) ||
+                    std::abs(determinant) <= std::numeric_limits<double>::epsilon() * determinantScale ||
+                    std::asin(std::clamp(std::abs(determinant) / determinantScale, 0.0, 1.0)) <=
+                        tolerance.angleEpsilon) return {};
 
                 const SCVector3d rhs = -residual / scaleR;
                 const double deltaT = (Dot(rhs, Cross(columnU, columnV)) / determinant * scaleR) / scaleT;
@@ -419,7 +419,7 @@ namespace Geometry
         const double denominator=Dot(unitNormal,scaled/length);
         const double numerator=Dot(unitNormal,plane.origin-line.origin);
         if (!std::isfinite(denominator) || !std::isfinite(numerator)) return result;
-        if (std::abs(denominator)<=tolerance.angleEpsilon) {
+        if (std::asin(std::min(1.0, std::abs(denominator)))<=tolerance.angleEpsilon) {
             result.isParallel=true;
             result.liesOnPlane=denominator==0.0 && std::abs(numerator)<=tolerance.distanceEpsilon;
             result.intersects=result.liesOnPlane;
@@ -451,7 +451,7 @@ namespace Geometry
             const double sine = Norm(cross);
             const auto range = lineCurve->ParameterRange();
             double parameter = range.min;
-            if (sine > tolerance.angleEpsilon) {
+            if (std::asin(std::min(1.0, sine)) > tolerance.angleEpsilon) {
                 const auto delta = curveLine.origin - line.origin;
                 const double scale = std::max({std::abs(curveLine.direction.x),
                     std::abs(curveLine.direction.y),std::abs(curveLine.direction.z)});

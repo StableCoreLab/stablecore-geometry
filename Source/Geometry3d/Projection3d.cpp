@@ -299,9 +299,10 @@ namespace Geometry
                 const double vGradient = Dot(dv, residual);
                 const double determinantScale = uu * vv;
                 const double determinant = determinantScale - uv * uv;
-                if (!std::isfinite(determinant) ||
-                    determinant <= std::max(tolerance.angleEpsilon * tolerance.angleEpsilon, std::numeric_limits<double>::epsilon()) *
-                                       determinantScale)
+                if (!std::isfinite(determinant) || !(determinantScale > 0.0) ||
+                    determinant <= std::numeric_limits<double>::epsilon() * determinantScale ||
+                    std::asin(std::sqrt(std::clamp(determinant / determinantScale, 0.0, 1.0))) <=
+                        tolerance.angleEpsilon)
                 {
                     usePointOnlyRefinement = true;
                     break;

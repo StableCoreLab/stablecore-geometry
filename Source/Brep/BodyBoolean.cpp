@@ -333,6 +333,11 @@ namespace Geometry
             return true;
         }
 
+        [[nodiscard]] double UnorientedNormalAngle(const SCVector3d& first, const SCVector3d& second)
+        {
+            return std::asin(std::min(1.0, Cross(first, second).Length()));
+        }
+
         [[nodiscard]] bool AreCoplanar(const SCPlane& first,
                                        const SCPlane& second,
                                        const double distanceEpsilon,
@@ -341,7 +346,7 @@ namespace Geometry
             const SCVector3d firstNormal = first.UnitNormal(distanceEpsilon);
             const SCVector3d secondNormal = second.UnitNormal(distanceEpsilon);
             return firstNormal.IsValid() && secondNormal.IsValid() &&
-                   Cross(firstNormal, secondNormal).Length() <= angleEpsilon &&
+                   UnorientedNormalAngle(firstNormal, secondNormal) <= angleEpsilon &&
                    std::abs(first.SignedDistanceTo(second.origin, distanceEpsilon)) <= distanceEpsilon;
         }
 
@@ -356,7 +361,7 @@ namespace Geometry
             const SCVector3d secondNormal = second.UnitNormal(distanceEpsilon);
             const SCVector3d thirdNormal = third.UnitNormal(distanceEpsilon);
             const double denominator = Dot(firstNormal, Cross(secondNormal, thirdNormal));
-            if (std::abs(denominator) <= angleEpsilon)
+            if (std::asin(std::min(1.0, std::abs(denominator))) <= angleEpsilon)
             {
                 return false;
             }
@@ -707,7 +712,7 @@ namespace Geometry
             const SCVector3d firstNormal = firstPlane.UnitNormal(distanceEpsilon);
             const SCVector3d secondNormal = secondPlane.UnitNormal(distanceEpsilon);
             return firstNormal.IsValid() && secondNormal.IsValid() &&
-                   Cross(firstNormal, secondNormal).Length() <= angleEpsilon &&
+                   UnorientedNormalAngle(firstNormal, secondNormal) <= angleEpsilon &&
                    std::abs(firstPlane.SignedDistanceTo(secondPlane.origin, distanceEpsilon)) <= distanceEpsilon;
         }
 

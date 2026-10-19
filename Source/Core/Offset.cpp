@@ -4,6 +4,7 @@
 #include <numeric>
 #include <cmath>
 #include <cstddef>
+#include <limits>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -371,6 +372,19 @@ namespace Geometry
             return outer.VertexAt(0);
         }
 
+        [[nodiscard]] double OffsetAreaTolerance(const SCPolygon2d& source,
+                                                   const SCPolygon2d& candidate,
+                                                   double eps)
+        {
+            SCBox2d bounds = source.Bounds();
+            bounds.ExpandToInclude(candidate.Bounds());
+            if (!bounds.IsValid())
+            {
+                return eps * eps;
+            }
+            return std::max(eps * eps, eps * std::hypot(bounds.Width(), bounds.Height()));
+        }
+
         [[nodiscard]] SCPolygon2d SelectBestOffsetPolygon(const SCPolygon2d& source,
                                                         const SCMultiPolygon2d& polygons,
                                                         double distance,
@@ -384,10 +398,11 @@ namespace Geometry
             const SCPoint2d reference = PrimaryReferencePoint(source, eps);
             const bool outward = distance >= 0.0;
             std::size_t bestIndex = 0;
-            double bestScore = -1.0;
+            double bestScore = -std::numeric_limits<double>::infinity();
             for (std::size_t i = 0; i < polygons.Size(); ++i)
             {
                 const SCPolygon2d& candidate = polygons[i];
+                const double areaEpsilon = OffsetAreaTolerance(source, candidate, eps);
                 double score = candidate.Area();
                 const SCPointContainment2d referenceContainment = LocatePoint(reference, candidate, eps);
                 const SCPointContainment2d candidateContainment = LocatePoint(candidate.Centroid(), source, eps);
@@ -409,7 +424,7 @@ namespace Geometry
                     {
                         score -= 1e7;
                     }
-                    if (candidate.Area() + eps < source.Area())
+                    if (candidate.Area() + areaEpsilon < source.Area())
                     {
                         score -= 1e8;
                     }
@@ -431,7 +446,7 @@ namespace Geometry
                     {
                         score += 1e7;
                     }
-                    if (candidate.Area() > source.Area() + eps)
+                    if (candidate.Area() > source.Area() + areaEpsilon)
                     {
                         score -= 1e7;
                     }
@@ -483,6 +498,7 @@ namespace Geometry
             }
 
             const bool outward = distance >= 0.0;
+            const double areaEpsilon = OffsetAreaTolerance(source, candidate, eps);
             const double sourceArea = std::abs(source.Area());
             const double candidateArea = std::abs(candidate.Area());
             const PolygonContainment2d relation = Relate(candidate, source, eps);
@@ -490,7 +506,8 @@ namespace Geometry
             if (outward)
             {
                 const bool needsRepair =
-                    relation == PolygonContainment2d::SecondContainsFirst || candidateArea + eps < sourceArea;
+                    relation == PolygonContainment2d::SecondContainsFirst ||
+                    candidateArea + areaEpsilon < sourceArea;
                 if (!needsRepair)
                 {
                     return candidate;
@@ -498,7 +515,7 @@ namespace Geometry
 
                 const SCMultiPolygon2d repairedCandidates = Union(candidate, source, eps);
                 const SCPolygon2d repaired = SelectLargestPolygon(repairedCandidates);
-                if (repaired.IsValid() && std::abs(repaired.Area()) + eps >= sourceArea)
+                if (repaired.IsValid() && std::abs(repaired.Area()) + areaEpsilon >= sourceArea)
                 {
                     return repaired;
                 }
@@ -507,7 +524,8 @@ namespace Geometry
             }
 
             const bool needsRepair = relation == PolygonContainment2d::FirstContainsSecond ||
-                                     relation == PolygonContainment2d::Disjoint || candidateArea > sourceArea + eps;
+                                     relation == PolygonContainment2d::Disjoint ||
+                                     candidateArea > sourceArea + areaEpsilon;
             if (!needsRepair)
             {
                 return candidate;
@@ -515,7 +533,7 @@ namespace Geometry
 
             const SCMultiPolygon2d repairedCandidates = Intersect(candidate, source, eps);
             const SCPolygon2d repaired = SelectLargestPolygon(repairedCandidates);
-            if (repaired.IsValid() && std::abs(repaired.Area()) <= sourceArea + eps)
+            if (repaired.IsValid() && std::abs(repaired.Area()) <= sourceArea + areaEpsilon)
             {
                 return repaired;
             }
@@ -546,7 +564,7 @@ namespace Geometry
 
             const SCPoint2d candidateReference = PrimaryReferencePoint(candidate, eps);
             std::size_t bestIndex = static_cast<std::size_t>(-1);
-            double bestScore = -1e100;
+            double bestScore = -std::numeric_limits<double>::infinity();
             for (std::size_t i = 0; i < sources.Size(); ++i)
             {
                 const SCPolygon2d& source = sources[i];

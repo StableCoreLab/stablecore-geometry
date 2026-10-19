@@ -543,6 +543,24 @@ TEST(BodyBooleanCapabilityTest, AngularToleranceControlsNearCoplanarSupportClass
     EXPECT_TRUE(strictAngleResult.IsSuccess());
 }
 
+TEST(BodyBooleanCapabilityTest, AngularToleranceComparesRadiansForSlantedSupportPlanes)
+{
+    constexpr double angle = 0.5;
+    const double centerX = 0.5 * (std::cos(angle) - std::sin(angle));
+    const double minX = centerX - 0.5;
+    const double maxX = centerX + 0.5;
+    const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
+    const PolyhedronBody second = BuildRotatedPrismaticBox(minX, 0.0, 0.2, maxX, 1.0, 1.2, angle);
+
+    BodyBooleanOptions3d options;
+    options.tolerance.angleEpsilon = 0.49;
+    const auto result = IntersectBodies(first, second, options);
+    ASSERT_EQ(result.issue, BodyBooleanIssue3d::None);
+    ASSERT_TRUE(result.IsSuccess());
+    EXPECT_NEAR(Geometry::Volume(result.body),
+                RotatedPrismaticBoxIntersectionVolumeOracle(minX, 0.0, 0.2, maxX, 1.0, 1.2, angle), 1e-8);
+}
+
 TEST(BodyBooleanCapabilityTest, InvalidToleranceReturnsInvalidInput)
 {
     BodyBooleanOptions3d options;

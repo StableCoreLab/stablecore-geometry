@@ -58,6 +58,6 @@ namespace Geometry::Detail
             return false;
         }
         const SCVector3d cross = Cross(unitU, unitV);
-        return std::hypot(cross.x, cross.y, cross.z) > angleEpsilon;
+        return std::asin(std::min(1.0, std::hypot(cross.x, cross.y, cross.z))) > angleEpsilon;
     }
 }

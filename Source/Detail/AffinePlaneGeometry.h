@@ -60,7 +60,8 @@ namespace Geometry::Detail
         const double sine = std::hypot(cross.x, cross.y, cross.z);
         const double uLength = std::hypot(uAxis.x, uAxis.y, uAxis.z);
         const double vLength = std::hypot(vAxis.x, vAxis.y, vAxis.z);
-        if (!(sine > tolerance.angleEpsilon) || !std::isfinite(uLength) || !std::isfinite(vLength) ||
+        if (!(std::asin(std::min(1.0, sine)) > tolerance.angleEpsilon) ||
+            !std::isfinite(uLength) || !std::isfinite(vLength) ||
             !(uLength > 0.0) || !(vLength > 0.0))
         {
             return false;

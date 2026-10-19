@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "Core/Offset.h"
@@ -212,6 +213,22 @@ TEST(OffsetTest, RecoversRepresentativeReverseEdgeSelfIntersectionCase)
     {
         ASSERT_NE(LocatePoint(inward.OuterRing().VertexAt(i), source), SCPointContainment2d::Outside);
     }
+
+    constexpr double scale = 1e-4;
+    std::vector<SCPoint2d> scaledVertices;
+    for (std::size_t i = 0; i < source.OuterRing().PointCount(); ++i)
+    {
+        const SCPoint2d point = source.OuterRing().VertexAt(i);
+        scaledVertices.emplace_back(point.x * scale, point.y * scale);
+    }
+    const SCPolygon2d smallSource(SCPolyline2d(std::move(scaledVertices), SCPolylineClosure::Closed));
+    ASSERT_TRUE(smallSource.IsValid());
+    const SCPolygon2d smallOutward = Offset(smallSource, 0.005 * scale);
+    const SCPolygon2d smallInward = Offset(smallSource, -0.004 * scale);
+    ASSERT_TRUE(smallOutward.IsValid());
+    ASSERT_TRUE(smallInward.IsValid());
+    EXPECT_GT(smallOutward.Area(), smallSource.Area());
+    EXPECT_LT(smallInward.Area(), smallSource.Area());
 }
 
 TEST(OffsetTest, SupportsNarrowBridgeSplitViaMultiPolygonOffsetApi)

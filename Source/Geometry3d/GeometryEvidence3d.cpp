@@ -93,7 +93,7 @@ namespace Geometry
             const double height = Dot(line.origin-plane.origin, plane.normal);
             if (!std::isfinite(length) || !std::isfinite(denominator) || !std::isfinite(height)) return result;
             if (denominator != 0.0) {
-                if (std::abs(denominator) <= tolerance.angleEpsilon) return result;
+                if (std::asin(std::min(1.0, std::abs(denominator))) <= tolerance.angleEpsilon) return result;
                 const double t = (-height / denominator) / length;
                 if (!std::isfinite(t)) return result;
                 const auto point = line.PointAt(t);
@@ -233,7 +233,7 @@ namespace Geometry
             }
             return result;
         }
-        if (sine<=tolerance.angleEpsilon) return result;
+        if (std::asin(std::min(1.0, sine))<=tolerance.angleEpsilon) return result;
         const auto direction=cross/sine;
         const auto point=first.origin+Cross(direction,a)*(offset/sine);
         const double residualA=std::abs(first.SignedDistanceTo(point,tolerance.distanceEpsilon));
