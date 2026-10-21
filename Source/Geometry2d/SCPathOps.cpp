@@ -17,6 +17,7 @@
 #include "../Detail/RingVertices2d.h"
 #include "../Detail/SegmentSubdivision2d.h"
 #include "../Detail/TolerancePolicy2d.h"
+#include "../Core/RingIntegral2d.h"
 #include "Core/PolygonRelation2d.h"
 #include "Core/Boolean.h"
 #include "Core/Editing.h"
@@ -803,7 +804,7 @@ namespace Geometry
                 {
                     continue;
                 }
-                if (Orientation(ring) != SCRingOrientation2d::CounterClockwise)
+                if (Detail::ComputeSignedArea(ring) <= 0.0)
                 {
                     continue;
                 }
@@ -890,7 +891,7 @@ namespace Geometry
                 }
 
                 SCPolyline2d outerRing = loopPolygons[i].OuterRing();
-                if (Orientation(outerRing) != SCRingOrientation2d::CounterClockwise)
+                if (Detail::ComputeSignedArea(outerRing) < 0.0)
                 {
                     outerRing = Reverse(outerRing);
                 }
@@ -904,7 +905,7 @@ namespace Geometry
                     }
 
                     SCPolyline2d holeRing = loopPolygons[j].OuterRing();
-                    if (Orientation(holeRing) != SCRingOrientation2d::Clockwise)
+                    if (Detail::ComputeSignedArea(holeRing) > 0.0)
                     {
                         holeRing = Reverse(holeRing);
                     }

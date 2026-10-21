@@ -39,7 +39,7 @@ namespace
         EXPECT_FALSE(thin.IsDegenerate(1e-12));
     }
 
-    TEST(PlaneSurfaceCapabilityTest, AxisOrthogonalityUsesAngularToleranceInRadians)
+    TEST(PlaneSurface3dCapabilityTest, AxisOrthogonalityUsesAngularToleranceInRadians)
     {
         const auto plane = Geometry::SCPlane::FromPointAndNormal({}, {0.0, 0.0, 1.0});
         const Geometry::SCPlaneSurface surface(

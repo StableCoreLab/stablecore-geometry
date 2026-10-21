@@ -34,12 +34,12 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry2d/TestSpatialIndexOracle.cpp
     Capabilities/Geometry2d/TestTopologyIndexing.cpp
     Capabilities/Geometry2d/TestTransformSampling.cpp
-    Capabilities/Geometry3d/Test3dBodyBoolean.cpp
-    Capabilities/Geometry3d/Test3dBrep.cpp
-    Capabilities/Geometry3d/Test3dConversion.cpp
-    Capabilities/Geometry3d/Test3dHealing.cpp
-    Capabilities/Geometry3d/Test3dSection.cpp
-    Capabilities/Geometry3d/Test3dValueTypes.cpp
+    Capabilities/Geometry3d/TestBodyBoolean3d.cpp
+    Capabilities/Geometry3d/TestBrep3d.cpp
+    Capabilities/Geometry3d/TestConversion3d.cpp
+    Capabilities/Geometry3d/TestHealing3d.cpp
+    Capabilities/Geometry3d/TestSection3d.cpp
+    Capabilities/Geometry3d/TestValueTypes3d.cpp
     Capabilities/Geometry3d/TestBrepCore.cpp
     Capabilities/Geometry3d/TestBrepLoopGeometry.cpp
     Capabilities/Geometry3d/TestCorePrimitives3d.cpp
@@ -56,11 +56,11 @@ list(TRANSFORM SCGEOMETRY_CAPABILITY_TEST_SOURCES PREPEND "${CMAKE_CURRENT_SOURC
 set(SCGEOMETRY_GAP_TEST_SOURCES
     Gaps/Core/TestMissingAlgorithmsGaps.cpp
     Gaps/Geometry2d/TestSearchPolyGaps.cpp
-    Gaps/Geometry3d/Test3dBodyBooleanGaps.cpp
-    Gaps/Geometry3d/Test3dBrepGaps.cpp
-    Gaps/Geometry3d/Test3dConversionGaps.cpp
-    Gaps/Geometry3d/Test3dHealingGaps.cpp
-    Gaps/Geometry3d/Test3dSectionGaps.cpp
+    Gaps/Geometry3d/TestBodyBoolean3dGaps.cpp
+    Gaps/Geometry3d/TestBrep3dGaps.cpp
+    Gaps/Geometry3d/TestConversion3dGaps.cpp
+    Gaps/Geometry3d/TestHealing3dGaps.cpp
+    Gaps/Geometry3d/TestSection3dGaps.cpp
     Gaps/Geometry3d/TestMissingAlgorithmsGaps.cpp
 )
 list(TRANSFORM SCGEOMETRY_GAP_TEST_SOURCES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")

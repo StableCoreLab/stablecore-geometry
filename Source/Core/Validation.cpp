@@ -1,8 +1,12 @@
 #include "Core/Validation.h"
 
+#include <algorithm>
+#include <cmath>
 #include <map>
 #include <memory>
 
+#include "RingIntegral2d.h"
+#include "Support/StableNumerics.h"
 #include "Core/Intersection.h"
 #include "Core/Relation.h"
 #include "Core/ShapeOps.h"
@@ -65,7 +69,15 @@ namespace Geometry
         }
         if (Orientation(ring) == SCRingOrientation2d::Unknown)
         {
-            return {false, SCPolygonValidationIssue2d::InvalidOrientation};
+            // 公开方向入口保留固定面积阈值；校验时按调用者距离容差判断小尺度环。
+            const double area = std::abs(Detail::ComputeSignedArea(ring));
+            const auto absolute = Detail::StableProduct(eps, eps, 64);
+            const auto relative = Detail::StableProduct(ring.Length(), eps, 2);
+            if (!std::isfinite(area) || !absolute || !relative ||
+                area <= std::max(*absolute, *relative))
+            {
+                return {false, SCPolygonValidationIssue2d::InvalidOrientation};
+            }
         }
         if (HasSelfIntersection(ring, eps))
         {

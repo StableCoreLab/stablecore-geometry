@@ -22,6 +22,7 @@
 #include "Core/Relation.h"
 #include "Core/ShapeOps.h"
 #include "Core/Validation.h"
+#include "RingIntegral2d.h"
 #include "Geometry2d/SCPathOps.h"
 #include "Support/Epsilon.h"
 #include "Support/Geometry2d/Predicate2.h"
@@ -274,7 +275,7 @@ namespace Geometry
             }
 
             SCPolyline2d clippedRing(std::move(clipped), SCPolylineClosure::Closed);
-            if (Orientation(clippedRing) != SCRingOrientation2d::CounterClockwise)
+            if (Detail::ComputeSignedArea(clippedRing) < 0.0)
             {
                 clippedRing = Reverse(clippedRing);
             }
@@ -484,7 +485,7 @@ namespace Geometry
             if (simplifiedOuter.size() >= 3)
             {
                 SCPolyline2d simplifiedRing(std::move(simplifiedOuter), SCPolylineClosure::Closed);
-                if (Orientation(simplifiedRing) != SCRingOrientation2d::CounterClockwise)
+                if (Detail::ComputeSignedArea(simplifiedRing) < 0.0)
                 {
                     simplifiedRing = Reverse(simplifiedRing);
                 }
@@ -1272,7 +1273,7 @@ namespace Geometry
                 {
                     continue;
                 }
-                if (Orientation(ring) != SCRingOrientation2d::CounterClockwise)
+                if (Detail::ComputeSignedArea(ring) <= 0.0)
                 {
                     continue;
                 }
@@ -1313,7 +1314,7 @@ namespace Geometry
             for (std::size_t i = 0; i < loopPolygons.size(); ++i)
             {
                 SCPolyline2d outerRing = loopPolygons[i].OuterRing();
-                if (Orientation(outerRing) != SCRingOrientation2d::CounterClockwise)
+                if (Detail::ComputeSignedArea(outerRing) < 0.0)
                 {
                     outerRing = Reverse(outerRing);
                 }
@@ -1327,7 +1328,7 @@ namespace Geometry
                     }
 
                     SCPolyline2d holeRing = loopPolygons[j].OuterRing();
-                    if (Orientation(holeRing) != SCRingOrientation2d::Clockwise)
+                    if (Detail::ComputeSignedArea(holeRing) > 0.0)
                     {
                         holeRing = Reverse(holeRing);
                     }

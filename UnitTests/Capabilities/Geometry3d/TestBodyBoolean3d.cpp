@@ -274,7 +274,7 @@ namespace
     }
 }  // namespace
 
-TEST(BodyBooleanCapabilityTest, PublicCapabilitiesDescribeTheSupportedSubsets)
+TEST(BodyBoolean3dCapabilityTest, PublicCapabilitiesDescribeTheSupportedSubsets)
 {
     const auto capabilities = Geometry::GetBodyBooleanCapabilities3d();
     EXPECT_TRUE(capabilities.equivalentClosedBodies);
@@ -293,7 +293,7 @@ TEST(BodyBooleanCapabilityTest, PublicCapabilitiesDescribeTheSupportedSubsets)
     EXPECT_FALSE(capabilities.generalBrepCsg);
 }
 
-TEST(BodyBooleanCapabilityTest, InvalidInputContractIsStableForEmptyBodies)
+TEST(BodyBoolean3dCapabilityTest, InvalidInputContractIsStableForEmptyBodies)
 {
     const PolyhedronBody first;
     const PolyhedronBody second;
@@ -311,7 +311,7 @@ TEST(BodyBooleanCapabilityTest, InvalidInputContractIsStableForEmptyBodies)
     EXPECT_FALSE(difference.IsSuccess());
 }
 
-TEST(BodyBooleanCapabilityTest, OpenBrepInputReturnsInvalidInputInsteadOfForcingClosedShell)
+TEST(BodyBoolean3dCapabilityTest, OpenBrepInputReturnsInvalidInputInsteadOfForcingClosedShell)
 {
     const auto converted = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     ASSERT_TRUE(converted.success);
@@ -326,7 +326,7 @@ TEST(BodyBooleanCapabilityTest, OpenBrepInputReturnsInvalidInputInsteadOfForcing
     ExpectInvalidInput(DifferenceBodies(openBody, converted.body));
 }
 
-TEST(BodyBooleanCapabilityTest, NonManifoldBrepInputReturnsInvalidInputEvenWhenClosedFlagIsSet)
+TEST(BodyBoolean3dCapabilityTest, NonManifoldBrepInputReturnsInvalidInputEvenWhenClosedFlagIsSet)
 {
     const auto converted = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     ASSERT_TRUE(converted.success);
@@ -343,7 +343,7 @@ TEST(BodyBooleanCapabilityTest, NonManifoldBrepInputReturnsInvalidInputEvenWhenC
     ExpectInvalidInput(DifferenceBodies(nonManifold, converted.body));
 }
 
-TEST(BodyBooleanCapabilityTest, ValidMultiShellBrepReturnsUnsupportedOperation)
+TEST(BodyBoolean3dCapabilityTest, ValidMultiShellBrepReturnsUnsupportedOperation)
 {
     const auto converted = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     ASSERT_TRUE(converted.success);
@@ -356,7 +356,7 @@ TEST(BodyBooleanCapabilityTest, ValidMultiShellBrepReturnsUnsupportedOperation)
     ExpectUnsupportedOperation(DifferenceBodies(multiShell, converted.body));
 }
 
-TEST(BodyBooleanCapabilityTest, OperateOnShellsOptionReturnsUnsupportedOperation)
+TEST(BodyBoolean3dCapabilityTest, OperateOnShellsOptionReturnsUnsupportedOperation)
 {
     const auto converted = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     ASSERT_TRUE(converted.success);
@@ -368,7 +368,7 @@ TEST(BodyBooleanCapabilityTest, OperateOnShellsOptionReturnsUnsupportedOperation
     ExpectUnsupportedOperation(DifferenceBodies(converted.body, converted.body, options));
 }
 
-TEST(BodyBooleanCapabilityTest, CurvedBrepEdgeReturnsUnsupportedInsteadOfUsingItsChord)
+TEST(BodyBoolean3dCapabilityTest, CurvedBrepEdgeReturnsUnsupportedInsteadOfUsingItsChord)
 {
     const auto converted = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     ASSERT_TRUE(converted.success);
@@ -388,7 +388,7 @@ TEST(BodyBooleanCapabilityTest, CurvedBrepEdgeReturnsUnsupportedInsteadOfUsingIt
     ExpectUnsupportedOperation(DifferenceBodies(curvedBody, converted.body));
 }
 
-TEST(BodyBooleanCapabilityTest, NonPlanarSupportSurfaceReturnsUnsupportedOperation)
+TEST(BodyBoolean3dCapabilityTest, NonPlanarSupportSurfaceReturnsUnsupportedOperation)
 {
     const auto converted = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     ASSERT_TRUE(converted.success);
@@ -411,7 +411,7 @@ TEST(BodyBooleanCapabilityTest, NonPlanarSupportSurfaceReturnsUnsupportedOperati
     ExpectUnsupportedOperation(DifferenceBodies(nonPlanarBody, converted.body));
 }
 
-TEST(BodyBooleanCapabilityTest, OpenCurvedBrepReturnsInvalidInputBeforeUnsupportedFeatureCheck)
+TEST(BodyBoolean3dCapabilityTest, OpenCurvedBrepReturnsInvalidInputBeforeUnsupportedFeatureCheck)
 {
     const auto converted = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     ASSERT_TRUE(converted.success);
@@ -432,7 +432,7 @@ TEST(BodyBooleanCapabilityTest, OpenCurvedBrepReturnsInvalidInputBeforeUnsupport
     ExpectInvalidInput(DifferenceBodies(openCurvedBody, converted.body));
 }
 
-TEST(BodyBooleanCapabilityTest, EdgeCurveEndpointMismatchReturnsInvalidInput)
+TEST(BodyBoolean3dCapabilityTest, EdgeCurveEndpointMismatchReturnsInvalidInput)
 {
     const auto converted = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     ASSERT_TRUE(converted.success);
@@ -451,7 +451,7 @@ TEST(BodyBooleanCapabilityTest, EdgeCurveEndpointMismatchReturnsInvalidInput)
     ExpectInvalidInput(DifferenceBodies(inconsistentBody, converted.body));
 }
 
-TEST(BodyBooleanCapabilityTest, ExplicitZeroDistanceToleranceRemainsStrictAndValid)
+TEST(BodyBoolean3dCapabilityTest, ExplicitZeroDistanceToleranceRemainsStrictAndValid)
 {
     const auto converted = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     ASSERT_TRUE(converted.success);
@@ -474,7 +474,7 @@ TEST(BodyBooleanCapabilityTest, ExplicitZeroDistanceToleranceRemainsStrictAndVal
     ExpectInvalidInput(IntersectBodies(nearlyConsistentBody, converted.body, strictOptions));
 }
 
-TEST(BodyBooleanCapabilityTest, PlaneSupportMismatchReturnsInvalidInput)
+TEST(BodyBoolean3dCapabilityTest, PlaneSupportMismatchReturnsInvalidInput)
 {
     const auto converted = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     ASSERT_TRUE(converted.success);
@@ -498,7 +498,7 @@ TEST(BodyBooleanCapabilityTest, PlaneSupportMismatchReturnsInvalidInput)
     ExpectInvalidInput(DifferenceBodies(inconsistentBody, converted.body));
 }
 
-TEST(BodyBooleanCapabilityTest, EquivalentPlaneFacesIgnoreParameterDomainBounds)
+TEST(BodyBoolean3dCapabilityTest, EquivalentPlaneFacesIgnoreParameterDomainBounds)
 {
     const auto converted = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     ASSERT_TRUE(converted.success);
@@ -526,7 +526,7 @@ TEST(BodyBooleanCapabilityTest, EquivalentPlaneFacesIgnoreParameterDomainBounds)
     EXPECT_TRUE(difference.producedEmptyResult);
 }
 
-TEST(BodyBooleanCapabilityTest, AngularToleranceControlsNearCoplanarSupportClassification)
+TEST(BodyBoolean3dCapabilityTest, AngularToleranceControlsNearCoplanarSupportClassification)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildRotatedPrismaticBox(0.0, 0.0, 0.2, 1.0, 1.0, 1.2, 5e-10);
@@ -543,7 +543,7 @@ TEST(BodyBooleanCapabilityTest, AngularToleranceControlsNearCoplanarSupportClass
     EXPECT_TRUE(strictAngleResult.IsSuccess());
 }
 
-TEST(BodyBooleanCapabilityTest, AngularToleranceComparesRadiansForSlantedSupportPlanes)
+TEST(BodyBoolean3dCapabilityTest, AngularToleranceComparesRadiansForSlantedSupportPlanes)
 {
     constexpr double angle = 0.5;
     const double centerX = 0.5 * (std::cos(angle) - std::sin(angle));
@@ -561,7 +561,7 @@ TEST(BodyBooleanCapabilityTest, AngularToleranceComparesRadiansForSlantedSupport
                 RotatedPrismaticBoxIntersectionVolumeOracle(minX, 0.0, 0.2, maxX, 1.0, 1.2, angle), 1e-8);
 }
 
-TEST(BodyBooleanCapabilityTest, InvalidToleranceReturnsInvalidInput)
+TEST(BodyBoolean3dCapabilityTest, InvalidToleranceReturnsInvalidInput)
 {
     BodyBooleanOptions3d options;
     options.tolerance.angleEpsilon = -1.0;
@@ -569,7 +569,7 @@ TEST(BodyBooleanCapabilityTest, InvalidToleranceReturnsInvalidInput)
     ExpectInvalidInput(IntersectBodies(Geometry::Test::BuildUnitCubeBody(), Geometry::Test::BuildUnitCubeBody(), options));
 }
 
-TEST(BodyBooleanCapabilityTest, IdenticalPolyhedronIntersectionReturnsClosedBody)
+TEST(BodyBoolean3dCapabilityTest, IdenticalPolyhedronIntersectionReturnsClosedBody)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = Geometry::Test::BuildUnitCubeBody();
@@ -585,7 +585,7 @@ TEST(BodyBooleanCapabilityTest, IdenticalPolyhedronIntersectionReturnsClosedBody
     EXPECT_TRUE(result.body.ShellAt(0).IsClosed());
 }
 
-TEST(BodyBooleanCapabilityTest, IdenticalPolyhedronUnionReturnsSingleClosedBody)
+TEST(BodyBoolean3dCapabilityTest, IdenticalPolyhedronUnionReturnsSingleClosedBody)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = Geometry::Test::BuildUnitCubeBody();
@@ -599,7 +599,7 @@ TEST(BodyBooleanCapabilityTest, IdenticalPolyhedronUnionReturnsSingleClosedBody)
     EXPECT_TRUE(result.bodies.empty());
 }
 
-TEST(BodyBooleanCapabilityTest, IdenticalPolyhedronDifferenceReturnsDeterministicEmptyResult)
+TEST(BodyBoolean3dCapabilityTest, IdenticalPolyhedronDifferenceReturnsDeterministicEmptyResult)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = Geometry::Test::BuildUnitCubeBody();
@@ -613,7 +613,7 @@ TEST(BodyBooleanCapabilityTest, IdenticalPolyhedronDifferenceReturnsDeterministi
     EXPECT_TRUE(result.bodies.empty());
 }
 
-TEST(BodyBooleanCapabilityTest, DisjointPolyhedronUnionReturnsTwoBodies)
+TEST(BodyBoolean3dCapabilityTest, DisjointPolyhedronUnionReturnsTwoBodies)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildTranslatedUnitCubeBody(3.0, 0.0, 0.0);
@@ -628,7 +628,7 @@ TEST(BodyBooleanCapabilityTest, DisjointPolyhedronUnionReturnsTwoBodies)
     EXPECT_EQ(result.bodies[1].FaceCount(), 6U);
 }
 
-TEST(BodyBooleanCapabilityTest, DisjointPolyhedronUnionNormalizesBodyOrder)
+TEST(BodyBoolean3dCapabilityTest, DisjointPolyhedronUnionNormalizesBodyOrder)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildTranslatedUnitCubeBody(3.0, 0.0, 0.0);
@@ -648,7 +648,7 @@ TEST(BodyBooleanCapabilityTest, DisjointPolyhedronUnionNormalizesBodyOrder)
     EXPECT_NEAR(secondBounds.MaxPoint().x, 4.0, 1e-12);
 }
 
-TEST(BodyBooleanCapabilityTest, DisjointPolyhedronDifferenceReturnsOriginalBody)
+TEST(BodyBoolean3dCapabilityTest, DisjointPolyhedronDifferenceReturnsOriginalBody)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildTranslatedUnitCubeBody(3.0, 0.0, 0.0);
@@ -662,7 +662,7 @@ TEST(BodyBooleanCapabilityTest, DisjointPolyhedronDifferenceReturnsOriginalBody)
     EXPECT_EQ(result.body.EdgeCount(), 12U);
 }
 
-TEST(BodyBooleanCapabilityTest, OverlappingPolyhedronIntersectionReturnsSingleOverlapBox)
+TEST(BodyBoolean3dCapabilityTest, OverlappingPolyhedronIntersectionReturnsSingleOverlapBox)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildAxisAlignedBoxBody(0.5, 0.0, 0.0, 1.5, 1.0, 1.0);
@@ -683,7 +683,7 @@ TEST(BodyBooleanCapabilityTest, OverlappingPolyhedronIntersectionReturnsSingleOv
     EXPECT_NEAR(bounds.MaxPoint().z, 1.0, 1e-12);
 }
 
-TEST(BodyBooleanCapabilityTest, OverlappingPolyhedronUnionReturnsSingleAxisAlignedBox)
+TEST(BodyBoolean3dCapabilityTest, OverlappingPolyhedronUnionReturnsSingleAxisAlignedBox)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildAxisAlignedBoxBody(0.5, 0.0, 0.0, 1.5, 1.0, 1.0);
@@ -704,7 +704,7 @@ TEST(BodyBooleanCapabilityTest, OverlappingPolyhedronUnionReturnsSingleAxisAlign
     EXPECT_NEAR(bounds.MaxPoint().z, 1.0, 1e-12);
 }
 
-TEST(BodyBooleanCapabilityTest, TouchingPolyhedronUnionReturnsSingleAxisAlignedBox)
+TEST(BodyBoolean3dCapabilityTest, TouchingPolyhedronUnionReturnsSingleAxisAlignedBox)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildAxisAlignedBoxBody(1.0, 0.0, 0.0, 2.0, 1.0, 1.0);
@@ -726,7 +726,7 @@ TEST(BodyBooleanCapabilityTest, TouchingPolyhedronUnionReturnsSingleAxisAlignedB
     EXPECT_NEAR(bounds.MaxPoint().z, 1.0, 1e-12);
 }
 
-TEST(BodyBooleanCapabilityTest, TouchingPolyhedronIntersectionReturnsDeterministicEmptyResult)
+TEST(BodyBoolean3dCapabilityTest, TouchingPolyhedronIntersectionReturnsDeterministicEmptyResult)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildAxisAlignedBoxBody(1.0, 0.0, 0.0, 2.0, 1.0, 1.0);
@@ -740,7 +740,7 @@ TEST(BodyBooleanCapabilityTest, TouchingPolyhedronIntersectionReturnsDeterminist
     EXPECT_TRUE(intersection.bodies.empty());
 }
 
-TEST(BodyBooleanCapabilityTest, ContainedPolyhedronIntersectionReturnsInnerBody)
+TEST(BodyBoolean3dCapabilityTest, ContainedPolyhedronIntersectionReturnsInnerBody)
 {
     const PolyhedronBody first = BuildAxisAlignedBoxBody(-0.5, -0.5, -0.5, 1.5, 1.5, 1.5);
     const PolyhedronBody second = Geometry::Test::BuildUnitCubeBody();
@@ -763,7 +763,7 @@ TEST(BodyBooleanCapabilityTest, ContainedPolyhedronIntersectionReturnsInnerBody)
     EXPECT_NEAR(bounds.MaxPoint().z, 1.0, 1e-12);
 }
 
-TEST(BodyBooleanCapabilityTest, ContainedPolyhedronUnionReturnsOuterBody)
+TEST(BodyBoolean3dCapabilityTest, ContainedPolyhedronUnionReturnsOuterBody)
 {
     const PolyhedronBody first = BuildAxisAlignedBoxBody(-0.5, -0.5, -0.5, 1.5, 1.5, 1.5);
     const PolyhedronBody second = Geometry::Test::BuildUnitCubeBody();
@@ -786,7 +786,7 @@ TEST(BodyBooleanCapabilityTest, ContainedPolyhedronUnionReturnsOuterBody)
     EXPECT_NEAR(bounds.MaxPoint().z, 1.5, 1e-12);
 }
 
-TEST(BodyBooleanCapabilityTest, DisjointPolyhedronIntersectionReturnsDeterministicEmptyResult)
+TEST(BodyBoolean3dCapabilityTest, DisjointPolyhedronIntersectionReturnsDeterministicEmptyResult)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildAxisAlignedBoxBody(3.0, 0.0, 0.0, 4.0, 1.0, 1.0);
@@ -800,7 +800,7 @@ TEST(BodyBooleanCapabilityTest, DisjointPolyhedronIntersectionReturnsDeterminist
     EXPECT_TRUE(result.bodies.empty());
 }
 
-TEST(BodyBooleanCapabilityTest, EdgeTouchingPolyhedronIntersectionReturnsDeterministicEmptyResult)
+TEST(BodyBoolean3dCapabilityTest, EdgeTouchingPolyhedronIntersectionReturnsDeterministicEmptyResult)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildAxisAlignedBoxBody(1.0, 1.0, 0.0, 2.0, 2.0, 1.0);
@@ -814,7 +814,7 @@ TEST(BodyBooleanCapabilityTest, EdgeTouchingPolyhedronIntersectionReturnsDetermi
     EXPECT_TRUE(intersection.bodies.empty());
 }
 
-TEST(BodyBooleanCapabilityTest, VertexTouchingPolyhedronIntersectionReturnsDeterministicEmptyResult)
+TEST(BodyBoolean3dCapabilityTest, VertexTouchingPolyhedronIntersectionReturnsDeterministicEmptyResult)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildAxisAlignedBoxBody(1.0, 1.0, 1.0, 2.0, 2.0, 2.0);
@@ -828,7 +828,7 @@ TEST(BodyBooleanCapabilityTest, VertexTouchingPolyhedronIntersectionReturnsDeter
     EXPECT_TRUE(intersection.bodies.empty());
 }
 
-TEST(BodyBooleanCapabilityTest, EdgeTouchingPolyhedronUnionReturnsDeterministicOrderedMultiBodyResult)
+TEST(BodyBoolean3dCapabilityTest, EdgeTouchingPolyhedronUnionReturnsDeterministicOrderedMultiBodyResult)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildAxisAlignedBoxBody(1.0, 1.0, 0.0, 2.0, 2.0, 1.0);
@@ -848,7 +848,7 @@ TEST(BodyBooleanCapabilityTest, EdgeTouchingPolyhedronUnionReturnsDeterministicO
     EXPECT_NEAR(secondBounds.MaxPoint().x, 2.0, 1e-12);
 }
 
-TEST(BodyBooleanCapabilityTest, VertexTouchingPolyhedronDifferenceReturnsOriginalBody)
+TEST(BodyBoolean3dCapabilityTest, VertexTouchingPolyhedronDifferenceReturnsOriginalBody)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildAxisAlignedBoxBody(1.0, 1.0, 1.0, 2.0, 2.0, 2.0);
@@ -871,7 +871,7 @@ TEST(BodyBooleanCapabilityTest, VertexTouchingPolyhedronDifferenceReturnsOrigina
     EXPECT_NEAR(bounds.MaxPoint().z, 1.0, 1e-12);
 }
 
-TEST(BodyBooleanCapabilityTest, TouchingPolyhedronDifferenceReturnsOriginalBody)
+TEST(BodyBoolean3dCapabilityTest, TouchingPolyhedronDifferenceReturnsOriginalBody)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildAxisAlignedBoxBody(1.0, 0.0, 0.0, 2.0, 1.0, 1.0);
@@ -893,7 +893,7 @@ TEST(BodyBooleanCapabilityTest, TouchingPolyhedronDifferenceReturnsOriginalBody)
     EXPECT_NEAR(bounds.MaxPoint().z, 1.0, 1e-12);
 }
 
-TEST(BodyBooleanCapabilityTest, OverlappingPolyhedronDifferenceReturnsRemainingSingleBox)
+TEST(BodyBoolean3dCapabilityTest, OverlappingPolyhedronDifferenceReturnsRemainingSingleBox)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildAxisAlignedBoxBody(0.5, 0.0, 0.0, 1.0, 1.0, 1.0);
@@ -914,7 +914,7 @@ TEST(BodyBooleanCapabilityTest, OverlappingPolyhedronDifferenceReturnsRemainingS
     EXPECT_NEAR(bounds.MaxPoint().z, 1.0, 1e-12);
 }
 
-TEST(BodyBooleanCapabilityTest, ContainedPolyhedronDifferenceReturnsDeterministicEmptyResult)
+TEST(BodyBoolean3dCapabilityTest, ContainedPolyhedronDifferenceReturnsDeterministicEmptyResult)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildAxisAlignedBoxBody(-0.5, -0.5, -0.5, 1.5, 1.5, 1.5);
@@ -928,7 +928,7 @@ TEST(BodyBooleanCapabilityTest, ContainedPolyhedronDifferenceReturnsDeterministi
     EXPECT_TRUE(result.bodies.empty());
 }
 
-TEST(BodyBooleanCapabilityTest, OverlappingAxisAlignedBoxUnionReturnsClosedOrthogonalSolid)
+TEST(BodyBoolean3dCapabilityTest, OverlappingAxisAlignedBoxUnionReturnsClosedOrthogonalSolid)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody contained = BuildAxisAlignedBoxBody(0.5, 0.5, 0.5, 1.5, 1.5, 1.5);
@@ -943,7 +943,7 @@ TEST(BodyBooleanCapabilityTest, OverlappingAxisAlignedBoxUnionReturnsClosedOrtho
     EXPECT_NEAR(Geometry::Volume(united.body), 1.875, 1e-9);
 }
 
-TEST(BodyBooleanCapabilityTest, PartialAxisAlignedBoxDifferenceRemainsUnsupported)
+TEST(BodyBoolean3dCapabilityTest, PartialAxisAlignedBoxDifferenceRemainsUnsupported)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildAxisAlignedBoxBody(0.5, 0.5, 0.0, 1.5, 1.5, 1.0);
@@ -953,7 +953,7 @@ TEST(BodyBooleanCapabilityTest, PartialAxisAlignedBoxDifferenceRemainsUnsupporte
     ExpectUnsupportedOperation(difference);
 }
 
-TEST(BodyBooleanCapabilityTest, FaceTouchingLShapePolyhedronUnionReturnsClosedOrthogonalSolid)
+TEST(BodyBoolean3dCapabilityTest, FaceTouchingLShapePolyhedronUnionReturnsClosedOrthogonalSolid)
 {
     const PolyhedronBody first = BuildAxisAlignedBoxBody(0.0, 0.0, 0.0, 2.0, 1.0, 1.0);
     const PolyhedronBody second = BuildAxisAlignedBoxBody(0.0, 1.0, 0.0, 1.0, 2.0, 1.0);
@@ -977,7 +977,7 @@ TEST(BodyBooleanCapabilityTest, FaceTouchingLShapePolyhedronUnionReturnsClosedOr
     EXPECT_NEAR(Geometry::Volume(reversed.body), Geometry::Volume(result.body), 1e-9);
 }
 
-TEST(BodyBooleanCapabilityTest, FaceTouchingLShapeBrepUnionPreservesTopologyAndVolume)
+TEST(BodyBoolean3dCapabilityTest, FaceTouchingLShapeBrepUnionPreservesTopologyAndVolume)
 {
     const auto first = ConvertToBrepBody(BuildAxisAlignedBoxBody(0.0, 0.0, 0.0, 2.0, 1.0, 1.0));
     const auto second = ConvertToBrepBody(BuildAxisAlignedBoxBody(0.0, 1.0, 0.0, 1.0, 2.0, 1.0));
@@ -995,7 +995,7 @@ TEST(BodyBooleanCapabilityTest, FaceTouchingLShapeBrepUnionPreservesTopologyAndV
     EXPECT_NEAR(Geometry::Volume(result.body), 3.0, 1e-9);
 }
 
-TEST(BodyBooleanCapabilityTest, NonConvexBrepInputReturnsUnsupportedOperation)
+TEST(BodyBoolean3dCapabilityTest, NonConvexBrepInputReturnsUnsupportedOperation)
 {
     const auto first = ConvertToBrepBody(BuildAxisAlignedBoxBody(0.0, 0.0, 0.0, 2.0, 1.0, 1.0));
     const auto second = ConvertToBrepBody(BuildAxisAlignedBoxBody(0.0, 1.0, 0.0, 1.0, 2.0, 1.0));
@@ -1010,7 +1010,7 @@ TEST(BodyBooleanCapabilityTest, NonConvexBrepInputReturnsUnsupportedOperation)
     ExpectUnsupportedOperation(DifferenceBodies(lShape.body, first.body));
 }
 
-TEST(BodyBooleanCapabilityTest, RotatedBoxIntersectionReturnsExplicitUnsupportedOperation)
+TEST(BodyBoolean3dCapabilityTest, RotatedBoxIntersectionReturnsExplicitUnsupportedOperation)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildRotatedOverlapBoxBody();
@@ -1020,7 +1020,7 @@ TEST(BodyBooleanCapabilityTest, RotatedBoxIntersectionReturnsExplicitUnsupported
     ExpectUnsupportedOperation(result);
 }
 
-TEST(BodyBooleanCapabilityTest, RotatedBoxUnionAndDifferenceRemainExplicitlyUnsupported)
+TEST(BodyBoolean3dCapabilityTest, RotatedBoxUnionAndDifferenceRemainExplicitlyUnsupported)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildRotatedOverlapBoxBody();
@@ -1032,7 +1032,7 @@ TEST(BodyBooleanCapabilityTest, RotatedBoxUnionAndDifferenceRemainExplicitlyUnsu
     ExpectUnsupportedOperation(difference);
 }
 
-TEST(BodyBooleanCapabilityTest, EqualBoundsButDifferentRotatedBoxesDoNotUseIdenticalBodyFastPath)
+TEST(BodyBoolean3dCapabilityTest, EqualBoundsButDifferentRotatedBoxesDoNotUseIdenticalBodyFastPath)
 {
     const PolyhedronBody first = BuildRotatedPrismaticBox(0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.23);
     const PolyhedronBody second = BuildRotatedPrismaticBox(0.0, 0.0, 0.0, 1.0, 1.0, 1.0, -0.23);
@@ -1044,7 +1044,7 @@ TEST(BodyBooleanCapabilityTest, EqualBoundsButDifferentRotatedBoxesDoNotUseIdent
     ExpectUnsupportedOperation(DifferenceBodies(first, second));
 }
 
-TEST(BodyBooleanCapabilityTest, NonCoplanarRotatedConvexBoxesIntersectAsClosedSingleShell)
+TEST(BodyBoolean3dCapabilityTest, NonCoplanarRotatedConvexBoxesIntersectAsClosedSingleShell)
 {
     const PolyhedronBody first = Geometry::Test::BuildUnitCubeBody();
     const PolyhedronBody second = BuildNonCoplanarRotatedOverlapBoxBody();
@@ -1065,7 +1065,7 @@ TEST(BodyBooleanCapabilityTest, NonCoplanarRotatedConvexBoxesIntersectAsClosedSi
     EXPECT_TRUE(reversed.body.Bounds().MaxPoint().AlmostEquals(result.body.Bounds().MaxPoint(), 1e-9));
 }
 
-TEST(BodyBooleanCapabilityTest, NonCoplanarRotatedConvexBrepBoxesIntersectAsClosedSingleShell)
+TEST(BodyBoolean3dCapabilityTest, NonCoplanarRotatedConvexBrepBoxesIntersectAsClosedSingleShell)
 {
     const auto first = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     const auto second = ConvertToBrepBody(BuildNonCoplanarRotatedOverlapBoxBody());
@@ -1082,7 +1082,7 @@ TEST(BodyBooleanCapabilityTest, NonCoplanarRotatedConvexBrepBoxesIntersectAsClos
     EXPECT_GT(Geometry::Volume(result.body), 0.0);
 }
 
-TEST(BodyBooleanCapabilityTest, RotatedPrismaticBoxIntersectionMatchesIndependentHalfSpaceClippingOracle)
+TEST(BodyBoolean3dCapabilityTest, RotatedPrismaticBoxIntersectionMatchesIndependentHalfSpaceClippingOracle)
 {
     std::mt19937 generator(20260902U);
     std::uniform_real_distribution<double> centerOffset(-0.25, 0.25);
@@ -1119,7 +1119,7 @@ TEST(BodyBooleanCapabilityTest, RotatedPrismaticBoxIntersectionMatchesIndependen
     }
 }
 
-TEST(BodyBooleanCapabilityTest, BrepRotatedBoxOperationsReturnExplicitUnsupportedOperation)
+TEST(BodyBoolean3dCapabilityTest, BrepRotatedBoxOperationsReturnExplicitUnsupportedOperation)
 {
     const auto first = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     const auto second = ConvertToBrepBody(BuildRotatedOverlapBoxBody());
@@ -1131,7 +1131,7 @@ TEST(BodyBooleanCapabilityTest, BrepRotatedBoxOperationsReturnExplicitUnsupporte
     ExpectUnsupportedOperation(DifferenceBodies(first.body, second.body));
 }
 
-TEST(BodyBooleanCapabilityTest, IdenticalBrepIntersectionReturnsClosedBody)
+TEST(BodyBoolean3dCapabilityTest, IdenticalBrepIntersectionReturnsClosedBody)
 {
     const auto converted = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     ASSERT_TRUE(converted.success);
@@ -1145,7 +1145,7 @@ TEST(BodyBooleanCapabilityTest, IdenticalBrepIntersectionReturnsClosedBody)
     EXPECT_TRUE(result.body.ShellAt(0).IsClosed());
 }
 
-TEST(BodyBooleanCapabilityTest, IdenticalBrepDifferenceReturnsDeterministicEmptyResult)
+TEST(BodyBoolean3dCapabilityTest, IdenticalBrepDifferenceReturnsDeterministicEmptyResult)
 {
     const auto converted = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     ASSERT_TRUE(converted.success);
@@ -1159,7 +1159,7 @@ TEST(BodyBooleanCapabilityTest, IdenticalBrepDifferenceReturnsDeterministicEmpty
     EXPECT_TRUE(result.bodies.empty());
 }
 
-TEST(BodyBooleanCapabilityTest, ContainedBrepIntersectionReturnsInnerBody)
+TEST(BodyBoolean3dCapabilityTest, ContainedBrepIntersectionReturnsInnerBody)
 {
     const auto first = ConvertToBrepBody(BuildAxisAlignedBoxBody(-0.5, -0.5, -0.5, 1.5, 1.5, 1.5));
     const auto second = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
@@ -1184,7 +1184,7 @@ TEST(BodyBooleanCapabilityTest, ContainedBrepIntersectionReturnsInnerBody)
     EXPECT_NEAR(bounds.MaxPoint().z, 1.0, 1e-12);
 }
 
-TEST(BodyBooleanCapabilityTest, ContainedBrepUnionReturnsOuterBody)
+TEST(BodyBoolean3dCapabilityTest, ContainedBrepUnionReturnsOuterBody)
 {
     const auto first = ConvertToBrepBody(BuildAxisAlignedBoxBody(-0.5, -0.5, -0.5, 1.5, 1.5, 1.5));
     const auto second = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
@@ -1209,7 +1209,7 @@ TEST(BodyBooleanCapabilityTest, ContainedBrepUnionReturnsOuterBody)
     EXPECT_NEAR(bounds.MaxPoint().z, 1.5, 1e-12);
 }
 
-TEST(BodyBooleanCapabilityTest, DisjointBrepIntersectionReturnsDeterministicEmptyResult)
+TEST(BodyBoolean3dCapabilityTest, DisjointBrepIntersectionReturnsDeterministicEmptyResult)
 {
     const auto first = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     const auto second = ConvertToBrepBody(BuildAxisAlignedBoxBody(3.0, 0.0, 0.0, 4.0, 1.0, 1.0));
@@ -1225,7 +1225,7 @@ TEST(BodyBooleanCapabilityTest, DisjointBrepIntersectionReturnsDeterministicEmpt
     EXPECT_TRUE(result.bodies.empty());
 }
 
-TEST(BodyBooleanCapabilityTest, DisjointBrepUnionNormalizesBodyOrder)
+TEST(BodyBoolean3dCapabilityTest, DisjointBrepUnionNormalizesBodyOrder)
 {
     const auto first = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     const auto second = ConvertToBrepBody(BuildTranslatedUnitCubeBody(3.0, 0.0, 0.0));
@@ -1247,7 +1247,7 @@ TEST(BodyBooleanCapabilityTest, DisjointBrepUnionNormalizesBodyOrder)
     EXPECT_NEAR(secondBounds.MaxPoint().x, 4.0, 1e-12);
 }
 
-TEST(BodyBooleanCapabilityTest, OverlappingBrepUnionReturnsSingleAxisAlignedBox)
+TEST(BodyBoolean3dCapabilityTest, OverlappingBrepUnionReturnsSingleAxisAlignedBox)
 {
     const auto first = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     const auto second = ConvertToBrepBody(BuildAxisAlignedBoxBody(0.5, 0.0, 0.0, 1.5, 1.0, 1.0));
@@ -1270,7 +1270,7 @@ TEST(BodyBooleanCapabilityTest, OverlappingBrepUnionReturnsSingleAxisAlignedBox)
     EXPECT_NEAR(bounds.MaxPoint().z, 1.0, 1e-12);
 }
 
-TEST(BodyBooleanCapabilityTest, TouchingBrepUnionReturnsSingleAxisAlignedBox)
+TEST(BodyBoolean3dCapabilityTest, TouchingBrepUnionReturnsSingleAxisAlignedBox)
 {
     const auto first = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     const auto second = ConvertToBrepBody(BuildAxisAlignedBoxBody(1.0, 0.0, 0.0, 2.0, 1.0, 1.0));
@@ -1294,7 +1294,7 @@ TEST(BodyBooleanCapabilityTest, TouchingBrepUnionReturnsSingleAxisAlignedBox)
     EXPECT_NEAR(bounds.MaxPoint().z, 1.0, 1e-12);
 }
 
-TEST(BodyBooleanCapabilityTest, TouchingBrepDifferenceReturnsOriginalBody)
+TEST(BodyBoolean3dCapabilityTest, TouchingBrepDifferenceReturnsOriginalBody)
 {
     const auto first = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     const auto second = ConvertToBrepBody(BuildAxisAlignedBoxBody(1.0, 0.0, 0.0, 2.0, 1.0, 1.0));
@@ -1318,7 +1318,7 @@ TEST(BodyBooleanCapabilityTest, TouchingBrepDifferenceReturnsOriginalBody)
     EXPECT_NEAR(bounds.MaxPoint().z, 1.0, 1e-12);
 }
 
-TEST(BodyBooleanCapabilityTest, TouchingBrepIntersectionReturnsDeterministicEmptyResult)
+TEST(BodyBoolean3dCapabilityTest, TouchingBrepIntersectionReturnsDeterministicEmptyResult)
 {
     const auto first = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     const auto second = ConvertToBrepBody(BuildAxisAlignedBoxBody(1.0, 0.0, 0.0, 2.0, 1.0, 1.0));
@@ -1334,7 +1334,7 @@ TEST(BodyBooleanCapabilityTest, TouchingBrepIntersectionReturnsDeterministicEmpt
     EXPECT_TRUE(result.bodies.empty());
 }
 
-TEST(BodyBooleanCapabilityTest, EdgeTouchingBrepIntersectionReturnsDeterministicEmptyResult)
+TEST(BodyBoolean3dCapabilityTest, EdgeTouchingBrepIntersectionReturnsDeterministicEmptyResult)
 {
     const auto first = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     const auto second = ConvertToBrepBody(BuildAxisAlignedBoxBody(1.0, 1.0, 0.0, 2.0, 2.0, 1.0));
@@ -1350,7 +1350,7 @@ TEST(BodyBooleanCapabilityTest, EdgeTouchingBrepIntersectionReturnsDeterministic
     EXPECT_TRUE(result.bodies.empty());
 }
 
-TEST(BodyBooleanCapabilityTest, VertexTouchingBrepIntersectionReturnsDeterministicEmptyResult)
+TEST(BodyBoolean3dCapabilityTest, VertexTouchingBrepIntersectionReturnsDeterministicEmptyResult)
 {
     const auto first = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     const auto second = ConvertToBrepBody(BuildAxisAlignedBoxBody(1.0, 1.0, 1.0, 2.0, 2.0, 2.0));
@@ -1366,7 +1366,7 @@ TEST(BodyBooleanCapabilityTest, VertexTouchingBrepIntersectionReturnsDeterminist
     EXPECT_TRUE(result.bodies.empty());
 }
 
-TEST(BodyBooleanCapabilityTest, EdgeTouchingBrepUnionReturnsDeterministicOrderedMultiBodyResult)
+TEST(BodyBoolean3dCapabilityTest, EdgeTouchingBrepUnionReturnsDeterministicOrderedMultiBodyResult)
 {
     const auto first = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     const auto second = ConvertToBrepBody(BuildAxisAlignedBoxBody(1.0, 1.0, 0.0, 2.0, 2.0, 1.0));
@@ -1388,7 +1388,7 @@ TEST(BodyBooleanCapabilityTest, EdgeTouchingBrepUnionReturnsDeterministicOrdered
     EXPECT_NEAR(secondBounds.MaxPoint().x, 2.0, 1e-12);
 }
 
-TEST(BodyBooleanCapabilityTest, VertexTouchingBrepDifferenceReturnsOriginalBody)
+TEST(BodyBoolean3dCapabilityTest, VertexTouchingBrepDifferenceReturnsOriginalBody)
 {
     const auto first = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     const auto second = ConvertToBrepBody(BuildAxisAlignedBoxBody(1.0, 1.0, 1.0, 2.0, 2.0, 2.0));
@@ -1413,7 +1413,7 @@ TEST(BodyBooleanCapabilityTest, VertexTouchingBrepDifferenceReturnsOriginalBody)
     EXPECT_NEAR(bounds.MaxPoint().z, 1.0, 1e-12);
 }
 
-TEST(BodyBooleanCapabilityTest, ContainedBrepDifferenceReturnsDeterministicEmptyResult)
+TEST(BodyBoolean3dCapabilityTest, ContainedBrepDifferenceReturnsDeterministicEmptyResult)
 {
     const auto first = ConvertToBrepBody(Geometry::Test::BuildUnitCubeBody());
     const auto second = ConvertToBrepBody(BuildAxisAlignedBoxBody(-0.5, -0.5, -0.5, 1.5, 1.5, 1.5));
@@ -1429,7 +1429,7 @@ TEST(BodyBooleanCapabilityTest, ContainedBrepDifferenceReturnsDeterministicEmpty
     EXPECT_TRUE(result.bodies.empty());
 }
 
-TEST(BodyBooleanCapabilityTest, SupportedResultsPreserveClosedValidTopology)
+TEST(BodyBoolean3dCapabilityTest, SupportedResultsPreserveClosedValidTopology)
 {
     const PolyhedronBody first = BuildAxisAlignedBoxBody(-0.5, -0.5, -0.5, 1.5, 1.5, 1.5);
     const PolyhedronBody second = Geometry::Test::BuildUnitCubeBody();

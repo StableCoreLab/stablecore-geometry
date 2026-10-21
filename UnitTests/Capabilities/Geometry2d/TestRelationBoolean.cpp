@@ -6,6 +6,7 @@
 #include "Core/Relation.h"
 #include "Core/ShapeOps.h"
 #include "Core/Validation.h"
+#include "Geometry2d/SCPathOps.h"
 
 using Geometry::Difference;
 using Geometry::Intersect;
@@ -83,6 +84,36 @@ TEST(RelationBooleanTest, SmallCallerTolerancePreservesBoxIntersectionBoundary)
             EXPECT_GE(intersection[0].OuterRing().VertexAt(i).x, -eps);
         }
         EXPECT_NEAR(TotalArea(intersection), 2.0, 1e-12);
+    }
+}
+
+TEST(RelationBooleanTest, SmallCallerTolerancePreservesTinyBoxIntersection)
+{
+    constexpr double eps = 1e-15;
+    const SCPolygon2d first(SCPolyline2d(
+        {{0.0, 0.0}, {1e-7, 0.0}, {1e-7, 1e-7}, {0.0, 1e-7}}, SCPolylineClosure::Closed));
+    const SCPolygon2d second(SCPolyline2d(
+        {{5e-8, 0.0}, {1.5e-7, 0.0}, {1.5e-7, 1e-7}, {5e-8, 1e-7}},
+        SCPolylineClosure::Closed));
+    ASSERT_TRUE(first.IsValid());
+    ASSERT_TRUE(second.IsValid());
+    ASSERT_TRUE(Validate(first, eps).valid);
+    ASSERT_TRUE(Validate(second, eps).valid);
+    EXPECT_TRUE(Geometry::NormalizePolygonByLines(first, eps).IsValid());
+    EXPECT_TRUE(Geometry::NormalizePolygonByLines(second, eps).IsValid());
+
+    for (const auto& intersection : {Intersect(first, second, eps), Intersect(second, first, eps)})
+    {
+        ASSERT_EQ(intersection.Count(), 1U);
+        EXPECT_NEAR(TotalArea(intersection), 5e-15, 1e-17);
+        for (std::size_t i = 0; i < intersection[0].OuterRing().PointCount(); ++i)
+        {
+            const SCPoint2d point = intersection[0].OuterRing().VertexAt(i);
+            EXPECT_GE(point.x, 5e-8 - eps);
+            EXPECT_LE(point.x, 1e-7 + eps);
+            EXPECT_GE(point.y, -eps);
+            EXPECT_LE(point.y, 1e-7 + eps);
+        }
     }
 }
 
