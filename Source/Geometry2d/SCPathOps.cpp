@@ -303,17 +303,6 @@ namespace Geometry
             return segments;
         }
 
-        [[nodiscard]] double ComputeParameterTolerance(const SCLineSegment2d& segment, double eps)
-        {
-            const double length = segment.Length();
-            if (length <= eps)
-            {
-                return Geometry::Detail::kComparisonEpsilon2d;
-            }
-
-            return std::min(1e-4, std::max(Geometry::Detail::kComparisonEpsilon2d, 8.0 * eps / length));
-        }
-
         [[nodiscard]] std::vector<RawSegment> SubdivideRawSegments(const std::vector<RawSegment>& rawSegments,
                                                                    double eps)
         {
@@ -327,7 +316,9 @@ namespace Geometry
             const std::vector<Detail::SubdividedLineSegment2d> subdivisions = Detail::SubdivideLineSegments(
                 segments,
                 eps,
-                [eps](const SCLineSegment2d& segment) { return ComputeParameterTolerance(segment, eps); });
+                [eps](const SCLineSegment2d& segment) {
+                    return Detail::ComputeSubdivisionParameterTolerance2d(segment.Length(), eps);
+                });
 
             std::vector<RawSegment> splitSegments;
             splitSegments.reserve(subdivisions.size());
@@ -689,39 +680,18 @@ namespace Geometry
             return Detail::NormalizeRingVertices2d(std::move(points), eps);
         }
 
-        [[nodiscard]] double ComputeAreaTolerance(const std::vector<RawSegment>& segments, double repairTol, double eps)
-        {
-            if (segments.empty())
-            {
-                return Detail::StableProduct(eps,eps,256).value_or(std::numeric_limits<double>::quiet_NaN());
-            }
-
-            double minX = segments.front().start.x;
-            double minY = segments.front().start.y;
-            double maxX = minX;
-            double maxY = minY;
-            for (const RawSegment& segment : segments)
-            {
-                minX = std::min({minX, segment.start.x, segment.end.x});
-                minY = std::min({minY, segment.start.y, segment.end.y});
-                maxX = std::max({maxX, segment.start.x, segment.end.x});
-                maxY = std::max({maxY, segment.start.y, segment.end.y});
-            }
-
-            const double dx = maxX - minX;
-            const double dy = maxY - minY;
-            const double diagonal = std::hypot(dx,dy);
-            const auto absolute=Detail::StableProduct(eps,eps,256);
-            const auto relative=Detail::StableProduct(diagonal,std::max(repairTol,16*eps),1e-3);
-            if (!absolute || !relative) return std::numeric_limits<double>::quiet_NaN();
-            return std::max(*absolute,*relative);
-        }
-
         [[nodiscard]] bool RejectRingCandidate(const RingCandidate& candidate,
                                                double repairTol,
-                                               double areaTol,
                                                double eps)
         {
+            const SCBox2d bounds = candidate.ring.Bounds();
+            const double diagonal = std::hypot(bounds.Width(), bounds.Height());
+            const auto absolute = Detail::StableProduct(eps, eps, 256);
+            const auto relative = candidate.syntheticPerimeter > 0.0
+                ? Detail::StableProduct(diagonal, std::max(repairTol, 16 * eps), 1e-3)
+                : Detail::StableProduct(diagonal, eps, 1.0);
+            if (!absolute || !relative) return true;
+            const double areaTol = std::max(*absolute, *relative);
             if (candidate.area <= areaTol || candidate.perimeter <= eps)
             {
                 return true;
@@ -763,7 +733,6 @@ namespace Geometry
             const std::vector<SCPoint2d>& vertices,
             const std::vector<std::vector<std::size_t>>& outgoing,
             double repairTol,
-            double areaTol,
             double eps)
         {
             std::vector<RingCandidate> rings;
@@ -842,9 +811,13 @@ namespace Geometry
                 const double area = std::abs(SCPolygon2d(ring).Area());
                 const double score = ComputeRingCandidateScore(
                     area, syntheticPerimeter, branchVertexCount, syntheticBranchVertexCount, repairTol, eps);
+                if (!std::isfinite(area) || !std::isfinite(perimeter) || !std::isfinite(score))
+                {
+                    continue;
+                }
                 const RingCandidate candidate{
                     ring, area, perimeter, syntheticPerimeter, branchVertexCount, syntheticBranchVertexCount, score};
-                if (RejectRingCandidate(candidate, repairTol, areaTol, eps))
+                if (RejectRingCandidate(candidate, repairTol, eps))
                 {
                     continue;
                 }
@@ -853,11 +826,11 @@ namespace Geometry
             }
 
             std::stable_sort(rings.begin(), rings.end(), [](const RingCandidate& lhs, const RingCandidate& rhs) {
-                if (std::abs(lhs.score - rhs.score) > Geometry::Detail::kComparisonEpsilon2d)
+                if (lhs.score != rhs.score)
                 {
                     return lhs.score > rhs.score;
                 }
-                if (std::abs(lhs.area - rhs.area) > Geometry::Detail::kComparisonEpsilon2d)
+                if (lhs.area != rhs.area)
                 {
                     return lhs.area > rhs.area;
                 }
@@ -1049,9 +1022,6 @@ namespace Geometry
             {
                 return {};
             }
-            const double areaTol = ComputeAreaTolerance(splitSegments, repairTol, eps);
-            if (!std::isfinite(areaTol)) return {};
-
             std::vector<SCPoint2d> vertices;
             std::vector<DirectedEdge> edges;
             std::vector<std::vector<std::size_t>> outgoing;
@@ -1064,7 +1034,7 @@ namespace Geometry
 
             Detail::SortOutgoingFans(edges, outgoing);
             const std::vector<RingCandidate> rings =
-                ExtractCandidateRings(edges, vertices, outgoing, repairTol, areaTol, eps);
+                ExtractCandidateRings(edges, vertices, outgoing, repairTol, eps);
             return BuildFilledPolygonsFromCandidateRings(rings, eps);
         };
         result.polygons = rebuild();
@@ -1111,6 +1081,10 @@ namespace Geometry
 
     SCPolygon2d NormalizePolygonByLines(const SCPolygon2d& polygon, double eps)
     {
+        if (!(eps > 0.0) || !std::isfinite(eps))
+        {
+            return {};
+        }
         SCMultiPolyline2d boundaries;
         AppendPolygonBoundaries(polygon, boundaries);
         if (boundaries.IsEmpty())
@@ -1118,7 +1092,7 @@ namespace Geometry
             return {};
         }
 
-        const std::vector<double> epsCandidates{std::max(eps, Geometry::Detail::kComparisonEpsilon2d),
+        const std::vector<double> epsCandidates{eps,
                                                 std::max(eps, Geometry::Detail::kRebuildFallbackEpsilon2d),
                                                 std::max(eps, 1e-7)};
 

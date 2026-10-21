@@ -241,6 +241,76 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
     EXPECT_NEAR(normalizedByLines.Area(), 16.0, 1e-6);
 }
 
+TEST(ShapesPathopsTest, SmallCallerToleranceKeepsNearEndpointLineCrossing)
+{
+    constexpr double eps = 1e-15;
+    constexpr double crossingX = 5e-13;
+    SCMultiPolyline2d boundaries;
+    boundaries.Add(SCPolyline2d({{0.0, 0.0}, {1.0, 0.0}}, SCPolylineClosure::Open));
+    boundaries.Add(SCPolyline2d({{crossingX, -0.5}, {crossingX, 1.0}}, SCPolylineClosure::Open));
+    boundaries.Add(SCPolyline2d({{crossingX, 1.0}, {1.0, 1.0}}, SCPolylineClosure::Open));
+    boundaries.Add(SCPolyline2d({{1.0, 1.0}, {1.0, 0.0}}, SCPolylineClosure::Open));
+
+    Geometry::SCPolygonBuildOptions2d options;
+    options.allowFakeEdges = false;
+    const auto rebuilt = Geometry::BuildMultiPolygonByLinesWithDiagnostics(boundaries, eps, options);
+    ASSERT_EQ(rebuilt.polygons.Count(), 1U);
+    const auto& polygon = rebuilt.polygons[0];
+    EXPECT_NEAR(polygon.Area(), 1.0 - crossingX, 1e-14);
+    for (std::size_t i = 0; i < polygon.OuterRing().PointCount(); ++i)
+    {
+        EXPECT_GE(polygon.OuterRing().VertexAt(i).x, crossingX - eps);
+    }
+}
+
+TEST(ShapesPathopsTest, NormalizesThinValidPolygonWithCallerTolerance)
+{
+    constexpr double eps = 1e-15;
+    const SCPolygon2d thin(SCPolyline2d(
+        {{0.0, 0.0}, {1000.0, 0.0}, {500.0, 5e-13}}, SCPolylineClosure::Closed));
+    ASSERT_TRUE(thin.IsValid());
+
+    const SCPolygon2d normalized = NormalizePolygonByLines(thin, eps);
+    ASSERT_TRUE(normalized.IsValid());
+    EXPECT_NEAR(normalized.Area(), thin.Area(), 1e-12);
+}
+
+TEST(ShapesPathopsTest, RejectsInvalidNormalizationTolerance)
+{
+    const SCPolygon2d square(SCPolyline2d(
+        {{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 1.0}}, SCPolylineClosure::Closed));
+    ASSERT_TRUE(square.IsValid());
+    for (double eps : {0.0, -1.0, std::numeric_limits<double>::infinity(),
+                       std::numeric_limits<double>::quiet_NaN()})
+    {
+        EXPECT_FALSE(NormalizePolygonByLines(square, eps).IsValid());
+    }
+}
+
+TEST(ShapesPathopsTest, RepairedLoopDoesNotEraseSeparateThinOriginalLoop)
+{
+    constexpr double eps = 1e-15;
+    SCMultiPolyline2d boundaries;
+    boundaries.Add(SCPolyline2d(
+        {{0.0, 0.0}, {10.0, 0.0}, {5.0, 5e-11}}, SCPolylineClosure::Closed));
+    boundaries.Add(SCPolyline2d(
+        {{1e6, 0.0}, {1e6 + 1.0, 0.0}, {1e6 + 1.0, 1.0}, {1e6, 1.0}, {1e6, 0.01}},
+        SCPolylineClosure::Open));
+
+    const auto rebuilt = Geometry::BuildMultiPolygonByLinesWithDiagnostics(boundaries, eps);
+    ASSERT_TRUE(rebuilt.usedAutoClose);
+    EXPECT_EQ(rebuilt.polygons.Count(), 2U);
+    bool foundThin = false;
+    bool foundRepaired = false;
+    for (std::size_t i = 0; i < rebuilt.polygons.Count(); ++i)
+    {
+        foundThin |= std::abs(rebuilt.polygons[i].Area() - 2.5e-10) < 1e-12;
+        foundRepaired |= std::abs(rebuilt.polygons[i].Area() - 1.0) < 1e-9;
+    }
+    EXPECT_TRUE(foundThin);
+    EXPECT_TRUE(foundRepaired);
+}
+
 TEST(ShapesPathopsTest, CutPolygonUsesCallerToleranceForBothBoundaryPaths)
 {
     const SCPolygon2d square(SCPolyline2d(

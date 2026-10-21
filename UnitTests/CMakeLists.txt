@@ -1,7 +1,6 @@
 include(GoogleTest)
 
 set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
-    Capabilities/Core/TestCore.cpp
     Capabilities/Core/TestCoreAlgorithms.cpp
     Capabilities/Core/TestCoreMultigeometry.cpp
     Capabilities/Core/TestDllExport.cpp
@@ -20,6 +19,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Core/TestTriangulation.cpp
     Capabilities/Core/TestUmbrella.cpp
     Capabilities/Geometry2d/TestBox.cpp
+    Capabilities/Geometry2d/TestCorePrimitives2d.cpp
     Capabilities/Geometry2d/TestMatrixTransform2d.cpp
     Capabilities/Geometry2d/TestMeasure2d.cpp
     Capabilities/Geometry2d/TestOffset.cpp
@@ -40,12 +40,16 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/Test3dHealing.cpp
     Capabilities/Geometry3d/Test3dSection.cpp
     Capabilities/Geometry3d/Test3dValueTypes.cpp
+    Capabilities/Geometry3d/TestBrepCore.cpp
     Capabilities/Geometry3d/TestBrepLoopGeometry.cpp
+    Capabilities/Geometry3d/TestCorePrimitives3d.cpp
     Capabilities/Geometry3d/TestCurveOnSurfaceInterface.cpp
     Capabilities/Geometry3d/TestGeometryEvidence.cpp
     Capabilities/Geometry3d/TestMeshHealingContract.cpp
     Capabilities/Geometry3d/TestNurbsNumerics.cpp
     Capabilities/Geometry3d/TestOffsetSurfaceEval.cpp
+    Capabilities/Geometry3d/TestSectionRebuildCore.cpp
+    Capabilities/Geometry3d/TestTriangleMeshCore.cpp
 )
 list(TRANSFORM SCGEOMETRY_CAPABILITY_TEST_SOURCES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
 

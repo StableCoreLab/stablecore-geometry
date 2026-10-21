@@ -7,6 +7,16 @@
 
 namespace Geometry::Detail
 {
+    [[nodiscard]] inline double ComputeSubdivisionParameterTolerance2d(double segmentLength, double eps)
+    {
+        constexpr double maxParameterTolerance = 1e-4;
+        if (segmentLength <= eps)
+        {
+            return maxParameterTolerance;
+        }
+        return std::min(maxParameterTolerance, 8.0 * eps / segmentLength);
+    }
+
     inline void AddClampedParameter(std::vector<double>& parameters, double value, const double mergeTolerance)
     {
         value = std::clamp(value, 0.0, 1.0);

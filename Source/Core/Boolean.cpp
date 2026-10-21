@@ -85,6 +85,11 @@ namespace Geometry
             return false;
         }
 
+        [[nodiscard]] bool IsValidBooleanTolerance(double eps)
+        {
+            return eps > 0.0 && std::isfinite(eps);
+        }
+
         [[nodiscard]] SCPolygon2d MakeAxisAlignedBoxPolygon(const AxisAlignedBox& box)
         {
             return SCPolygon2d(SCPolyline2d(
@@ -118,7 +123,7 @@ namespace Geometry
                 box.maxY = std::max(box.maxY, point.y);
             }
 
-            const double tol = std::max(Geometry::Detail::kComparisonEpsilon2d, 0.05 * eps);
+            const double tol = 0.05 * eps;
             for (std::size_t i = 0; i < outer.PointCount(); ++i)
             {
                 const SCPoint2d current = outer.VertexAt(i);
@@ -474,7 +479,7 @@ namespace Geometry
                 outerPoints.push_back(outer.VertexAt(i));
             }
 
-            const double simplifyEps = std::max(Geometry::Detail::kComparisonEpsilon2d, 8.0 * eps);
+            const double simplifyEps = 8.0 * eps;
             std::vector<SCPoint2d> simplifiedOuter = SimplifyRingVertices(std::move(outerPoints), simplifyEps);
             if (simplifiedOuter.size() >= 3)
             {
@@ -494,19 +499,6 @@ namespace Geometry
             return {};
         }
 
-        [[nodiscard]] double ComputeParameterTolerance(const SCLineSegment2d& segment, double eps)
-        {
-            const double length = segment.Length();
-            if (length <= eps)
-            {
-                return Geometry::Detail::kComparisonEpsilon2d;
-            }
-
-            // Convert world-space tolerance into param-space tolerance so that
-            // near-degenerate intersection clusters collapse consistently.
-            return std::min(1e-4, std::max(Geometry::Detail::kComparisonEpsilon2d, 8.0 * eps / length));
-        }
-
         [[nodiscard]] std::vector<RawSegment> SubdivideRawSegments(const std::vector<RawSegment>& rawSegments,
                                                                    double eps)
         {
@@ -520,7 +512,9 @@ namespace Geometry
             const std::vector<Detail::SubdividedLineSegment2d> subdivisions = Detail::SubdivideLineSegments(
                 segments,
                 eps,
-                [eps](const SCLineSegment2d& segment) { return ComputeParameterTolerance(segment, eps); });
+                [eps](const SCLineSegment2d& segment) {
+                    return Detail::ComputeSubdivisionParameterTolerance2d(segment.Length(), eps);
+                });
 
             std::vector<RawSegment> splitSegments;
             splitSegments.reserve(subdivisions.size());
@@ -569,7 +563,7 @@ namespace Geometry
             // Only remove clearly negligible fragments. Using a larger
             // threshold can break ring connectivity when near-duplicate
             // vertices encode valid edges.
-            return std::max(Geometry::Detail::kComparisonEpsilon2d, 0.25 * eps);
+            return 0.25 * eps;
         }
 
         [[nodiscard]] double ComputeVertexMergeTolerance(const std::vector<RawSegment>& segments, double eps)
@@ -589,8 +583,7 @@ namespace Geometry
                 return eps;
             }
 
-            const double floorTol = std::max(Geometry::Detail::kComparisonEpsilon2d, eps * 1e-3);
-            return std::max(floorTol, std::min(eps, 0.25 * minLength));
+            return std::max(eps * 1e-3, std::min(eps, 0.25 * minLength));
         }
 
         [[nodiscard]] std::vector<RawSegment> FilterTinySegments(const std::vector<RawSegment>& segments, double eps)
@@ -1690,11 +1683,13 @@ namespace Geometry
 
     SCMultiPolygon2d Intersect(const SCPolygon2d& first, const SCPolygon2d& second, double eps)
     {
+        if (!IsValidBooleanTolerance(eps)) return {};
         return BooleanCompose(first, second, BooleanOp::Intersection, eps);
     }
 
     SCMultiPolygon2d Union(const SCPolygon2d& first, const SCPolygon2d& second, double eps)
     {
+        if (!IsValidBooleanTolerance(eps)) return {};
         SCMultiPolygon2d result = BooleanCompose(first, second, BooleanOp::Union, eps);
 
         const SCMultiPolygon2d overlap = BooleanCompose(first, second, BooleanOp::Intersection, eps);
@@ -1744,6 +1739,7 @@ namespace Geometry
 
     SCMultiPolygon2d Difference(const SCPolygon2d& first, const SCPolygon2d& second, double eps)
     {
+        if (!IsValidBooleanTolerance(eps)) return {};
         SCMultiPolygon2d result = BooleanCompose(first, second, BooleanOp::Difference, eps);
         if (result.IsEmpty() && BoundsOverlap(first, second, eps))
         {

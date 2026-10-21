@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <limits>
 #include <vector>
 
 #include "Core/Boolean.h"
@@ -60,6 +61,47 @@ TEST(RelationBooleanTest, HandlesPointContainmentAndBasicBooleanOperations)
     const auto difference = Difference(square, inner);
     EXPECT_NEAR(TotalArea(difference), 12.0, 1e-9);
 
+}
+
+TEST(RelationBooleanTest, SmallCallerTolerancePreservesBoxIntersectionBoundary)
+{
+    constexpr double eps = 1e-15;
+    const SCPolygon2d subject(SCPolyline2d(
+        {{-5e-13, -1.0}, {1.0, -1.0}, {1.0, 1.0}, {-5e-13, 1.0}},
+        SCPolylineClosure::Closed));
+    const SCPolygon2d clipper(SCPolyline2d(
+        {{0.0, -2.0}, {2.0, -2.0}, {2.0, 2.0}, {0.0, 2.0}},
+        SCPolylineClosure::Closed));
+    ASSERT_TRUE(Validate(subject, eps).valid);
+    ASSERT_TRUE(Validate(clipper, eps).valid);
+
+    for (const auto& intersection : {Intersect(subject, clipper, eps), Intersect(clipper, subject, eps)})
+    {
+        ASSERT_EQ(intersection.Count(), 1U);
+        for (std::size_t i = 0; i < intersection[0].OuterRing().PointCount(); ++i)
+        {
+            EXPECT_GE(intersection[0].OuterRing().VertexAt(i).x, -eps);
+        }
+        EXPECT_NEAR(TotalArea(intersection), 2.0, 1e-12);
+    }
+}
+
+TEST(RelationBooleanTest, RejectsInvalidBooleanTolerance)
+{
+    const SCPolygon2d first(SCPolyline2d(
+        {{0.0, 0.0}, {2.0, 0.0}, {2.0, 2.0}, {0.0, 2.0}}, SCPolylineClosure::Closed));
+    const SCPolygon2d second(SCPolyline2d(
+        {{1.0, 0.0}, {3.0, 0.0}, {3.0, 2.0}, {1.0, 2.0}}, SCPolylineClosure::Closed));
+    ASSERT_TRUE(first.IsValid());
+    ASSERT_TRUE(second.IsValid());
+
+    for (double eps : {0.0, -1.0, std::numeric_limits<double>::infinity(),
+                       std::numeric_limits<double>::quiet_NaN()})
+    {
+        EXPECT_TRUE(Intersect(first, second, eps).IsEmpty());
+        EXPECT_TRUE(Union(first, second, eps).IsEmpty());
+        EXPECT_TRUE(Difference(first, second, eps).IsEmpty());
+    }
 }
 
 TEST(RelationBooleanTest, HandlesCrossAndNestedBooleanOperations)
