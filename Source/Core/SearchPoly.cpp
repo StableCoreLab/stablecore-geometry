@@ -1,5 +1,4 @@
 #include "Core/SearchPoly.h"
-#include "../Detail/TolerancePolicy2d.h"
 
 #include <algorithm>
 #include <cmath>
@@ -13,6 +12,7 @@
 #include "Geometry2d/SCPathOps.h"
 #include "Support/Epsilon.h"
 #include "Support/Geometry2d/Predicate2.h"
+#include "Support/StableNumerics.h"
 
 namespace Geometry
 {
@@ -420,15 +420,7 @@ namespace Geometry
                 return false;
             }
 
-            std::sort(intervals.begin(),
-                      intervals.end(),
-                      [](const std::pair<double, double>& left, const std::pair<double, double>& right) {
-                          if (std::abs(left.first - right.first) > Geometry::Detail::kComparisonEpsilon2d)
-                          {
-                              return left.first < right.first;
-                          }
-                          return left.second < right.second;
-                      });
+            std::sort(intervals.begin(), intervals.end());
 
             const double parameterTolerance = epsilon / length;
             double coveredUntil = 0.0;
@@ -526,7 +518,7 @@ namespace Geometry
                 AccumulateRingMetrics(polygon.HoleAt(holeIndex), analysis, epsilon, metrics);
             }
 
-            const double polygonArea = polygon.Area();
+            const double polygonArea = polygon.Area(epsilon);
             metrics.branchScore = ComputeBranchScore(std::abs(polygonArea),
                                                      metrics.inferredSyntheticPerimeter,
                                                      metrics.branchVertexCount,
@@ -536,7 +528,9 @@ namespace Geometry
             return metrics;
         }
 
-        [[nodiscard]] SCSearchPolyCandidate2d MakeCandidate(const SCPolygon2d& polygon, const CandidateMetrics2d& metrics)
+        [[nodiscard]] SCSearchPolyCandidate2d MakeCandidate(const SCPolygon2d& polygon,
+                                                            const CandidateMetrics2d& metrics,
+                                                            double epsilon)
         {
             SCSearchPolyPenaltyKind2d dominantPenaltyKind = SCSearchPolyPenaltyKind2d::None;
             const SCSearchPolySyntheticEdgeKind2d dominantSyntheticEdgeKind =
@@ -560,7 +554,7 @@ namespace Geometry
                 dominantPenaltyKind = SCSearchPolyPenaltyKind2d::BranchPenalty;
             }
 
-            const double polygonArea = polygon.Area();
+            const double polygonArea = polygon.Area(epsilon);
             return SCSearchPolyCandidate2d{polygon,
                                          std::abs(polygonArea),
                                          metrics.branchScore,
@@ -591,11 +585,11 @@ namespace Geometry
                 candidates.begin(),
                 candidates.end(),
                 [](const SCSearchPolyCandidate2d& left, const SCSearchPolyCandidate2d& right) {
-                    if (std::abs(left.branchScore - right.branchScore) > Geometry::Detail::kComparisonEpsilon2d)
+                    if (left.branchScore != right.branchScore)
                     {
                         return left.branchScore > right.branchScore;
                     }
-                    if (std::abs(left.absoluteArea - right.absoluteArea) > Geometry::Detail::kComparisonEpsilon2d)
+                    if (left.absoluteArea != right.absoluteArea)
                     {
                         return left.absoluteArea > right.absoluteArea;
                     }
@@ -612,7 +606,7 @@ namespace Geometry
             }
         }
 
-        void PopulateResultExplanation(SCSearchPolyResult2d& result)
+        void PopulateResultExplanation(SCSearchPolyResult2d& result, double epsilon)
         {
             if (result.candidates.empty())
             {
@@ -639,6 +633,9 @@ namespace Geometry
             }
 
             result.ambiguousTopCandidateCount = 1U;
+            const SCBox2d bestBounds = bestCandidate.polygon.Bounds(epsilon);
+            const double bestScale = std::hypot(bestBounds.Width(), bestBounds.Height());
+            const double minimumAreaTolerance = Detail::StableProduct(epsilon, epsilon).value_or(0.0);
             std::vector<SCSearchPolyPenaltyKind2d> ambiguousTopPenaltyKinds{bestCandidate.dominantPenaltyKind};
             std::vector<SCSearchPolySyntheticEdgeKind2d> ambiguousTopSyntheticKinds{
                 bestCandidate.dominantSyntheticEdgeKind};
@@ -647,8 +644,14 @@ namespace Geometry
             for (std::size_t index = 1; index < result.candidates.size(); ++index)
             {
                 const SCSearchPolyCandidate2d& candidate = result.candidates[index];
+                const SCBox2d candidateBounds = candidate.polygon.Bounds(epsilon);
+                const double candidateScale = std::hypot(candidateBounds.Width(), candidateBounds.Height());
+                const double scale = std::max(bestScale, candidateScale);
+                const double areaTolerance = std::max(
+                    Detail::StableProduct(epsilon, scale).value_or(0.0),
+                    minimumAreaTolerance);
                 if (std::abs(candidate.branchScore - bestCandidate.branchScore) <=
-                    Geometry::Detail::kComparisonEpsilon2d)
+                    areaTolerance)
                 {
                     ++result.ambiguousTopCandidateCount;
                     ambiguousTopPenaltyKinds.push_back(candidate.dominantPenaltyKind);
@@ -727,10 +730,15 @@ namespace Geometry
         result.candidates.reserve(result.polygons.Size());
         for (std::size_t index = 0; index < result.polygons.Size(); ++index)
         {
-            if (result.polygons[index].IsValid())
+            if (result.polygons[index].IsValid(options.epsilon))
             {
-                result.candidates.push_back(MakeCandidate(
-                    result.polygons[index], AnalyzeCandidate(result.polygons[index], analysis, options.epsilon)));
+                SCSearchPolyCandidate2d candidate = MakeCandidate(
+                    result.polygons[index], AnalyzeCandidate(result.polygons[index], analysis, options.epsilon),
+                    options.epsilon);
+                if (std::isfinite(candidate.branchScore) && std::isfinite(candidate.absoluteArea))
+                {
+                    result.candidates.push_back(std::move(candidate));
+                }
             }
         }
 
@@ -742,7 +750,7 @@ namespace Geometry
         }
 
         RankCandidates(result.candidates);
-        PopulateResultExplanation(result);
+        PopulateResultExplanation(result, options.epsilon);
 
         result.usedSyntheticEdges =
             std::any_of(result.candidates.begin(), result.candidates.end(), [](const SCSearchPolyCandidate2d& candidate) {

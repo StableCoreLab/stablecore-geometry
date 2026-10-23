@@ -119,6 +119,88 @@ TEST(RelationBooleanTest, SmallCallerTolerancePreservesTinyBoxIntersection)
     }
 }
 
+TEST(RelationBooleanTest, SmallCallerTolerancePreservesTinyBoxDifference)
+{
+    constexpr double eps = 1e-15;
+    constexpr double width = 1e-6;
+    const SCPolygon2d first(SCPolyline2d(
+        {{0.0, 0.0}, {width, 0.0}, {width, width}, {0.0, width}},
+        SCPolylineClosure::Closed));
+    const SCPolygon2d second(SCPolyline2d(
+        {{0.0, 0.0}, {width / 2.0, 0.0}, {width / 2.0, width}, {0.0, width}},
+        SCPolylineClosure::Closed));
+    ASSERT_TRUE(first.IsValid(eps));
+    ASSERT_TRUE(second.IsValid(eps));
+
+    const auto difference = Difference(first, second, eps);
+    ASSERT_EQ(difference.Count(), 1U);
+    EXPECT_TRUE(difference.IsValid(eps));
+    EXPECT_NEAR(difference[0].Area(eps), width * width / 2.0, 1e-17);
+    EXPECT_NEAR(difference[0].Bounds(eps).MinPoint().x, width / 2.0, eps);
+}
+
+TEST(RelationBooleanTest, SmallCallerTolerancePreservesRepairedTinyBoxBoolean)
+{
+    constexpr double eps = 1e-15;
+    for (double width : {1e-6, 1e-7})
+    {
+        SCOPED_TRACE(width);
+        const SCPolygon2d first(SCPolyline2d(
+            {{0.0, 0.0}, {width, 0.0}, {width, width}, {0.0, width}},
+            SCPolylineClosure::Closed));
+        const SCPolygon2d second(SCPolyline2d(
+            {{0.0, 0.0}, {width / 2.0, 0.0}, {width / 2.0 - width / 1000.0, 0.0},
+             {width / 2.0, width}, {0.0, width}},
+            SCPolylineClosure::Closed));
+        ASSERT_TRUE(first.IsValid(eps));
+        ASSERT_FALSE(second.IsValid(eps));
+
+        const auto difference = Difference(first, second, eps);
+        ASSERT_EQ(difference.Count(), 1U);
+        EXPECT_TRUE(difference.IsValid(eps));
+        EXPECT_NEAR(difference[0].Area(eps), width * width / 2.0, width * width * 1e-5);
+
+        const auto united = Union(first, second, eps);
+        ASSERT_FALSE(united.IsEmpty());
+        EXPECT_TRUE(united.IsValid(eps));
+        EXPECT_EQ(united.Count(), 1U);
+        EXPECT_NEAR(TotalArea(united), width * width, width * width * 1e-5);
+    }
+}
+
+TEST(RelationBooleanTest, SmallCallerToleranceMergesVerticallyRepairedBoxUnion)
+{
+    constexpr double eps = 1e-15;
+    constexpr double width = 1e-6;
+    const SCPolygon2d first(SCPolyline2d(
+        {{0.0, 0.0}, {width, 0.0}, {width, width}, {0.0, width}},
+        SCPolylineClosure::Closed));
+    const SCPolygon2d second(SCPolyline2d(
+        {{0.0, 0.0}, {width, 0.0}, {width, width / 2.0},
+         {width, width / 2.0 - width / 1000.0}, {0.0, width / 2.0}},
+        SCPolylineClosure::Closed));
+    ASSERT_FALSE(second.IsValid(eps));
+
+    const auto united = Union(first, second, eps);
+    ASSERT_EQ(united.Count(), 1U);
+    EXPECT_TRUE(united.IsValid(eps));
+    EXPECT_NEAR(united[0].Area(eps), width * width, width * width * 1e-5);
+}
+
+TEST(RelationBooleanTest, OffsetBoxUnionDoesNotFillMissingCorners)
+{
+    constexpr double shift = 0.8284271247461901;
+    const SCPolygon2d first(SCPolyline2d(
+        {{0.0, 0.0}, {2.0, 0.0}, {2.0, 2.0}, {0.0, 2.0}}, SCPolylineClosure::Closed));
+    const SCPolygon2d second(SCPolyline2d(
+        {{shift, shift}, {2.0 + shift, shift}, {2.0 + shift, 2.0 + shift}, {shift, 2.0 + shift}},
+        SCPolylineClosure::Closed));
+
+    const auto united = Union(first, second);
+    ASSERT_FALSE(united.IsEmpty());
+    EXPECT_NEAR(TotalArea(united), 8.0 - (2.0 - shift) * (2.0 - shift), 1e-8);
+}
+
 TEST(RelationBooleanTest, SmallCallerTolerancePreservesNarrowInset)
 {
     constexpr double eps = 1e-15;

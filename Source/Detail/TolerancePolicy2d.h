@@ -6,6 +6,5 @@ namespace Geometry::Detail
     inline constexpr double kComparisonEpsilon2d = 1e-12;
     inline constexpr double kParallelDirectionSineEpsilon2d = 1e-9;
     inline constexpr double kAreaEpsilon2d = 1e-10;
-    inline constexpr double kAxisBoxIntersectionMinArea2d = 1e-14;
     inline constexpr double kRebuildFallbackEpsilon2d = 1e-8;
 }

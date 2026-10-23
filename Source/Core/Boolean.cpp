@@ -310,9 +310,8 @@ namespace Geometry
                 }
                 clippedPolygon = best;
             }
-            const auto smallArea=Detail::MagnitudeWithinPower(std::abs(clippedPolygon.Area(eps)),eps,2,64);
-            if (!smallArea || *smallArea ||
-                std::abs(clippedPolygon.Area(eps)) <= Detail::kAxisBoxIntersectionMinArea2d)
+            const auto smallArea = Detail::MagnitudeWithinPower(std::abs(clippedPolygon.Area(eps)), eps, 2, 64);
+            if (!smallArea || *smallArea)
             {
                 return fallback;
             }
@@ -356,7 +355,7 @@ namespace Geometry
 
             const auto scaledTolerance=Detail::StableProduct(eps,eps,64);
             if (!scaledTolerance) return {};
-            const double areaTol = std::max(Geometry::Detail::kAreaEpsilon2d, *scaledTolerance);
+            const double areaTol = *scaledTolerance;
             auto addStrip = [&](double minX, double minY, double maxX, double maxY) {
                 if (maxX - minX <= eps || maxY - minY <= eps)
                 {
@@ -1694,17 +1693,13 @@ namespace Geometry
         SCMultiPolygon2d result = BooleanCompose(first, second, BooleanOp::Union, eps);
 
         const SCMultiPolygon2d overlap = BooleanCompose(first, second, BooleanOp::Intersection, eps);
-        const SCMultiPolygon2d firstOnly = BooleanCompose(first, second, BooleanOp::Difference, eps);
-        SCMultiPolygon2d secondOnly = BooleanCompose(second, first, BooleanOp::Difference, eps);
-        if (secondOnly.IsEmpty() && BoundsOverlap(first, second, eps))
-        {
-            secondOnly = TryAxisAlignedBoxDifferenceFallback(second, first, eps);
-        }
+        const SCMultiPolygon2d firstOnly = Difference(first, second, eps);
+        const SCMultiPolygon2d secondOnly = Difference(second, first, eps);
         const double expectedArea = TotalArea(overlap, eps) + TotalArea(firstOnly, eps) + TotalArea(secondOnly, eps);
         const double actualArea = TotalArea(result, eps);
         const auto scaledTolerance=Detail::StableProduct(eps,eps,64);
         if (!scaledTolerance) return {};
-        const double areaTol = std::max(Geometry::Detail::kAreaEpsilon2d, *scaledTolerance);
+        const double areaTol = *scaledTolerance;
 
         if (expectedArea > areaTol && actualArea + areaTol < expectedArea)
         {
@@ -1731,6 +1726,37 @@ namespace Geometry
                 if (!decomposed.IsEmpty() && TotalArea(decomposed, eps) + areaTol >= expectedArea)
                 {
                     result = std::move(decomposed);
+                }
+            }
+        }
+
+        if ((!first.IsValid(eps) || !second.IsValid(eps)) && result.Size() == 2)
+        {
+            AxisAlignedBox firstBox;
+            AxisAlignedBox secondBox;
+            if (BoundsOverlap(result[0], result[1], eps) &&
+                TryBuildAxisAlignedBox(result[0], firstBox, eps) &&
+                TryBuildAxisAlignedBox(result[1], secondBox, eps))
+            {
+                const bool sameXExtent = std::abs(firstBox.minX - secondBox.minX) <= eps &&
+                                         std::abs(firstBox.maxX - secondBox.maxX) <= eps;
+                const bool sameYExtent = std::abs(firstBox.minY - secondBox.minY) <= eps &&
+                                         std::abs(firstBox.maxY - secondBox.maxY) <= eps;
+                const AxisAlignedBox mergedBox{
+                    std::min(firstBox.minX, secondBox.minX),
+                    std::min(firstBox.minY, secondBox.minY),
+                    std::max(firstBox.maxX, secondBox.maxX),
+                    std::max(firstBox.maxY, secondBox.maxY)};
+                SCPolygon2d merged = MakeAxisAlignedBoxPolygon(mergedBox);
+                const double mergedArea = merged.Area(eps);
+                const double resultArea = TotalArea(result, eps);
+                const double mergeAreaTol = std::max(
+                    areaTol, 16.0 * std::numeric_limits<double>::epsilon() * std::abs(resultArea));
+                if ((sameXExtent || sameYExtent) && merged.IsValid(eps) &&
+                    std::isfinite(mergedArea) && std::isfinite(resultArea) &&
+                    std::abs(mergedArea - resultArea) <= mergeAreaTol)
+                {
+                    return MakeSinglePolygonResult(merged, eps);
                 }
             }
         }

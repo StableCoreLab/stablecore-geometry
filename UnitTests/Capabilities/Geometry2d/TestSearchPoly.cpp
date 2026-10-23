@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <limits>
 
 #include "Core/SearchPoly.h"
@@ -172,6 +173,49 @@ TEST(SearchPolyCapabilityTest, SearchPolygonsBuildsRepresentativeClosedCandidate
     EXPECT_EQ(result.candidates.front().dominantPenaltyKind, SearchPolyPenaltyKind2d::None);
     EXPECT_EQ(result.candidates.front().dominantSyntheticEdgeKind, SearchPolySyntheticEdgeKind2d::Unknown);
     EXPECT_EQ(result.candidates.front().dominantSyntheticEdgeSource, SearchPolySyntheticEdgeSource2d::Unknown);
+}
+
+TEST(SearchPolyCapabilityTest, SmallCallerToleranceRetainsNarrowInsetCandidate)
+{
+    constexpr double eps = 1e-15;
+    constexpr double gap = 1e-9;
+    SCMultiPolyline2d lines;
+    lines.Add(SCPolyline2d(
+        {{0.0, 0.0}, {6.0, 0.0}, {6.0, 1.0}, {4.0, 1.0},
+         {4.0, 1.0 + gap}, {6.0, 1.0 + gap}, {6.0, 4.0}, {0.0, 4.0}},
+        SCPolylineClosure::Closed));
+    SearchPolyOptions2d options;
+    options.epsilon = eps;
+
+    const auto result = SearchPolygons(lines, options);
+    ASSERT_EQ(result.issue, SearchPolyIssue2d::None);
+    ASSERT_EQ(result.candidates.size(), 1U);
+    EXPECT_TRUE(result.candidates[0].polygon.IsValid(eps));
+    EXPECT_NEAR(result.candidates[0].absoluteArea, 24.0 - 2.0 * gap, 1e-11);
+}
+
+TEST(SearchPolyCapabilityTest, SmallDistinctAreasRankLargerCandidateFirst)
+{
+    constexpr double eps = 1e-15;
+    constexpr double small = 1e-7;
+    constexpr double large = 1.2e-7;
+    SCMultiPolyline2d lines;
+    lines.Add(SCPolyline2d(
+        {{1.0, 0.0}, {1.0 + large, 0.0}, {1.0 + large, large}, {1.0, large}},
+        SCPolylineClosure::Closed));
+    lines.Add(SCPolyline2d(
+        {{0.0, 0.0}, {small, 0.0}, {small, small}, {0.0, small}}, SCPolylineClosure::Closed));
+    SearchPolyOptions2d options;
+    options.epsilon = eps;
+
+    const auto result = SearchPolygons(lines, options);
+    ASSERT_EQ(result.issue, SearchPolyIssue2d::None);
+    ASSERT_EQ(result.candidates.size(), 2U);
+    EXPECT_LT(std::abs(result.candidates[0].branchScore - result.candidates[1].branchScore), 1e-12);
+    EXPECT_GT(result.candidates[0].absoluteArea, result.candidates[1].absoluteArea);
+    EXPECT_EQ(result.ambiguousTopCandidateCount, 1U);
+    EXPECT_NEAR(result.candidates[0].absoluteArea, large * large, 1e-17);
+    EXPECT_NEAR(result.candidates[1].absoluteArea, small * small, 1e-17);
 }
 
 TEST(SearchPolyCapabilityTest, SearchPolygonsRanksLargerCandidateFirst)
