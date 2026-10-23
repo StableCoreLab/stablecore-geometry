@@ -13,10 +13,17 @@
 namespace Geometry
 {
     // 3D snap result is declared in Geometry3dResults.h.
-    [[nodiscard]] GEOMETRY_API SCSnapResult3d SnapPointToSegments3d(const SCPoint3d& point,
-                                                                    std::span<const ISCCurve3d* const> curves,
-                                                                    double maxDistance,
-                                                                    const SCGeometryTolerance3d& tolerance = {});
+    [[nodiscard]] GEOMETRY_API SCSnapResult3d SnapPointToCurves3d(const SCPoint3d& point,
+                                                                  std::span<const ISCCurve3d* const> curves,
+                                                                  double maxDistance,
+                                                                  const SCGeometryTolerance3d& tolerance = {});
+
+    [[nodiscard]] GEOMETRY_API
+    [[deprecated("Use SnapPointToCurves3d for curve inputs")]]
+    SCSnapResult3d SnapPointToSegments3d(const SCPoint3d& point,
+                                         std::span<const ISCCurve3d* const> curves,
+                                         double maxDistance,
+                                         const SCGeometryTolerance3d& tolerance = {});
 
     [[nodiscard]] GEOMETRY_API SCSnapResult3d SnapPointToSegments3d(const SCPoint3d& point,
                                                                     std::span<const SCLineSegment3d* const> segments,

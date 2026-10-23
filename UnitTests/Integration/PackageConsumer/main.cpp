@@ -19,6 +19,10 @@ int main()
     const SCPolyline2d path({{2.0, 2.0}, {8.0, 8.0}}, SCPolylineClosure::Open);
     const SCPolygon2d polygon(SCPolyline2d(
         {{0.0, 0.0}, {10.0, 0.0}, {10.0, 10.0}, {0.0, 10.0}}, SCPolylineClosure::Closed));
+    const SCMultiPolygon2d polygonSet({polygon});
+    const bool polygonToleranceAvailable = polygon.IsValid(1e-12) && polygon.Area(1e-12) == 100.0 &&
+        polygon.Perimeter(1e-12) == 40.0 && polygon.Centroid(1e-12).IsValid() &&
+        polygon.Bounds(1e-12).IsValid() && polygonSet.IsValid(1e-12) && polygonSet.Bounds(1e-12).IsValid();
     const auto area = QueryPolygonPositiveAreaIntersection(polygon, polygon);
     const SCPathGeometryTolerance pathTolerance{1e-8, 1e-8, 1e-12};
     const std::array<SCPoint3d, 3> planePoints{{{0,0,0}, {1,0,0}, {0,1,0}}};
@@ -47,16 +51,27 @@ int main()
     const ISCCurve3d& genericCurve = composedCurve;
     const bool genericCurveAvailable = genericCurve.IsValid() &&
         genericCurve.PointAt(0.5).AlmostEquals({0.5, 0, 0});
+    const std::array<const ISCCurve3d*, 1> snapCurves{&genericCurve};
+    const auto snappedCurve = SnapPointToCurves3d({0.5, 0.1, 0.0}, snapCurves, 0.2);
+    const bool curveSnapAvailable = snappedCurve.snapped && snappedCurve.segmentIndex == 0 &&
+        snappedCurve.point.AlmostEquals({0.5, 0.0, 0.0});
+    const SCBrepEdge sampleEdge(std::shared_ptr<ISCCurve3d>(genericCurve.Clone()), 0, 1);
+    const SCBrepFace sampleFace(curveSurface, SCBrepLoop({SCBrepCoedge(0)}));
+    const SCBrepShell sampleShell({sampleFace});
+    const bool topologyReferencesAvailable = sampleEdge.IsValid(2) && !sampleEdge.IsValid(1) &&
+        sampleFace.IsValidWithEdgeCount(1) && !sampleFace.IsValidWithEdgeCount(0) &&
+        sampleShell.IsValid(1) && !sampleShell.IsValid(0);
     const SCOffsetSurface offsetSurface(curveSurface, 0.2);
     const auto offsetEval = offsetSurface.Evaluate(0.0, 0.0, 1);
     const bool offsetAvailable = offsetEval.IsValid() &&
         offsetEval.point.AlmostEquals({0.0, 0.0, 0.2});
     return projection == SCParallelSegmentProjectionRelation2d::PositiveLengthIntersection &&
-                   Contains(box, path) && Intersects(box, path) && area.success &&
+                   Contains(box, path) && Intersects(box, path) && polygonToleranceAvailable && area.success &&
                    area.hasPositiveAreaIntersection && fittedPlane.success && arc.success &&
                    projectedArc.success && mappedOffset.success && corner.success &&
                    legacyOffset.IsValid() && planarArc.AlmostEquals(planarArc, kDefaultEpsilon, kDefaultAngleEpsilon) &&
-                   normalized.IsValid() && nurbsAvailable && genericCurveAvailable &&
+                   normalized.IsValid() && nurbsAvailable && genericCurveAvailable && curveSnapAvailable &&
+                   topologyReferencesAvailable &&
                    offsetAvailable
                ? 0
                : 1;

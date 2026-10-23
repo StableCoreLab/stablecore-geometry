@@ -99,6 +99,8 @@ TEST(RelationBooleanTest, SmallCallerTolerancePreservesTinyBoxIntersection)
     ASSERT_TRUE(second.IsValid());
     ASSERT_TRUE(Validate(first, eps).valid);
     ASSERT_TRUE(Validate(second, eps).valid);
+    EXPECT_NEAR(first.Centroid(eps).x, 5e-8, 1e-12);
+    EXPECT_NEAR(first.Centroid(eps).y, 5e-8, 1e-12);
     EXPECT_TRUE(Geometry::NormalizePolygonByLines(first, eps).IsValid());
     EXPECT_TRUE(Geometry::NormalizePolygonByLines(second, eps).IsValid());
 
@@ -115,6 +117,62 @@ TEST(RelationBooleanTest, SmallCallerTolerancePreservesTinyBoxIntersection)
             EXPECT_LE(point.y, 1e-7 + eps);
         }
     }
+}
+
+TEST(RelationBooleanTest, SmallCallerTolerancePreservesNarrowInset)
+{
+    constexpr double eps = 1e-15;
+    constexpr double gap = 1e-9;
+    const SCPolygon2d inset(SCPolyline2d(
+        {{0.0, 0.0}, {6.0, 0.0}, {6.0, 1.0}, {4.0, 1.0},
+         {4.0, 1.0 + gap}, {6.0, 1.0 + gap}, {6.0, 4.0}, {0.0, 4.0}},
+        SCPolylineClosure::Closed));
+    const SCPolygon2d clip(SCPolyline2d(
+        {{2.0, -1.0}, {8.0, -1.0}, {8.0, 3.0}, {2.0, 3.0}},
+        SCPolylineClosure::Closed));
+    ASSERT_TRUE(clip.IsValid());
+    EXPECT_FALSE(inset.IsValid());
+    EXPECT_TRUE(inset.IsValid(eps));
+    EXPECT_TRUE(Validate(inset, eps).valid);
+    EXPECT_NEAR(inset.Perimeter(eps), 24.0, 1e-12);
+    EXPECT_EQ(LocatePoint(inset.Centroid(eps), inset, eps), SCPointContainment2d::Inside);
+    ASSERT_TRUE(inset.Bounds(eps).IsValid());
+    EXPECT_NEAR(inset.Bounds(eps).MaxPoint().x, 6.0, eps);
+    Geometry::SCMultiPolyline2d boundaries;
+    boundaries.Add(inset.OuterRing());
+    const auto direct = Geometry::BuildMultiPolygonByLines(boundaries, eps);
+    ASSERT_EQ(direct.Count(), 1U);
+    EXPECT_NEAR(direct[0].Area(eps), 24.0 - 2.0 * gap, 1e-11);
+
+    const SCPolygon2d normalized = Geometry::NormalizePolygonByLines(inset, eps);
+    ASSERT_TRUE(normalized.IsValid(eps));
+    EXPECT_NEAR(normalized.Area(eps), 24.0 - 2.0 * gap, 1e-11);
+
+    const auto intersection = Intersect(inset, clip, eps);
+    ASSERT_EQ(intersection.Count(), 1U);
+    EXPECT_FALSE(intersection.IsValid());
+    EXPECT_TRUE(intersection.IsValid(eps));
+    EXPECT_NEAR(intersection[0].Area(eps), 12.0 - 2.0 * gap, 1e-11);
+    ASSERT_TRUE(intersection.Bounds(eps).IsValid());
+    EXPECT_NEAR(intersection.Bounds(eps).MinPoint().x, 2.0, eps);
+
+    const auto areaWithTolerance = [eps](const SCMultiPolygon2d& polygons) {
+        double area = 0.0;
+        for (const SCPolygon2d& polygon : polygons.Polygons())
+        {
+            area += polygon.Area(eps);
+        }
+        return area;
+    };
+    const auto reverseDifference = Difference(clip, inset, eps);
+    ASSERT_FALSE(reverseDifference.IsEmpty());
+    EXPECT_TRUE(reverseDifference.IsValid(eps));
+    EXPECT_NEAR(areaWithTolerance(reverseDifference), 12.0 + 2.0 * gap, 1e-11);
+
+    const auto united = Union(inset, clip, eps);
+    ASSERT_FALSE(united.IsEmpty());
+    EXPECT_TRUE(united.IsValid(eps));
+    EXPECT_NEAR(areaWithTolerance(united), 36.0, 1e-11);
 }
 
 TEST(RelationBooleanTest, RejectsInvalidBooleanTolerance)

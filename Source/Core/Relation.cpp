@@ -201,7 +201,7 @@ namespace Geometry
 
     SCPointContainment2d LocatePoint(const SCPoint2d& point, const SCPolygon2d& polygon, double eps)
     {
-        if (!polygon.IsValid())
+        if (!polygon.IsValid(eps))
         {
             return SCPointContainment2d::Outside;
         }

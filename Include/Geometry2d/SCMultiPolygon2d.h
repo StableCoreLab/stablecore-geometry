@@ -21,6 +21,7 @@ namespace Geometry
         [[deprecated("Use Size() instead")]] [[nodiscard]] std::size_t Count() const;
         [[nodiscard]] bool IsEmpty() const;
         [[nodiscard]] bool IsValid() const;
+        [[nodiscard]] bool IsValid(double eps) const;
 
         void Clear();
         void Add(SCPolygon2d polygon);
@@ -35,6 +36,7 @@ namespace Geometry
         [[nodiscard]] std::size_t SegmentCount() const;
         [[nodiscard]] std::size_t HoleCount() const;
         [[nodiscard]] SCBox2d Bounds() const;
+        [[nodiscard]] SCBox2d Bounds(double eps) const;
         [[nodiscard]] std::string DebugString() const;
 
         [[nodiscard]] const std::vector<SCPolygon2d>& Polygons() const;

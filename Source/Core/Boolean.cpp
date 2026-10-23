@@ -105,7 +105,7 @@ namespace Geometry
 
         [[nodiscard]] bool TryBuildAxisAlignedBox(const SCPolygon2d& polygon, AxisAlignedBox& box, double eps)
         {
-            if (!polygon.IsValid() || polygon.HoleCount() != 0 || polygon.OuterRing().PointCount() < 4)
+            if (!polygon.IsValid(eps) || polygon.HoleCount() != 0 || polygon.OuterRing().PointCount() < 4)
             {
                 return false;
             }
@@ -281,7 +281,7 @@ namespace Geometry
             }
 
             SCPolygon2d clippedPolygon(std::move(clippedRing));
-            if (!clippedPolygon.IsValid() || !Validate(clippedPolygon, eps).valid)
+            if (!clippedPolygon.IsValid(eps) || !Validate(clippedPolygon, eps).valid)
             {
                 SCMultiPolyline2d boundaries;
                 boundaries.Add(clippedPolygon.OuterRing());
@@ -291,12 +291,12 @@ namespace Geometry
                 double bestArea = 0.0;
                 for (std::size_t i = 0; i < rebuilt.Size(); ++i)
                 {
-                    if (!rebuilt[i].IsValid())
+                    if (!rebuilt[i].IsValid(eps))
                     {
                         continue;
                     }
 
-                    const double candidateArea = std::abs(rebuilt[i].Area());
+                    const double candidateArea = std::abs(rebuilt[i].Area(eps));
                     if (candidateArea > bestArea)
                     {
                         best = rebuilt[i];
@@ -304,15 +304,15 @@ namespace Geometry
                     }
                 }
 
-                if (!best.IsValid())
+                if (!best.IsValid(eps))
                 {
                     return fallback;
                 }
                 clippedPolygon = best;
             }
-            const auto smallArea=Detail::MagnitudeWithinPower(std::abs(clippedPolygon.Area()),eps,2,64);
+            const auto smallArea=Detail::MagnitudeWithinPower(std::abs(clippedPolygon.Area(eps)),eps,2,64);
             if (!smallArea || *smallArea ||
-                std::abs(clippedPolygon.Area()) <= Detail::kAxisBoxIntersectionMinArea2d)
+                std::abs(clippedPolygon.Area(eps)) <= Detail::kAxisBoxIntersectionMinArea2d)
             {
                 return fallback;
             }
@@ -365,7 +365,7 @@ namespace Geometry
 
                 AxisAlignedBox strip{minX, minY, maxX, maxY};
                 SCPolygon2d polygon = MakeAxisAlignedBoxPolygon(strip);
-                if (polygon.IsValid() && std::abs(polygon.Area()) > areaTol)
+                if (polygon.IsValid(eps) && std::abs(polygon.Area(eps)) > areaTol)
                 {
                     fallback.Add(std::move(polygon));
                 }
@@ -444,12 +444,12 @@ namespace Geometry
             }
         }
 
-        [[nodiscard]] double TotalArea(const SCMultiPolygon2d& polygons)
+        [[nodiscard]] double TotalArea(const SCMultiPolygon2d& polygons, double eps)
         {
             double total = 0.0;
             for (std::size_t polygonIndex = 0; polygonIndex < polygons.Size(); ++polygonIndex)
             {
-                total += std::abs(polygons[polygonIndex].Area());
+                total += std::abs(polygons[polygonIndex].Area(eps));
             }
             return total;
         }
@@ -457,12 +457,12 @@ namespace Geometry
         [[nodiscard]] SCPolygon2d NormalizeBooleanOperand(const SCPolygon2d& polygon, double eps)
         {
             const SCPolygon2d rebuilt = NormalizePolygonByLines(polygon, eps);
-            if (rebuilt.IsValid())
+            if (rebuilt.IsValid(eps))
             {
                 return rebuilt;
             }
 
-            const bool inputValid = polygon.IsValid();
+            const bool inputValid = polygon.IsValid(eps);
 
             if (inputValid)
             {
@@ -491,7 +491,7 @@ namespace Geometry
                 }
 
                 SCPolygon2d simplifiedPolygon(std::move(simplifiedRing));
-                if (simplifiedPolygon.IsValid() && Validate(simplifiedPolygon, eps).valid)
+                if (simplifiedPolygon.IsValid(eps) && Validate(simplifiedPolygon, eps).valid)
                 {
                     return simplifiedPolygon;
                 }
@@ -1103,7 +1103,7 @@ namespace Geometry
                 }
             };
 
-            accumulate(face.Centroid());
+            accumulate(face.Centroid(eps));
             accumulate(sample);
 
             const double scale = ComputePolygonScale(face);
@@ -1299,7 +1299,7 @@ namespace Geometry
             for (const SCPolyline2d& ring : rings)
             {
                 SCPolygon2d polygon(ring);
-                if (polygon.IsValid())
+                if (polygon.IsValid(eps))
                 {
                     loopPolygons.push_back(std::move(polygon));
                 }
@@ -1336,7 +1336,7 @@ namespace Geometry
                 }
 
                 SCPolygon2d polygon(outerRing, std::move(holes));
-                if (polygon.IsValid() && Validate(polygon, eps).valid && polygon.Area() > areaTol)
+                if (polygon.IsValid(eps) && Validate(polygon, eps).valid && polygon.Area(eps) > areaTol)
                 {
                     faces.push_back(std::move(polygon));
                 }
@@ -1347,7 +1347,7 @@ namespace Geometry
 
         [[nodiscard]] SCPoint2d SampleFacePoint(const SCPolygon2d& polygon, double eps)
         {
-            const SCPoint2d centroid = polygon.Centroid();
+            const SCPoint2d centroid = polygon.Centroid(eps);
             if (LocatePoint(centroid, polygon, eps) == SCPointContainment2d::Inside)
             {
                 return centroid;
@@ -1448,24 +1448,24 @@ namespace Geometry
             }
         }
 
-        [[nodiscard]] SCMultiPolygon2d MakeSinglePolygonResult(const SCPolygon2d& polygon)
+        [[nodiscard]] SCMultiPolygon2d MakeSinglePolygonResult(const SCPolygon2d& polygon, double eps)
         {
             SCMultiPolygon2d result;
-            if (polygon.IsValid())
+            if (polygon.IsValid(eps))
             {
                 result.Add(SCPolygon2d(polygon));
             }
             return result;
         }
 
-        [[nodiscard]] SCMultiPolygon2d MakePairResult(const SCPolygon2d& first, const SCPolygon2d& second)
+        [[nodiscard]] SCMultiPolygon2d MakePairResult(const SCPolygon2d& first, const SCPolygon2d& second, double eps)
         {
             SCMultiPolygon2d result;
-            if (first.IsValid())
+            if (first.IsValid(eps))
             {
                 result.Add(SCPolygon2d(first));
             }
-            if (second.IsValid())
+            if (second.IsValid(eps))
             {
                 result.Add(SCPolygon2d(second));
             }
@@ -1482,7 +1482,7 @@ namespace Geometry
                     {
                         return {SCMultiPolygon2d{}, true};
                     }
-                    return {MakeSinglePolygonResult(first), true};
+                    return {MakeSinglePolygonResult(first, eps), true};
                 }
                 case PolygonContainment2d::Disjoint: {
                     if (BoundsOverlap(first, second, eps))
@@ -1498,9 +1498,9 @@ namespace Geometry
                     }
                     if (op == BooleanOp::Union)
                     {
-                        return {MakePairResult(first, second), true};
+                        return {MakePairResult(first, second, eps), true};
                     }
-                    return {MakeSinglePolygonResult(first), true};
+                    return {MakeSinglePolygonResult(first, eps), true};
                 }
                 case PolygonContainment2d::FirstContainsSecond: {
                     if (!BoundsContain(first, second, eps))
@@ -1509,11 +1509,11 @@ namespace Geometry
                     }
                     if (op == BooleanOp::Intersection)
                     {
-                        return {MakeSinglePolygonResult(second), true};
+                        return {MakeSinglePolygonResult(second, eps), true};
                     }
                     if (op == BooleanOp::Union)
                     {
-                        return {MakeSinglePolygonResult(first), true};
+                        return {MakeSinglePolygonResult(first, eps), true};
                     }
                     break;
                 }
@@ -1524,11 +1524,11 @@ namespace Geometry
                     }
                     if (op == BooleanOp::Intersection)
                     {
-                        return {MakeSinglePolygonResult(first), true};
+                        return {MakeSinglePolygonResult(first, eps), true};
                     }
                     if (op == BooleanOp::Union)
                     {
-                        return {MakeSinglePolygonResult(second), true};
+                        return {MakeSinglePolygonResult(second, eps), true};
                     }
                     if (op == BooleanOp::Difference)
                     {
@@ -1557,7 +1557,7 @@ namespace Geometry
             SCMultiPolygon2d result;
             const SCPolygon2d normalizedFirst = NormalizeBooleanOperand(first, eps);
             const SCPolygon2d normalizedSecond = NormalizeBooleanOperand(second, eps);
-            if (!normalizedFirst.IsValid() || !normalizedSecond.IsValid())
+            if (!normalizedFirst.IsValid(eps) || !normalizedSecond.IsValid(eps))
             {
                 if (op == BooleanOp::Intersection)
                 {
@@ -1700,8 +1700,8 @@ namespace Geometry
         {
             secondOnly = TryAxisAlignedBoxDifferenceFallback(second, first, eps);
         }
-        const double expectedArea = TotalArea(overlap) + TotalArea(firstOnly) + TotalArea(secondOnly);
-        const double actualArea = TotalArea(result);
+        const double expectedArea = TotalArea(overlap, eps) + TotalArea(firstOnly, eps) + TotalArea(secondOnly, eps);
+        const double actualArea = TotalArea(result, eps);
         const auto scaledTolerance=Detail::StableProduct(eps,eps,64);
         if (!scaledTolerance) return {};
         const double areaTol = std::max(Geometry::Detail::kAreaEpsilon2d, *scaledTolerance);
@@ -1716,19 +1716,19 @@ namespace Geometry
             {
                 SCMultiPolygon2d rebuilt =
                     BuildMultiPolygonByLines(boundaries, std::max(eps, Geometry::Detail::kRebuildFallbackEpsilon2d));
-                if (!rebuilt.IsEmpty() && TotalArea(rebuilt) + areaTol >= expectedArea)
+                if (!rebuilt.IsEmpty() && TotalArea(rebuilt, eps) + areaTol >= expectedArea)
                 {
                     result = std::move(rebuilt);
                 }
             }
 
-            if (TotalArea(result) + areaTol < expectedArea)
+            if (TotalArea(result, eps) + areaTol < expectedArea)
             {
                 SCMultiPolygon2d decomposed;
                 AppendPolygons(firstOnly, decomposed);
                 AppendPolygons(secondOnly, decomposed);
                 AppendPolygons(overlap, decomposed);
-                if (!decomposed.IsEmpty() && TotalArea(decomposed) + areaTol >= expectedArea)
+                if (!decomposed.IsEmpty() && TotalArea(decomposed, eps) + areaTol >= expectedArea)
                 {
                     result = std::move(decomposed);
                 }

@@ -35,32 +35,13 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const
         {
-            if (supportSurface_ == nullptr || !supportSurface_->IsValid(tolerance) || !outerLoop_.IsValid())
-            {
-                return false;
-            }
+            return IsValidImpl(tolerance, nullptr);
+        }
 
-            if ((outerTrim_.SupportSurface() != nullptr && !outerTrim_.IsValid(tolerance)) ||
-                (!holeTrims_.empty() && holeTrims_.size() != holes_.size()))
-            {
-                return false;
-            }
-
-            for (std::size_t i = 0; i < holes_.size(); ++i)
-            {
-                if (!holes_[i].IsValid())
-                {
-                    return false;
-                }
-
-                if (i < holeTrims_.size() && holeTrims_[i].SupportSurface() != nullptr &&
-                    !holeTrims_[i].IsValid(tolerance))
-                {
-                    return false;
-                }
-            }
-
-            return true;
+        [[nodiscard]] bool IsValidWithEdgeCount(std::size_t edgeCount,
+                                                const SCGeometryTolerance3d& tolerance = {}) const
+        {
+            return IsValidImpl(tolerance, &edgeCount);
         }
 
         [[deprecated("Use IsValid(const SCGeometryTolerance3d&)")]]
@@ -146,6 +127,40 @@ namespace Geometry
         }
 
     private:
+        [[nodiscard]] bool IsValidImpl(const SCGeometryTolerance3d& tolerance,
+                                       const std::size_t* edgeCount) const
+        {
+            const auto validLoop = [edgeCount](const SCBrepLoop& loop) {
+                return edgeCount == nullptr ? loop.IsValid() : loop.IsValid(*edgeCount);
+            };
+            if (supportSurface_ == nullptr || !supportSurface_->IsValid(tolerance) || !validLoop(outerLoop_))
+            {
+                return false;
+            }
+
+            if ((outerTrim_.SupportSurface() != nullptr && !outerTrim_.IsValid(tolerance)) ||
+                (!holeTrims_.empty() && holeTrims_.size() != holes_.size()))
+            {
+                return false;
+            }
+
+            for (std::size_t i = 0; i < holes_.size(); ++i)
+            {
+                if (!validLoop(holes_[i]))
+                {
+                    return false;
+                }
+
+                if (i < holeTrims_.size() && holeTrims_[i].SupportSurface() != nullptr &&
+                    !holeTrims_[i].IsValid(tolerance))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         std::shared_ptr<ISCSurface> supportSurface_{};
         SCBrepLoop outerLoop_{};
         std::vector<SCBrepLoop> holes_{};

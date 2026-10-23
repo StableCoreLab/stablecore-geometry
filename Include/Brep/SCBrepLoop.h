@@ -35,6 +35,24 @@ namespace Geometry
             return true;
         }
 
+        [[nodiscard]] bool IsValid(std::size_t edgeCount) const
+        {
+            if (coedges_.empty())
+            {
+                return false;
+            }
+
+            for (const SCBrepCoedge& coedge : coedges_)
+            {
+                if (!coedge.IsValid(edgeCount))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         [[nodiscard]] std::size_t CoedgeCount() const
         {
             return coedges_.size();

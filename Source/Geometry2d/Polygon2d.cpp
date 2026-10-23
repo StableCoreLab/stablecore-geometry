@@ -29,7 +29,8 @@ namespace Geometry
             return segments;
         }
 
-        [[nodiscard]] bool HasBoundaryIntersection(const SCPolyline2d& first, const SCPolyline2d& second)
+        [[nodiscard]] bool HasBoundaryIntersection(const SCPolyline2d& first, const SCPolyline2d& second,
+                                                   double eps)
         {
             const std::vector<std::unique_ptr<ISCSegment2d>> firstSegments = CollectSegments(first);
             const std::vector<std::unique_ptr<ISCSegment2d>> secondSegments = CollectSegments(second);
@@ -48,7 +49,7 @@ namespace Geometry
                         continue;
                     }
 
-                    if (HasIntersection(*lhs, *rhs, Geometry::kDefaultEpsilon))
+                    if (HasIntersection(*lhs, *rhs, eps))
                     {
                         return true;
                     }
@@ -66,7 +67,7 @@ namespace Geometry
         [[nodiscard]] std::pair<SCPoint2d, double> RingCentroidAndArea(const SCPolyline2d& ring)
         {
             const Detail::RingMoment2d moment = Detail::ComputeRingMoment(ring);
-            if (IsZero(moment.signedArea))
+            if (!std::isfinite(moment.signedArea) || moment.signedArea == 0.0)
             {
                 return {SCPoint2d{}, 0.0};
             }
@@ -129,12 +130,21 @@ namespace Geometry
 
     bool SCPolygon2d::IsValid() const
     {
+        return IsValid(Geometry::kDefaultEpsilon);
+    }
+
+    bool SCPolygon2d::IsValid(double eps) const
+    {
+        if (!(eps > 0.0) || !std::isfinite(eps))
+        {
+            return false;
+        }
         if (!impl_->outerRing.IsValid() || !impl_->outerRing.IsClosed())
         {
             return false;
         }
 
-        if (HasSelfIntersection(impl_->outerRing, Geometry::kDefaultEpsilon))
+        if (HasSelfIntersection(impl_->outerRing, eps))
         {
             return false;
         }
@@ -154,7 +164,7 @@ namespace Geometry
                 return false;
             }
 
-            if (HasSelfIntersection(hole, Geometry::kDefaultEpsilon))
+            if (HasSelfIntersection(hole, eps))
             {
                 return false;
             }
@@ -165,7 +175,7 @@ namespace Geometry
                 return false;
             }
 
-            if (HasBoundaryIntersection(impl_->outerRing, hole))
+            if (HasBoundaryIntersection(impl_->outerRing, hole, eps))
             {
                 return false;
             }
@@ -175,7 +185,7 @@ namespace Geometry
                 return false;
             }
 
-            if (LocatePoint(hole.VertexAt(0), impl_->outerRing, Geometry::kDefaultEpsilon) != SCPointContainment2d::Inside)
+            if (LocatePoint(hole.VertexAt(0), impl_->outerRing, eps) != SCPointContainment2d::Inside)
             {
                 return false;
             }
@@ -185,7 +195,7 @@ namespace Geometry
         {
             for (std::size_t j = i + 1; j < impl_->holes.size(); ++j)
             {
-                if (HasBoundaryIntersection(impl_->holes[i], impl_->holes[j]))
+                if (HasBoundaryIntersection(impl_->holes[i], impl_->holes[j], eps))
                 {
                     return false;
                 }
@@ -195,9 +205,9 @@ namespace Geometry
                     return false;
                 }
 
-                if (LocatePoint(impl_->holes[i].VertexAt(0), impl_->holes[j], Geometry::kDefaultEpsilon) ==
+                if (LocatePoint(impl_->holes[i].VertexAt(0), impl_->holes[j], eps) ==
                         SCPointContainment2d::Inside ||
-                    LocatePoint(impl_->holes[j].VertexAt(0), impl_->holes[i], Geometry::kDefaultEpsilon) ==
+                    LocatePoint(impl_->holes[j].VertexAt(0), impl_->holes[i], eps) ==
                         SCPointContainment2d::Inside)
                 {
                     return false;
@@ -250,7 +260,12 @@ namespace Geometry
 
     double SCPolygon2d::Area() const
     {
-        if (!IsValid())
+        return Area(Geometry::kDefaultEpsilon);
+    }
+
+    double SCPolygon2d::Area(double eps) const
+    {
+        if (!IsValid(eps))
         {
             return 0.0;
         }
@@ -267,7 +282,12 @@ namespace Geometry
 
     double SCPolygon2d::Perimeter() const
     {
-        if (!IsValid())
+        return Perimeter(Geometry::kDefaultEpsilon);
+    }
+
+    double SCPolygon2d::Perimeter(double eps) const
+    {
+        if (!IsValid(eps))
         {
             return 0.0;
         }
@@ -282,7 +302,12 @@ namespace Geometry
 
     SCPoint2d SCPolygon2d::Centroid() const
     {
-        if (!IsValid())
+        return Centroid(Geometry::kDefaultEpsilon);
+    }
+
+    SCPoint2d SCPolygon2d::Centroid(double eps) const
+    {
+        if (!IsValid(eps))
         {
             return SCPoint2d{};
         }
@@ -300,7 +325,8 @@ namespace Geometry
             signedArea += ring.second;
         }
 
-        if (IsZero(signedArea))
+        if (!std::isfinite(signedArea) || signedArea == 0.0 ||
+            !std::isfinite(weightedX) || !std::isfinite(weightedY))
         {
             return SCPoint2d{};
         }
@@ -310,7 +336,12 @@ namespace Geometry
 
     SCBox2d SCPolygon2d::Bounds() const
     {
-        if (!IsValid())
+        return Bounds(Geometry::kDefaultEpsilon);
+    }
+
+    SCBox2d SCPolygon2d::Bounds(double eps) const
+    {
+        if (!IsValid(eps))
         {
             return SCBox2d{};
         }

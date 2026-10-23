@@ -21,6 +21,11 @@ namespace Geometry
             return edgeIndex_ != static_cast<std::size_t>(-1);
         }
 
+        [[nodiscard]] bool IsValid(std::size_t edgeCount) const
+        {
+            return IsValid() && edgeIndex_ < edgeCount;
+        }
+
         [[nodiscard]] std::size_t EdgeIndex() const
         {
             return edgeIndex_;

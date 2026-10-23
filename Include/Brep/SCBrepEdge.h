@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -22,7 +23,15 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const
         {
-            return curve3d_ != nullptr && curve3d_->IsValid(tolerance) && startVertexIndex_ != endVertexIndex_;
+            return curve3d_ != nullptr && curve3d_->IsValid(tolerance) &&
+                   startVertexIndex_ != static_cast<std::size_t>(-1) &&
+                   endVertexIndex_ != static_cast<std::size_t>(-1) &&
+                   startVertexIndex_ != endVertexIndex_;
+        }
+
+        [[nodiscard]] bool IsValid(std::size_t vertexCount, const SCGeometryTolerance3d& tolerance = {}) const
+        {
+            return IsValid(tolerance) && startVertexIndex_ < vertexCount && endVertexIndex_ < vertexCount;
         }
 
         [[nodiscard]] const ISCCurve3d* Curve() const

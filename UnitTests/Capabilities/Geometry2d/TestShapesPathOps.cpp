@@ -275,6 +275,27 @@ TEST(ShapesPathopsTest, NormalizesThinValidPolygonWithCallerTolerance)
     EXPECT_NEAR(normalized.Area(), thin.Area(), 1e-12);
 }
 
+TEST(ShapesPathopsTest, SmallNestedRingsRetainInteriorHole)
+{
+    constexpr double eps = 1e-12;
+    constexpr double width = 1e-6;
+    constexpr double margin = 5e-10;
+    Geometry::SCMultiPolyline2d boundaries;
+    boundaries.Add(SCPolyline2d(
+        {{0.0, 0.0}, {width, 0.0}, {width, width}, {0.0, width}},
+        SCPolylineClosure::Closed));
+    boundaries.Add(SCPolyline2d(
+        {{margin, margin}, {width - margin, margin},
+         {width - margin, width - margin}, {margin, width - margin}},
+        SCPolylineClosure::Closed));
+
+    const auto rebuilt = Geometry::BuildMultiPolygonByLines(boundaries, eps);
+    ASSERT_EQ(rebuilt.Count(), 1U);
+    ASSERT_EQ(rebuilt[0].HoleCount(), 1U);
+    EXPECT_NEAR(rebuilt[0].Area(eps), width * width - (width - 2.0 * margin) * (width - 2.0 * margin),
+                1e-17);
+}
+
 TEST(ShapesPathopsTest, RejectsInvalidNormalizationTolerance)
 {
     const SCPolygon2d square(SCPolyline2d(

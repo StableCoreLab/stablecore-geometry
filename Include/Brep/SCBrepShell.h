@@ -38,6 +38,24 @@ namespace Geometry
             return true;
         }
 
+        [[nodiscard]] bool IsValid(std::size_t edgeCount, const SCGeometryTolerance3d& tolerance = {}) const
+        {
+            if (faces_.empty())
+            {
+                return false;
+            }
+
+            for (const SCBrepFace& face : faces_)
+            {
+                if (!face.IsValidWithEdgeCount(edgeCount, tolerance))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         [[nodiscard]] bool IsClosed() const
         {
             return closed_;

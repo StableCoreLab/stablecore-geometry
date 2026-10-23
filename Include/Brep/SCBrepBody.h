@@ -45,8 +45,7 @@ namespace Geometry
 
             for (const SCBrepEdge& edge : edges_)
             {
-                if (!edge.IsValid(tolerance) || edge.StartVertexIndex() >= vertices_.size() ||
-                    edge.EndVertexIndex() >= vertices_.size())
+                if (!edge.IsValid(vertices_.size(), tolerance))
                 {
                     return false;
                 }
@@ -54,25 +53,9 @@ namespace Geometry
 
             for (const SCBrepShell& shell : shells_)
             {
-                if (!shell.IsValid(tolerance))
+                if (!shell.IsValid(edges_.size(), tolerance))
                 {
                     return false;
-                }
-
-                for (const SCBrepFace& face : shell.Faces())
-                {
-                    if (!LoopReferencesAreValid(face.OuterLoopRef()))
-                    {
-                        return false;
-                    }
-
-                    for (const SCBrepLoop& hole : face.HoleLoops())
-                    {
-                        if (!LoopReferencesAreValid(hole))
-                        {
-                            return false;
-                        }
-                    }
                 }
             }
 
@@ -187,19 +170,6 @@ namespace Geometry
         }
 
     private:
-        [[nodiscard]] bool LoopReferencesAreValid(const SCBrepLoop& loop) const
-        {
-            for (const SCBrepCoedge& coedge : loop.Coedges())
-            {
-                if (coedge.EdgeIndex() >= edges_.size())
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
         std::vector<SCBrepVertex> vertices_{};
         std::vector<SCBrepEdge> edges_{};
         std::vector<SCBrepShell> shells_{};

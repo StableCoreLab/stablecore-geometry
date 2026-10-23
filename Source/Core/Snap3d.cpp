@@ -57,10 +57,10 @@ namespace Geometry
         }
     }  // namespace
 
-    SCSnapResult3d SnapPointToSegments3d(const SCPoint3d& point,
-                                         std::span<const ISCCurve3d* const> curves,
-                                         double maxDistance,
-                                         const SCGeometryTolerance3d& tolerance)
+    SCSnapResult3d SnapPointToCurves3d(const SCPoint3d& point,
+                                       std::span<const ISCCurve3d* const> curves,
+                                       double maxDistance,
+                                       const SCGeometryTolerance3d& tolerance)
     {
         std::vector<std::shared_ptr<const ISCCurve3d>> ownedCurves;
         ownedCurves.reserve(curves.size());
@@ -79,6 +79,14 @@ namespace Geometry
         }
 
         return SnapWithSearch(point, ownedCurves, ids, maxDistance, tolerance);
+    }
+
+    SCSnapResult3d SnapPointToSegments3d(const SCPoint3d& point,
+                                         std::span<const ISCCurve3d* const> curves,
+                                         double maxDistance,
+                                         const SCGeometryTolerance3d& tolerance)
+    {
+        return SnapPointToCurves3d(point, curves, maxDistance, tolerance);
     }
 
     SCSnapResult3d SnapPointToSegments3d(const SCPoint3d& point,

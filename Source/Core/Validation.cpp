@@ -88,7 +88,7 @@ namespace Geometry
 
     SCPolygonValidation2d Validate(const SCPolygon2d& polygon, double eps)
     {
-        if (!polygon.IsValid())
+        if (!polygon.IsValid(eps))
         {
             if (!polygon.OuterRing().IsClosed())
             {

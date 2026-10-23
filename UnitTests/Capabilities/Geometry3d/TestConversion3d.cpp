@@ -198,52 +198,6 @@ TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualApexFanRepairsWithRepre
 
     ASSERT_EQ(apexLikeCount, 1);
 }
-// Demonstrates representative-average shared-vertex placement scales to a
-// support-mismatch shared-edge chain (three faces) with near-equal middle-face
-// perturbations on both shared edges.
-TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualSharedEdgeChainRepairsWithRepresentativeAverageTargets)
-{
-    const PolyhedronBody body = BuildSupportMismatchNearEqualSharedEdgeChainBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 3);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.ShellCount(), 1);
-    ASSERT_FALSE(result.body.ShellAt(0).IsClosed());
-    ASSERT_EQ(result.body.VertexCount(), 8);
-    ASSERT_EQ(result.body.EdgeCount(), 10);
-
-    const double s = 1e-5;
-    const double dx = 2e-7;
-    const double expectedXLeft = s + 0.5 * dx;
-    const double expectedXRight = 2.0 * s + 0.5 * dx;
-
-    std::size_t leftCount = 0;
-    std::size_t rightCount = 0;
-    for (std::size_t i = 0; i < result.body.VertexCount(); ++i)
-    {
-        const SCPoint3d point = result.body.VertexAt(i).Point();
-        if (std::abs(point.y) < 1e-12 || std::abs(point.y - s) < 1e-12)
-        {
-            if (std::abs(point.x - expectedXLeft) < 1e-12)
-            {
-                ++leftCount;
-            }
-            if (std::abs(point.x - expectedXRight) < 1e-12)
-            {
-                ++rightCount;
-            }
-        }
-    }
-
-    ASSERT_EQ(leftCount, 2);
-    ASSERT_EQ(rightCount, 2);
-}
-
 // Demonstrates representative-average shared-vertex placement also works for
 // a shared-corner fan where faces only meet at a single near-equal corner.
 TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualSharedCornerFanRepairsWithRepresentativeAverageTarget)
@@ -304,53 +258,6 @@ TEST(Conversion3dCapabilityTest, SupportMismatchNearEqualClosedTetrahedronRepair
     }
 
     ASSERT_EQ(sharedV0Count, 1);
-}
-
-// Demonstrates representative-average placement remains deterministic when
-// support-mismatch shared-edge chain also requires duplicate-loop normalization
-// on the middle face.
-TEST(Conversion3dCapabilityTest,
-     SupportMismatchNearEqualSharedEdgeChainWithDuplicateRepairsWithRepresentativeAverageTargets)
-{
-    const PolyhedronBody body = BuildSupportMismatchNearEqualSharedEdgeChainWithDuplicateBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 3);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.ShellCount(), 1);
-    ASSERT_FALSE(result.body.ShellAt(0).IsClosed());
-    ASSERT_EQ(result.body.VertexCount(), 8);
-    ASSERT_EQ(result.body.EdgeCount(), 10);
-
-    const double s = 1e-5;
-    const double dx = 2e-7;
-    const double expectedXLeft = s + 0.5 * dx;
-    const double expectedXRight = 2.0 * s + 0.5 * dx;
-
-    std::size_t leftCount = 0;
-    std::size_t rightCount = 0;
-    for (std::size_t i = 0; i < result.body.VertexCount(); ++i)
-    {
-        const SCPoint3d point = result.body.VertexAt(i).Point();
-        if (std::abs(point.y) < 1e-12 || std::abs(point.y - s) < 1e-12)
-        {
-            if (std::abs(point.x - expectedXLeft) < 1e-12)
-            {
-                ++leftCount;
-            }
-            if (std::abs(point.x - expectedXRight) < 1e-12)
-            {
-                ++rightCount;
-            }
-        }
-    }
-
-    ASSERT_EQ(leftCount, 2);
-    ASSERT_EQ(rightCount, 2);
 }
 
 struct SupportMismatchSharedChainCase
@@ -417,6 +324,8 @@ TEST_P(SupportMismatchSharedChainTest, PreservesRepresentativeAverageTargets)
 INSTANTIATE_TEST_SUITE_P(
     Conversion3d, SupportMismatchSharedChainTest,
     ::testing::Values(
+        SupportMismatchSharedChainCase{"Base", &BuildSupportMismatchNearEqualSharedEdgeChainBody, 8, 10},
+        SupportMismatchSharedChainCase{"DuplicateLoop", &BuildSupportMismatchNearEqualSharedEdgeChainWithDuplicateBody, 8, 10},
         SupportMismatchSharedChainCase{"DuplicateHole", &BuildSupportMismatchNearEqualSharedChainMixedContentWithDuplicateHoleBody, 12, 14},
         SupportMismatchSharedChainCase{"FullComposition", &BuildSupportMismatchNearEqualSharedChainFullCompositionBody, 13, 15},
         SupportMismatchSharedChainCase{"DualDuplicateFullComposition", &BuildSupportMismatchNearEqualSharedChainDualDuplicateFullCompositionBody, 13, 15}),
@@ -1686,5 +1595,3 @@ INSTANTIATE_TEST_SUITE_P(
     [](const ::testing::TestParamInfo<ClosedCuboidRepresentativeCase>& info) {
         return std::string(info.param.name);
     });
-
-\n

@@ -1,5 +1,6 @@
 #include "Geometry2d/SCMultiPolygon2d.h"
 
+#include <cmath>
 #include <sstream>
 #include <utility>
 
@@ -33,6 +34,22 @@ namespace Geometry
     bool SCMultiPolygon2d::IsValid() const
     {
         return Detail::ContainerIsValid(polygons_);
+    }
+
+    bool SCMultiPolygon2d::IsValid(double eps) const
+    {
+        if (!(eps > 0.0) || !std::isfinite(eps))
+        {
+            return false;
+        }
+        for (const SCPolygon2d& polygon : polygons_)
+        {
+            if (!polygon.IsValid(eps))
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     void SCMultiPolygon2d::Clear()
@@ -101,6 +118,21 @@ namespace Geometry
         for (const auto& polygon : polygons_)
         {
             box.ExpandToInclude(polygon.Bounds());
+        }
+        return box;
+    }
+
+    SCBox2d SCMultiPolygon2d::Bounds(double eps) const
+    {
+        SCBox2d box;
+        for (const SCPolygon2d& polygon : polygons_)
+        {
+            const SCBox2d polygonBounds = polygon.Bounds(eps);
+            if (!polygonBounds.IsValid())
+            {
+                return {};
+            }
+            box.ExpandToInclude(polygonBounds);
         }
         return box;
     }

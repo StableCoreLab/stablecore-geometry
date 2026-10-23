@@ -20,15 +20,20 @@ namespace Geometry
         ~SCPolygon2d();
 
         [[nodiscard]] bool IsValid() const;
+        [[nodiscard]] bool IsValid(double eps) const;
         [[nodiscard]] std::size_t PointCount() const;
         [[nodiscard]] std::size_t SegmentCount() const;
         [[nodiscard]] std::size_t HoleCount() const;
         [[nodiscard]] SCPolyline2d OuterRing() const;
         [[nodiscard]] SCPolyline2d HoleAt(std::size_t index) const;
         [[nodiscard]] double Area() const;
+        [[nodiscard]] double Area(double eps) const;
         [[nodiscard]] double Perimeter() const;
+        [[nodiscard]] double Perimeter(double eps) const;
         [[nodiscard]] SCPoint2d Centroid() const;
+        [[nodiscard]] SCPoint2d Centroid(double eps) const;
         [[nodiscard]] SCBox2d Bounds() const;
+        [[nodiscard]] SCBox2d Bounds(double eps) const;
         [[nodiscard]] std::string DebugString() const;
 
     private:

@@ -92,7 +92,7 @@ namespace Geometry
 
         [[nodiscard]] bool TryFindStrictInteriorSample(const SCPolygon2d& polygon, double eps, SCPoint2d& sample)
         {
-            const SCPoint2d centroid = polygon.Centroid();
+            const SCPoint2d centroid = polygon.Centroid(eps);
             if (LocatePoint(centroid, polygon, eps) == SCPointContainment2d::Inside)
             {
                 sample = centroid;
@@ -176,7 +176,7 @@ namespace Geometry
         for (std::size_t i = 0; i < polygons.Size(); ++i)
         {
             SCPolygon2d normalized = NormalizePolygonByLines(polygons[i], eps);
-            if (!normalized.IsValid())
+            if (!normalized.IsValid(eps))
             {
                 normalized = polygons[i];
             }
@@ -204,7 +204,7 @@ namespace Geometry
                     continue;
                 }
 
-                const double area = polygons_[j].Area();
+                const double area = polygons_[j].Area(eps);
                 if (bestParent == static_cast<std::size_t>(-1) || area < bestArea)
                 {
                     bestParent = j;
@@ -282,18 +282,18 @@ namespace Geometry
     bool Contains(const SCPolygon2d& outer, const SCPolygon2d& inner, double eps)
     {
         SCPolygon2d normalizedOuter = NormalizePolygonByLines(outer, eps);
-        if (!normalizedOuter.IsValid())
+        if (!normalizedOuter.IsValid(eps))
         {
             normalizedOuter = outer;
         }
 
         SCPolygon2d normalizedInner = NormalizePolygonByLines(inner, eps);
-        if (!normalizedInner.IsValid())
+        if (!normalizedInner.IsValid(eps))
         {
             normalizedInner = inner;
         }
 
-        if (!normalizedOuter.IsValid() || !normalizedInner.IsValid())
+        if (!normalizedOuter.IsValid(eps) || !normalizedInner.IsValid(eps))
         {
             return false;
         }
@@ -320,11 +320,11 @@ namespace Geometry
         {
             SCPolyline2d holeRing = normalizedOuter.HoleAt(holeIndex);
             SCPolygon2d holeRegion(holeRing);
-            if (!holeRegion.IsValid())
+            if (!holeRegion.IsValid(eps))
             {
                 holeRegion = SCPolygon2d(Reverse(holeRing));
             }
-            if (!holeRegion.IsValid())
+            if (!holeRegion.IsValid(eps))
             {
                 continue;
             }
@@ -343,18 +343,18 @@ namespace Geometry
     PolygonContainment2d Relate(const SCPolygon2d& first, const SCPolygon2d& second, double eps)
     {
         SCPolygon2d normalizedFirst = NormalizePolygonByLines(first, eps);
-        if (!normalizedFirst.IsValid())
+        if (!normalizedFirst.IsValid(eps))
         {
             normalizedFirst = first;
         }
 
         SCPolygon2d normalizedSecond = NormalizePolygonByLines(second, eps);
-        if (!normalizedSecond.IsValid())
+        if (!normalizedSecond.IsValid(eps))
         {
             normalizedSecond = second;
         }
 
-        if (!normalizedFirst.IsValid() || !normalizedSecond.IsValid())
+        if (!normalizedFirst.IsValid(eps) || !normalizedSecond.IsValid(eps))
         {
             return PolygonContainment2d::Disjoint;
         }

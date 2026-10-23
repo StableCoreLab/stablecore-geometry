@@ -124,12 +124,12 @@ namespace Geometry
                                                           bool keepLeft,
                                                           double eps)
         {
-            if (!polygon.IsValid())
+            if (!polygon.IsValid(eps))
             {
                 return {};
             }
 
-            const SCBox2d bounds = polygon.Bounds();
+            const SCBox2d bounds = polygon.Bounds(eps);
             if (!bounds.IsValid())
             {
                 return {};
@@ -178,7 +178,7 @@ namespace Geometry
             }
 
             const SCPolygon2d clip(ring);
-            if (!clip.IsValid() || !Validate(clip, eps).valid)
+            if (!clip.IsValid(eps) || !Validate(clip, eps).valid)
             {
                 return {};
             }
@@ -220,18 +220,18 @@ namespace Geometry
             }
         }
 
-        [[nodiscard]] SCPolygon2d SelectLargestValidPolygon(const SCMultiPolygon2d& polygons)
+        [[nodiscard]] SCPolygon2d SelectLargestValidPolygon(const SCMultiPolygon2d& polygons, double eps)
         {
             SCPolygon2d best;
             double bestArea = 0.0;
             for (std::size_t i = 0; i < polygons.Size(); ++i)
             {
-                if (!polygons[i].IsValid())
+                if (!polygons[i].IsValid(eps))
                 {
                     continue;
                 }
 
-                const double candidateArea = std::abs(polygons[i].Area());
+                const double candidateArea = std::abs(polygons[i].Area(eps));
                 if (candidateArea > bestArea)
                 {
                     best = polygons[i];
@@ -247,13 +247,13 @@ namespace Geometry
             for (double candidateEps : epsCandidates)
             {
                 const SCMultiPolygon2d rebuilt = BuildMultiPolygonByLines(boundaries, candidateEps);
-                if (rebuilt.Size() == 1 && rebuilt[0].IsValid())
+                if (rebuilt.Size() == 1 && rebuilt[0].IsValid(candidateEps))
                 {
                     return rebuilt[0];
                 }
 
-                SCPolygon2d best = SelectLargestValidPolygon(rebuilt);
-                if (best.IsValid())
+                SCPolygon2d best = SelectLargestValidPolygon(rebuilt, candidateEps);
+                if (best.IsValid(candidateEps))
                 {
                     return best;
                 }
@@ -809,7 +809,7 @@ namespace Geometry
                     continue;
                 }
 
-                const double area = std::abs(SCPolygon2d(ring).Area());
+                const double area = std::abs(SCPolygon2d(ring).Area(eps));
                 const double score = ComputeRingCandidateScore(
                     area, syntheticPerimeter, branchVertexCount, syntheticBranchVertexCount, repairTol, eps);
                 if (!std::isfinite(area) || !std::isfinite(perimeter) || !std::isfinite(score))
@@ -866,7 +866,7 @@ namespace Geometry
             for (const RingCandidate& candidate : rings)
             {
                 SCPolygon2d polygon(candidate.ring);
-                if (polygon.IsValid())
+                if (polygon.IsValid(eps))
                 {
                     loopPolygons.push_back(std::move(polygon));
                 }
@@ -913,7 +913,7 @@ namespace Geometry
                 }
 
                 SCPolygon2d polygon(outerRing, std::move(holes));
-                if (polygon.IsValid() && Validate(polygon, eps).valid)
+                if (polygon.IsValid(eps) && Validate(polygon, eps).valid)
                 {
                     result.Add(std::move(polygon));
                 }
@@ -937,7 +937,7 @@ namespace Geometry
             SCPolygonCutResult2d result;
             const double cutterLength = std::hypot(cutter.endPoint.x - cutter.startPoint.x,
                                                    cutter.endPoint.y - cutter.startPoint.y);
-            if (!polygon.IsValid() || !(eps > 0.0) || !std::isfinite(eps) ||
+            if (!polygon.IsValid(eps) || !(eps > 0.0) || !std::isfinite(eps) ||
                 !cutter.startPoint.IsValid() || !cutter.endPoint.IsValid() ||
                 !std::isfinite(cutterLength) || !(cutterLength > eps))
             {
@@ -945,7 +945,7 @@ namespace Geometry
             }
             const SCPolygon2d leftClip = BuildHalfPlaneClipPolygon(polygon, cutter, true, eps);
             const SCPolygon2d rightClip = BuildHalfPlaneClipPolygon(polygon, cutter, false, eps);
-            if (!leftClip.IsValid() || !rightClip.IsValid())
+            if (!leftClip.IsValid(eps) || !rightClip.IsValid(eps))
             {
                 return result;
             }
@@ -1098,7 +1098,7 @@ namespace Geometry
                                                 std::max(eps, 1e-7)};
 
         SCPolygon2d rebuilt = RebuildLargestPolygonWithCandidates(boundaries, epsCandidates);
-        if (rebuilt.IsValid())
+        if (rebuilt.IsValid(eps))
         {
             return rebuilt;
         }
@@ -1112,7 +1112,7 @@ namespace Geometry
         }
 
         rebuilt = RebuildLargestPolygonWithCandidates(simplifiedBoundaries, epsCandidates);
-        if (rebuilt.IsValid())
+        if (rebuilt.IsValid(eps))
         {
             return rebuilt;
         }

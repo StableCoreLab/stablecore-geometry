@@ -375,3 +375,17 @@ TEST(AlgorithmCapabilitiesTest, SnapPointToSegments3dFindsNearestSegment)
     EXPECT_EQ(snapped.segmentIndex, 0U);
     EXPECT_TRUE(snapped.point.AlmostEquals(SCPoint3d{1.0, 0.0, 0.0}, 1e-12));
 }
+
+TEST(AlgorithmCapabilitiesTest, SnapPointToCurves3dFindsNearestCurve)
+{
+    const SCLine3d firstLine = SCLine3d::FromOriginAndDirection({0.0, 0.0, 0.0}, {2.0, 0.0, 0.0});
+    const SCLine3d secondLine = SCLine3d::FromOriginAndDirection({0.0, 3.0, 0.0}, {2.0, 0.0, 0.0});
+    const SCLineCurve3d first = SCLineCurve3d::FromLine(firstLine, SCIntervald{0.0, 1.0});
+    const SCLineCurve3d second = SCLineCurve3d::FromLine(secondLine, SCIntervald{0.0, 1.0});
+    const std::array<const Geometry::ISCCurve3d*, 2> curves{&first, &second};
+    const auto snapped = Geometry::SnapPointToCurves3d(SCPoint3d{1.0, 0.2, 0.0}, curves, 10.0);
+
+    ASSERT_TRUE(snapped.snapped);
+    EXPECT_EQ(snapped.segmentIndex, 0U);
+    EXPECT_TRUE(snapped.point.AlmostEquals(SCPoint3d{1.0, 0.0, 0.0}, 1e-12));
+}

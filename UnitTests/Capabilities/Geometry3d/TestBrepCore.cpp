@@ -5,6 +5,29 @@
 
 using namespace Geometry;
 
+TEST(BrepTopologyValidityTest, ReferenceChecksUseOwningContainerSizes)
+{
+    const SCLine3d line = SCLine3d::FromOriginAndDirection({0.0, 0.0, 0.0}, {1.0, 0.0, 0.0});
+    const auto curve = std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(line, {0.0, 1.0}));
+    const SCBrepEdge edge(curve, 0, 2);
+    EXPECT_TRUE(edge.IsValid());
+    EXPECT_FALSE(edge.IsValid(2U));
+    EXPECT_TRUE(edge.IsValid(3U));
+
+    const SCBrepEdge sentinelEdge(curve, static_cast<std::size_t>(-1), 0);
+    EXPECT_FALSE(sentinelEdge.IsValid());
+
+    const SCBrepCoedge coedge(2);
+    EXPECT_TRUE(coedge.IsValid());
+    EXPECT_FALSE(coedge.IsValid(2U));
+    EXPECT_TRUE(coedge.IsValid(3U));
+
+    const SCBrepLoop loop({coedge});
+    EXPECT_TRUE(loop.IsValid());
+    EXPECT_FALSE(loop.IsValid(2U));
+    EXPECT_TRUE(loop.IsValid(3U));
+}
+
 TEST(GeometryTest, CoversPolyhedronAndBrepCapabilities)
 {
     const SCPlane supportPlane = Geometry::Test::BuildSupportPlaneAtZ5();
@@ -167,6 +190,8 @@ TEST(GeometryTest, CoversPolyhedronAndBrepCapabilities)
                                                },
                                                SCPolylineClosure::Closed)));
     ASSERT_TRUE(brepFace.IsValid());
+    EXPECT_TRUE(brepFace.IsValidWithEdgeCount(brepEdges.size()));
+    EXPECT_FALSE(brepFace.IsValidWithEdgeCount(brepEdges.size() - 1));
     const SCBox3d brepFaceBounds = brepFace.Bounds();
     ASSERT_TRUE(brepFaceBounds.IsValid());
     EXPECT_NEAR(brepFaceBounds.MinPoint().z, 5.0, 1e-12);
@@ -174,6 +199,8 @@ TEST(GeometryTest, CoversPolyhedronAndBrepCapabilities)
     EXPECT_NEAR(Bounds(brepFace).MinPoint().z, 5.0, 1e-12);
     const SCBrepShell brepShell({brepFace}, false);
     ASSERT_TRUE(brepShell.IsValid());
+    EXPECT_TRUE(brepShell.IsValid(brepEdges.size()));
+    EXPECT_FALSE(brepShell.IsValid(brepEdges.size() - 1));
     const SCBox3d brepShellBounds = brepShell.Bounds();
     ASSERT_TRUE(brepShellBounds.IsValid());
     EXPECT_NEAR(brepShellBounds.MinPoint().z, 5.0, 1e-12);
