@@ -1,4 +1,5 @@
 #pragma once
+#include <cmath>
 #include <optional>
 #include <vector>
 #include "Core/GeometryTypes.h"
@@ -7,6 +8,7 @@
 #include "Geometry2d/SCLineSegment2d.h"
 #include "Geometry2d/SCMultiPolygon2d.h"
 #include "Geometry2d/SCMultiPolyline2d.h"
+#include "Support/Epsilon.h"
 
 namespace Geometry
 {
@@ -93,7 +95,14 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid() const
         {
-            return polygon.IsValid() && absoluteArea >= 0.0 && inferredSyntheticPerimeter >= 0.0;
+            return IsValid(Geometry::kDefaultEpsilon);
+        }
+
+        [[nodiscard]] bool IsValid(double epsilon) const
+        {
+            return polygon.IsValid(epsilon) && std::isfinite(absoluteArea) && absoluteArea >= 0.0 &&
+                   std::isfinite(branchScore) && std::isfinite(inferredSyntheticPerimeter) &&
+                   inferredSyntheticPerimeter >= 0.0;
         }
     };
 

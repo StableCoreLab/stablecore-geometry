@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -148,6 +149,55 @@ namespace Geometry
             return true;
         }
 
+        [[nodiscard]] std::optional<double> AxisBoxFallbackRepairEpsilon(const SCPolyline2d& ring, double eps)
+        {
+            SCBox2d bounds;
+            for (std::size_t i = 0; i < ring.PointCount(); ++i)
+            {
+                bounds.ExpandToInclude(ring.VertexAt(i));
+            }
+            if (!bounds.IsValid())
+            {
+                return std::nullopt;
+            }
+            constexpr double kMaxRepairFractionOfNarrowExtent = 0.05;
+            const double smallerExtent = std::min(bounds.Width(), bounds.Height());
+            return std::max(eps, std::min(Geometry::Detail::kRebuildFallbackEpsilon2d,
+                                          kMaxRepairFractionOfNarrowExtent * smallerExtent));
+        }
+
+        [[nodiscard]] bool TryBuildRepairedAxisAlignedBox(const SCPolygon2d& source,
+                                                          AxisAlignedBox& box,
+                                                          SCPolygon2d& repaired,
+                                                          double eps)
+        {
+            if (source.HoleCount() != 0 || source.OuterRing().PointCount() < 4)
+            {
+                return false;
+            }
+            repaired = source;
+            if (TryBuildAxisAlignedBox(repaired, box, eps))
+            {
+                return true;
+            }
+            if (source.IsValid(eps))
+            {
+                return false;
+            }
+            const auto repairEps = AxisBoxFallbackRepairEpsilon(source.OuterRing(), eps);
+            if (!repairEps)
+            {
+                return false;
+            }
+            SCPolyline2d repairedRing = Normalize(source.OuterRing(), *repairEps);
+            if (!repairedRing.IsValid() || repairedRing.PointCount() != 4)
+            {
+                return false;
+            }
+            repaired = SCPolygon2d(std::move(repairedRing));
+            return TryBuildAxisAlignedBox(repaired, box, eps);
+        }
+
         [[nodiscard]] std::vector<SCPoint2d> ClipPointsToAxisAlignedBox(const std::vector<SCPoint2d>& points,
                                                                       const AxisAlignedBox& box,
                                                                       double eps)
@@ -252,8 +302,12 @@ namespace Geometry
                 return fallback;
             }
 
-            const SCPolyline2d normalizedOuter =
-                Normalize(subject.OuterRing(), std::max(eps, Geometry::Detail::kRebuildFallbackEpsilon2d));
+            const auto repairEps = AxisBoxFallbackRepairEpsilon(subject.OuterRing(), eps);
+            if (!repairEps)
+            {
+                return fallback;
+            }
+            const SCPolyline2d normalizedOuter = Normalize(subject.OuterRing(), *repairEps);
             if (!normalizedOuter.IsValid() || normalizedOuter.PointCount() < 3)
             {
                 return fallback;
@@ -268,7 +322,7 @@ namespace Geometry
             }
 
             std::vector<SCPoint2d> clipped = ClipPointsToAxisAlignedBox(subjectPoints, box, eps);
-            clipped = SimplifyRingVertices(std::move(clipped), std::max(eps, Geometry::Detail::kRebuildFallbackEpsilon2d));
+            clipped = SimplifyRingVertices(std::move(clipped), *repairEps);
             if (clipped.size() < 3)
             {
                 return fallback;
@@ -285,8 +339,7 @@ namespace Geometry
             {
                 SCMultiPolyline2d boundaries;
                 boundaries.Add(clippedPolygon.OuterRing());
-                const SCMultiPolygon2d rebuilt =
-                    BuildMultiPolygonByLines(boundaries, std::max(eps, Geometry::Detail::kRebuildFallbackEpsilon2d));
+                const SCMultiPolygon2d rebuilt = BuildMultiPolygonByLines(boundaries, *repairEps);
                 SCPolygon2d best;
                 double bestArea = 0.0;
                 for (std::size_t i = 0; i < rebuilt.Size(); ++i)
@@ -325,18 +378,14 @@ namespace Geometry
                                                                          double eps)
         {
             SCMultiPolygon2d fallback;
-            if (subject.HoleCount() != 0 || subject.OuterRing().PointCount() != 4)
-            {
-                return fallback;
-            }
-
             AxisAlignedBox subjectBox;
-            if (!TryBuildAxisAlignedBox(subject, subjectBox, eps))
+            SCPolygon2d repairedSubject;
+            if (!TryBuildRepairedAxisAlignedBox(subject, subjectBox, repairedSubject, eps))
             {
                 return fallback;
             }
 
-            const SCMultiPolygon2d overlap = TryAxisAlignedBoxIntersectionFallback(clipper, subject, eps);
+            const SCMultiPolygon2d overlap = TryAxisAlignedBoxIntersectionFallback(clipper, repairedSubject, eps);
             if (overlap.IsEmpty())
             {
                 fallback.Add(MakeAxisAlignedBoxPolygon(subjectBox));
@@ -375,6 +424,112 @@ namespace Geometry
             addStrip(overlapBox.minX, subjectBox.minY, overlapBox.maxX, overlapBox.minY);
             addStrip(overlapBox.minX, overlapBox.maxY, overlapBox.maxX, subjectBox.maxY);
             return fallback;
+        }
+
+        [[nodiscard]] SCMultiPolygon2d TryAxisAlignedBoxUnionFallback(const SCPolygon2d& first,
+                                                                       const SCPolygon2d& second,
+                                                                       double eps)
+        {
+            AxisAlignedBox firstBox;
+            AxisAlignedBox secondBox;
+            SCPolygon2d repairedFirst;
+            SCPolygon2d repairedSecond;
+            if (!TryBuildRepairedAxisAlignedBox(first, firstBox, repairedFirst, eps) ||
+                !TryBuildRepairedAxisAlignedBox(second, secondBox, repairedSecond, eps))
+            {
+                return {};
+            }
+
+            const double overlapWidth = std::min(firstBox.maxX, secondBox.maxX) -
+                                        std::max(firstBox.minX, secondBox.minX);
+            const double overlapHeight = std::min(firstBox.maxY, secondBox.maxY) -
+                                         std::max(firstBox.minY, secondBox.minY);
+            const bool positiveAreaOverlap = overlapWidth > eps && overlapHeight > eps;
+            const bool sharedVerticalEdge = std::abs(overlapWidth) <= eps && overlapHeight > eps;
+            const bool sharedHorizontalEdge = std::abs(overlapHeight) <= eps && overlapWidth > eps;
+            if (!positiveAreaOverlap && !sharedVerticalEdge && !sharedHorizontalEdge)
+            {
+                return {};
+            }
+
+            SCMultiPolyline2d exposedEdges;
+            const auto appendExposedEdges = [&](const AxisAlignedBox& box, const AxisAlignedBox& other) {
+                const std::vector<SCPoint2d> corners{
+                    {box.minX, box.minY}, {box.maxX, box.minY},
+                    {box.maxX, box.maxY}, {box.minX, box.maxY}};
+                for (std::size_t edgeIndex = 0; edgeIndex < corners.size(); ++edgeIndex)
+                {
+                    const SCPoint2d start = corners[edgeIndex];
+                    const SCPoint2d end = corners[(edgeIndex + 1) % corners.size()];
+                    const bool horizontal = start.y == end.y;
+                    const double firstCoordinate = horizontal ? start.x : start.y;
+                    const double lastCoordinate = horizontal ? end.x : end.y;
+                    std::vector<double> cuts{0.0, 1.0};
+                    for (double boundary : horizontal ? std::vector<double>{other.minX, other.maxX}
+                                                      : std::vector<double>{other.minY, other.maxY})
+                    {
+                        const double parameter = (boundary - firstCoordinate) /
+                                                 (lastCoordinate - firstCoordinate);
+                        if (parameter > 0.0 && parameter < 1.0)
+                        {
+                            cuts.push_back(parameter);
+                        }
+                    }
+                    std::sort(cuts.begin(), cuts.end());
+                    cuts.erase(std::unique(cuts.begin(), cuts.end()), cuts.end());
+                    for (std::size_t i = 1; i < cuts.size(); ++i)
+                    {
+                        const SCPoint2d from{
+                            std::lerp(start.x, end.x, cuts[i - 1]),
+                            std::lerp(start.y, end.y, cuts[i - 1])};
+                        const SCPoint2d to{
+                            std::lerp(start.x, end.x, cuts[i]),
+                            std::lerp(start.y, end.y, cuts[i])};
+                        const SCPoint2d midpoint{
+                            std::midpoint(from.x, to.x), std::midpoint(from.y, to.y)};
+                        const bool insideOther = midpoint.x > other.minX && midpoint.x < other.maxX &&
+                                                 midpoint.y > other.minY && midpoint.y < other.maxY;
+                        const bool sharedVerticalInterior = !horizontal &&
+                            ((std::abs(box.maxX - other.minX) <= eps && start.x == box.maxX) ||
+                             (std::abs(box.minX - other.maxX) <= eps && start.x == box.minX)) &&
+                            midpoint.y > other.minY && midpoint.y < other.maxY;
+                        const bool sharedHorizontalInterior = horizontal &&
+                            ((std::abs(box.maxY - other.minY) <= eps && start.y == box.maxY) ||
+                             (std::abs(box.minY - other.maxY) <= eps && start.y == box.minY)) &&
+                            midpoint.x > other.minX && midpoint.x < other.maxX;
+                        if (!insideOther && !sharedVerticalInterior && !sharedHorizontalInterior)
+                        {
+                            exposedEdges.Add(SCPolyline2d({from, to}, SCPolylineClosure::Open));
+                        }
+                    }
+                }
+            };
+            appendExposedEdges(firstBox, secondBox);
+            appendExposedEdges(secondBox, firstBox);
+
+            SCMultiPolygon2d rebuilt = BuildMultiPolygonByLines(exposedEdges, eps);
+            if (rebuilt.Size() != 1 || !rebuilt.IsValid(eps))
+            {
+                return {};
+            }
+            const double firstArea = (firstBox.maxX - firstBox.minX) * (firstBox.maxY - firstBox.minY);
+            const double secondArea = (secondBox.maxX - secondBox.minX) * (secondBox.maxY - secondBox.minY);
+            const double expectedArea = firstArea + secondArea -
+                                        std::max(0.0, overlapWidth) * std::max(0.0, overlapHeight);
+            const double actualArea = std::abs(rebuilt[0].Area(eps));
+            const double scale = std::max(std::max(firstBox.maxX, secondBox.maxX) -
+                                              std::min(firstBox.minX, secondBox.minX),
+                                          std::max(firstBox.maxY, secondBox.maxY) -
+                                              std::min(firstBox.minY, secondBox.minY));
+            const double areaTolerance = std::max(
+                Detail::StableProduct(eps, eps, 64).value_or(0.0),
+                Detail::StableProduct(eps, scale, 8).value_or(0.0));
+            if (!std::isfinite(expectedArea) || !std::isfinite(actualArea) ||
+                std::abs(actualArea - expectedArea) > areaTolerance)
+            {
+                return {};
+            }
+            return rebuilt;
         }
 
         void CollectRawSegments(const SCPolyline2d& polyline, std::vector<RawSegment>& segments, double eps)
@@ -1709,8 +1864,7 @@ namespace Geometry
             AppendMultiPolygonBoundaries(secondOnly, boundaries);
             if (!boundaries.IsEmpty())
             {
-                SCMultiPolygon2d rebuilt =
-                    BuildMultiPolygonByLines(boundaries, std::max(eps, Geometry::Detail::kRebuildFallbackEpsilon2d));
+                SCMultiPolygon2d rebuilt = BuildMultiPolygonByLines(boundaries, eps);
                 if (!rebuilt.IsEmpty() && TotalArea(rebuilt, eps) + areaTol >= expectedArea)
                 {
                     result = std::move(rebuilt);
@@ -1727,6 +1881,15 @@ namespace Geometry
                 {
                     result = std::move(decomposed);
                 }
+            }
+        }
+
+        if (result.Size() != 1)
+        {
+            SCMultiPolygon2d connectedBoxes = TryAxisAlignedBoxUnionFallback(first, second, eps);
+            if (!connectedBoxes.IsEmpty())
+            {
+                return connectedBoxes;
             }
         }
 

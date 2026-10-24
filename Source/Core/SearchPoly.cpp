@@ -148,8 +148,10 @@ namespace Geometry
         {
             const double scale = std::max(repairTolerance, 16.0 * epsilon);
             const double syntheticPenalty = inferredSyntheticPerimeter * scale;
-            const double branchPenalty = static_cast<double>(branchVertexCount) * 0.5 * scale;
-            const double syntheticBranchPenalty = static_cast<double>(syntheticBranchVertexCount) * 1.5 * scale;
+            const double branchAreaScale = scale * scale;
+            const double branchPenalty = static_cast<double>(branchVertexCount) * 0.5 * branchAreaScale;
+            const double syntheticBranchPenalty =
+                static_cast<double>(syntheticBranchVertexCount) * 1.5 * branchAreaScale;
             return area - syntheticPenalty - branchPenalty - syntheticBranchPenalty;
         }
 

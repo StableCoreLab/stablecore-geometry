@@ -191,7 +191,30 @@ TEST(SearchPolyCapabilityTest, SmallCallerToleranceRetainsNarrowInsetCandidate)
     ASSERT_EQ(result.issue, SearchPolyIssue2d::None);
     ASSERT_EQ(result.candidates.size(), 1U);
     EXPECT_TRUE(result.candidates[0].polygon.IsValid(eps));
+    EXPECT_TRUE(result.candidates[0].IsValid(eps));
     EXPECT_NEAR(result.candidates[0].absoluteArea, 24.0 - 2.0 * gap, 1e-11);
+}
+
+TEST(SearchPolyCapabilityTest, CandidateValidityRejectsNonFiniteMetrics)
+{
+    Geometry::SCSearchPolyCandidate2d candidate;
+    candidate.polygon = Geometry::SCPolygon2d(SCPolyline2d(
+        {{0.0, 0.0}, {2.0, 0.0}, {2.0, 2.0}, {0.0, 2.0}}, SCPolylineClosure::Closed));
+    candidate.absoluteArea = 4.0;
+    ASSERT_TRUE(candidate.IsValid());
+    ASSERT_TRUE(candidate.IsValid(1e-12));
+
+    candidate.absoluteArea = std::numeric_limits<double>::infinity();
+    EXPECT_FALSE(candidate.IsValid());
+    EXPECT_FALSE(candidate.IsValid(1e-12));
+    candidate.absoluteArea = 4.0;
+    candidate.branchScore = std::numeric_limits<double>::quiet_NaN();
+    EXPECT_FALSE(candidate.IsValid());
+    EXPECT_FALSE(candidate.IsValid(1e-12));
+    candidate.branchScore = 4.0;
+    candidate.inferredSyntheticPerimeter = std::numeric_limits<double>::infinity();
+    EXPECT_FALSE(candidate.IsValid());
+    EXPECT_FALSE(candidate.IsValid(1e-12));
 }
 
 TEST(SearchPolyCapabilityTest, SmallDistinctAreasRankLargerCandidateFirst)
@@ -597,6 +620,32 @@ TEST(SearchPolyCapabilityTest, SearchPolygonsAppliesBranchPenaltyAtExplicitBranc
     EXPECT_EQ(result.candidateCountWithSyntheticEdges, 0U);
     EXPECT_EQ(result.candidateCountWithBranchPenalty, 1U);
     EXPECT_EQ(result.ambiguousTopCandidateCount, 1U);
+}
+
+TEST(SearchPolyCapabilityTest, BranchPenaltyScalesWithCandidateArea)
+{
+    const auto search = [](double scale) {
+        const SCMultiPolyline2d lines{
+            SCPolyline2d({{0.0, 0.0}, {4.0 * scale, 0.0}}, SCPolylineClosure::Open),
+            SCPolyline2d({{4.0 * scale, 0.0}, {4.0 * scale, 4.0 * scale}}, SCPolylineClosure::Open),
+            SCPolyline2d({{4.0 * scale, 4.0 * scale}, {0.0, 4.0 * scale}}, SCPolylineClosure::Open),
+            SCPolyline2d({{0.0, 4.0 * scale}, {0.0, 2.0 * scale}}, SCPolylineClosure::Open),
+            SCPolyline2d({{0.0, 2.0 * scale}, {0.0, 0.0}}, SCPolylineClosure::Open),
+            SCPolyline2d({{0.0, 2.0 * scale}, {-1.0 * scale, 2.0 * scale}}, SCPolylineClosure::Open)};
+        SearchPolyOptions2d options;
+        options.epsilon = 1e-9 * scale;
+        return SearchPolygons(lines, options);
+    };
+
+    const auto original = search(1.0);
+    const auto reduced = search(1e-3);
+    ASSERT_EQ(original.candidates.size(), 1U);
+    ASSERT_EQ(reduced.candidates.size(), 1U);
+    ASSERT_EQ(original.candidates[0].branchVertexCount, reduced.candidates[0].branchVertexCount);
+    const double originalPenalty = original.candidates[0].absoluteArea - original.candidates[0].branchScore;
+    const double reducedPenalty = reduced.candidates[0].absoluteArea - reduced.candidates[0].branchScore;
+    ASSERT_GT(originalPenalty, 0.0);
+    EXPECT_NEAR(reducedPenalty, originalPenalty * 1e-6, 1e-12);
 }
 
 TEST(SearchPolyCapabilityTest, SearchPolygonsReportsTopCandidateExplanationAgainstRunnerUp)

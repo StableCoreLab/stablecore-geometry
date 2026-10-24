@@ -23,6 +23,10 @@ int main()
     const bool polygonToleranceAvailable = polygon.IsValid(1e-12) && polygon.Area(1e-12) == 100.0 &&
         polygon.Perimeter(1e-12) == 40.0 && polygon.Centroid(1e-12).IsValid() &&
         polygon.Bounds(1e-12).IsValid() && polygonSet.IsValid(1e-12) && polygonSet.Bounds(1e-12).IsValid();
+    const auto searched = SearchPolygons(SCMultiPolyline2d({polygon.OuterRing()}),
+                                         SCSearchPolyOptions2d{1e-12});
+    const bool searchCandidateToleranceAvailable = searched.IsSuccess() &&
+        !searched.candidates.empty() && searched.candidates.front().IsValid(1e-12);
     const auto area = QueryPolygonPositiveAreaIntersection(polygon, polygon);
     const SCPathGeometryTolerance pathTolerance{1e-8, 1e-8, 1e-12};
     const std::array<SCPoint3d, 3> planePoints{{{0,0,0}, {1,0,0}, {0,1,0}}};
@@ -66,7 +70,8 @@ int main()
     const bool offsetAvailable = offsetEval.IsValid() &&
         offsetEval.point.AlmostEquals({0.0, 0.0, 0.2});
     return projection == SCParallelSegmentProjectionRelation2d::PositiveLengthIntersection &&
-                   Contains(box, path) && Intersects(box, path) && polygonToleranceAvailable && area.success &&
+                   Contains(box, path) && Intersects(box, path) && polygonToleranceAvailable &&
+                   searchCandidateToleranceAvailable && area.success &&
                    area.hasPositiveAreaIntersection && fittedPlane.success && arc.success &&
                    projectedArc.success && mappedOffset.success && corner.success &&
                    legacyOffset.IsValid() && planarArc.AlmostEquals(planarArc, kDefaultEpsilon, kDefaultAngleEpsilon) &&

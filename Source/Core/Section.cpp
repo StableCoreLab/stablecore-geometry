@@ -980,12 +980,7 @@ namespace Geometry
             };
 
             SCMultiPolygon2d collapsed = collapseByUnion(merged);
-            if (collapsed.Size() < merged.size())
-            {
-                return collapsed;
-            }
-
-            if (merged.size() <= 1)
+            if (collapsed.Size() <= 1 || merged.size() <= 1)
             {
                 return collapsed;
             }

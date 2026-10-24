@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
+#include <algorithm>
 #include <limits>
+#include <utility>
 #include <vector>
 
 #include "Core/Boolean.h"
@@ -142,7 +144,7 @@ TEST(RelationBooleanTest, SmallCallerTolerancePreservesTinyBoxDifference)
 TEST(RelationBooleanTest, SmallCallerTolerancePreservesRepairedTinyBoxBoolean)
 {
     constexpr double eps = 1e-15;
-    for (double width : {1e-6, 1e-7})
+    for (double width : {1e-6, 1e-7, 1e-8})
     {
         SCOPED_TRACE(width);
         const SCPolygon2d first(SCPolyline2d(
@@ -159,6 +161,11 @@ TEST(RelationBooleanTest, SmallCallerTolerancePreservesRepairedTinyBoxBoolean)
         ASSERT_EQ(difference.Count(), 1U);
         EXPECT_TRUE(difference.IsValid(eps));
         EXPECT_NEAR(difference[0].Area(eps), width * width / 2.0, width * width * 1e-5);
+
+        const auto intersection = Intersect(first, second, eps);
+        ASSERT_EQ(intersection.Count(), 1U);
+        EXPECT_TRUE(intersection.IsValid(eps));
+        EXPECT_NEAR(intersection[0].Area(eps), width * width / 2.0, width * width * 1e-5);
 
         const auto united = Union(first, second, eps);
         ASSERT_FALSE(united.IsEmpty());
@@ -199,6 +206,115 @@ TEST(RelationBooleanTest, OffsetBoxUnionDoesNotFillMissingCorners)
     const auto united = Union(first, second);
     ASSERT_FALSE(united.IsEmpty());
     EXPECT_NEAR(TotalArea(united), 8.0 - (2.0 - shift) * (2.0 - shift), 1e-8);
+}
+
+TEST(RelationBooleanTest, TinyOffsetBoxUnionPreservesConnectedMissingCorners)
+{
+    constexpr double eps = 1e-15;
+    constexpr double width = 1e-8;
+    const SCPolygon2d first(SCPolyline2d(
+        {{0.0, 0.0}, {width, 0.0}, {width, width}, {0.0, width}}, SCPolylineClosure::Closed));
+    const SCPolygon2d second(SCPolyline2d(
+        {{width / 2.0, width / 2.0}, {1.5 * width, width / 2.0},
+         {1.5 * width - width / 1000.0, width / 2.0},
+         {1.5 * width, 1.5 * width}, {width / 2.0, 1.5 * width}},
+        SCPolylineClosure::Closed));
+    ASSERT_TRUE(first.IsValid(eps));
+    ASSERT_FALSE(second.IsValid(eps));
+
+    const auto overlap = Intersect(first, second, eps);
+    const auto firstOnly = Difference(first, second, eps);
+    const auto secondOnly = Difference(second, first, eps);
+    EXPECT_NEAR(TotalArea(overlap), 0.25 * width * width, width * width * 1e-5);
+    EXPECT_NEAR(TotalArea(firstOnly), 0.75 * width * width, width * width * 1e-5);
+    EXPECT_NEAR(TotalArea(secondOnly), 0.75 * width * width, width * width * 1e-5);
+
+    const SCPolygon2d repairedSecond(SCPolyline2d(
+        {{width / 2.0, width / 2.0}, {1.5 * width, width / 2.0},
+         {1.5 * width, 1.5 * width}, {width / 2.0, 1.5 * width}}, SCPolylineClosure::Closed));
+    const auto validUnion = Union(first, repairedSecond, eps);
+    ASSERT_EQ(validUnion.Count(), 1U);
+    EXPECT_NEAR(TotalArea(validUnion), 1.75 * width * width, width * width * 1e-5);
+
+    const auto united = Union(first, second, eps);
+    ASSERT_EQ(united.Count(), 1U);
+    EXPECT_TRUE(united.IsValid(eps));
+    EXPECT_NEAR(TotalArea(united), 1.75 * width * width, width * width * 1e-5);
+    EXPECT_EQ(LocatePoint({width / 4.0, 1.25 * width}, united[0], eps), SCPointContainment2d::Outside);
+    EXPECT_EQ(LocatePoint({1.25 * width, width / 4.0}, united[0], eps), SCPointContainment2d::Outside);
+    EXPECT_EQ(LocatePoint({width / 4.0, width / 4.0}, united[0], eps), SCPointContainment2d::Inside);
+    EXPECT_EQ(LocatePoint({1.25 * width, 1.25 * width}, united[0], eps), SCPointContainment2d::Inside);
+}
+
+TEST(RelationBooleanTest, TinyOverlappingBoxesFormSinglePolygonAcrossAxisLayouts)
+{
+    constexpr double eps = 1e-15;
+    constexpr double width = 1e-8;
+    struct BoxCase
+    {
+        const char* name;
+        double minX;
+        double minY;
+        double maxX;
+        double maxY;
+    };
+    const std::vector<BoxCase> cases{
+        {"horizontal", 0.5, 0.0, 1.5, 1.0},
+        {"vertical", 0.0, 0.5, 1.0, 1.5},
+        {"aligned_bottom", 0.5, 0.0, 1.5, 0.75},
+        {"contained", 0.25, 0.25, 0.75, 0.75},
+        {"identical", 0.0, 0.0, 1.0, 1.0},
+        {"horizontal_touch", 1.0, 0.0, 2.0, 1.0},
+        {"vertical_touch", 0.0, 1.0, 1.0, 2.0},
+        {"horizontal_partial_touch", 1.0, 0.25, 2.0, 0.75},
+        {"vertical_partial_touch", 0.25, 1.0, 0.75, 2.0}};
+    const SCPolygon2d first(SCPolyline2d(
+        {{0.0, 0.0}, {width, 0.0}, {width, width}, {0.0, width}}, SCPolylineClosure::Closed));
+    ASSERT_TRUE(first.IsValid(eps));
+    for (const BoxCase& box : cases)
+    {
+        SCOPED_TRACE(box.name);
+        const double minX = box.minX * width;
+        const double minY = box.minY * width;
+        const double maxX = box.maxX * width;
+        const double maxY = box.maxY * width;
+        const SCPolygon2d second(SCPolyline2d(
+            {{minX, minY}, {maxX, minY}, {maxX, maxY}, {minX, maxY}}, SCPolylineClosure::Closed));
+        ASSERT_TRUE(second.IsValid(eps));
+        const double overlapWidth = std::max(0.0, std::min(width, maxX) - std::max(0.0, minX));
+        const double overlapHeight = std::max(0.0, std::min(width, maxY) - std::max(0.0, minY));
+        const double expectedArea = width * width + (maxX - minX) * (maxY - minY) -
+                                    overlapWidth * overlapHeight;
+        for (const auto& operands : {std::pair<const SCPolygon2d*, const SCPolygon2d*>{&first, &second},
+                                     {&second, &first}})
+        {
+            const auto united = Union(*operands.first, *operands.second, eps);
+            ASSERT_EQ(united.Count(), 1U);
+            EXPECT_TRUE(united.IsValid(eps));
+            EXPECT_NEAR(TotalArea(united), expectedArea, width * width * 1e-5);
+        }
+    }
+}
+
+TEST(RelationBooleanTest, TinyBoxesMeetingAtOnlyOnePointRemainSeparate)
+{
+    constexpr double eps = 1e-15;
+    constexpr double width = 1e-8;
+    const SCPolygon2d first(SCPolyline2d(
+        {{0.0, 0.0}, {width, 0.0}, {width, width}, {0.0, width}}, SCPolylineClosure::Closed));
+    const SCPolygon2d cornerTouch(SCPolyline2d(
+        {{width, width}, {2.0 * width, width}, {2.0 * width, 2.0 * width}, {width, 2.0 * width}},
+        SCPolylineClosure::Closed));
+    const SCPolygon2d disjoint(SCPolyline2d(
+        {{2.0 * width, 0.0}, {3.0 * width, 0.0}, {3.0 * width, width}, {2.0 * width, width}},
+        SCPolylineClosure::Closed));
+
+    for (const SCPolygon2d* second : {&cornerTouch, &disjoint})
+    {
+        const auto united = Union(first, *second, eps);
+        EXPECT_EQ(united.Count(), 2U);
+        EXPECT_NEAR(TotalArea(united), 2.0 * width * width, width * width * 1e-5);
+    }
 }
 
 TEST(RelationBooleanTest, SmallCallerTolerancePreservesNarrowInset)
