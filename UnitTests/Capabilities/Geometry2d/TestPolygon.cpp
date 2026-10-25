@@ -74,6 +74,22 @@ TEST(PolygonTest, CoversPolygonMetricsAndBounds)
 
 }
 
+TEST(PolygonTest, SmallCallerToleranceRetainsSubDefaultRingEdges)
+{
+    constexpr double width = 1e-10;
+    constexpr double eps = 1e-15;
+    const SCPolyline2d ring(
+        {{0.0, 0.0}, {width, 0.0}, {width, width}, {0.0, width}}, SCPolylineClosure::Closed);
+    ASSERT_EQ(ring.PointCount(), 4U);
+    EXPECT_FALSE(ring.IsValid());
+    EXPECT_TRUE(ring.IsValid(eps));
+    const SCPolygon2d polygon(ring);
+    EXPECT_TRUE(polygon.IsValid(eps));
+    EXPECT_NEAR(polygon.Area(eps), width * width, width * width * 1e-5);
+    ASSERT_TRUE(polygon.Bounds(eps).IsValid());
+    EXPECT_TRUE(polygon.Bounds(eps).MaxPoint().AlmostEquals({width, width}, eps));
+}
+
 TEST(PolygonTest, RejectsInvalidHoleConfigurations)
 {
     SCPolyline2d outerRing = MakeClosedRing({

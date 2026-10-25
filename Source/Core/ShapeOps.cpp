@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-#include "RingIntegral2d.h"
+#include "../Detail/RingIntegral2d.h"
 #include "Core/Algorithms.h"
 #include "../Detail/SegmentKernel2d.h"
 #include "../Detail/TolerancePolicy2d.h"

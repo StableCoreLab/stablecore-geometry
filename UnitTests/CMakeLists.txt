@@ -38,6 +38,10 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestBrep3d.cpp
     Capabilities/Geometry3d/TestConversion3d.cpp
     Capabilities/Geometry3d/TestHealing3d.cpp
+    Capabilities/Geometry3d/TestHealing3dBoundaryArbitration.cpp
+    Capabilities/Geometry3d/TestHealing3dShellCombinations.cpp
+    Capabilities/Geometry3d/TestHealing3dSupportMismatch.cpp
+    Capabilities/Geometry3d/TestHealing3dTrimPlanes.cpp
     Capabilities/Geometry3d/TestSection3d.cpp
     Capabilities/Geometry3d/TestValueTypes3d.cpp
     Capabilities/Geometry3d/TestBrepCore.cpp
@@ -93,6 +97,8 @@ foreach(SCGEOMETRY_STANDALONE_HEADER IN ITEMS
     Core/Algorithms.h
     Core/IntersectionResults3d.h
     Core/GeometryTypes.h
+    Core/PolygonRelation2d.h
+    Brep/Topology.h
     Brep/BodyBoolean.h
     Brep/Healing.h
     Geometry3d/SCCurveOnSurface.h

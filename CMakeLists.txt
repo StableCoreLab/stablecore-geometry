@@ -234,7 +234,6 @@ list(TRANSFORM SCGEOMETRY_HEADERS PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/Include/"
 
 set(SCGEOMETRY_INTERNAL_HEADERS
     Brep/LoopGeometry.h
-    Core/RingIntegral2d.h
     Detail/AffinePlaneGeometry.h
     Detail/ArrangementVertices2d.h
     Detail/BoxTreeCore.h
@@ -253,6 +252,7 @@ set(SCGEOMETRY_INTERNAL_HEADERS
     Detail/PolygonPositiveAreaIntersection2d.h
     Detail/PolylineRing2d.h
     Detail/ProjectionCandidates.h
+    Detail/RingIntegral2d.h
     Detail/RingVertices2d.h
     Detail/TolerancePolicy2d.h
     Detail/SegmentBoxRelation2d.h
@@ -274,7 +274,6 @@ set(SCGEOMETRY_SOURCES
     Brep/MeshOps.cpp
     Brep/MeshRepair.cpp
     Brep/Tessellation.cpp
-    Brep/Topology.cpp
     Core/ArcOps3d.cpp
     Core/AxisOps.cpp
     Core/Boolean.cpp
@@ -288,6 +287,7 @@ set(SCGEOMETRY_SOURCES
     Core/PlaneOps.cpp
     Core/PointOps.cpp
     Core/PolygonTopology.cpp
+    Core/PolygonRelation2d.cpp
     Core/Projection.cpp
     Core/Relation.cpp
     Core/Sampling.cpp

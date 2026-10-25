@@ -5,7 +5,7 @@
 #include <map>
 #include <memory>
 
-#include "RingIntegral2d.h"
+#include "../Detail/RingIntegral2d.h"
 #include "Support/StableNumerics.h"
 #include "Core/Intersection.h"
 #include "Core/Relation.h"
@@ -40,13 +40,30 @@ namespace Geometry
             }
             for (std::size_t j = i + 1; j < n; ++j)
             {
-                if (j == i || j == (i + 1) % n || (i == 0 && j + 1 == n))
+                if (segments[j] == nullptr)
                 {
                     continue;
                 }
 
-                if (segments[j] == nullptr)
+                if (j == (i + 1) % n || (i == 0 && j + 1 == n))
                 {
+                    if (segments[i]->Kind() == SCSegmentKind2::Line &&
+                        segments[j]->Kind() == SCSegmentKind2::Line)
+                    {
+                        const bool wraps = i == 0 && j + 1 == n;
+                        const SCPoint2d start = wraps ? segments[j]->StartPoint() : segments[i]->StartPoint();
+                        const SCPoint2d shared = wraps ? segments[j]->EndPoint() : segments[i]->EndPoint();
+                        const SCPoint2d end = wraps ? segments[i]->EndPoint() : segments[j]->EndPoint();
+                        const double firstX = shared.x - start.x;
+                        const double firstY = shared.y - start.y;
+                        const double secondX = end.x - shared.x;
+                        const double secondY = end.y - shared.y;
+                        if (firstX * secondX + firstY * secondY < 0.0 &&
+                            firstX * secondY - firstY * secondX == 0.0)
+                        {
+                            return true;
+                        }
+                    }
                     continue;
                 }
 
@@ -70,7 +87,7 @@ namespace Geometry
         if (Orientation(ring) == SCRingOrientation2d::Unknown)
         {
             // 公开方向入口保留固定面积阈值；校验时按调用者距离容差判断小尺度环。
-            const double area = std::abs(Detail::ComputeSignedArea(ring));
+            const double area = std::abs(Detail::ComputeSignedArea(ring, eps));
             const auto absolute = Detail::StableProduct(eps, eps, 64);
             const auto relative = Detail::StableProduct(ring.Length(), eps, 2);
             if (!std::isfinite(area) || !absolute || !relative ||

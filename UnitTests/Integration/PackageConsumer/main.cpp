@@ -27,6 +27,12 @@ int main()
                                          SCSearchPolyOptions2d{1e-12});
     const bool searchCandidateToleranceAvailable = searched.IsSuccess() &&
         !searched.candidates.empty() && searched.candidates.front().IsValid(1e-12);
+    const SCOffsetOptions2d offsetOptions;
+    const bool polygonOffsetToleranceAvailable = Offset(polygon, 1.0, offsetOptions, 1e-12).IsValid(1e-12) &&
+        !OffsetToMultiPolygon(polygon, 1.0, offsetOptions, 1e-12).IsEmpty() &&
+        Offset(polygonSet, 1.0, offsetOptions, 1e-12).IsValid(1e-12) &&
+        Offset(path, 1.0, offsetOptions, 1e-12).IsValid() &&
+        Offset(SCMultiPolyline2d{path}, 1.0, offsetOptions, 1e-12).IsValid();
     const auto area = QueryPolygonPositiveAreaIntersection(polygon, polygon);
     const SCPathGeometryTolerance pathTolerance{1e-8, 1e-8, 1e-12};
     const std::array<SCPoint3d, 3> planePoints{{{0,0,0}, {1,0,0}, {0,1,0}}};
@@ -71,7 +77,7 @@ int main()
         offsetEval.point.AlmostEquals({0.0, 0.0, 0.2});
     return projection == SCParallelSegmentProjectionRelation2d::PositiveLengthIntersection &&
                    Contains(box, path) && Intersects(box, path) && polygonToleranceAvailable &&
-                   searchCandidateToleranceAvailable && area.success &&
+                   searchCandidateToleranceAvailable && polygonOffsetToleranceAvailable && area.success &&
                    area.hasPositiveAreaIntersection && fittedPlane.success && arc.success &&
                    projectedArc.success && mappedOffset.success && corner.success &&
                    legacyOffset.IsValid() && planarArc.AlmostEquals(planarArc, kDefaultEpsilon, kDefaultAngleEpsilon) &&

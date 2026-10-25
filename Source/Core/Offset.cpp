@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include "RingIntegral2d.h"
+#include "../Detail/RingIntegral2d.h"
 #include "../Detail/TolerancePolicy2d.h"
 #include "Core/PolygonRelation2d.h"
 #include "Core/Boolean.h"
@@ -39,9 +39,11 @@ namespace Geometry
             return false;
         }
 
-        [[nodiscard]] SCPolyline2d OffsetSegmentPolyline(const SCPolyline2d& polyline, double distance)
+        [[nodiscard]] SCPolyline2d OffsetSegmentPolyline(const SCPolyline2d& polyline,
+                                                         double distance,
+                                                         double eps)
         {
-            if (!polyline.IsValid() || polyline.SegmentCount() == 0)
+            if (!polyline.IsValid(eps) || polyline.SegmentCount() == 0)
             {
                 return SCPolyline2d(polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
             }
@@ -61,7 +63,7 @@ namespace Geometry
                 {
                     case SCSegmentKind2::Line: {
                         const SCLineSegment2d segment = Offset(static_cast<const SCLineSegment2d&>(*source), distance);
-                        if (!segment.IsValid())
+                        if (!segment.IsValid(eps))
                         {
                             return SCPolyline2d(polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
                         }
@@ -69,7 +71,16 @@ namespace Geometry
                         break;
                     }
                     case SCSegmentKind2::Arc: {
-                        const SCArcSegment2d segment = Offset(static_cast<const SCArcSegment2d&>(*source), distance);
+                        const auto& sourceArc = static_cast<const SCArcSegment2d&>(*source);
+                        const double adjustedRadius = sourceArc.Direction() == SCArcDirection::CounterClockwise
+                                                          ? sourceArc.radius - distance
+                                                          : sourceArc.radius + distance;
+                        if (!(adjustedRadius > eps))
+                        {
+                            return SCPolyline2d(polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
+                        }
+                        const SCArcSegment2d segment(sourceArc.center, adjustedRadius,
+                                                     sourceArc.startAngle, sourceArc.sweepAngle);
                         if (!segment.IsValid())
                         {
                             return SCPolyline2d(polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
@@ -81,8 +92,7 @@ namespace Geometry
                         return SCPolyline2d(polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
                 }
 
-                if (!segments.empty() && !segments.back()->EndPoint().AlmostEquals(offsetSegment->StartPoint(),
-                                                                                   Geometry::kDefaultEpsilon))
+                if (!segments.empty() && !segments.back()->EndPoint().AlmostEquals(offsetSegment->StartPoint(), eps))
                 {
                     segments.push_back(
                         std::make_shared<SCLineSegment2d>(segments.back()->EndPoint(), offsetSegment->StartPoint()));
@@ -92,8 +102,7 @@ namespace Geometry
             }
 
             if (polyline.IsClosed() && !segments.empty() &&
-                !segments.back()->EndPoint().AlmostEquals(segments.front()->StartPoint(),
-                                                          Geometry::kDefaultEpsilon))
+                !segments.back()->EndPoint().AlmostEquals(segments.front()->StartPoint(), eps))
             {
                 segments.push_back(
                     std::make_shared<SCLineSegment2d>(segments.back()->EndPoint(), segments.front()->StartPoint()));
@@ -103,15 +112,15 @@ namespace Geometry
                               polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
         }
 
-        [[nodiscard]] double SignedRingArea(const SCPolyline2d& ring)
+        [[nodiscard]] double SignedRingArea(const SCPolyline2d& ring, double eps)
         {
-            return Detail::ComputeSignedArea(ring);
+            return Detail::ComputeSignedArea(ring, eps);
         }
 
-        [[nodiscard]] SCVector2d LeftNormal(const SCVector2d& direction)
+        [[nodiscard]] SCVector2d LeftNormal(const SCVector2d& direction, double eps = Geometry::kDefaultEpsilon)
         {
             const double length = direction.Length();
-            if (length <= Geometry::kDefaultEpsilon)
+            if (length <= eps)
             {
                 return SCVector2d{};
             }
@@ -119,20 +128,21 @@ namespace Geometry
             return SCVector2d{-direction.y / length, direction.x / length};
         }
 
-        [[nodiscard]] bool IsZeroVector(const SCVector2d& vector)
+        [[nodiscard]] bool IsZeroVector(const SCVector2d& vector, double eps)
         {
-            return vector.LengthSquared() <= Geometry::kDefaultEpsilon * Geometry::kDefaultEpsilon;
+            return vector.LengthSquared() <= eps * eps;
         }
 
         [[nodiscard]] SCPoint2d IntersectLines(const SCPoint2d& firstPoint,
                                              const SCVector2d& firstDirection,
                                              const SCPoint2d& secondPoint,
                                              const SCVector2d& secondDirection,
-                                             bool& success)
+                                             bool& success,
+                                             double eps)
         {
             const double firstLength = firstDirection.Length();
             const double secondLength = secondDirection.Length();
-            if (!(firstLength > Geometry::kDefaultEpsilon) || !(secondLength > Geometry::kDefaultEpsilon))
+            if (!(firstLength > eps) || !(secondLength > eps))
             {
                 success = false;
                 return SCPoint2d{};
@@ -155,7 +165,8 @@ namespace Geometry
         [[nodiscard]] std::vector<SCPoint2d> BuildOffsetVertices(const std::vector<SCPoint2d>& vertices,
                                                                bool closed,
                                                                double distance,
-                                                               const SCOffsetOptions2d& options)
+                                                               const SCOffsetOptions2d& options,
+                                                               double epsilon)
         {
             std::vector<SCPoint2d> result;
             if (vertices.size() < 2)
@@ -176,7 +187,7 @@ namespace Geometry
                 const SCPoint2d& end = vertices[(i + 1) % count];
                 const SCVector2d direction = end - start;
                 directions.push_back(direction);
-                normals.push_back(LeftNormal(direction));
+                normals.push_back(LeftNormal(direction, epsilon));
             }
 
             result.reserve(count);
@@ -190,12 +201,13 @@ namespace Geometry
                     const SCPoint2d prevPoint = vertices[i] + normals[prev] * distance;
                     const SCPoint2d nextPoint = vertices[i] + normals[next] * distance;
                     bool success = false;
-                    SCPoint2d joined = IntersectLines(prevPoint, directions[prev], nextPoint, directions[next], success);
+                    SCPoint2d joined = IntersectLines(prevPoint, directions[prev], nextPoint, directions[next], success,
+                                                    epsilon);
                     const double maxJoinDistance = std::abs(distance) * std::max(1.0, options.miterLimit);
                     if (!success || Distance(joined, vertices[i]) > maxJoinDistance)
                     {
                         const SCVector2d blended = normals[prev] + normals[next];
-                        const SCVector2d direction = IsZeroVector(blended) ? normals[next] : blended / blended.Length();
+                        const SCVector2d direction = IsZeroVector(blended, epsilon) ? normals[next] : blended / blended.Length();
                         joined = vertices[i] + direction * std::min(std::abs(distance), maxJoinDistance);
                     }
                     result.push_back(joined);
@@ -211,12 +223,13 @@ namespace Geometry
                 const SCPoint2d prevPoint = vertices[i] + normals[prev] * distance;
                 const SCPoint2d nextPoint = vertices[i] + normals[next] * distance;
                 bool success = false;
-                SCPoint2d joined = IntersectLines(prevPoint, directions[prev], nextPoint, directions[next], success);
+                SCPoint2d joined = IntersectLines(prevPoint, directions[prev], nextPoint, directions[next], success,
+                                                epsilon);
                 const double maxJoinDistance = std::abs(distance) * std::max(1.0, options.miterLimit);
                 if (!success || Distance(joined, vertices[i]) > maxJoinDistance)
                 {
                     const SCVector2d blended = normals[prev] + normals[next];
-                    const SCVector2d direction = IsZeroVector(blended) ? normals[next] : blended / blended.Length();
+                    const SCVector2d direction = IsZeroVector(blended, epsilon) ? normals[next] : blended / blended.Length();
                     joined = vertices[i] + direction * std::min(std::abs(distance), maxJoinDistance);
                 }
                 result.push_back(joined);
@@ -225,35 +238,35 @@ namespace Geometry
             return result;
         }
 
-        [[nodiscard]] SCPolyline2d BuildPolylineFromVertices(std::vector<SCPoint2d> vertices, bool closed)
+        [[nodiscard]] SCPolyline2d BuildPolylineFromVertices(std::vector<SCPoint2d> vertices, bool closed, double eps)
         {
             if (vertices.size() < 2)
             {
                 return SCPolyline2d(closed ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
             }
 
-            return Normalize(SCPolyline2d(std::move(vertices), closed ? SCPolylineClosure::Closed : SCPolylineClosure::Open));
+            return Normalize(SCPolyline2d(std::move(vertices), closed ? SCPolylineClosure::Closed : SCPolylineClosure::Open), eps);
         }
 
-        [[nodiscard]] double RingDistance(const SCPolyline2d& ring, double distance, bool isHole)
+        [[nodiscard]] double RingDistance(const SCPolyline2d& ring, double distance, bool isHole, double eps)
         {
-            const bool ccw = Orientation(ring) == SCRingOrientation2d::CounterClockwise;
+            const bool ccw = SignedRingArea(ring, eps) > 0.0;
             const double outward = ccw ? -distance : distance;
             return isHole ? -outward : outward;
         }
 
-        void AppendOffsetRing(const SCPolyline2d& ring, SCMultiPolyline2d& output)
+        void AppendOffsetRing(const SCPolyline2d& ring, SCMultiPolyline2d& output, double eps)
         {
-            const SCPolyline2d normalized = Normalize(ring, Geometry::kDefaultEpsilon);
-            if (!normalized.IsValid())
+            const SCPolyline2d normalized = Normalize(ring, eps);
+            if (!normalized.IsValid(eps))
             {
                 return;
             }
             if (normalized.IsClosed())
             {
                 if (normalized.SegmentCount() == 0 ||
-                    std::abs(SignedRingArea(normalized)) <=
-                        256.0 * Geometry::kDefaultEpsilon * Geometry::kDefaultEpsilon)
+                    std::abs(SignedRingArea(normalized, eps)) <=
+                        256.0 * eps * eps)
                 {
                     return;
                 }
@@ -268,19 +281,20 @@ namespace Geometry
         void AppendRecoveredOffsetRing(const SCPolyline2d& ring,
                                        double signedDistance,
                                        const SCOffsetOptions2d& options,
+                                       double epsilon,
                                        SCMultiPolyline2d& output)
         {
             const std::size_t before = output.Size();
-            const SCPolyline2d primary = Offset(ring, signedDistance, options);
-            AppendOffsetRing(primary, output);
+            const SCPolyline2d primary = Offset(ring, signedDistance, options, epsilon);
+            AppendOffsetRing(primary, output, epsilon);
             if (output.Size() > before)
             {
                 return;
             }
 
             const SCPolyline2d reversed = Reverse(ring);
-            const SCPolyline2d reverseFallback = Offset(reversed, -signedDistance, options);
-            AppendOffsetRing(reverseFallback, output);
+            const SCPolyline2d reverseFallback = Offset(reversed, -signedDistance, options, epsilon);
+            AppendOffsetRing(reverseFallback, output, epsilon);
             if (output.Size() > before)
             {
                 return;
@@ -288,22 +302,22 @@ namespace Geometry
 
             SCOffsetOptions2d conservativeOptions = options;
             conservativeOptions.miterLimit = std::max(1.0, std::min(options.miterLimit, 2.0));
-            const SCPolyline2d conservative = Offset(ring, signedDistance, conservativeOptions);
-            AppendOffsetRing(conservative, output);
+            const SCPolyline2d conservative = Offset(ring, signedDistance, conservativeOptions, epsilon);
+            AppendOffsetRing(conservative, output, epsilon);
         }
 
-        [[nodiscard]] SCPolyline2d NormalizeOuterRing(SCPolyline2d ring)
+        [[nodiscard]] SCPolyline2d NormalizeOuterRing(SCPolyline2d ring, double eps)
         {
-            if (Orientation(ring) != SCRingOrientation2d::CounterClockwise)
+            if (SignedRingArea(ring, eps) < 0.0)
             {
                 ring = Reverse(ring);
             }
             return ring;
         }
 
-        [[nodiscard]] SCPolyline2d NormalizeHoleRing(SCPolyline2d ring)
+        [[nodiscard]] SCPolyline2d NormalizeHoleRing(SCPolyline2d ring, double eps)
         {
-            if (Orientation(ring) != SCRingOrientation2d::Clockwise)
+            if (SignedRingArea(ring, eps) > 0.0)
             {
                 ring = Reverse(ring);
             }
@@ -312,17 +326,19 @@ namespace Geometry
 
         [[nodiscard]] SCPolygon2d NormalizePolygonOrientationForOffset(const SCPolygon2d& polygon)
         {
-            const SCPolyline2d outer = NormalizeOuterRing(polygon.OuterRing());
+            const SCPolyline2d outer = NormalizeOuterRing(polygon.OuterRing(), Geometry::kDefaultEpsilon);
             std::vector<SCPolyline2d> holes;
             holes.reserve(polygon.HoleCount());
             for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
             {
-                holes.push_back(NormalizeHoleRing(polygon.HoleAt(i)));
+                holes.push_back(NormalizeHoleRing(polygon.HoleAt(i), Geometry::kDefaultEpsilon));
             }
             return SCPolygon2d(outer, std::move(holes));
         }
 
-        [[nodiscard]] SCMultiPolygon2d BuildOffsetPolygons(const SCMultiPolyline2d& rings, double eps)
+        [[nodiscard]] SCMultiPolygon2d BuildOffsetPolygons(const SCMultiPolyline2d& rings,
+                                                            double eps,
+                                                            bool allowLegacyRetry)
         {
             if (rings.IsEmpty())
             {
@@ -346,12 +362,16 @@ namespace Geometry
                 return rebuilt;
             }
 
-            return BuildMultiPolygonByLines(rings, std::max(eps, Geometry::Detail::kRebuildFallbackEpsilon2d));
+            if (allowLegacyRetry)
+            {
+                return BuildMultiPolygonByLines(rings, std::max(eps, Geometry::Detail::kRebuildFallbackEpsilon2d));
+            }
+            return {};
         }
 
         [[nodiscard]] SCPoint2d PrimaryReferencePoint(const SCPolygon2d& polygon, double eps)
         {
-            const SCPoint2d centroid = polygon.Centroid();
+            const SCPoint2d centroid = polygon.Centroid(eps);
             if (LocatePoint(centroid, polygon, eps) != SCPointContainment2d::Outside)
             {
                 return centroid;
@@ -376,8 +396,8 @@ namespace Geometry
                                                    const SCPolygon2d& candidate,
                                                    double eps)
         {
-            SCBox2d bounds = source.Bounds();
-            bounds.ExpandToInclude(candidate.Bounds());
+            SCBox2d bounds = source.Bounds(eps);
+            bounds.ExpandToInclude(candidate.Bounds(eps));
             if (!bounds.IsValid())
             {
                 return eps * eps;
@@ -403,9 +423,9 @@ namespace Geometry
             {
                 const SCPolygon2d& candidate = polygons[i];
                 const double areaEpsilon = OffsetAreaTolerance(source, candidate, eps);
-                double score = candidate.Area();
+                double score = candidate.Area(eps);
                 const SCPointContainment2d referenceContainment = LocatePoint(reference, candidate, eps);
-                const SCPointContainment2d candidateContainment = LocatePoint(candidate.Centroid(), source, eps);
+                const SCPointContainment2d candidateContainment = LocatePoint(candidate.Centroid(eps), source, eps);
                 const PolygonContainment2d relation = Relate(candidate, source, eps);
                 if (outward)
                 {
@@ -424,7 +444,7 @@ namespace Geometry
                     {
                         score -= 1e7;
                     }
-                    if (candidate.Area() + areaEpsilon < source.Area())
+                    if (candidate.Area(eps) + areaEpsilon < source.Area(eps))
                     {
                         score -= 1e8;
                     }
@@ -446,7 +466,7 @@ namespace Geometry
                     {
                         score += 1e7;
                     }
-                    if (candidate.Area() > source.Area() + areaEpsilon)
+                    if (candidate.Area(eps) > source.Area(eps) + areaEpsilon)
                     {
                         score -= 1e7;
                     }
@@ -466,18 +486,18 @@ namespace Geometry
             return polygons[bestIndex];
         }
 
-        [[nodiscard]] SCPolygon2d SelectLargestPolygon(const SCMultiPolygon2d& polygons)
+        [[nodiscard]] SCPolygon2d SelectLargestPolygon(const SCMultiPolygon2d& polygons, double eps)
         {
             SCPolygon2d best;
             double bestArea = 0.0;
             for (std::size_t i = 0; i < polygons.Size(); ++i)
             {
-                if (!polygons[i].IsValid())
+                if (!polygons[i].IsValid(eps))
                 {
                     continue;
                 }
 
-                const double candidateArea = std::abs(polygons[i].Area());
+                const double candidateArea = std::abs(polygons[i].Area(eps));
                 if (candidateArea > bestArea)
                 {
                     best = polygons[i];
@@ -492,15 +512,15 @@ namespace Geometry
                                                           double distance,
                                                           double eps)
         {
-            if (!candidate.IsValid())
+            if (!candidate.IsValid(eps))
             {
                 return candidate;
             }
 
             const bool outward = distance >= 0.0;
             const double areaEpsilon = OffsetAreaTolerance(source, candidate, eps);
-            const double sourceArea = std::abs(source.Area());
-            const double candidateArea = std::abs(candidate.Area());
+            const double sourceArea = std::abs(source.Area(eps));
+            const double candidateArea = std::abs(candidate.Area(eps));
             const PolygonContainment2d relation = Relate(candidate, source, eps);
 
             if (outward)
@@ -514,8 +534,8 @@ namespace Geometry
                 }
 
                 const SCMultiPolygon2d repairedCandidates = Union(candidate, source, eps);
-                const SCPolygon2d repaired = SelectLargestPolygon(repairedCandidates);
-                if (repaired.IsValid() && std::abs(repaired.Area()) + areaEpsilon >= sourceArea)
+                const SCPolygon2d repaired = SelectLargestPolygon(repairedCandidates, eps);
+                if (repaired.IsValid(eps) && std::abs(repaired.Area(eps)) + areaEpsilon >= sourceArea)
                 {
                     return repaired;
                 }
@@ -532,8 +552,8 @@ namespace Geometry
             }
 
             const SCMultiPolygon2d repairedCandidates = Intersect(candidate, source, eps);
-            const SCPolygon2d repaired = SelectLargestPolygon(repairedCandidates);
-            if (repaired.IsValid() && std::abs(repaired.Area()) <= sourceArea + areaEpsilon)
+            const SCPolygon2d repaired = SelectLargestPolygon(repairedCandidates, eps);
+            if (repaired.IsValid(eps) && std::abs(repaired.Area(eps)) <= sourceArea + areaEpsilon)
             {
                 return repaired;
             }
@@ -557,7 +577,7 @@ namespace Geometry
                                                              const SCMultiPolygon2d& sources,
                                                              double eps)
         {
-            if (!candidate.IsValid() || sources.IsEmpty())
+            if (!candidate.IsValid(eps) || sources.IsEmpty())
             {
                 return {};
             }
@@ -568,12 +588,12 @@ namespace Geometry
             for (std::size_t i = 0; i < sources.Size(); ++i)
             {
                 const SCPolygon2d& source = sources[i];
-                if (!source.IsValid())
+                if (!source.IsValid(eps))
                 {
                     continue;
                 }
 
-                double score = -std::abs(std::abs(candidate.Area()) - std::abs(source.Area()));
+                double score = -std::abs(std::abs(candidate.Area(eps)) - std::abs(source.Area(eps)));
                 if (LocatePoint(candidateReference, source, eps) != SCPointContainment2d::Outside)
                 {
                     score += 1e9;
@@ -622,19 +642,19 @@ namespace Geometry
             for (std::size_t i = 0; i < candidates.Size(); ++i)
             {
                 const SCPolygon2d& candidate = candidates[i];
-                if (!candidate.IsValid())
+                if (!candidate.IsValid(eps))
                 {
                     continue;
                 }
 
                 const SCPolygon2d bestSource = PickMostRelatedSourcePolygon(candidate, sources, eps);
                 SCPolygon2d recovered = candidate;
-                if (bestSource.IsValid())
+                if (bestSource.IsValid(eps))
                 {
                     recovered = RecoverOffsetSemanticFlip(bestSource, candidate, distance, eps);
                 }
 
-                if (!recovered.IsValid())
+                if (!recovered.IsValid(eps))
                 {
                     continue;
                 }
@@ -688,7 +708,7 @@ namespace Geometry
                     }
                 }
 
-                if (!represented && source.IsValid())
+                if (!represented && source.IsValid(eps))
                 {
                     repaired.Add(SCPolygon2d(source));
                 }
@@ -707,7 +727,7 @@ namespace Geometry
 
         const SCVector2d direction = segment.endPoint - segment.startPoint;
         const SCVector2d normal = LeftNormal(direction);
-        if (IsZeroVector(normal))
+        if (IsZeroVector(normal, Geometry::kDefaultEpsilon))
         {
             return segment;
         }
@@ -733,14 +753,23 @@ namespace Geometry
 
     SCPolyline2d Offset(const SCPolyline2d& polyline, double distance, SCOffsetOptions2d options)
     {
-        if (!polyline.IsValid() || polyline.PointCount() < 2)
+        return Offset(polyline, distance, options, Geometry::kDefaultEpsilon);
+    }
+
+    SCPolyline2d Offset(const SCPolyline2d& polyline, double distance, SCOffsetOptions2d options, double epsilon)
+    {
+        if (!(epsilon > 0.0) || !std::isfinite(epsilon))
+        {
+            return SCPolyline2d(polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
+        }
+        if (!polyline.IsValid(epsilon) || polyline.PointCount() < 2)
         {
             return SCPolyline2d(polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
         }
 
         if (ContainsArcSegment(polyline))
         {
-            return OffsetSegmentPolyline(polyline, distance);
+            return OffsetSegmentPolyline(polyline, distance, epsilon);
         }
 
         std::vector<SCPoint2d> vertices;
@@ -750,41 +779,69 @@ namespace Geometry
             vertices.push_back(polyline.VertexAt(i));
         }
 
-        return BuildPolylineFromVertices(BuildOffsetVertices(vertices, polyline.IsClosed(), distance, options),
-                                         polyline.IsClosed());
+        return BuildPolylineFromVertices(BuildOffsetVertices(vertices, polyline.IsClosed(), distance, options, epsilon),
+                                         polyline.IsClosed(), epsilon);
     }
+
+    static SCPolygon2d OffsetPolygonImpl(const SCPolygon2d& polygon,
+                                         double distance,
+                                         SCOffsetOptions2d options,
+                                         double epsilon,
+                                         bool allowLegacyRetry);
 
     SCPolygon2d Offset(const SCPolygon2d& polygon, double distance, SCOffsetOptions2d options)
     {
-        SCPolygon2d source = NormalizePolygonByLines(polygon, Geometry::kDefaultEpsilon);
-        if (!source.IsValid())
+        return OffsetPolygonImpl(polygon, distance, options, Geometry::kDefaultEpsilon, true);
+    }
+
+    SCPolygon2d Offset(const SCPolygon2d& polygon, double distance, SCOffsetOptions2d options, double epsilon)
+    {
+        return OffsetPolygonImpl(polygon, distance, options, epsilon, false);
+    }
+
+    static SCPolygon2d OffsetPolygonImpl(const SCPolygon2d& polygon,
+                                         double distance,
+                                         SCOffsetOptions2d options,
+                                         double epsilon,
+                                         bool allowLegacyRetry)
+    {
+        if (!(epsilon > 0.0) || !std::isfinite(epsilon))
         {
-            source = polygon;
+            return {};
         }
-        if (!source.IsValid())
+        SCPolygon2d source = polygon;
+        if (allowLegacyRetry)
         {
-            source = NormalizePolygonOrientationForOffset(polygon);
+            source = NormalizePolygonByLines(polygon, epsilon);
+            if (!source.IsValid(epsilon))
+            {
+                source = polygon;
+            }
+            if (!source.IsValid(epsilon))
+            {
+                source = NormalizePolygonOrientationForOffset(polygon);
+            }
         }
 
-        if (!source.IsValid())
+        if (!source.IsValid(epsilon))
         {
             return SCPolygon2d();
         }
 
         SCMultiPolyline2d offsetRings;
         const SCPolyline2d outerRing = source.OuterRing();
-        AppendRecoveredOffsetRing(outerRing, RingDistance(outerRing, distance, false), options, offsetRings);
+        AppendRecoveredOffsetRing(outerRing, RingDistance(outerRing, distance, false, epsilon), options, epsilon, offsetRings);
         for (std::size_t i = 0; i < source.HoleCount(); ++i)
         {
             const SCPolyline2d hole = source.HoleAt(i);
-            AppendRecoveredOffsetRing(hole, RingDistance(hole, distance, true), options, offsetRings);
+            AppendRecoveredOffsetRing(hole, RingDistance(hole, distance, true, epsilon), options, epsilon, offsetRings);
         }
 
-        const SCMultiPolygon2d rebuilt = BuildOffsetPolygons(offsetRings, Geometry::kDefaultEpsilon);
+        const SCMultiPolygon2d rebuilt = BuildOffsetPolygons(offsetRings, epsilon, allowLegacyRetry);
         if (rebuilt.IsEmpty())
         {
-            const SCPolyline2d offsetOuter = Offset(outerRing, RingDistance(outerRing, distance, false), options);
-            if (!offsetOuter.IsValid() || !offsetOuter.IsClosed())
+            const SCPolyline2d offsetOuter = Offset(outerRing, RingDistance(outerRing, distance, false, epsilon), options, epsilon);
+            if (!offsetOuter.IsValid(epsilon) || !offsetOuter.IsClosed())
             {
                 return {};
             }
@@ -794,24 +851,24 @@ namespace Geometry
             for (std::size_t i = 0; i < source.HoleCount(); ++i)
             {
                 const SCPolyline2d hole = source.HoleAt(i);
-                const SCPolyline2d offsetHole = Offset(hole, RingDistance(hole, distance, true), options);
-                if (!offsetHole.IsValid() || !offsetHole.IsClosed())
+                const SCPolyline2d offsetHole = Offset(hole, RingDistance(hole, distance, true, epsilon), options, epsilon);
+                if (!offsetHole.IsValid(epsilon) || !offsetHole.IsClosed())
                 {
                     continue;
                 }
-                holes.push_back(NormalizeHoleRing(offsetHole));
+                holes.push_back(NormalizeHoleRing(offsetHole, epsilon));
             }
 
-            SCPolygon2d fallback(NormalizeOuterRing(offsetOuter), std::move(holes));
-            if (fallback.IsValid())
+            SCPolygon2d fallback(NormalizeOuterRing(offsetOuter, epsilon), std::move(holes));
+            if (fallback.IsValid(epsilon))
             {
                 return fallback;
             }
             return {};
         }
 
-        const SCPolygon2d selected = SelectBestOffsetPolygon(source, rebuilt, distance, Geometry::kDefaultEpsilon);
-        return RecoverOffsetSemanticFlip(source, selected, distance, Geometry::kDefaultEpsilon);
+        const SCPolygon2d selected = SelectBestOffsetPolygon(source, rebuilt, distance, epsilon);
+        return RecoverOffsetSemanticFlip(source, selected, distance, epsilon);
     }
 
     SCMultiPolygon2d OffsetToMultiPolygon(const SCPolygon2d& polygon, double distance, SCOffsetOptions2d options)
@@ -820,16 +877,36 @@ namespace Geometry
         {
             return {};
         }
-
         return Offset(SCMultiPolygon2d{polygon}, distance, options);
+    }
+
+    SCMultiPolygon2d OffsetToMultiPolygon(const SCPolygon2d& polygon,
+                                         double distance,
+                                         SCOffsetOptions2d options,
+                                         double epsilon)
+    {
+        if (!(epsilon > 0.0) || !std::isfinite(epsilon) || !polygon.IsValid(epsilon))
+        {
+            return {};
+        }
+
+        return Offset(SCMultiPolygon2d{polygon}, distance, options, epsilon);
     }
 
     SCMultiPolyline2d Offset(const SCMultiPolyline2d& polylines, double distance, SCOffsetOptions2d options)
     {
+        return Offset(polylines, distance, options, Geometry::kDefaultEpsilon);
+    }
+
+    SCMultiPolyline2d Offset(const SCMultiPolyline2d& polylines,
+                             double distance,
+                             SCOffsetOptions2d options,
+                             double epsilon)
+    {
         SCMultiPolyline2d result;
         for (std::size_t i = 0; i < polylines.Size(); ++i)
         {
-            SCPolyline2d offset = Offset(polylines[i], distance, options);
+            SCPolyline2d offset = Offset(polylines[i], distance, options, epsilon);
             if (offset.PointCount() >= 2)
             {
                 result.Add(std::move(offset));
@@ -838,22 +915,53 @@ namespace Geometry
         return result;
     }
 
+    static SCMultiPolygon2d OffsetMultiPolygonImpl(const SCMultiPolygon2d& polygons,
+                                                   double distance,
+                                                   SCOffsetOptions2d options,
+                                                   double epsilon,
+                                                   bool allowLegacyRetry);
+
     SCMultiPolygon2d Offset(const SCMultiPolygon2d& polygons, double distance, SCOffsetOptions2d options)
     {
+        return OffsetMultiPolygonImpl(polygons, distance, options, Geometry::kDefaultEpsilon, true);
+    }
+
+    SCMultiPolygon2d Offset(const SCMultiPolygon2d& polygons,
+                            double distance,
+                            SCOffsetOptions2d options,
+                            double epsilon)
+    {
+        return OffsetMultiPolygonImpl(polygons, distance, options, epsilon, false);
+    }
+
+    static SCMultiPolygon2d OffsetMultiPolygonImpl(const SCMultiPolygon2d& polygons,
+                                                   double distance,
+                                                   SCOffsetOptions2d options,
+                                                   double epsilon,
+                                                   bool allowLegacyRetry)
+    {
+        if (!(epsilon > 0.0) || !std::isfinite(epsilon))
+        {
+            return {};
+        }
         SCMultiPolyline2d offsetRings;
         SCMultiPolygon2d normalizedSources;
         for (std::size_t i = 0; i < polygons.Size(); ++i)
         {
-            SCPolygon2d source = NormalizePolygonByLines(polygons[i], Geometry::kDefaultEpsilon);
-            if (!source.IsValid())
+            SCPolygon2d source = polygons[i];
+            if (allowLegacyRetry)
             {
-                source = polygons[i];
+                source = NormalizePolygonByLines(polygons[i], epsilon);
+                if (!source.IsValid(epsilon))
+                {
+                    source = polygons[i];
+                }
+                if (!source.IsValid(epsilon))
+                {
+                    source = NormalizePolygonOrientationForOffset(polygons[i]);
+                }
             }
-            if (!source.IsValid())
-            {
-                source = NormalizePolygonOrientationForOffset(polygons[i]);
-            }
-            if (!source.IsValid())
+            if (!source.IsValid(epsilon))
             {
                 continue;
             }
@@ -861,16 +969,16 @@ namespace Geometry
             normalizedSources.Add(SCPolygon2d(source));
 
             const SCPolyline2d outerRing = source.OuterRing();
-            AppendRecoveredOffsetRing(outerRing, RingDistance(outerRing, distance, false), options, offsetRings);
+            AppendRecoveredOffsetRing(outerRing, RingDistance(outerRing, distance, false, epsilon), options, epsilon, offsetRings);
             for (std::size_t holeIndex = 0; holeIndex < source.HoleCount(); ++holeIndex)
             {
                 const SCPolyline2d hole = source.HoleAt(holeIndex);
-                AppendRecoveredOffsetRing(hole, RingDistance(hole, distance, true), options, offsetRings);
+                AppendRecoveredOffsetRing(hole, RingDistance(hole, distance, true, epsilon), options, epsilon, offsetRings);
             }
         }
 
-        const SCMultiPolygon2d rebuilt = BuildOffsetPolygons(offsetRings, Geometry::kDefaultEpsilon);
-        return RecoverMultiPolygonSemanticFlip(normalizedSources, rebuilt, distance, Geometry::kDefaultEpsilon);
+        const SCMultiPolygon2d rebuilt = BuildOffsetPolygons(offsetRings, epsilon, allowLegacyRetry);
+        return RecoverMultiPolygonSemanticFlip(normalizedSources, rebuilt, distance, epsilon);
     }
 }  // namespace Geometry
 

@@ -1,9 +1,30 @@
 #include <gtest/gtest.h>
+#include <limits>
 
 #include "Geometry.h"
 #include "Support/Fixtures3d.h"
 
 using namespace Geometry;
+
+TEST(IntersectionResultValidity3dTest, RejectsNonFiniteHitParameters)
+{
+    SCLinePlaneIntersection3d planeHit;
+    planeHit.intersects = true;
+    planeHit.point = {1.0, 2.0, 3.0};
+    planeHit.parameter = 0.5;
+    ASSERT_TRUE(planeHit.IsValid());
+    planeHit.parameter = std::numeric_limits<double>::infinity();
+    EXPECT_FALSE(planeHit.IsValid());
+
+    SCLineTriangleMeshIntersection3d meshHit;
+    meshHit.intersects = true;
+    meshHit.triangleIndices = {0};
+    meshHit.lineParameters = {0.5};
+    meshHit.points = {{1.0, 2.0, 3.0}};
+    ASSERT_TRUE(meshHit.IsValid());
+    meshHit.lineParameters[0] = std::numeric_limits<double>::quiet_NaN();
+    EXPECT_FALSE(meshHit.IsValid());
+}
 
 TEST(GeometryTest, ThreeDimensionalIntegerPrimitivesFollowTheTemplatedFamily)
 {

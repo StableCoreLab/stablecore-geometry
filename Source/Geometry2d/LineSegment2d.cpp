@@ -1,6 +1,7 @@
 #include "Geometry2d/SCLineSegment2d.h"
 
 #include <memory>
+#include <cmath>
 #include <sstream>
 
 #include "Types/Geometry2d/SCVector2.h"
@@ -24,7 +25,13 @@ namespace Geometry
 
     bool SCLineSegment2d::IsValid() const
     {
-        return startPoint.IsValid() && endPoint.IsValid() && !startPoint.AlmostEquals(endPoint);
+        return IsValid(Geometry::kDefaultEpsilon);
+    }
+
+    bool SCLineSegment2d::IsValid(double eps) const
+    {
+        return eps > 0.0 && std::isfinite(eps) && startPoint.IsValid() && endPoint.IsValid() &&
+               !startPoint.AlmostEquals(endPoint, eps);
     }
 
     SCPoint2d SCLineSegment2d::StartPoint() const

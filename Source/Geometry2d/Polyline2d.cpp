@@ -1,6 +1,7 @@
 #include "Geometry2d/SCPolyline2d.h"
 
 #include <memory>
+#include <cmath>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
@@ -8,6 +9,7 @@
 #include "Geometry2d/SCArcSegment2d.h"
 #include "Geometry2d/SCLineSegment2d.h"
 #include "Support/Geometry2d/Predicate2.h"
+#include "Support/Epsilon.h"
 
 namespace Geometry
 {
@@ -42,7 +44,7 @@ namespace Geometry
             }
 
             std::size_t effectivePointCount = points.size();
-            if (closure == SCPolylineClosure::Closed && points.size() >= 3 && points.front().AlmostEquals(points.back()))
+            if (closure == SCPolylineClosure::Closed && points.size() >= 3 && points.front() == points.back())
             {
                 effectivePointCount -= 1;
             }
@@ -126,7 +128,12 @@ namespace Geometry
 
     bool SCPolyline2d::IsValid() const
     {
-        if (impl_->segments.empty())
+        return IsValid(Geometry::kDefaultEpsilon);
+    }
+
+    bool SCPolyline2d::IsValid(double eps) const
+    {
+        if (!(eps > 0.0) || !std::isfinite(eps) || impl_->segments.empty())
         {
             return false;
         }
@@ -135,13 +142,19 @@ namespace Geometry
         for (std::size_t i = 0; i < impl_->segments.size(); ++i)
         {
             const auto& segment = impl_->segments[i];
-            if (segment == nullptr || !segment->IsValid())
+            if (segment == nullptr)
+            {
+                return false;
+            }
+
+            const auto* line = dynamic_cast<const SCLineSegment2d*>(segment.get());
+            if (line != nullptr ? !line->IsValid(eps) : !segment->IsValid())
             {
                 return false;
             }
 
             totalLength += segment->Length();
-            if (i > 0 && !IsEqual(impl_->segments[i - 1]->EndPoint(), segment->StartPoint()))
+            if (i > 0 && !IsEqual(impl_->segments[i - 1]->EndPoint(), segment->StartPoint(), eps))
             {
                 return false;
             }
@@ -154,7 +167,7 @@ namespace Geometry
 
         if (IsClosed())
         {
-            return IsEqual(impl_->segments.back()->EndPoint(), impl_->segments.front()->StartPoint());
+            return IsEqual(impl_->segments.back()->EndPoint(), impl_->segments.front()->StartPoint(), eps);
         }
 
         return true;
@@ -334,7 +347,12 @@ namespace Geometry
 
     SCBox2d SCPolyline2d::Bounds() const
     {
-        if (!IsValid())
+        return Bounds(Geometry::kDefaultEpsilon);
+    }
+
+    SCBox2d SCPolyline2d::Bounds(double eps) const
+    {
+        if (!IsValid(eps))
         {
             return SCBox2d{};
         }
@@ -342,7 +360,14 @@ namespace Geometry
         SCBox2d box;
         for (const auto& segment : impl_->segments)
         {
-            box.ExpandToInclude(segment->Bounds());
+            if (segment->Kind() == SCSegmentKind2::Line)
+            {
+                box.ExpandToInclude(segment->StartPoint());
+                box.ExpandToInclude(segment->EndPoint());
+            } else
+            {
+                box.ExpandToInclude(segment->Bounds());
+            }
         }
         return box;
     }

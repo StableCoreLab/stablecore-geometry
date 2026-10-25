@@ -1,4 +1,4 @@
-#include "Brep/Topology.h"
+#include "Core/PolygonRelation2d.h"
 #include <numeric>
 
 #include <sstream>

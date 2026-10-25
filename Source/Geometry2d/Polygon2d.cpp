@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-#include "../Core/RingIntegral2d.h"
+#include "../Detail/RingIntegral2d.h"
 #include "Geometry2d/SCArcSegment2d.h"
 #include "Core/Intersection.h"
 #include "Core/Relation.h"
@@ -59,9 +59,9 @@ namespace Geometry
             return false;
         }
 
-        [[nodiscard]] double RingSignedArea(const SCPolyline2d& ring)
+        [[nodiscard]] double RingSignedArea(const SCPolyline2d& ring, double eps)
         {
-            return Detail::ComputeSignedArea(ring);
+            return Detail::ComputeSignedArea(ring, eps);
         }
 
         [[nodiscard]] std::pair<SCPoint2d, double> RingCentroidAndArea(const SCPolyline2d& ring)
@@ -139,7 +139,7 @@ namespace Geometry
         {
             return false;
         }
-        if (!impl_->outerRing.IsValid() || !impl_->outerRing.IsClosed())
+        if (!impl_->outerRing.IsValid(eps) || !impl_->outerRing.IsClosed())
         {
             return false;
         }
@@ -149,7 +149,7 @@ namespace Geometry
             return false;
         }
 
-        const double outerArea = RingSignedArea(impl_->outerRing);
+        const double outerArea = RingSignedArea(impl_->outerRing, eps);
         // 环方向不是结构有效性的前置条件；NormalizePolygon 会在需要方向语义的
         // 算法入口统一规范化。这里仅排除零面积退化环。
         if (!(std::abs(outerArea) > 0.0))
@@ -159,7 +159,7 @@ namespace Geometry
 
         for (const auto& hole : impl_->holes)
         {
-            if (!hole.IsValid() || !hole.IsClosed())
+            if (!hole.IsValid(eps) || !hole.IsClosed())
             {
                 return false;
             }
@@ -169,7 +169,7 @@ namespace Geometry
                 return false;
             }
 
-            const double holeArea = RingSignedArea(hole);
+            const double holeArea = RingSignedArea(hole, eps);
             if (!(std::abs(holeArea) > 0.0))
             {
                 return false;
@@ -272,10 +272,10 @@ namespace Geometry
 
         // IsValid 接受可由 NormalizePolygon 规范化的环方向，因此面积必须按环角色
         // 计算，不能再依赖外环为正、洞环为负的方向约定。
-        double total = std::abs(RingSignedArea(impl_->outerRing));
+        double total = std::abs(RingSignedArea(impl_->outerRing, eps));
         for (const auto& hole : impl_->holes)
         {
-            total -= std::abs(RingSignedArea(hole));
+            total -= std::abs(RingSignedArea(hole, eps));
         }
         return total >= 0.0 ? total : 0.0;
     }
@@ -346,10 +346,10 @@ namespace Geometry
             return SCBox2d{};
         }
 
-        SCBox2d box = impl_->outerRing.Bounds();
+        SCBox2d box = impl_->outerRing.Bounds(eps);
         for (const auto& hole : impl_->holes)
         {
-            box.ExpandToInclude(hole.Bounds());
+            box.ExpandToInclude(hole.Bounds(eps));
         }
         return box;
     }

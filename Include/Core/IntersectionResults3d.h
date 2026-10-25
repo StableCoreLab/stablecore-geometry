@@ -21,7 +21,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid() const
         {
-            return !intersects || point.IsValid();
+            return !intersects || (point.IsValid() && std::isfinite(parameter));
         }
     };
 
@@ -205,9 +205,9 @@ namespace Geometry
                 return false;
             }
 
-            for (const SCPoint3d& point : points)
+            for (std::size_t i = 0; i < points.size(); ++i)
             {
-                if (!point.IsValid())
+                if (!points[i].IsValid() || !std::isfinite(lineParameters[i]))
                 {
                     return false;
                 }

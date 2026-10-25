@@ -22,6 +22,7 @@ namespace Geometry
 
         [[nodiscard]] SCSegmentKind2 Kind() const override;
         [[nodiscard]] bool IsValid() const override;
+        [[nodiscard]] bool IsValid(double eps) const;
         [[nodiscard]] SCPoint2d StartPoint() const override;
         [[nodiscard]] SCPoint2d EndPoint() const override;
         [[nodiscard]] double Length() const override;

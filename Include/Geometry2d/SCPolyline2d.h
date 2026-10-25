@@ -30,6 +30,7 @@ namespace Geometry
         ~SCPolyline2d();
 
         [[nodiscard]] bool IsValid() const;
+        [[nodiscard]] bool IsValid(double eps) const;
         [[nodiscard]] bool IsClosed() const;
         [[nodiscard]] std::size_t PointCount() const;
         [[nodiscard]] std::size_t VertexCount() const;
@@ -53,6 +54,7 @@ namespace Geometry
         [[nodiscard]] SCPoint2d PointAtLength(double distanceFromStart, bool clampToPath = false) const;
         [[nodiscard]] std::unique_ptr<ISCSegment2d> SegmentAt(std::size_t index) const;
         [[nodiscard]] SCBox2d Bounds() const;
+        [[nodiscard]] SCBox2d Bounds(double eps) const;
         [[nodiscard]] std::string DebugString() const;
 
     private:

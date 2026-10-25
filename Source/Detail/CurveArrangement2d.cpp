@@ -7,7 +7,7 @@
 #include "Core/Intersection.h"
 #include "DirectedEdgeFans2d.h"
 #include "ArrangementVertices2d.h"
-#include "../Core/RingIntegral2d.h"
+#include "RingIntegral2d.h"
 #include "SegmentKernel2d.h"
 
 namespace Geometry::Detail

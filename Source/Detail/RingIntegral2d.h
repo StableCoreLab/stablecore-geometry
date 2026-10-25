@@ -94,13 +94,18 @@ namespace Geometry::Detail
         return total;
     }
 
-    inline double ComputeSignedArea(const SCPolyline2d& ring)
+    inline double ComputeSignedArea(const SCPolyline2d& ring, double eps)
     {
-        if (!ring.IsClosed() || !ring.IsValid() || ring.SegmentCount() == 0)
+        if (!ring.IsClosed() || !ring.IsValid(eps) || ring.SegmentCount() == 0)
         {
             return 0.0;
         }
 
         return ComputeRingMoment(ring).signedArea;
+    }
+
+    inline double ComputeSignedArea(const SCPolyline2d& ring)
+    {
+        return ComputeSignedArea(ring, Geometry::kDefaultEpsilon);
     }
 }  // namespace Geometry::Detail

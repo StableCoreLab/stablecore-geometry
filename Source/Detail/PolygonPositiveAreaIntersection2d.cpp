@@ -11,7 +11,7 @@
 #include "Core/Relation.h"
 #include "Core/Projection.h"
 #include "CurveArrangement2d.h"
-#include "../Core/RingIntegral2d.h"
+#include "RingIntegral2d.h"
 #include "SegmentKernel2d.h"
 
 namespace Geometry::Detail

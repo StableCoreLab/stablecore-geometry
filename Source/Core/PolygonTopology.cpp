@@ -15,7 +15,7 @@
 #include "Core/ShapeOps.h"
 #include "Geometry2d/SCArcSegment2d.h"
 #include "Geometry2d/SCLineSegment2d.h"
-#include "RingIntegral2d.h"
+#include "../Detail/RingIntegral2d.h"
 #include "../Detail/CurveArrangement2d.h"
 #include "../Detail/PolygonPositiveAreaIntersection2d.h"
 #include "../Detail/SegmentKernel2d.h"

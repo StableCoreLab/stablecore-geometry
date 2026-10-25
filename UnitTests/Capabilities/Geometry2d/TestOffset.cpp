@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <limits>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -259,4 +260,76 @@ TEST(OffsetTest, SupportsNarrowBridgeSplitViaMultiPolygonOffsetApi)
             ASSERT_NE(LocatePoint(piece.OuterRing().VertexAt(pointIndex), source), SCPointContainment2d::Outside);
         }
     }
+}
+
+TEST(OffsetTest, ExplicitTolerancePreservesTinyPolygonOffsets)
+{
+    constexpr double width = 1e-8;
+    constexpr double eps = 1e-15;
+    const SCPolygon2d source(SCPolyline2d(
+        {{0.0, 0.0}, {width, 0.0}, {width, width}, {0.0, width}}, SCPolylineClosure::Closed));
+    ASSERT_TRUE(source.IsValid(eps));
+
+    const Geometry::SCOffsetOptions2d options;
+    const SCPolygon2d outward = Offset(source, width / 4.0, options, eps);
+    const SCPolygon2d inward = Offset(source, -width / 4.0, options, eps);
+    ASSERT_TRUE(outward.IsValid(eps));
+    ASSERT_TRUE(inward.IsValid(eps));
+    EXPECT_NEAR(outward.Area(eps), 2.25 * width * width, width * width * 1e-5);
+    EXPECT_NEAR(inward.Area(eps), 0.25 * width * width, width * width * 1e-5);
+
+    const SCMultiPolygon2d multiOutward = OffsetToMultiPolygon(source, width / 4.0, options, eps);
+    ASSERT_EQ(multiOutward.Count(), 1U);
+    EXPECT_TRUE(multiOutward.IsValid(eps));
+    EXPECT_NEAR(multiOutward[0].Area(eps), outward.Area(eps), width * width * 1e-5);
+
+    const SCMultiPolygon2d collectionOutward = Offset(SCMultiPolygon2d{source}, width / 4.0, options, eps);
+    ASSERT_EQ(collectionOutward.Count(), 1U);
+    EXPECT_TRUE(collectionOutward.IsValid(eps));
+    EXPECT_NEAR(collectionOutward[0].Area(eps), outward.Area(eps), width * width * 1e-5);
+}
+
+TEST(OffsetTest, RejectsInvalidExplicitTolerance)
+{
+    const SCPolygon2d source(SCPolyline2d(
+        {{0.0, 0.0}, {2.0, 0.0}, {2.0, 2.0}, {0.0, 2.0}}, SCPolylineClosure::Closed));
+    for (double epsilon : {0.0, -1.0, std::numeric_limits<double>::infinity(),
+                           std::numeric_limits<double>::quiet_NaN()})
+    {
+        const Geometry::SCOffsetOptions2d options;
+        EXPECT_FALSE(Offset(source, 0.1, options, epsilon).IsValid());
+        EXPECT_TRUE(OffsetToMultiPolygon(source, 0.1, options, epsilon).IsEmpty());
+        EXPECT_TRUE(Offset(SCMultiPolygon2d{source}, 0.1, options, epsilon).IsEmpty());
+        EXPECT_FALSE(Offset(source.OuterRing(), 0.1, options, epsilon).IsValid());
+    }
+}
+
+TEST(OffsetTest, ExplicitToleranceDoesNotRepairInvalidPolygonWithFixedRetry)
+{
+    const SCPolygon2d crossed(SCPolyline2d(
+        {{0.0, 0.0}, {2.0, 2.0}, {0.0, 2.0}, {2.0, 0.0}}, SCPolylineClosure::Closed));
+    ASSERT_FALSE(crossed.IsValid(1e-12));
+    const Geometry::SCOffsetOptions2d options;
+    EXPECT_FALSE(Offset(crossed, 0.1, options, 1e-12).IsValid(1e-12));
+    EXPECT_TRUE(Offset(SCMultiPolygon2d{crossed}, 0.1, options, 1e-12).IsEmpty());
+}
+
+TEST(OffsetTest, ExplicitToleranceKeepsSmallArcAfterInwardOffset)
+{
+    constexpr double radius = 1e-8;
+    constexpr double remainingRadius = 5e-10;
+    const auto sourceArc = std::make_shared<SCArcSegment2d>(
+        SCPoint2d{0.0, 0.0}, radius, 0.0, Geometry::kPi / 2.0);
+    const SCPolyline2d source(std::vector<std::shared_ptr<Geometry::ISCSegment2d>>{sourceArc},
+                              SCPolylineClosure::Open);
+    ASSERT_TRUE(source.IsValid());
+
+    const SCPolyline2d offset = Offset(source, radius - remainingRadius,
+                                       Geometry::SCOffsetOptions2d{}, 1e-15);
+    ASSERT_TRUE(offset.IsValid());
+    ASSERT_EQ(offset.SegmentCount(), 1U);
+    const auto segment = offset.SegmentAt(0);
+    ASSERT_NE(segment, nullptr);
+    ASSERT_EQ(segment->Kind(), Geometry::SCSegmentKind2::Arc);
+    EXPECT_NEAR(static_cast<const SCArcSegment2d&>(*segment).radius, remainingRadius, 1e-20);
 }

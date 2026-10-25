@@ -23,7 +23,7 @@
 #include "Core/Relation.h"
 #include "Core/ShapeOps.h"
 #include "Core/Validation.h"
-#include "RingIntegral2d.h"
+#include "../Detail/RingIntegral2d.h"
 #include "Geometry2d/SCPathOps.h"
 #include "Support/Epsilon.h"
 #include "Support/Geometry2d/Predicate2.h"

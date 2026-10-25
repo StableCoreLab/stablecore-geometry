@@ -11,7 +11,7 @@
 #include "ArrangementVertices2d.h"
 #include "Geometry2d/SCArcSegment2d.h"
 #include "Geometry2d/SCLineSegment2d.h"
-#include "../Core/RingIntegral2d.h"
+#include "RingIntegral2d.h"
 #include "SegmentKernel2d.h"
 
 namespace Geometry::Detail
