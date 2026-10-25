@@ -1,4 +1,4 @@
-#include "Brep/MeshConversion.h"
+#include "Core/MeshConversion.h"
 
 #include <algorithm>
 #include <map>
@@ -9,7 +9,7 @@
 #include "Core/ShapeOps.h"
 #include "Core/Triangulation.h"
 #include "Geometry3d/SCPlaneSurface.h"
-#include "LoopGeometry.h"
+#include "../Brep/LoopGeometry.h"
 
 namespace Geometry
 {

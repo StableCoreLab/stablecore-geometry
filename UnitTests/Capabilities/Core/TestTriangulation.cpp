@@ -3,7 +3,7 @@
 
 #include "Core/Triangulation.h"
 #include "Core/Projection.h"
-#include "Brep/MeshConversion.h"
+#include "Core/MeshConversion.h"
 #include "Brep/PolyhedronFace3d.h"
 #include "../../../Source/Detail/TriangulateContours2d.h"
 

@@ -12,7 +12,7 @@
 #include <utility>
 #include <vector>
 
-#include "Brep/MeshConversion.h"
+#include "Core/MeshConversion.h"
 #include "Core/PolygonRelation2d.h"
 #include "Core/Boolean.h"
 #include "Core/Editing.h"

@@ -1,4 +1,4 @@
-#include "Brep/BodyBoolean.h"
+#include "Core/BodyBoolean.h"
 
 #include <algorithm>
 #include <numeric>
@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "Brep/BrepConversion.h"
-#include "LoopGeometry.h"
+#include "../Brep/LoopGeometry.h"
 #include "Core/Measure.h"
 #include "Geometry3d/SCLineCurve3d.h"
 #include "Geometry3d/SCPlaneSurface.h"

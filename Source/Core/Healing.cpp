@@ -1,4 +1,4 @@
-#include "Brep/Healing.h"
+#include "Core/Healing.h"
 
 #include <algorithm>
 #include <array>
@@ -8,8 +8,8 @@
 #include <utility>
 #include <vector>
 
-#include "Brep/MeshRepair.h"
-#include "LoopGeometry.h"
+#include "Core/MeshRepair.h"
+#include "../Brep/LoopGeometry.h"
 #include "Core/Relation.h"
 #include "Core/ShapeOps.h"
 #include "Core/Validation.h"

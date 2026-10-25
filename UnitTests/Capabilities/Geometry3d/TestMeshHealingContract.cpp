@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "Brep/Healing.h"
+#include "Core/Healing.h"
 #include "Brep/MeshOps.h"
 
 TEST(MeshHealingContractTest, ClosingBoundaryAlsoOrientsResult)

@@ -5,7 +5,7 @@
 #include <cmath>
 #include <limits>
 
-#include "Brep/MeshConversion.h"
+#include "Core/MeshConversion.h"
 #include "Brep/MeshOps.h"
 #include "Brep/PolyhedronBody.h"
 #include "Brep/PolyhedronFace3d.h"

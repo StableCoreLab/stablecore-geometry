@@ -5,7 +5,7 @@
 #include <random>
 #include <vector>
 
-#include "Brep/BodyBoolean.h"
+#include "Core/BodyBoolean.h"
 #include "Brep/BrepConversion.h"
 #include "Core/Measure.h"
 #include "Geometry3d/SCLineCurve3d.h"

@@ -293,6 +293,8 @@ TEST(OffsetTest, RejectsInvalidExplicitTolerance)
 {
     const SCPolygon2d source(SCPolyline2d(
         {{0.0, 0.0}, {2.0, 0.0}, {2.0, 2.0}, {0.0, 2.0}}, SCPolylineClosure::Closed));
+    const SCLineSegment2d line({0.0, 0.0}, {1.0, 0.0});
+    const SCArcSegment2d arc({0.0, 0.0}, 1.0, 0.0, Geometry::kPi / 2.0);
     for (double epsilon : {0.0, -1.0, std::numeric_limits<double>::infinity(),
                            std::numeric_limits<double>::quiet_NaN()})
     {
@@ -301,6 +303,8 @@ TEST(OffsetTest, RejectsInvalidExplicitTolerance)
         EXPECT_TRUE(OffsetToMultiPolygon(source, 0.1, options, epsilon).IsEmpty());
         EXPECT_TRUE(Offset(SCMultiPolygon2d{source}, 0.1, options, epsilon).IsEmpty());
         EXPECT_FALSE(Offset(source.OuterRing(), 0.1, options, epsilon).IsValid());
+        EXPECT_FALSE(Offset(line, 0.1, epsilon).IsValid());
+        EXPECT_FALSE(Offset(arc, 0.1, epsilon).IsValid());
     }
 }
 
@@ -332,4 +336,61 @@ TEST(OffsetTest, ExplicitToleranceKeepsSmallArcAfterInwardOffset)
     ASSERT_NE(segment, nullptr);
     ASSERT_EQ(segment->Kind(), Geometry::SCSegmentKind2::Arc);
     EXPECT_NEAR(static_cast<const SCArcSegment2d&>(*segment).radius, remainingRadius, 1e-20);
+}
+
+TEST(OffsetTest, ExplicitToleranceOffsetsSubDefaultLineNextToArc)
+{
+    constexpr double lineLength = 1e-10;
+    constexpr double radius = 1e-8;
+    constexpr double distance = 1e-9;
+    constexpr double eps = 1e-15;
+    const auto line = std::make_shared<SCLineSegment2d>(SCPoint2d{0.0, 0.0},
+                                                        SCPoint2d{lineLength, 0.0});
+    const auto arc = std::make_shared<SCArcSegment2d>(SCPoint2d{lineLength, radius},
+                                                      radius, -Geometry::kPi / 2.0, Geometry::kPi / 2.0);
+    const SCPolyline2d source(std::vector<std::shared_ptr<Geometry::ISCSegment2d>>{line, arc},
+                              SCPolylineClosure::Open);
+    ASSERT_TRUE(source.IsValid(eps));
+
+    const SCPolyline2d shifted = Offset(source, distance, Geometry::SCOffsetOptions2d{}, eps);
+    ASSERT_TRUE(shifted.IsValid(eps));
+    ASSERT_EQ(shifted.SegmentCount(), 2U);
+    EXPECT_NEAR(shifted.StartPoint().y, distance, eps);
+    EXPECT_NEAR(shifted.SegmentAt(0)->EndPoint().y, distance, eps);
+}
+
+TEST(OffsetTest, ExplicitToleranceOffsetsSubDefaultStandaloneLine)
+{
+    constexpr double length = 1e-10;
+    constexpr double distance = 2e-10;
+    constexpr double eps = 1e-15;
+    const SCLineSegment2d source({0.0, 0.0}, {length, 0.0});
+    ASSERT_FALSE(source.IsValid());
+    ASSERT_TRUE(source.IsValid(eps));
+
+    const SCLineSegment2d shifted = Offset(source, distance, eps);
+    ASSERT_TRUE(shifted.IsValid(eps));
+    EXPECT_NEAR(shifted.startPoint.y, distance, eps);
+    EXPECT_NEAR(shifted.endPoint.y, distance, eps);
+    EXPECT_NEAR(shifted.Length(), length, eps);
+    EXPECT_TRUE(Offset(source, distance).startPoint.AlmostEquals(source.startPoint, eps));
+    EXPECT_FALSE(Offset(source, std::numeric_limits<double>::quiet_NaN(), eps).IsValid(eps));
+}
+
+TEST(OffsetTest, ExplicitToleranceKeepsSubDefaultStandaloneArcRadius)
+{
+    constexpr double radius = 1e-8;
+    constexpr double remainingRadius = 5e-10;
+    constexpr double eps = 1e-15;
+    const SCArcSegment2d source({0.0, 0.0}, radius, 0.0, Geometry::kPi / 2.0);
+    ASSERT_TRUE(source.IsValid());
+
+    const SCArcSegment2d shifted = Offset(source, radius - remainingRadius, eps);
+    ASSERT_TRUE(shifted.IsValid());
+    EXPECT_NEAR(shifted.radius, remainingRadius, eps);
+    EXPECT_FALSE(Offset(source, radius - remainingRadius).IsValid());
+    EXPECT_FALSE(Offset(source, std::numeric_limits<double>::quiet_NaN(), eps).IsValid());
+    const SCArcSegment2d overflow({1e308, 0.0}, 1e308, 0.0, Geometry::kPi / 2.0);
+    ASSERT_FALSE(overflow.StartPoint().IsValid());
+    EXPECT_FALSE(Offset(overflow, 0.0, eps).IsValid());
 }

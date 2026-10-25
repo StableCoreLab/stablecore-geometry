@@ -98,9 +98,15 @@ foreach(SCGEOMETRY_STANDALONE_HEADER IN ITEMS
     Core/IntersectionResults3d.h
     Core/GeometryTypes.h
     Core/PolygonRelation2d.h
+    Core/BodyBoolean.h
+    Core/Healing.h
+    Core/MeshConversion.h
+    Core/MeshRepair.h
     Brep/Topology.h
     Brep/BodyBoolean.h
     Brep/Healing.h
+    Brep/MeshConversion.h
+    Brep/MeshRepair.h
     Geometry3d/SCCurveOnSurface.h
     Geometry3d/SCNurbsCurve3d.h
     Geometry3d/SCNurbsSurface.h

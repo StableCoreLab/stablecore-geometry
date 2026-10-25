@@ -53,7 +53,14 @@ namespace Geometry
     };
 
     [[nodiscard]] GEOMETRY_API SCLineSegment2d Offset(const SCLineSegment2d& segment, double distance);
+    // 显式入口使用正且有限的线性容差；旧两参数入口保留默认容差语义。
+    [[nodiscard]] GEOMETRY_API SCLineSegment2d Offset(const SCLineSegment2d& segment,
+                                                   double distance,
+                                                   double epsilon);
     [[nodiscard]] GEOMETRY_API SCArcSegment2d Offset(const SCArcSegment2d& segment, double distance);
+    [[nodiscard]] GEOMETRY_API SCArcSegment2d Offset(const SCArcSegment2d& segment,
+                                                  double distance,
+                                                  double epsilon);
     [[nodiscard]] GEOMETRY_API SCPolyline2d Offset(const SCPolyline2d& polyline,
                                                  double distance,
                                                  SCOffsetOptions2d options = {});

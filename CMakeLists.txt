@@ -137,6 +137,7 @@ set(SCGEOMETRY_HEADERS
     Core/Algorithms.h
     Core/ArcOps3d.h
     Core/AxisOps.h
+    Core/BodyBoolean.h
     Core/Boolean.h
     Core/Editing.h
     Core/Geometry2dResults.h
@@ -144,11 +145,14 @@ set(SCGEOMETRY_HEADERS
     Core/GeometryApi.h
     Core/GeometryEvidence.h
     Core/GeometryTypes.h
+    Core/Healing.h
     Core/IntersectionResults3d.h
     Core/GeometryTypesFwd.h
     Core/GeometryTypesPrimitives.h
     Core/Intersection.h
     Core/Measure.h
+    Core/MeshConversion.h
+    Core/MeshRepair.h
     Core/Metrics.h
     Core/Offset.h
     Core/PathGeometry.h
@@ -266,30 +270,42 @@ set(SCGEOMETRY_INTERNAL_HEADERS
 list(TRANSFORM SCGEOMETRY_INTERNAL_HEADERS PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/Source/")
 
 set(SCGEOMETRY_SOURCES
-    Brep/BodyBoolean.cpp
     Brep/BrepConversion.cpp
     Brep/BrepEditing.cpp
-    Brep/Healing.cpp
-    Brep/MeshConversion.cpp
     Brep/MeshOps.cpp
-    Brep/MeshRepair.cpp
     Brep/Tessellation.cpp
     Core/ArcOps3d.cpp
     Core/AxisOps.cpp
+    Core/BodyBoolean.cpp
     Core/Boolean.cpp
     Core/Editing.cpp
+    Core/GeometryEvidence3d.cpp
+    Core/Healing.cpp
     Core/Intersection.cpp
+    Core/Intersection3d.cpp
     Core/MappedOffset.cpp
     Core/Measure.cpp
+    Core/MeshConversion.cpp
+    Core/MeshRepair.cpp
     Core/Metrics.cpp
     Core/Offset.cpp
     Core/PathGeometry.cpp
+    Core/PlaneCurveRoots.cpp
     Core/PlaneOps.cpp
     Core/PointOps.cpp
+    Core/Polygon2d.cpp
     Core/PolygonTopology.cpp
     Core/PolygonRelation2d.cpp
     Core/Projection.cpp
+    Core/Projection3d.cpp
     Core/Relation.cpp
+    Core/Relation3d.cpp
+    Core/SCBoxTree2d.cpp
+    Core/SCBoxTree3d.cpp
+    Core/SCKDTree2d.cpp
+    Core/SCPathOps.cpp
+    Core/SCSegmentSearch2d.cpp
+    Core/SCSegmentSearch3d.cpp
     Core/Sampling.cpp
     Core/SearchPoly.cpp
     Core/Section.cpp
@@ -309,27 +325,15 @@ set(SCGEOMETRY_SOURCES
     Geometry2d/LineSegment2d.cpp
     Geometry2d/MultiPolygon2d.cpp
     Geometry2d/MultiPolyline2d.cpp
-    Geometry2d/Polygon2d.cpp
     Geometry2d/Polyline2d.cpp
-    Geometry2d/SCBoxTree2d.cpp
     Geometry2d/SCCircle2d.cpp
     Geometry2d/SCEllipse2d.cpp
-    Geometry2d/SCKDTree2d.cpp
-    Geometry2d/SCPathOps.cpp
     Geometry2d/SCRectangle2d.cpp
-    Geometry2d/SCSegmentSearch2d.cpp
-    Geometry3d/GeometryEvidence3d.cpp
-    Geometry3d/Intersection3d.cpp
-    Geometry3d/PlaneCurveRoots.cpp
     Geometry3d/PlaneSurface.cpp
-    Geometry3d/Projection3d.cpp
-    Geometry3d/Relation3d.cpp
-    Geometry3d/SCBoxTree3d.cpp
     Geometry3d/SCCurveOnSurface.cpp
     Geometry3d/SCNurbsCurve3d.cpp
     Geometry3d/SCNurbsSurface.cpp
     Geometry3d/SCOffsetSurface.cpp
-    Geometry3d/SCSegmentSearch3d.cpp
     Serialize/GeometryText.cpp
     Serialize/SegmentCodec.cpp
     Support/Epsilon.cpp

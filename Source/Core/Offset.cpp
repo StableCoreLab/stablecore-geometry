@@ -62,7 +62,7 @@ namespace Geometry
                 switch (source->Kind())
                 {
                     case SCSegmentKind2::Line: {
-                        const SCLineSegment2d segment = Offset(static_cast<const SCLineSegment2d&>(*source), distance);
+                        const SCLineSegment2d segment = Offset(static_cast<const SCLineSegment2d&>(*source), distance, eps);
                         if (!segment.IsValid(eps))
                         {
                             return SCPolyline2d(polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
@@ -72,15 +72,7 @@ namespace Geometry
                     }
                     case SCSegmentKind2::Arc: {
                         const auto& sourceArc = static_cast<const SCArcSegment2d&>(*source);
-                        const double adjustedRadius = sourceArc.Direction() == SCArcDirection::CounterClockwise
-                                                          ? sourceArc.radius - distance
-                                                          : sourceArc.radius + distance;
-                        if (!(adjustedRadius > eps))
-                        {
-                            return SCPolyline2d(polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
-                        }
-                        const SCArcSegment2d segment(sourceArc.center, adjustedRadius,
-                                                     sourceArc.startAngle, sourceArc.sweepAngle);
+                        const SCArcSegment2d segment = Offset(sourceArc, distance, eps);
                         if (!segment.IsValid())
                         {
                             return SCPolyline2d(polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
@@ -735,6 +727,27 @@ namespace Geometry
         return SCLineSegment2d(segment.startPoint + normal * distance, segment.endPoint + normal * distance);
     }
 
+    SCLineSegment2d Offset(const SCLineSegment2d& segment, double distance, double epsilon)
+    {
+        if (!(epsilon > 0.0) || !std::isfinite(epsilon) || !std::isfinite(distance) ||
+            !segment.IsValid(epsilon))
+        {
+            return {};
+        }
+
+        const SCVector2d direction = segment.endPoint - segment.startPoint;
+        const double length = direction.Length();
+        if (!(length > epsilon) || !std::isfinite(length))
+        {
+            return {};
+        }
+
+        const SCVector2d normal{-direction.y / length, direction.x / length};
+        const SCLineSegment2d shifted(segment.startPoint + normal * distance,
+                                      segment.endPoint + normal * distance);
+        return shifted.IsValid(epsilon) ? shifted : SCLineSegment2d{};
+    }
+
     SCArcSegment2d Offset(const SCArcSegment2d& segment, double distance)
     {
         if (!segment.IsValid())
@@ -749,6 +762,28 @@ namespace Geometry
             return SCArcSegment2d{};
         }
         return SCArcSegment2d(segment.center, adjustedRadius, segment.startAngle, segment.sweepAngle);
+    }
+
+    SCArcSegment2d Offset(const SCArcSegment2d& segment, double distance, double epsilon)
+    {
+        if (!(epsilon > 0.0) || !std::isfinite(epsilon) || !std::isfinite(distance) || !segment.IsValid() ||
+            !segment.StartPoint().IsValid() || !segment.EndPoint().IsValid())
+        {
+            return {};
+        }
+
+        const double adjustedRadius = segment.Direction() == SCArcDirection::CounterClockwise
+                                          ? segment.radius - distance
+                                          : segment.radius + distance;
+        if (!(adjustedRadius > epsilon) || !std::isfinite(adjustedRadius))
+        {
+            return {};
+        }
+
+        const SCArcSegment2d shifted(segment.center, adjustedRadius, segment.startAngle, segment.sweepAngle);
+        return shifted.IsValid() && shifted.StartPoint().IsValid() && shifted.EndPoint().IsValid()
+                   ? shifted
+                   : SCArcSegment2d{};
     }
 
     SCPolyline2d Offset(const SCPolyline2d& polyline, double distance, SCOffsetOptions2d options)
