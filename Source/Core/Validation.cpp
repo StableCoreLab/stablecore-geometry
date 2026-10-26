@@ -13,7 +13,7 @@
 #include "Brep/PolyhedronBody.h"
 #include "Brep/SCBrepBody.h"
 #include "Geometry3d/TriangleMesh.h"
-#include "../Detail/SegmentKernel2d.h"
+#include "Detail/SegmentKernel2d.h"
 
 namespace Geometry
 {

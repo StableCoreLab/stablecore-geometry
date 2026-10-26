@@ -6,10 +6,10 @@
 
 #include "../../../Source/Detail/ArrangementVertices2d.h"
 #include "../../../Source/Detail/DirectedEdgeFans2d.h"
-#include "../../../Source/Detail/PolygonNesting2d.h"
+#include "../../../Source/Core/Detail/PolygonNesting2d.h"
 #include "../../../Source/Detail/RingVertices2d.h"
 #include "../../../Source/Detail/SegmentParameters2d.h"
-#include "../../../Source/Detail/SegmentSubdivision2d.h"
+#include "../../../Source/Core/Detail/SegmentSubdivision2d.h"
 #include "Geometry.h"
 
 using Geometry::BuildMultiPolygonByLines;

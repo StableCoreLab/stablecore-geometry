@@ -43,6 +43,9 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestHealing3dSupportMismatch.cpp
     Capabilities/Geometry3d/TestHealing3dTrimPlanes.cpp
     Capabilities/Geometry3d/TestSection3d.cpp
+    Capabilities/Geometry3d/TestSection3dMixedAreas.cpp
+    Capabilities/Geometry3d/TestSection3dMixedContours.cpp
+    Capabilities/Geometry3d/TestSection3dRebar.cpp
     Capabilities/Geometry3d/TestValueTypes3d.cpp
     Capabilities/Geometry3d/TestBrepCore.cpp
     Capabilities/Geometry3d/TestBrepLoopGeometry.cpp
@@ -123,7 +126,7 @@ endforeach()
 
 add_executable(${SCGEOMETRY_CAPABILITY_TESTS_TARGET}
     ${SCGEOMETRY_CAPABILITY_TEST_SOURCES}
-    ${SCGEOMETRY_ROOT_DIR}/Source/Detail/TriangulateContours2d.cpp
+    ${SCGEOMETRY_ROOT_DIR}/Source/Core/Detail/TriangulateContours2d.cpp
 )
 target_link_libraries(${SCGEOMETRY_CAPABILITY_TESTS_TARGET} PRIVATE ${SCGEOMETRY_TARGET} GTest::gtest GTest::gtest_main)
 if(BUILD_SHARED_LIBS)

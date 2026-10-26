@@ -1,5 +1,5 @@
 #include "TriangulateContours2d.h"
-#include "PolylineRing2d.h"
+#include "../../Detail/PolylineRing2d.h"
 
 #include <cmath>
 #include <utility>

@@ -16,7 +16,7 @@
 #include "Geometry3d/SCNurbsCurve3d.h"
 #include "Geometry3d/SCNurbsSurface.h"
 #include "Geometry3d/SCPlaneSurface.h"
-#include "../../../Source/Detail/CurveOnSurfaceNumerics.h"
+#include "../../../Source/Core/Detail/CurveOnSurfaceNumerics.h"
 
 static_assert(std::is_base_of_v<Geometry::ISCCurve3d, Geometry::SCCurveOnSurface>);
 

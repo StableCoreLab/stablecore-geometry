@@ -238,33 +238,33 @@ list(TRANSFORM SCGEOMETRY_HEADERS PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/Include/"
 
 set(SCGEOMETRY_INTERNAL_HEADERS
     Brep/LoopGeometry.h
+    Core/Detail/BrepFaceRegion.h
+    Core/Detail/CheckedSegmentIntersection2d.h
+    Core/Detail/CurveArrangement2d.h
+    Core/Detail/CurveOnSurfaceNumerics.h
+    Core/Detail/LineFaceHits.h
+    Core/Detail/ParametricSeeds.h
+    Core/Detail/PathNumerics3d.h
+    Core/Detail/PolygonNesting2d.h
+    Core/Detail/PolygonPositiveAreaIntersection2d.h
+    Core/Detail/ProjectionCandidates.h
+    Core/Detail/SegmentBoxRelation2d.h
+    Core/Detail/SegmentKernel2d.h
+    Core/Detail/SegmentSubdivision2d.h
+    Core/Detail/SurfaceProjectionSolver.h
+    Core/Detail/TriangulateContours2d.h
     Detail/AffinePlaneGeometry.h
     Detail/ArrangementVertices2d.h
     Detail/BoxTreeCore.h
-    Detail/BrepFaceRegion.h
-    Detail/CheckedSegmentIntersection2d.h
-    Detail/CurveArrangement2d.h
-    Detail/CurveOnSurfaceNumerics.h
     Detail/DirectedEdgeFans2d.h
     Detail/GeometryContainerOps.h
-    Detail/LineFaceHits.h
     Detail/NurbsBasis.h
     Detail/NurbsRootLimits.h
-    Detail/ParametricSeeds.h
-    Detail/PathNumerics3d.h
-    Detail/PolygonNesting2d.h
-    Detail/PolygonPositiveAreaIntersection2d.h
     Detail/PolylineRing2d.h
-    Detail/ProjectionCandidates.h
     Detail/RingIntegral2d.h
     Detail/RingVertices2d.h
     Detail/TolerancePolicy2d.h
-    Detail/SegmentBoxRelation2d.h
-    Detail/SegmentKernel2d.h
     Detail/SegmentParameters2d.h
-    Detail/SegmentSubdivision2d.h
-    Detail/SurfaceProjectionSolver.h
-    Detail/TriangulateContours2d.h
     SCGeometryPch.h
 )
 list(TRANSFORM SCGEOMETRY_INTERNAL_HEADERS PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/Source/")
@@ -315,12 +315,12 @@ set(SCGEOMETRY_SOURCES
     Core/Transform.cpp
     Core/Triangulation.cpp
     Core/Validation.cpp
-    Detail/CurveArrangement2d.cpp
-    Detail/PolygonPositiveAreaIntersection2d.cpp
-    Detail/PositiveAreaArrangement2d.cpp
-    Detail/SegmentBoxRelation2d.cpp
-    Detail/SegmentKernel2d.cpp
-    Detail/TriangulateContours2d.cpp
+    Core/Detail/CurveArrangement2d.cpp
+    Core/Detail/PolygonPositiveAreaIntersection2d.cpp
+    Core/Detail/PositiveAreaArrangement2d.cpp
+    Core/Detail/SegmentBoxRelation2d.cpp
+    Core/Detail/SegmentKernel2d.cpp
+    Core/Detail/TriangulateContours2d.cpp
     Geometry2d/ArcSegment2d.cpp
     Geometry2d/LineSegment2d.cpp
     Geometry2d/MultiPolygon2d.cpp

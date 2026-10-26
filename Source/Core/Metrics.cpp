@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "Core/Projection.h"
-#include "../Detail/SegmentBoxRelation2d.h"
+#include "Detail/SegmentBoxRelation2d.h"
 
 namespace Geometry
 {

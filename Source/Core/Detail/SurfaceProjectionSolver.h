@@ -5,7 +5,7 @@
 #include <map>
 #include <vector>
 #include "Core/Projection.h"
-#include "NurbsBasis.h"
+#include "../../Detail/NurbsBasis.h"
 #include "Geometry3d/SCNurbsSurface.h"
 
 namespace Geometry::Detail

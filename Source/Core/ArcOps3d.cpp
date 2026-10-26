@@ -5,7 +5,7 @@
 #include <cmath>
 #include <numbers>
 
-#include "../Detail/PathNumerics3d.h"
+#include "Detail/PathNumerics3d.h"
 
 namespace Geometry
 {

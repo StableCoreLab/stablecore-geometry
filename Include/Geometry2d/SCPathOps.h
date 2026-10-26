@@ -60,6 +60,11 @@ namespace Geometry
     };
 
     [[nodiscard]] GEOMETRY_API SCPolyline2d SubPolyline(const SCPolyline2d& polyline, double startLength, double endLength);
+    // 显式入口按调用者的线性容差校验路径及裁剪结果。
+    [[nodiscard]] GEOMETRY_API SCPolyline2d SubPolyline(const SCPolyline2d& polyline,
+                                                        double startLength,
+                                                        double endLength,
+                                                        double epsilon);
 
     // cutter 所在的无限直线定义左右侧，方向为 startPoint 到 endPoint。
     // cutter 端点须有效且两端距离大于 eps；两侧均有有效面积时返回全部连通分量，

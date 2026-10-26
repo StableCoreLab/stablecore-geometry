@@ -5,7 +5,7 @@
 
 #include "Core/Intersection.h"
 #include "Geometry2d/SCLineSegment2d.h"
-#include "SegmentParameters2d.h"
+#include "../../Detail/SegmentParameters2d.h"
 
 namespace Geometry::Detail
 {

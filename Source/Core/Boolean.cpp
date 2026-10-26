@@ -13,9 +13,9 @@
 
 #include "../Detail/ArrangementVertices2d.h"
 #include "../Detail/DirectedEdgeFans2d.h"
-#include "../Detail/PolygonNesting2d.h"
+#include "Detail/PolygonNesting2d.h"
 #include "../Detail/RingVertices2d.h"
-#include "../Detail/SegmentSubdivision2d.h"
+#include "Detail/SegmentSubdivision2d.h"
 #include "../Detail/TolerancePolicy2d.h"
 #include "Core/PolygonRelation2d.h"
 #include "Core/Editing.h"
@@ -610,13 +610,22 @@ namespace Geometry
 
         [[nodiscard]] SCPolygon2d NormalizeBooleanOperand(const SCPolygon2d& polygon, double eps)
         {
+            const bool inputValid = polygon.IsValid(eps);
+            if (!inputValid)
+            {
+                AxisAlignedBox box;
+                SCPolygon2d repaired;
+                if (TryBuildRepairedAxisAlignedBox(polygon, box, repaired, eps))
+                {
+                    return repaired;
+                }
+            }
+
             const SCPolygon2d rebuilt = NormalizePolygonByLines(polygon, eps);
             if (rebuilt.IsValid(eps))
             {
                 return rebuilt;
             }
-
-            const bool inputValid = polygon.IsValid(eps);
 
             if (inputValid)
             {
@@ -1930,6 +1939,14 @@ namespace Geometry
     SCMultiPolygon2d Difference(const SCPolygon2d& first, const SCPolygon2d& second, double eps)
     {
         if (!IsValidBooleanTolerance(eps)) return {};
+        if (!first.IsValid(eps) || !second.IsValid(eps))
+        {
+            SCMultiPolygon2d repaired = TryAxisAlignedBoxDifferenceFallback(first, second, eps);
+            if (!repaired.IsEmpty())
+            {
+                return repaired;
+            }
+        }
         SCMultiPolygon2d result = BooleanCompose(first, second, BooleanOp::Difference, eps);
         if (result.IsEmpty() && BoundsOverlap(first, second, eps))
         {

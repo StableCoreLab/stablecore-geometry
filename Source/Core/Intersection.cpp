@@ -1,6 +1,6 @@
 #include "Core/Intersection.h"
 
-#include "../Detail/SegmentKernel2d.h"
+#include "Detail/SegmentKernel2d.h"
 
 #include <algorithm>
 #include <array>

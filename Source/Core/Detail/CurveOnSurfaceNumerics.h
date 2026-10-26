@@ -16,8 +16,8 @@
 #include "Geometry3d/SCNurbsSurface.h"
 #include "Geometry3d/SCPlaneSurface.h"
 #include "Types/Geometry3d/SCLine3d.h"
-#include "NurbsBasis.h"
-#include "NurbsRootLimits.h"
+#include "../../Detail/NurbsBasis.h"
+#include "../../Detail/NurbsRootLimits.h"
 
 namespace Geometry::Detail
 {

@@ -11,7 +11,7 @@
 #include "Geometry2d/SCPolygon2d.h"
 #include "Geometry3d/SCLineCurve3d.h"
 #include "Geometry3d/SCPlaneSurface.h"
-#include "AffinePlaneGeometry.h"
+#include "../../Detail/AffinePlaneGeometry.h"
 #include "CurveOnSurfaceNumerics.h"
 
 namespace Geometry::Detail

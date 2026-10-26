@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <numeric>
 #include <unordered_map>
 #include <unordered_set>
@@ -13,9 +14,9 @@
 
 #include "../Detail/ArrangementVertices2d.h"
 #include "../Detail/DirectedEdgeFans2d.h"
-#include "../Detail/PolygonNesting2d.h"
+#include "Detail/PolygonNesting2d.h"
 #include "../Detail/RingVertices2d.h"
-#include "../Detail/SegmentSubdivision2d.h"
+#include "Detail/SegmentSubdivision2d.h"
 #include "../Detail/TolerancePolicy2d.h"
 #include "../Detail/RingIntegral2d.h"
 #include "Core/PolygonRelation2d.h"
@@ -26,6 +27,7 @@
 #include "Core/Relation.h"
 #include "Core/ShapeOps.h"
 #include "Core/Validation.h"
+#include "Geometry2d/SCArcSegment2d.h"
 #include "Support/Epsilon.h"
 #include "Support/Geometry2d/Predicate2.h"
 
@@ -66,57 +68,101 @@ namespace Geometry
 
         [[nodiscard]] std::vector<SCPoint2d> SimplifyRingVertices(std::vector<SCPoint2d> points, double eps);
 
-        [[nodiscard]] SCPolyline2d ClipPolylineLength(const SCPolyline2d& polyline, double startLength, double endLength)
+        [[nodiscard]] SCPolyline2d ClipPolylineLength(const SCPolyline2d& polyline,
+                                                       double startLength,
+                                                       double endLength,
+                                                       double eps)
         {
-            if (!polyline.IsValid() || endLength < startLength)
+            if (!(eps > 0.0) || !std::isfinite(eps) || !std::isfinite(startLength) ||
+                !std::isfinite(endLength) || !polyline.IsValid(eps) || endLength < startLength)
             {
                 return {};
             }
 
             const double total = polyline.Length();
+            if (!std::isfinite(total))
+            {
+                return {};
+            }
             startLength = std::clamp(startLength, 0.0, total);
             endLength = std::clamp(endLength, 0.0, total);
-            if (endLength < startLength + Geometry::kDefaultEpsilon)
+            if (endLength - startLength < eps)
             {
                 return {};
             }
 
-            std::vector<SCPoint2d> points;
+            std::vector<std::shared_ptr<ISCSegment2d>> clippedSegments;
             double cursor = 0.0;
-            for (std::size_t i = 0; i + 1 < polyline.PointCount(); ++i)
+            for (std::size_t i = 0; i < polyline.SegmentCount(); ++i)
             {
-                const SCLineSegment2d segment(polyline.VertexAt(i), polyline.VertexAt(i + 1));
-                const double segLen = segment.Length();
+                const std::unique_ptr<ISCSegment2d> segment = polyline.SegmentAt(i);
+                const double segLen = segment->Length();
+                if (!(segLen > 0.0) || !std::isfinite(segLen))
+                {
+                    return {};
+                }
                 const double segStart = cursor;
                 const double segEnd = cursor + segLen;
 
-                if (segEnd < startLength - Geometry::kDefaultEpsilon)
+                if (segEnd < startLength - eps)
                 {
                     cursor = segEnd;
                     continue;
                 }
-                if (segStart > endLength + Geometry::kDefaultEpsilon)
+                if (segStart > endLength + eps)
                 {
                     break;
                 }
 
-                const double localStart = std::max(0.0, startLength - segStart);
-                const double localEnd = std::min(segLen, endLength - segStart);
-                const SCPoint2d startPoint = segment.PointAtLength(localStart, true);
-                const SCPoint2d endPoint = segment.PointAtLength(localEnd, true);
-                if (points.empty() || !points.back().AlmostEquals(startPoint, Geometry::kDefaultEpsilon))
+                const double localStart = std::clamp(startLength - segStart, 0.0, segLen);
+                const double localEnd = std::clamp(endLength - segStart, 0.0, segLen);
+                if (!(localEnd - localStart > eps))
                 {
-                    points.push_back(startPoint);
+                    cursor = segEnd;
+                    continue;
                 }
-                if (points.empty() || !points.back().AlmostEquals(endPoint, Geometry::kDefaultEpsilon))
+                const double startRatio = localStart / segLen;
+                const double endRatio = localEnd / segLen;
+                if (segment->Kind() == SCSegmentKind2::Line)
                 {
-                    points.push_back(endPoint);
+                    const auto* line = dynamic_cast<const SCLineSegment2d*>(segment.get());
+                    if (line == nullptr)
+                    {
+                        return {};
+                    }
+                    const auto pointAtRatio = [&](double ratio) {
+                        return SCPoint2d{std::lerp(line->startPoint.x, line->endPoint.x, ratio),
+                                         std::lerp(line->startPoint.y, line->endPoint.y, ratio)};
+                    };
+                    clippedSegments.push_back(std::make_shared<SCLineSegment2d>(
+                        pointAtRatio(startRatio), pointAtRatio(endRatio)));
+                }
+                else if (segment->Kind() == SCSegmentKind2::Arc)
+                {
+                    const auto* arc = dynamic_cast<const SCArcSegment2d*>(segment.get());
+                    if (arc == nullptr)
+                    {
+                        return {};
+                    }
+                    auto clippedArc = std::make_shared<SCArcSegment2d>(
+                        arc->center, arc->radius, arc->startAngle + arc->sweepAngle * startRatio,
+                        arc->sweepAngle * (endRatio - startRatio));
+                    if (!clippedArc->IsValid())
+                    {
+                        return {};
+                    }
+                    clippedSegments.push_back(std::move(clippedArc));
+                }
+                else
+                {
+                    return {};
                 }
 
                 cursor = segEnd;
             }
 
-            return SCPolyline2d(std::move(points), SCPolylineClosure::Open);
+            SCPolyline2d clipped(std::move(clippedSegments), SCPolylineClosure::Open);
+            return clipped.IsValid(eps) ? clipped : SCPolyline2d{};
         }
 
         [[nodiscard]] SCPolygon2d BuildHalfPlaneClipPolygon(const SCPolygon2d& polygon,
@@ -188,7 +234,7 @@ namespace Geometry
         void CollectRawSegments(const SCPolyline2d& polyline, std::vector<RawSegment>& segments, double eps)
         {
             const SCPolyline2d normalized = Normalize(polyline, eps);
-            if (!normalized.IsValid() || normalized.PointCount() < 2)
+            if (!normalized.IsValid(eps) || normalized.PointCount() < 2)
             {
                 return;
             }
@@ -206,9 +252,9 @@ namespace Geometry
             }
         }
 
-        void AppendPolygonBoundaries(const SCPolygon2d& polygon, SCMultiPolyline2d& boundaries)
+        void AppendPolygonBoundaries(const SCPolygon2d& polygon, SCMultiPolyline2d& boundaries, double eps)
         {
-            if (!polygon.OuterRing().IsValid())
+            if (!polygon.OuterRing().IsValid(eps))
             {
                 return;
             }
@@ -285,7 +331,7 @@ namespace Geometry
 
                 SCPolyline2d simplifiedBoundary(std::move(simplifiedPoints),
                                               isClosed ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
-                if (simplifiedBoundary.IsValid())
+                if (simplifiedBoundary.IsValid(eps))
                 {
                     simplifiedBoundaries.Add(std::move(simplifiedBoundary));
                 }
@@ -366,7 +412,7 @@ namespace Geometry
             for (std::size_t lineIndex = 0; lineIndex < lines.Size(); ++lineIndex)
             {
                 const SCPolyline2d& line = lines[lineIndex];
-                if (!line.IsValid() || line.PointCount() < 2) continue;
+                if (!line.IsValid(eps) || line.PointCount() < 2) continue;
                 const std::size_t count = line.IsClosed() ? line.PointCount() : line.PointCount() - 1;
                 for (std::size_t i = 0; i < count; ++i)
                 {
@@ -685,7 +731,7 @@ namespace Geometry
                                                double repairTol,
                                                double eps)
         {
-            const SCBox2d bounds = candidate.ring.Bounds();
+            const SCBox2d bounds = candidate.ring.Bounds(eps);
             const double diagonal = std::hypot(bounds.Width(), bounds.Height());
             const auto absolute = Detail::StableProduct(eps, eps, 256);
             const auto relative = candidate.syntheticPerimeter > 0.0
@@ -804,7 +850,7 @@ namespace Geometry
                 {
                     continue;
                 }
-                if (Detail::ComputeSignedArea(ring) <= 0.0)
+                if (Detail::ComputeSignedArea(ring, eps) <= 0.0)
                 {
                     continue;
                 }
@@ -891,7 +937,7 @@ namespace Geometry
                 }
 
                 SCPolyline2d outerRing = loopPolygons[i].OuterRing();
-                if (Detail::ComputeSignedArea(outerRing) < 0.0)
+                if (Detail::ComputeSignedArea(outerRing, eps) < 0.0)
                 {
                     outerRing = Reverse(outerRing);
                 }
@@ -905,7 +951,7 @@ namespace Geometry
                     }
 
                     SCPolyline2d holeRing = loopPolygons[j].OuterRing();
-                    if (Detail::ComputeSignedArea(holeRing) > 0.0)
+                    if (Detail::ComputeSignedArea(holeRing, eps) > 0.0)
                     {
                         holeRing = Reverse(holeRing);
                     }
@@ -925,7 +971,15 @@ namespace Geometry
 
     SCPolyline2d SubPolyline(const SCPolyline2d& polyline, double startLength, double endLength)
     {
-        return ClipPolylineLength(polyline, startLength, endLength);
+        return SubPolyline(polyline, startLength, endLength, Geometry::kDefaultEpsilon);
+    }
+
+    SCPolyline2d SubPolyline(const SCPolyline2d& polyline,
+                             double startLength,
+                             double endLength,
+                             double epsilon)
+    {
+        return ClipPolylineLength(polyline, startLength, endLength, epsilon);
     }
 
     namespace
@@ -1087,7 +1141,7 @@ namespace Geometry
             return {};
         }
         SCMultiPolyline2d boundaries;
-        AppendPolygonBoundaries(polygon, boundaries);
+        AppendPolygonBoundaries(polygon, boundaries, eps);
         if (boundaries.IsEmpty())
         {
             return {};

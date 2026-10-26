@@ -30,6 +30,19 @@ TEST(SegmentTest, ArcComparisonSeparatesDistanceAndAngleTolerance)
     EXPECT_TRUE(arc.AlmostEquals(rotated, 1e-3));
 }
 
+TEST(SegmentTest, ArcValidityRejectsOverflowingGeometry)
+{
+    const SCArcSegment2d endpointOverflow({1e308, 0.0}, 1e308, 0.0,
+                                          Geometry::kPi / 2.0);
+    const SCArcSegment2d interiorOverflow({1.5e308, 0.0}, 5e307,
+                                          -Geometry::kPi / 2.0, Geometry::kPi);
+    ASSERT_FALSE(endpointOverflow.StartPoint().IsValid());
+    ASSERT_TRUE(interiorOverflow.StartPoint().IsValid());
+    ASSERT_TRUE(interiorOverflow.EndPoint().IsValid());
+    EXPECT_FALSE(endpointOverflow.IsValid());
+    EXPECT_FALSE(interiorOverflow.IsValid());
+}
+
 TEST(SegmentTest, CoversCurrentCapabilities)
 {
     static_assert(std::is_abstract_v<ISCSegment2d>);

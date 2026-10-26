@@ -19,8 +19,8 @@
 #include "Geometry3d/SCNurbsCurve3d.h"
 #include "Geometry3d/SCPlaneSurface.h"
 #include "Geometry3d/TriangleMesh.h"
-#include "../Detail/BrepFaceRegion.h"
-#include "../Detail/LineFaceHits.h"
+#include "Detail/BrepFaceRegion.h"
+#include "Detail/LineFaceHits.h"
 
 namespace Geometry
 {

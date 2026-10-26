@@ -13,7 +13,7 @@
 #include "Geometry3d/SCLineCurve3d.h"
 #include "Geometry3d/SCNurbsCurve3d.h"
 #include "Geometry3d/Detail/SurfaceNumerics.h"
-#include "../Detail/CurveOnSurfaceNumerics.h"
+#include "Detail/CurveOnSurfaceNumerics.h"
 #include "../Detail/NurbsRootLimits.h"
 
 namespace Geometry

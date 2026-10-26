@@ -9,7 +9,7 @@
 
 #include "Geometry2d/SCArcSegment2d.h"
 #include "Geometry2d/SCLineSegment2d.h"
-#include "../Detail/PathNumerics3d.h"
+#include "Detail/PathNumerics3d.h"
 
 namespace Geometry
 {

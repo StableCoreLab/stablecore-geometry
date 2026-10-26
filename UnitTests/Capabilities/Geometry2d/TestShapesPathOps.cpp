@@ -2,7 +2,9 @@
 
 #include <cmath>
 #include <limits>
+#include <memory>
 #include <numbers>
+#include <vector>
 
 #include "Geometry.h"
 
@@ -93,6 +95,100 @@ TEST(ShapesPathopsTest, ExtractsPolylineSubpaths)
     EXPECT_TRUE(sub.VertexAt(0).AlmostEquals(SCPoint2d{2.0, 0.0}, 1e-12));
     EXPECT_TRUE(sub.VertexAt(sub.PointCount() - 1).AlmostEquals(SCPoint2d{3.0, 2.0}, 1e-12));
 
+}
+
+TEST(ShapesPathopsTest, ExtractsSubDefaultPolylineWithExplicitTolerance)
+{
+    constexpr double length = 1e-10;
+    constexpr double eps = 1e-15;
+    const SCPolyline2d path({{0.0, 0.0}, {length, 0.0}, {length, length}}, SCPolylineClosure::Open);
+    ASSERT_FALSE(path.IsValid());
+    ASSERT_TRUE(path.IsValid(eps));
+
+    const SCPolyline2d sub = SubPolyline(path, 0.5 * length, 1.5 * length, eps);
+    ASSERT_TRUE(sub.IsValid(eps));
+    ASSERT_EQ(sub.PointCount(), 3U);
+    EXPECT_TRUE(sub.VertexAt(0).AlmostEquals({0.5 * length, 0.0}, eps));
+    EXPECT_TRUE(sub.VertexAt(1).AlmostEquals({length, 0.0}, eps));
+    EXPECT_TRUE(sub.VertexAt(2).AlmostEquals({length, 0.5 * length}, eps));
+    EXPECT_FALSE(SubPolyline(path, 0.5 * length, 1.5 * length).IsValid(eps));
+    EXPECT_FALSE(SubPolyline(path, 0.5 * length, 1.5 * length, 0.0).IsValid(eps));
+    EXPECT_FALSE(SubPolyline(path, 0.5 * length, 1.5 * length,
+                             std::numeric_limits<double>::infinity()).IsValid(eps));
+}
+
+TEST(ShapesPathopsTest, SubPolylineRetainsArcLengthAndGeometry)
+{
+    const auto arc = std::make_shared<Geometry::SCArcSegment2d>(
+        SCPoint2d{0.0, 0.0}, 2.0, 0.0, std::numbers::pi_v<double>);
+    const SCPolyline2d path(std::vector<std::shared_ptr<Geometry::ISCSegment2d>>{arc},
+                            SCPolylineClosure::Open);
+    ASSERT_TRUE(path.IsValid());
+
+    const SCPolyline2d sub = SubPolyline(path, 0.25 * path.Length(), 0.75 * path.Length(), 1e-12);
+    ASSERT_TRUE(sub.IsValid(1e-12));
+    ASSERT_EQ(sub.SegmentCount(), 1U);
+    EXPECT_EQ(sub.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2::Arc);
+    EXPECT_NEAR(sub.Length(), std::numbers::pi_v<double>, 1e-12);
+    EXPECT_TRUE(sub.StartPoint().AlmostEquals({std::sqrt(2.0), std::sqrt(2.0)}, 1e-12));
+    EXPECT_TRUE(sub.EndPoint().AlmostEquals({-std::sqrt(2.0), std::sqrt(2.0)}, 1e-12));
+}
+
+TEST(ShapesPathopsTest, SubPolylineIncludesClosingSegment)
+{
+    const SCPolyline2d path({{0.0, 0.0}, {2.0, 0.0}, {0.0, 2.0}}, SCPolylineClosure::Closed);
+    ASSERT_TRUE(path.IsValid());
+
+    const SCPolyline2d sub = SubPolyline(path, path.Length() - 1.5, path.Length() - 0.5, 1e-12);
+    ASSERT_TRUE(sub.IsValid());
+    ASSERT_EQ(sub.SegmentCount(), 1U);
+    EXPECT_TRUE(sub.StartPoint().AlmostEquals({0.0, 1.5}, 1e-12));
+    EXPECT_TRUE(sub.EndPoint().AlmostEquals({0.0, 0.5}, 1e-12));
+}
+
+TEST(ShapesPathopsTest, SubPolylineSkipsSubToleranceArcBeforeSelectedLine)
+{
+    constexpr double eps = 1e-12;
+    const auto arc = std::make_shared<Geometry::SCArcSegment2d>(
+        SCPoint2d{0.0, 0.0}, 1e-14, 0.0, std::numbers::pi_v<double>);
+    const auto line = std::make_shared<SCLineSegment2d>(arc->EndPoint(), SCPoint2d{2.0, 0.0});
+    const SCPolyline2d path(std::vector<std::shared_ptr<Geometry::ISCSegment2d>>{arc, line},
+                            SCPolylineClosure::Open);
+    ASSERT_TRUE(path.IsValid(eps));
+
+    const SCPolyline2d sub = SubPolyline(path, arc->Length() + 0.5, arc->Length() + 1.5, eps);
+    ASSERT_TRUE(sub.IsValid(eps));
+    ASSERT_EQ(sub.SegmentCount(), 1U);
+    EXPECT_EQ(sub.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2::Line);
+    EXPECT_NEAR(sub.StartPoint().x, 0.5, eps);
+    EXPECT_NEAR(sub.EndPoint().x, 1.5, eps);
+}
+
+TEST(ShapesPathopsTest, SubPolylineRejectsArcWithOverflowingEndpoint)
+{
+    const auto arc = std::make_shared<Geometry::SCArcSegment2d>(
+        SCPoint2d{1e308, 0.0}, 1e308, 0.0, std::numbers::pi_v<double> / 2.0);
+    const SCPolyline2d path(std::vector<std::shared_ptr<Geometry::ISCSegment2d>>{arc},
+                            SCPolylineClosure::Open);
+    ASSERT_FALSE(arc->StartPoint().IsValid());
+
+    const SCPolyline2d sub = SubPolyline(path, 0.0, 0.5 * path.Length(), 1e-12);
+    EXPECT_FALSE(sub.IsValid(1e-12));
+}
+
+TEST(ShapesPathopsTest, SubPolylineRejectsArcWithOverflowingInterior)
+{
+    const auto arc = std::make_shared<Geometry::SCArcSegment2d>(
+        SCPoint2d{1.5e308, 0.0}, 5e307, -std::numbers::pi_v<double> / 2.0,
+        std::numbers::pi_v<double>);
+    const SCPolyline2d path(std::vector<std::shared_ptr<Geometry::ISCSegment2d>>{arc},
+                            SCPolylineClosure::Open);
+    ASSERT_TRUE(arc->StartPoint().IsValid());
+    ASSERT_TRUE(arc->EndPoint().IsValid());
+    ASSERT_FALSE((SCPoint2d{arc->center.x + arc->radius, arc->center.y}).IsValid());
+
+    const SCPolyline2d sub = SubPolyline(path, 0.0, path.Length(), 1e-12);
+    EXPECT_FALSE(sub.IsValid(1e-12));
 }
 
 TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
@@ -273,6 +369,29 @@ TEST(ShapesPathopsTest, NormalizesThinValidPolygonWithCallerTolerance)
     const SCPolygon2d normalized = NormalizePolygonByLines(thin, eps);
     ASSERT_TRUE(normalized.IsValid());
     EXPECT_NEAR(normalized.Area(), thin.Area(), 1e-12);
+}
+
+TEST(ShapesPathopsTest, NormalizesSubDefaultSquareWithCallerTolerance)
+{
+    constexpr double width = 1e-10;
+    constexpr double eps = 1e-15;
+    const SCPolygon2d square(SCPolyline2d(
+        {{0.0, 0.0}, {width, 0.0}, {width, width}, {0.0, width}},
+        SCPolylineClosure::Closed));
+    ASSERT_FALSE(square.IsValid());
+    ASSERT_TRUE(square.IsValid(eps));
+    SCMultiPolyline2d boundaries;
+    boundaries.Add(square.OuterRing());
+    const auto rebuilt = Geometry::BuildMultiPolygonByLinesWithDiagnostics(boundaries, eps);
+    EXPECT_EQ(rebuilt.diagnostics.inputSegmentCount, 4U);
+    EXPECT_EQ(rebuilt.diagnostics.uniqueVertexCount, 4U);
+    EXPECT_EQ(rebuilt.diagnostics.danglingEndpointCount, 0U);
+    ASSERT_EQ(rebuilt.polygons.Count(), 1U);
+
+    const SCPolygon2d normalized = NormalizePolygonByLines(square, eps);
+    ASSERT_TRUE(normalized.IsValid(eps));
+    EXPECT_NEAR(normalized.Area(eps), width * width, 1e-25);
+    EXPECT_EQ(normalized.OuterRing().PointCount(), 4U);
 }
 
 TEST(ShapesPathopsTest, SmallNestedRingsRetainInteriorHole)

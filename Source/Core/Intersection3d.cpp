@@ -20,9 +20,9 @@
 #include "Brep/SCBrepFace.h"
 #include "Brep/SCBrepVertex.h"
 #include "../Detail/AffinePlaneGeometry.h"
-#include "../Detail/BrepFaceRegion.h"
-#include "../Detail/LineFaceHits.h"
-#include "../Detail/CurveOnSurfaceNumerics.h"
+#include "Detail/BrepFaceRegion.h"
+#include "Detail/LineFaceHits.h"
+#include "Detail/CurveOnSurfaceNumerics.h"
 #include "Geometry3d/SCLineCurve3d.h"
 #include "Geometry3d/Detail/SurfaceNumerics.h"
 #include "Geometry3d/SCOffsetSurface.h"
@@ -31,7 +31,7 @@
 #include "Geometry3d/SCPlaneSurface.h"
 #include "Geometry3d/TriangleMesh.h"
 #include "Support/Epsilon.h"
-#include "../Detail/ParametricSeeds.h"
+#include "Detail/ParametricSeeds.h"
 
 namespace Geometry
 {

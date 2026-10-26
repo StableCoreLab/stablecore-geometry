@@ -5,7 +5,7 @@
 #include "Core/Projection.h"
 #include "Core/MeshConversion.h"
 #include "Brep/PolyhedronFace3d.h"
-#include "../../../Source/Detail/TriangulateContours2d.h"
+#include "../../../Source/Core/Detail/TriangulateContours2d.h"
 
 using Geometry::SCPoint2d;
 using Geometry::SCPolygon2d;

@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include "../Detail/PathNumerics3d.h"
+#include "Detail/PathNumerics3d.h"
 #include "Support/Geometry2d/Predicate2.h"
 
 namespace Geometry

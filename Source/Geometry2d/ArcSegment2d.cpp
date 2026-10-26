@@ -48,9 +48,22 @@ namespace Geometry
 
     bool SCArcSegment2d::IsValid() const
     {
-        return center.IsValid() && std::isfinite(radius) && std::isfinite(startAngle) && std::isfinite(sweepAngle) &&
-               radius > 0.0 && std::abs(sweepAngle) > Geometry::kDefaultAngleEpsilon &&
-               std::abs(sweepAngle) <= 2.0 * std::numbers::pi_v<double> + Geometry::kDefaultAngleEpsilon;
+        if (!center.IsValid() || !std::isfinite(radius) || !std::isfinite(startAngle) ||
+            !std::isfinite(sweepAngle) || !(radius > 0.0) ||
+            !(std::abs(sweepAngle) > Geometry::kDefaultAngleEpsilon) ||
+            std::abs(sweepAngle) > 2.0 * std::numbers::pi_v<double> + Geometry::kDefaultAngleEpsilon ||
+            !StartPoint().IsValid() || !EndPoint().IsValid())
+        {
+            return false;
+        }
+        for (double angle : Geometry::kArcBoundsCriticalAngles)
+        {
+            if (IsAngleOnArc(angle) && !PointAtAngle(angle).IsValid())
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     SCArcDirection SCArcSegment2d::Direction() const

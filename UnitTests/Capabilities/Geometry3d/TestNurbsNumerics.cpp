@@ -12,7 +12,7 @@
 #include "Geometry3d/SCPlaneSurface.h"
 #include "Support/Fixtures3d.h"
 #include "../../../Source/Detail/NurbsBasis.h"
-#include "../../../Source/Detail/SurfaceProjectionSolver.h"
+#include "../../../Source/Core/Detail/SurfaceProjectionSolver.h"
 
 using Geometry::Intersect;
 using Geometry::ProjectPointToCurve;
