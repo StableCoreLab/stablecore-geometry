@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <sstream>
 #include <string>
 
@@ -21,7 +22,8 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(double eps = kDefaultEpsilon) const
         {
-            return startPoint.IsValid() && endPoint.IsValid() && (endPoint - startPoint).Length() > eps;
+            return std::isfinite(eps) && eps >= 0.0 && startPoint.IsValid() && endPoint.IsValid() &&
+                   (endPoint - startPoint).Length() > eps;
         }
 
         [[nodiscard]] double Length() const

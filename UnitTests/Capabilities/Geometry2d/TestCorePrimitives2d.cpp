@@ -1,8 +1,20 @@
 #include <gtest/gtest.h>
 
+#include <limits>
+
 #include "Geometry.h"
 
 using namespace Geometry;
+
+TEST(Line2dCapabilityTest, RejectsInvalidTolerance)
+{
+    const SCLine2d empty;
+    const auto line = SCLine2d::FromTwoPoints({0.0, 0.0}, {1.0, 0.0});
+    EXPECT_FALSE(empty.IsValid(-1.0));
+    EXPECT_TRUE(line.IsValid(0.0));
+    EXPECT_FALSE(line.IsValid(-1.0));
+    EXPECT_FALSE(line.IsValid(std::numeric_limits<double>::quiet_NaN()));
+}
 
 TEST(GeometryTest, CoversTwoDimensionalPrimitives)
 {

@@ -17,7 +17,12 @@ namespace Geometry
         [[nodiscard]] static SCDirection3d FromVector(const SCVector3d& vector, double eps = kDefaultEpsilon)
         {
             SCDirection3d direction;
-            if (vector.IsValid() && vector.Length() > eps)
+            if (!std::isfinite(eps) || eps < 0.0 || !vector.IsValid())
+            {
+                return direction;
+            }
+            const double length = vector.Length();
+            if (std::isfinite(length) && length > eps)
             {
                 direction.value = vector.Normalized(eps);
             }
@@ -26,7 +31,12 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(double eps = kDefaultEpsilon) const
         {
-            return value.IsValid() && value.Length() > eps;
+            if (!std::isfinite(eps) || eps < 0.0 || !value.IsValid())
+            {
+                return false;
+            }
+            const double length = value.Length();
+            return std::isfinite(length) && length > eps;
         }
 
         [[nodiscard]] SCVector3d Vector() const

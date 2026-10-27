@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <sstream>
 #include <string>
 
@@ -19,9 +20,9 @@ namespace Geometry
             return SCIntervald{minValue, maxValue};
         }
 
-        [[nodiscard]] bool IsValid() const
+        [[nodiscard]] constexpr bool IsValid() const
         {
-            return std::isfinite(min) && std::isfinite(max) && min <= max;
+            return IsFiniteValue(min) && IsFiniteValue(max) && min <= max;
         }
 
         [[nodiscard]] constexpr double Length() const
@@ -31,12 +32,14 @@ namespace Geometry
 
         [[nodiscard]] constexpr bool Contains(double value, double eps = kDefaultEpsilon) const
         {
-            return value >= min - eps && value <= max + eps;
+            return IsValid() && IsFiniteValue(value) && IsFiniteValue(eps) && eps >= 0.0 &&
+                   value >= min - eps && value <= max + eps;
         }
 
         [[nodiscard]] bool AlmostEquals(const SCIntervald& other, double eps = kDefaultEpsilon) const
         {
-            return std::abs(min - other.min) <= eps && std::abs(max - other.max) <= eps;
+            return IsValid() && other.IsValid() && IsFiniteValue(eps) && eps >= 0.0 &&
+                   std::abs(min - other.min) <= eps && std::abs(max - other.max) <= eps;
         }
 
         [[nodiscard]] std::string DebugString() const
@@ -44,6 +47,13 @@ namespace Geometry
             std::ostringstream stream;
             stream << "SCIntervald{min=" << min << ", max=" << max << "}";
             return stream.str();
+        }
+
+    private:
+        [[nodiscard]] static constexpr bool IsFiniteValue(double value)
+        {
+            constexpr double limit = std::numeric_limits<double>::max();
+            return value >= -limit && value <= limit;
         }
     };
 

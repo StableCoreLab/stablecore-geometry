@@ -37,6 +37,8 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestBodyBoolean3d.cpp
     Capabilities/Geometry3d/TestBrep3d.cpp
     Capabilities/Geometry3d/TestConversion3d.cpp
+    Capabilities/Geometry3d/TestConversionCuboid3d.cpp
+    Capabilities/Geometry3d/TestConversionRepresentative3d.cpp
     Capabilities/Geometry3d/TestHealing3d.cpp
     Capabilities/Geometry3d/TestHealing3dBoundaryArbitration.cpp
     Capabilities/Geometry3d/TestHealing3dShellCombinations.cpp
@@ -49,6 +51,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestValueTypes3d.cpp
     Capabilities/Geometry3d/TestBrepCore.cpp
     Capabilities/Geometry3d/TestBrepLoopGeometry.cpp
+    Capabilities/Geometry3d/TestBrepMeshConversion3d.cpp
     Capabilities/Geometry3d/TestCorePrimitives3d.cpp
     Capabilities/Geometry3d/TestCurveOnSurfaceInterface.cpp
     Capabilities/Geometry3d/TestGeometryEvidence.cpp

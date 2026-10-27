@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <sstream>
 #include <string>
@@ -78,6 +79,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
         {
+            if (!std::isfinite(eps) || eps < 0.0) return false;
             for (const SCPoint3d& vertex : vertices_)
             {
                 if (!vertex.IsValid())

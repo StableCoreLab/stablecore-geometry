@@ -22,7 +22,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(double eps = kDefaultEpsilon) const
         {
-            return origin.IsValid() && normal.IsValid() && normal.Length() > eps;
+            return std::isfinite(eps) && eps >= 0.0 && origin.IsValid() && normal.IsValid() && normal.Length() > eps;
         }
 
         [[nodiscard]] SCVector3d UnitNormal(double eps = kDefaultEpsilon) const

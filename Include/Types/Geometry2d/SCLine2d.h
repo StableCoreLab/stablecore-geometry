@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <sstream>
 #include <string>
 
@@ -28,7 +29,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(double eps = kDefaultEpsilon) const
         {
-            return origin.IsValid() && direction.IsValid() && direction.Length() > eps;
+            return std::isfinite(eps) && eps >= 0.0 && origin.IsValid() && direction.IsValid() && direction.Length() > eps;
         }
 
         [[nodiscard]] SCPoint2d PointAt(double parameter) const

@@ -17,6 +17,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsDegenerate(double eps = kDefaultEpsilon) const
         {
+            if (!std::isfinite(eps) || eps < 0.0) return true;
             const SCVector3d ab = b - a;
             const SCVector3d bc = c - b;
             const SCVector3d ca = a - c;
