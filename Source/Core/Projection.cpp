@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <numbers>
 
 #include "Core/Metrics.h"
@@ -55,6 +56,11 @@ namespace Geometry
         {
             return SCVector2d{-tangent.y, tangent.x};
         }
+
+        [[nodiscard]] SCSegmentProjection2d InvalidSegmentProjection2d()
+        {
+            return {SCPoint2d{}, 0.0, std::numeric_limits<double>::quiet_NaN(), false};
+        }
     }  // namespace
 
     SCSegmentProjection2d ProjectPointToLineSegment(const SCPoint2d& point,
@@ -79,6 +85,47 @@ namespace Geometry
                                        rawParameter <= 1.0 + Geometry::kDefaultParameterEpsilon};
     }
 
+    SCSegmentProjection2d ProjectPointToLineSegment(const SCPoint2d& point,
+                                                  const SCLineSegment2d& segment,
+                                                  bool clampToSegment,
+                                                  double epsilon)
+    {
+        if (!(epsilon > 0.0) || !std::isfinite(epsilon) || !point.IsValid() ||
+            !segment.startPoint.IsValid() || !segment.endPoint.IsValid())
+        {
+            return InvalidSegmentProjection2d();
+        }
+        if (!segment.IsValid(epsilon))
+        {
+            return {segment.startPoint, 0.0, DistanceSquared(point, segment.startPoint), true};
+        }
+
+        const SCVector2d direction = segment.endPoint - segment.startPoint;
+        const double length = std::hypot(direction.x, direction.y);
+        const double lengthSquared = direction.LengthSquared();
+        if (!std::isfinite(length) || !(lengthSquared > 0.0) || !std::isfinite(lengthSquared))
+        {
+            return InvalidSegmentProjection2d();
+        }
+
+        const double rawParameter = Geometry::Dot(point - segment.startPoint, direction) / lengthSquared;
+        if (!std::isfinite(rawParameter))
+        {
+            return InvalidSegmentProjection2d();
+        }
+        const double parameter = clampToSegment ? Clamp01(rawParameter) : rawParameter;
+        const SCPoint2d projectedPoint{std::lerp(segment.startPoint.x, segment.endPoint.x, parameter),
+                                       std::lerp(segment.startPoint.y, segment.endPoint.y, parameter)};
+        const double distanceSquared = DistanceSquared(point, projectedPoint);
+        const double parameterTolerance = epsilon / length;
+        const SCSegmentProjection2d projection{projectedPoint,
+                                                parameter,
+                                                distanceSquared,
+                                                rawParameter >= -parameterTolerance &&
+                                                    rawParameter <= 1.0 + parameterTolerance};
+        return projection.IsValid() ? projection : InvalidSegmentProjection2d();
+    }
+
     SCSegmentProjection2d ProjectPointToSegment(const SCPoint2d& point,
                                               const SCPoint2d& segmentStart,
                                               const SCPoint2d& segmentEnd,
@@ -93,6 +140,21 @@ namespace Geometry
         const SCLineSegment2d segment = SCLineSegment2d::FromEndpoints(segmentStart, segmentEnd);
         SCSegmentProjection2d projection = ProjectPointToLineSegment(point, segment, clampToSegment);
         projection.isOnSegment = clampToSegment || projection.isOnSegment;
+        return projection;
+    }
+
+    SCSegmentProjection2d ProjectPointToSegment(const SCPoint2d& point,
+                                              const SCPoint2d& segmentStart,
+                                              const SCPoint2d& segmentEnd,
+                                              bool clampToSegment,
+                                              double epsilon)
+    {
+        SCSegmentProjection2d projection = ProjectPointToLineSegment(
+            point, SCLineSegment2d::FromEndpoints(segmentStart, segmentEnd), clampToSegment, epsilon);
+        if (projection.IsValid())
+        {
+            projection.isOnSegment = clampToSegment || projection.isOnSegment;
+        }
         return projection;
     }
 

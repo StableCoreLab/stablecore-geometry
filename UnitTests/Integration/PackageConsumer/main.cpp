@@ -51,6 +51,11 @@ int main()
         ParameterAtLength(static_cast<const ISCSegment2d&>(first), 5.0, true) == 0.5 &&
         ParameterAtLength(static_cast<const ISCSegment2d&>(planarArc), planarArc.Length() * 0.5) == 0.5 &&
         ParameterAtLength(static_cast<const ISCSegment2d&>(first), 5.0, true, 1e-12) == 0.5;
+    const SCLineSegment2d tinyLine({0.0, 0.0}, {1e-10, 0.0});
+    const bool shortProjectionAvailable =
+        ProjectPointToLineSegment({5e-11, 1e-11}, tinyLine, true, 1e-15).point.AlmostEquals({5e-11, 0.0}, 1e-15) &&
+        ProjectPointToSegment({5e-11, 1e-11}, tinyLine.startPoint, tinyLine.endPoint, true, 1e-15)
+            .point.AlmostEquals({5e-11, 0.0}, 1e-15);
     const bool primitiveOffsetToleranceAvailable = Offset(first, 1.0, 1e-12).IsValid(1e-12) &&
         Offset(planarArc, 0.1, 1e-12).IsValid();
     const SCPolyline2d tinyPath({{0.0, 0.0}, {1e-10, 0.0}, {1e-10, 1e-10}});
@@ -90,7 +95,7 @@ int main()
     return projection == SCParallelSegmentProjectionRelation2d::PositiveLengthIntersection &&
                    Contains(box, path) && Intersects(box, path) && polygonToleranceAvailable &&
                    searchCandidateToleranceAvailable && polygonOffsetToleranceAvailable &&
-                   primitiveOffsetToleranceAvailable && segmentParameterAvailable &&
+                   primitiveOffsetToleranceAvailable && segmentParameterAvailable && shortProjectionAvailable &&
                    subPolylineToleranceAvailable && polylineSamplingToleranceAvailable && area.success &&
                    area.hasPositiveAreaIntersection && fittedPlane.success && arc.success &&
                    projectedArc.success && mappedOffset.success && corner.success &&

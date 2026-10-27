@@ -29,6 +29,8 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry2d/TestRelationBoolean.cpp
     Capabilities/Geometry2d/TestRingTraversalRegression.cpp
     Capabilities/Geometry2d/TestSearchPoly.cpp
+    Capabilities/Geometry2d/TestSearchPolyRepairRanking.cpp
+    Capabilities/Geometry2d/TestSearchPolyExplanations.cpp
     Capabilities/Geometry2d/TestSegment.cpp
     Capabilities/Geometry2d/TestShapesPathOps.cpp
     Capabilities/Geometry2d/TestSpatialIndexOracle.cpp

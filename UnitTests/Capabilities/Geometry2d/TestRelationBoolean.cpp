@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <utility>
 #include <vector>
@@ -66,6 +67,25 @@ TEST(RelationBooleanTest, HandlesPointContainmentAndBasicBooleanOperations)
 
 }
 
+TEST(RelationBooleanTest, ShortSegmentDirectionRelationsUseAngularTolerance)
+{
+    constexpr double scale = 1e-10;
+    const SCLineSegment2d horizontal({0.0, 0.0}, {scale, 0.0});
+    const SCLineSegment2d tilted({0.0, 0.0}, {scale * std::cos(0.02), scale * std::sin(0.02)});
+    const SCLineSegment2d wideAngle({0.0, 0.0}, {scale * std::cos(1.0), scale * std::sin(1.0)});
+    const SCLineSegment2d reversed({scale, 0.0}, {0.0, 0.0});
+
+    EXPECT_FALSE(Geometry::IsParallel(horizontal, tilted, 0.01));
+    EXPECT_TRUE(Geometry::IsParallel(horizontal, tilted, 0.03));
+    EXPECT_TRUE(Geometry::IsSameDirection(horizontal, tilted, 0.03));
+    EXPECT_FALSE(Geometry::IsParallel(horizontal, wideAngle, 0.9));
+    EXPECT_TRUE(Geometry::IsParallel(horizontal, wideAngle, 1.1));
+    EXPECT_TRUE(Geometry::IsAntiParallel(horizontal, reversed, 0.01));
+    EXPECT_FALSE(Geometry::IsSameDirection(horizontal, reversed, 0.01));
+    EXPECT_FALSE(Geometry::IsParallel(horizontal, tilted, -0.01));
+    EXPECT_FALSE(Geometry::IsParallel(horizontal, tilted, std::numeric_limits<double>::infinity()));
+}
+
 TEST(RelationBooleanTest, SmallCallerTolerancePreservesBoxIntersectionBoundary)
 {
     constexpr double eps = 1e-15;
@@ -87,6 +107,29 @@ TEST(RelationBooleanTest, SmallCallerTolerancePreservesBoxIntersectionBoundary)
         }
         EXPECT_NEAR(TotalArea(intersection), 2.0, 1e-12);
     }
+}
+
+TEST(RelationBooleanTest, SmallCallerTolerancePreservesNonAxisAlignedTriangleIntersection)
+{
+    constexpr double scale = 1e-10;
+    constexpr double eps = 1e-15;
+    const SCPolygon2d first(SCPolyline2d(
+        {{0.0, 0.0}, {4.0 * scale, 0.0}, {0.0, 4.0 * scale}}, SCPolylineClosure::Closed));
+    const SCPolygon2d second(SCPolyline2d(
+        {{scale, 0.0}, {5.0 * scale, 0.0}, {scale, 4.0 * scale}}, SCPolylineClosure::Closed));
+    ASSERT_TRUE(first.IsValid(eps));
+    ASSERT_TRUE(second.IsValid(eps));
+    EXPECT_TRUE(Geometry::NormalizePolygonByLines(first, eps).IsValid(eps));
+    EXPECT_TRUE(Geometry::NormalizePolygonByLines(second, eps).IsValid(eps));
+    EXPECT_EQ(LocatePoint({2.0 * scale, scale}, first, eps), SCPointContainment2d::Inside);
+    EXPECT_EQ(LocatePoint({scale, 0.0}, first, eps), SCPointContainment2d::OnBoundary);
+    EXPECT_EQ(LocatePoint({scale, 0.0}, SCLineSegment2d({0.0, 0.0}, {4.0 * scale, 0.0}), eps),
+              SCPointContainment2d::OnBoundary);
+
+    const auto intersection = Intersect(first, second, eps);
+    ASSERT_EQ(intersection.Count(), 1U);
+    EXPECT_TRUE(intersection[0].IsValid(eps));
+    EXPECT_NEAR(intersection[0].Area(eps), 4.5 * scale * scale, 1e-23);
 }
 
 TEST(RelationBooleanTest, SmallCallerTolerancePreservesTinyBoxIntersection)

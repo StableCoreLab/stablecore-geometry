@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <cstddef>
 #include <vector>
 
@@ -49,6 +50,10 @@ namespace Geometry::Detail
             const SCLineSegment2d& segment = segments[i];
             const double parameterTol = parameterTolerance(segment);
             const std::vector<double> compacted = CompactSortedParameters(parameters[i], parameterTol);
+            const auto pointAtParameter = [&](double parameter) {
+                return SCPoint2d{std::lerp(segment.startPoint.x, segment.endPoint.x, parameter),
+                                 std::lerp(segment.startPoint.y, segment.endPoint.y, parameter)};
+            };
 
             for (std::size_t k = 0; k + 1 < compacted.size(); ++k)
             {
@@ -57,8 +62,8 @@ namespace Geometry::Detail
                     continue;
                 }
 
-                SCPoint2d start = segment.PointAt(compacted[k]);
-                SCPoint2d end = segment.PointAt(compacted[k + 1]);
+                SCPoint2d start = pointAtParameter(compacted[k]);
+                SCPoint2d end = pointAtParameter(compacted[k + 1]);
                 if (compacted[k] <= parameterTol)
                 {
                     start = segment.startPoint;

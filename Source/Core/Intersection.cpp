@@ -303,31 +303,56 @@ namespace Geometry
                                                                       const SCLineSegment2d& second,
                                                                       double eps)
         {
+            if (!std::isfinite(eps) || eps < 0.0 || !first.startPoint.IsValid() ||
+                !first.endPoint.IsValid() || !second.startPoint.IsValid() || !second.endPoint.IsValid())
+            {
+                return MakeNoIntersection();
+            }
             const SCPoint2d p = first.startPoint;
             const SCPoint2d q = second.startPoint;
             const SCVector2d r = first.endPoint - first.startPoint;
             const SCVector2d s = second.endPoint - second.startPoint;
             const SCVector2d qp = q - p;
+            const double firstLength = std::hypot(r.x, r.y);
+            const double secondLength = std::hypot(s.x, s.y);
+            if (!std::isfinite(firstLength) || !std::isfinite(secondLength) ||
+                firstLength <= eps || secondLength <= eps)
+            {
+                return MakeNoIntersection();
+            }
+            const double firstParameterTolerance = eps / firstLength;
+            const double secondParameterTolerance = eps / secondLength;
+            const auto pointOnFirst = [&](double parameter) {
+                return SCPoint2d{p.x + r.x * parameter, p.y + r.y * parameter};
+            };
 
             const double rxs = Cross(r, s);
             const double qpxr = Cross(qp, r);
-
-            if (AlmostEqual(rxs, 0.0, eps))
+            if (!std::isfinite(rxs) || !std::isfinite(qpxr))
             {
-                if (!AlmostEqual(qpxr, 0.0, eps))
+                return MakeNoIntersection();
+            }
+
+            if (std::abs(rxs) <= eps * std::max(firstLength, secondLength))
+            {
+                if (std::abs(qpxr) > eps * firstLength)
                 {
                     return MakeNoIntersection();
                 }
 
                 const double rr = Dot(r, r);
                 const double ss = Dot(s, s);
-                if (rr <= eps || ss <= eps)
+                if (!(rr > 0.0) || !(ss > 0.0) || !std::isfinite(rr) || !std::isfinite(ss))
                 {
                     return MakeNoIntersection();
                 }
 
                 double t0 = Dot(q - p, r) / rr;
                 double t1 = Dot(second.endPoint - p, r) / rr;
+                if (!std::isfinite(t0) || !std::isfinite(t1))
+                {
+                    return MakeNoIntersection();
+                }
                 if (t0 > t1)
                 {
                     std::swap(t0, t1);
@@ -335,17 +360,21 @@ namespace Geometry
 
                 const double overlapStart = std::max(0.0, t0);
                 const double overlapEnd = std::min(1.0, t1);
-                if (overlapEnd + eps < overlapStart)
+                if (overlapEnd + firstParameterTolerance < overlapStart)
                 {
                     return MakeNoIntersection();
                 }
 
-                const SCPoint2d firstPoint = first.PointAt(overlapStart);
-                const SCPoint2d secondPoint = first.PointAt(overlapEnd);
+                const SCPoint2d firstPoint = pointOnFirst(overlapStart);
+                const SCPoint2d secondPoint = pointOnFirst(overlapEnd);
                 const double firstParameterOnSecond = Dot(firstPoint - second.startPoint, s) / ss;
                 const double secondParameterOnSecond = Dot(secondPoint - second.startPoint, s) / ss;
+                if (!std::isfinite(firstParameterOnSecond) || !std::isfinite(secondParameterOnSecond))
+                {
+                    return MakeNoIntersection();
+                }
 
-                if (AlmostEqual(overlapStart, overlapEnd, eps))
+                if (std::abs(overlapStart - overlapEnd) <= firstParameterTolerance)
                 {
                     return MakePointIntersection(
                         firstPoint, overlapStart, firstParameterOnSecond, SCIntersectionKind2d::Point);
@@ -357,14 +386,19 @@ namespace Geometry
 
             const double t = Cross(qp, s) / rxs;
             const double u = Cross(qp, r) / rxs;
-            if (t < -eps || t > 1.0 + eps || u < -eps || u > 1.0 + eps)
+            if (!std::isfinite(t) || !std::isfinite(u))
+            {
+                return MakeNoIntersection();
+            }
+            if (t < -firstParameterTolerance || t > 1.0 + firstParameterTolerance ||
+                u < -secondParameterTolerance || u > 1.0 + secondParameterTolerance)
             {
                 return MakeNoIntersection();
             }
 
             const double clampedT = Clamp(t, 0.0, 1.0);
             const double clampedU = Clamp(u, 0.0, 1.0);
-            const SCPoint2d intersectionPoint = first.PointAt(clampedT);
+            const SCPoint2d intersectionPoint = pointOnFirst(clampedT);
             return MakePointIntersection(intersectionPoint, clampedT, clampedU);
         }
 

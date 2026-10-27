@@ -21,10 +21,25 @@ namespace Geometry
 {
     namespace
     {
+        [[nodiscard]] bool OverflowSafeUnit(const SCVector2d& vector, SCVector2d& unit);
+
         [[nodiscard]] bool IsPointOnLineSegment(const SCPoint2d& point, const SCLineSegment2d& segment, double eps)
         {
-            const auto projection = ProjectPointToLineSegment(point, segment, true);
-            return projection.point.IsValid() && std::hypot(point.x-projection.point.x,point.y-projection.point.y) <= eps;
+            const SCVector2d direction = segment.endPoint - segment.startPoint;
+            const double lengthSquared = direction.LengthSquared();
+            if (!(lengthSquared > 0.0) || !std::isfinite(lengthSquared))
+            {
+                return false;
+            }
+            const double parameter = Dot(point - segment.startPoint, direction) / lengthSquared;
+            if (!std::isfinite(parameter))
+            {
+                return false;
+            }
+            const double clamped = std::clamp(parameter, 0.0, 1.0);
+            const SCPoint2d projected{std::lerp(segment.startPoint.x, segment.endPoint.x, clamped),
+                                      std::lerp(segment.startPoint.y, segment.endPoint.y, clamped)};
+            return std::hypot(point.x - projected.x, point.y - projected.y) <= eps;
         }
 
         [[nodiscard]] bool IsPointOnArcSegment(const SCPoint2d& point, const SCArcSegment2d& segment, double eps)
@@ -107,7 +122,7 @@ namespace Geometry
 
         [[nodiscard]] SCPointContainment2d LocatePointInRing(const SCPoint2d& point, const SCPolyline2d& ring, double eps)
         {
-            if (!ring.IsClosed() || !ring.IsValid() || ring.SegmentCount() == 0)
+            if (!ring.IsClosed() || !ring.IsValid(eps) || ring.SegmentCount() == 0)
             {
                 return SCPointContainment2d::Outside;
             }
@@ -135,7 +150,7 @@ namespace Geometry
 
     SCPointContainment2d LocatePoint(const SCPoint2d& point, const SCLineSegment2d& segment, double eps)
     {
-        if (!segment.IsValid())
+        if (!segment.IsValid(eps))
         {
             return SCPointContainment2d::Outside;
         }
@@ -178,7 +193,7 @@ namespace Geometry
 
     SCPointContainment2d LocatePoint(const SCPoint2d& point, const SCPolyline2d& polyline, double eps)
     {
-        if (!polyline.IsValid())
+        if (!polyline.IsValid(eps))
         {
             return SCPointContainment2d::Outside;
         }
@@ -234,12 +249,20 @@ namespace Geometry
 
     bool IsParallel(const SCLineSegment2d& first, const SCLineSegment2d& second, double eps)
     {
-        if (!first.IsValid() || !second.IsValid())
+        if (!std::isfinite(eps) || eps < 0.0)
         {
             return false;
         }
 
-        return std::abs(Cross(first.endPoint - first.startPoint, second.endPoint - second.startPoint)) <= eps;
+        SCVector2d firstUnit;
+        SCVector2d secondUnit;
+        if (!OverflowSafeUnit(first.endPoint - first.startPoint, firstUnit) ||
+            !OverflowSafeUnit(second.endPoint - second.startPoint, secondUnit))
+        {
+            return false;
+        }
+
+        return std::asin(std::clamp(std::abs(Cross(firstUnit, secondUnit)), 0.0, 1.0)) <= eps;
     }
 
     bool IsAntiParallel(const SCLineSegment2d& first, const SCLineSegment2d& second, double eps)
@@ -249,7 +272,11 @@ namespace Geometry
             return false;
         }
 
-        return Dot(first.endPoint - first.startPoint, second.endPoint - second.startPoint) < 0.0;
+        SCVector2d firstUnit;
+        SCVector2d secondUnit;
+        return OverflowSafeUnit(first.endPoint - first.startPoint, firstUnit) &&
+               OverflowSafeUnit(second.endPoint - second.startPoint, secondUnit) &&
+               Dot(firstUnit, secondUnit) < 0.0;
     }
 
     bool IsSameDirection(const SCLineSegment2d& first, const SCLineSegment2d& second, double eps)
@@ -259,7 +286,11 @@ namespace Geometry
             return false;
         }
 
-        return Dot(first.endPoint - first.startPoint, second.endPoint - second.startPoint) > 0.0;
+        SCVector2d firstUnit;
+        SCVector2d secondUnit;
+        return OverflowSafeUnit(first.endPoint - first.startPoint, firstUnit) &&
+               OverflowSafeUnit(second.endPoint - second.startPoint, secondUnit) &&
+               Dot(firstUnit, secondUnit) > 0.0;
     }
 
     bool IsEqual(const SCLineSegment2d& first, const SCLineSegment2d& second, bool ignoreDirection, double eps)

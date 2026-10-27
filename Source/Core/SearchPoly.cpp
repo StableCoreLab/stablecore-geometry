@@ -109,7 +109,7 @@ namespace Geometry
             for (std::size_t lineIndex = 0; lineIndex < lines.Size(); ++lineIndex)
             {
                 const SCPolyline2d& line = lines[lineIndex];
-                if (!line.IsValid() || line.PointCount() < 2)
+                if (!line.IsValid(epsilon) || line.PointCount() < 2)
                 {
                     continue;
                 }
@@ -367,7 +367,7 @@ namespace Geometry
                                               const std::vector<SCLineSegment2d>& inputSegments,
                                               double epsilon)
         {
-            if (!boundaryEdge.IsValid())
+            if (!boundaryEdge.IsValid(epsilon))
             {
                 return false;
             }
@@ -383,7 +383,7 @@ namespace Geometry
             intervals.reserve(inputSegments.size());
             for (const SCLineSegment2d& inputSegment : inputSegments)
             {
-                if (!inputSegment.IsValid())
+                if (!inputSegment.IsValid(epsilon))
                 {
                     continue;
                 }
@@ -455,7 +455,7 @@ namespace Geometry
                                    double epsilon,
                                    CandidateMetrics2d& metrics)
         {
-            if (!ring.IsValid() || ring.PointCount() < 3)
+            if (!ring.IsValid(epsilon) || ring.PointCount() < 3)
             {
                 return;
             }

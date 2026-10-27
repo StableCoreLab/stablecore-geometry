@@ -535,7 +535,7 @@ namespace Geometry
         void CollectRawSegments(const SCPolyline2d& polyline, std::vector<RawSegment>& segments, double eps)
         {
             const SCPolyline2d normalized = Normalize(polyline, eps);
-            if (!normalized.IsValid() || normalized.PointCount() < 2)
+            if (!normalized.IsValid(eps) || normalized.PointCount() < 2)
             {
                 return;
             }
@@ -1436,7 +1436,7 @@ namespace Geometry
                 {
                     continue;
                 }
-                if (Detail::ComputeSignedArea(ring) <= 0.0)
+                if (Detail::ComputeSignedArea(ring, eps) <= 0.0)
                 {
                     continue;
                 }
@@ -1477,7 +1477,7 @@ namespace Geometry
             for (std::size_t i = 0; i < loopPolygons.size(); ++i)
             {
                 SCPolyline2d outerRing = loopPolygons[i].OuterRing();
-                if (Detail::ComputeSignedArea(outerRing) < 0.0)
+                if (Detail::ComputeSignedArea(outerRing, eps) < 0.0)
                 {
                     outerRing = Reverse(outerRing);
                 }
@@ -1491,7 +1491,7 @@ namespace Geometry
                     }
 
                     SCPolyline2d holeRing = loopPolygons[j].OuterRing();
-                    if (Detail::ComputeSignedArea(holeRing) > 0.0)
+                    if (Detail::ComputeSignedArea(holeRing, eps) > 0.0)
                     {
                         holeRing = Reverse(holeRing);
                     }

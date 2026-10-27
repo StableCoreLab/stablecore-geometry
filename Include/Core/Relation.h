@@ -123,6 +123,7 @@ namespace Geometry
                                                               const TriangleMesh& mesh,
                                                               const SCGeometryTolerance3d& tolerance = {});
 
+    // 二维线段方向关系的 eps 为弧度容差；长度仅用于判断方向是否可定义。
     [[nodiscard]] GEOMETRY_API bool IsParallel(const SCLineSegment2d& first,
                                                const SCLineSegment2d& second,
                                                double eps = Geometry::kDefaultEpsilon);

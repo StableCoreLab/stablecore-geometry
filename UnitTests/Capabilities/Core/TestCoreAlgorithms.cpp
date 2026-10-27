@@ -78,6 +78,52 @@ TEST(CoreAlgorithmsTest, ParameterAtLengthAcceptsExplicitToleranceForSmallSegmen
                                                 false, 1e-15), 0.0);
 }
 
+TEST(CoreAlgorithmsTest, SmallCallerToleranceFindsShortSegmentCrossingAndOverlap)
+{
+    constexpr double scale = 1e-10;
+    constexpr double eps = 1e-15;
+    const SCLineSegment2d horizontal({0.0, 0.0}, {4.0 * scale, 0.0});
+    const SCLineSegment2d vertical({scale, -scale}, {scale, scale});
+    const auto crossing = Intersect(horizontal, vertical, eps);
+    ASSERT_EQ(crossing.kind, SCIntersectionKind2d::Point);
+    ASSERT_EQ(crossing.pointCount, 1U);
+    EXPECT_TRUE(crossing.points[0].point.AlmostEquals({scale, 0.0}, eps));
+    EXPECT_NEAR(crossing.points[0].parameterOnFirst, 0.25, 1e-12);
+    EXPECT_NEAR(crossing.points[0].parameterOnSecond, 0.5, 1e-12);
+
+    const SCLineSegment2d shifted({scale, 0.0}, {5.0 * scale, 0.0});
+    const auto overlap = Intersect(horizontal, shifted, eps);
+    ASSERT_EQ(overlap.kind, SCIntersectionKind2d::Overlap);
+    ASSERT_EQ(overlap.pointCount, 2U);
+    EXPECT_TRUE(overlap.points[0].point.AlmostEquals({scale, 0.0}, eps));
+    EXPECT_TRUE(overlap.points[1].point.AlmostEquals({4.0 * scale, 0.0}, eps));
+}
+
+TEST(CoreAlgorithmsTest, SmallCallerToleranceProjectsShortLine)
+{
+    constexpr double length = 1e-10;
+    constexpr double eps = 1e-15;
+    const SCLineSegment2d line({0.0, 0.0}, {length, 0.0});
+    const SCPoint2d query{0.5 * length, 1e-11};
+    EXPECT_EQ(ProjectPointToLineSegment(query, line, true).point, line.startPoint);
+
+    const auto typed = ProjectPointToLineSegment(query, line, true, eps);
+    const auto endpoints = ProjectPointToSegment(query, line.startPoint, line.endPoint, true, eps);
+    for (const auto& projection : {typed, endpoints})
+    {
+        ASSERT_TRUE(projection.IsValid());
+        EXPECT_TRUE(projection.point.AlmostEquals({0.5 * length, 0.0}, eps));
+        EXPECT_NEAR(projection.parameter, 0.5, 1e-12);
+        EXPECT_TRUE(projection.isOnSegment);
+    }
+
+    const auto beyond = ProjectPointToLineSegment({2.0 * length, 0.0}, line, true, eps);
+    EXPECT_TRUE(beyond.point.AlmostEquals(line.endPoint, eps));
+    EXPECT_FALSE(beyond.isOnSegment);
+    EXPECT_FALSE(ProjectPointToLineSegment(query, line, true,
+                                          std::numeric_limits<double>::infinity()).IsValid());
+}
+
 TEST(CoreAlgorithmsTest, CoversCurrentCapabilities)
 {
     const SCLineSegment2d line(SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0});
