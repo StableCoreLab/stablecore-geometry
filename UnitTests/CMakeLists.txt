@@ -57,6 +57,8 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestGeometryEvidence.cpp
     Capabilities/Geometry3d/TestMeshHealingContract.cpp
     Capabilities/Geometry3d/TestNurbsNumerics.cpp
+    Capabilities/Geometry3d/TestNurbsProjectionIntersection.cpp
+    Capabilities/Geometry3d/TestNurbsSurfaceSearch.cpp
     Capabilities/Geometry3d/TestOffsetSurfaceEval.cpp
     Capabilities/Geometry3d/TestSectionRebuildCore.cpp
     Capabilities/Geometry3d/TestTriangleMeshCore.cpp

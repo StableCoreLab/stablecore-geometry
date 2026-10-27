@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <array>
 #include <cmath>
+#include <limits>
 #include <memory>
 
 #include "Geometry.h"
@@ -44,6 +45,37 @@ TEST(CoreAlgorithmsTest, ClosestPointsKeepsSubEpsilonSquaredDistanceImprovement)
     EXPECT_NEAR(closest.distanceSquared, 1e-10, 1e-15);
     EXPECT_NEAR(closest.parameterOnFirst, 1.0, 1e-9);
     EXPECT_NEAR(closest.parameterOnSecond, 1.0, 1e-9);
+}
+
+TEST(CoreAlgorithmsTest, ParameterAtLengthDispatchesThroughSegmentInterface)
+{
+    const SCLineSegment2d line({0.0, 0.0}, {4.0, 0.0});
+    const SCArcSegment2d arc({0.0, 0.0}, 2.0, 0.0, Geometry::kPi * 0.5);
+    const ISCSegment2d& genericLine = line;
+    const ISCSegment2d& genericArc = arc;
+
+    EXPECT_DOUBLE_EQ(Geometry::ParameterAtLength(genericLine, 2.0), 0.5);
+    EXPECT_DOUBLE_EQ(Geometry::ParameterAtLength(genericLine, 6.0, true), 1.0);
+    EXPECT_DOUBLE_EQ(Geometry::ParameterAtLength(genericArc, arc.Length() * 0.5), 0.5);
+    EXPECT_DOUBLE_EQ(Geometry::ParameterAtLength(genericArc, arc.Length() * 2.0, true), 1.0);
+}
+
+TEST(CoreAlgorithmsTest, ParameterAtLengthAcceptsExplicitToleranceForSmallSegments)
+{
+    const SCLineSegment2d line({0.0, 0.0}, {1e-10, 0.0});
+    const SCArcSegment2d arc({0.0, 0.0}, 1e-10, 0.0, Geometry::kPi * 0.5);
+    const ISCSegment2d& genericLine = line;
+    const ISCSegment2d& genericArc = arc;
+
+    EXPECT_DOUBLE_EQ(Geometry::ParameterAtLength(genericLine, 5e-11), 0.0);
+    EXPECT_DOUBLE_EQ(Geometry::ParameterAtLength(genericLine, 5e-11, false, 1e-15), 0.5);
+    EXPECT_DOUBLE_EQ(Geometry::ParameterAtLength(genericArc, arc.Length() * 0.5, false, 1e-15), 0.5);
+    EXPECT_DOUBLE_EQ(Geometry::ParameterAtLength(genericLine, 2e-10, true, 1e-15), 1.0);
+    EXPECT_DOUBLE_EQ(Geometry::ParameterAtLength(genericLine, 5e-11, false, 0.0), 0.0);
+    EXPECT_DOUBLE_EQ(Geometry::ParameterAtLength(genericLine, 5e-11, false,
+                                                std::numeric_limits<double>::quiet_NaN()), 0.0);
+    EXPECT_DOUBLE_EQ(Geometry::ParameterAtLength(genericLine, std::numeric_limits<double>::max(),
+                                                false, 1e-15), 0.0);
 }
 
 TEST(CoreAlgorithmsTest, CoversCurrentCapabilities)

@@ -46,12 +46,14 @@ namespace Geometry
             return VertexAt(static_cast<std::size_t>(index));
         }
         [[nodiscard]] SCPoint2d PointAt(double parameter) const;
+        [[nodiscard]] SCPoint2d PointAt(double parameter, double eps) const;
         [[nodiscard]] SCPoint2d VertexAt(std::size_t index) const;
         [[nodiscard]] SCPoint2d StartPoint() const;
         [[nodiscard]] SCPoint2d EndPoint() const;
         [[nodiscard]] double LengthAt(double parameter) const;
         [[nodiscard]] double ParameterAtLength(double distanceFromStart, bool clampToPath = false) const;
         [[nodiscard]] SCPoint2d PointAtLength(double distanceFromStart, bool clampToPath = false) const;
+        [[nodiscard]] SCPoint2d PointAtLength(double distanceFromStart, bool clampToPath, double eps) const;
         [[nodiscard]] std::unique_ptr<ISCSegment2d> SegmentAt(std::size_t index) const;
         [[nodiscard]] SCBox2d Bounds() const;
         [[nodiscard]] SCBox2d Bounds(double eps) const;
@@ -62,5 +64,7 @@ namespace Geometry
         std::unique_ptr<Impl> impl_;
 
         explicit SCPolyline2d(std::unique_ptr<Impl> impl);
+        [[nodiscard]] SCPoint2d PointAtLengthInternal(double distanceFromStart, bool clampToPath,
+                                                      double eps, bool explicitTolerance) const;
     };
 }  // namespace Geometry

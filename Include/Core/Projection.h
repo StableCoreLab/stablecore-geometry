@@ -226,6 +226,10 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API double ParameterAtLength(const ISCSegment2d& segment,
                                                         double length,
                                                         bool clampToSegment = false);
+    [[nodiscard]] GEOMETRY_API double ParameterAtLength(const ISCSegment2d& segment,
+                                                        double length,
+                                                        bool clampToSegment,
+                                                        double epsilon);
 
     [[nodiscard]] GEOMETRY_API SCVector2d TangentAt(const SCLineSegment2d& segment, double parameter);
     [[nodiscard]] GEOMETRY_API SCVector2d TangentAt(const SCArcSegment2d& segment, double parameter);

@@ -8,6 +8,7 @@
 
 #include "Core/Metrics.h"
 #include "../Detail/BoxTreeCore.h"
+#include "../Detail/GeometryContainerOps.h"
 
 namespace Geometry
 {
@@ -240,24 +241,17 @@ namespace Geometry
 
     std::size_t SCBoxTree3d::Size() const
     {
-        return entries_.size();
+        return Detail::ContainerCount(entries_);
     }
 
     bool SCBoxTree3d::IsEmpty() const
     {
-        return entries_.empty();
+        return Detail::ContainerIsEmpty(entries_);
     }
 
     bool SCBoxTree3d::IsValid() const
     {
-        for (const auto& entry : entries_)
-        {
-            if (!entry.IsValid())
-            {
-                return false;
-            }
-        }
-        return true;
+        return Detail::ContainerIsValid(entries_);
     }
 
     bool SCBoxTree3d::Contains(std::size_t id) const
@@ -267,9 +261,7 @@ namespace Geometry
 
     const SCBoxTreeEntry3d* SCBoxTree3d::Find(std::size_t id) const
     {
-        const auto it = std::find_if(
-            entries_.begin(), entries_.end(), [id](const SCBoxTreeEntry3d& entry) { return entry.id == id; });
-        return it == entries_.end() ? nullptr : &*it;
+        return Detail::FindEntryById(entries_, id);
     }
 
     std::vector<std::size_t> SCBoxTree3d::Query(const SCBox3d& box, double eps) const

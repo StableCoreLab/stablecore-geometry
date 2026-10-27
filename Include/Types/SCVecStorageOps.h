@@ -31,9 +31,14 @@ namespace Geometry::Detail
     {
         if constexpr (std::is_floating_point_v<T>)
         {
+            if (!std::isfinite(epsilon) || epsilon < 0.0 ||
+                !CoordinateStorageIsValid(lhs) || !CoordinateStorageIsValid(rhs))
+            {
+                return false;
+            }
             for (std::size_t i = 0; i < Dimension; ++i)
             {
-                if (!(std::abs(static_cast<double>(lhs[i] - rhs[i])) <= epsilon))
+                if (!(std::abs(static_cast<double>(lhs[i]) - static_cast<double>(rhs[i])) <= epsilon))
                 {
                     return false;
                 }

@@ -47,11 +47,18 @@ int main()
     const auto corner = EvaluateCornerGeometry(first, cornerExit, pathTolerance);
     const auto legacyOffset = Offset(first, 1.0);
     const SCArcSegment2d planarArc({0.0, 0.0}, 1.0, 0.0, std::numbers::pi_v<double> / 2.0);
+    const bool segmentParameterAvailable =
+        ParameterAtLength(static_cast<const ISCSegment2d&>(first), 5.0, true) == 0.5 &&
+        ParameterAtLength(static_cast<const ISCSegment2d&>(planarArc), planarArc.Length() * 0.5) == 0.5 &&
+        ParameterAtLength(static_cast<const ISCSegment2d&>(first), 5.0, true, 1e-12) == 0.5;
     const bool primitiveOffsetToleranceAvailable = Offset(first, 1.0, 1e-12).IsValid(1e-12) &&
         Offset(planarArc, 0.1, 1e-12).IsValid();
     const SCPolyline2d tinyPath({{0.0, 0.0}, {1e-10, 0.0}, {1e-10, 1e-10}});
     const bool subPolylineToleranceAvailable =
         SubPolyline(tinyPath, 5e-11, 15e-11, 1e-15).IsValid(1e-15);
+    const bool polylineSamplingToleranceAvailable =
+        tinyPath.PointAtLength(5e-11, false, 1e-15).AlmostEquals({5e-11, 0.0}, 1e-15) &&
+        tinyPath.PointAt(0.25, 1e-15).AlmostEquals({5e-11, 0.0}, 1e-15);
     const auto normalized = Normalize(path);
     const SCNurbsCurve3d nurbsCurve(1, {{0, 0, 0}, {2, 0, 0}}, {0, 0, 1, 1});
     const SCNurbsSurface nurbsSurface(1, 1, 2, 2,
@@ -83,7 +90,8 @@ int main()
     return projection == SCParallelSegmentProjectionRelation2d::PositiveLengthIntersection &&
                    Contains(box, path) && Intersects(box, path) && polygonToleranceAvailable &&
                    searchCandidateToleranceAvailable && polygonOffsetToleranceAvailable &&
-                   primitiveOffsetToleranceAvailable && subPolylineToleranceAvailable && area.success &&
+                   primitiveOffsetToleranceAvailable && segmentParameterAvailable &&
+                   subPolylineToleranceAvailable && polylineSamplingToleranceAvailable && area.success &&
                    area.hasPositiveAreaIntersection && fittedPlane.success && arc.success &&
                    projectedArc.success && mappedOffset.success && corner.success &&
                    legacyOffset.IsValid() && planarArc.AlmostEquals(planarArc, kDefaultEpsilon, kDefaultAngleEpsilon) &&

@@ -8,6 +8,7 @@
 
 #include "Core/Metrics.h"
 #include "Core/Projection.h"
+#include "../Detail/GeometryContainerOps.h"
 
 namespace Geometry
 {
@@ -119,24 +120,17 @@ namespace Geometry
 
     std::size_t SCSegmentSearch3d::Size() const
     {
-        return entries_.size();
+        return Detail::ContainerCount(entries_);
     }
 
     bool SCSegmentSearch3d::IsEmpty() const
     {
-        return entries_.empty();
+        return Detail::ContainerIsEmpty(entries_);
     }
 
     bool SCSegmentSearch3d::IsValid() const
     {
-        for (const auto& entry : entries_)
-        {
-            if (!entry.IsValid())
-            {
-                return false;
-            }
-        }
-        return true;
+        return Detail::ContainerIsValid(entries_);
     }
 
     bool SCSegmentSearch3d::Contains(std::size_t id) const

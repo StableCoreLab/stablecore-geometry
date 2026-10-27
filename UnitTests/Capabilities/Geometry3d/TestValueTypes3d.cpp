@@ -17,6 +17,28 @@ namespace
 {
     static_assert(Geometry::SCIntervald{1.0, 2.0}.Contains(1.5, 0.0));
 
+    TEST(PointVector3dCapabilityTest, AlmostEqualsRejectsInvalidToleranceAndCoordinates)
+    {
+        const Geometry::SCPoint3d point{1.0, 2.0, 3.0};
+        const Geometry::SCVector3d vector{1.0, 2.0, 3.0};
+        const double infinity = std::numeric_limits<double>::infinity();
+
+        EXPECT_TRUE(point.AlmostEquals(vector, 0.0));
+        EXPECT_FALSE(point.AlmostEquals(vector, -1.0));
+        EXPECT_FALSE(point.AlmostEquals(vector, infinity));
+        EXPECT_FALSE(point.AlmostEquals(Geometry::SCPoint3d{infinity, 2.0, 3.0}, infinity));
+    }
+
+    TEST(Box3dCapabilityTest, AlmostEqualsRejectsInvalidToleranceForEmptyBoxes)
+    {
+        const Geometry::SCBox3d empty;
+        const double infinity = std::numeric_limits<double>::infinity();
+
+        EXPECT_TRUE(empty.AlmostEquals(empty, 0.0));
+        EXPECT_FALSE(empty.AlmostEquals(empty, -1.0));
+        EXPECT_FALSE(empty.AlmostEquals(empty, infinity));
+    }
+
     TEST(Direction3dCapabilityTest, AlmostEqualsUsesAngularToleranceAtSmallAngles)
     {
         const auto reference = Geometry::SCDirection3d::FromVector({1.0, 0.0, 0.0});

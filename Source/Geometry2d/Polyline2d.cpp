@@ -221,6 +221,11 @@ namespace Geometry
         return PointAtLength(LengthAt(parameter), false);
     }
 
+    SCPoint2d SCPolyline2d::PointAt(double parameter, double eps) const
+    {
+        return PointAtLength(LengthAt(parameter), false, eps);
+    }
+
     SCPoint2d SCPolyline2d::VertexAt(std::size_t index) const
     {
         if (index >= VertexCount())
@@ -287,21 +292,52 @@ namespace Geometry
 
     SCPoint2d SCPolyline2d::PointAtLength(double distanceFromStart, bool clampToPath) const
     {
+        return PointAtLengthInternal(distanceFromStart, clampToPath, Geometry::kDefaultEpsilon, false);
+    }
+
+    SCPoint2d SCPolyline2d::PointAtLength(double distanceFromStart, bool clampToPath, double eps) const
+    {
+        return PointAtLengthInternal(distanceFromStart, clampToPath, eps, true);
+    }
+
+    SCPoint2d SCPolyline2d::PointAtLengthInternal(double distanceFromStart, bool clampToPath,
+                                                   double eps, bool explicitTolerance) const
+    {
         if (impl_->segments.empty())
         {
             return SCPoint2d{};
         }
 
-        if (!IsValid())
+        if ((explicitTolerance && !std::isfinite(distanceFromStart)) ||
+            !(explicitTolerance ? IsValid(eps) : IsValid()))
         {
             return StartPoint();
         }
 
         const double totalLength = Length();
-        if (!(totalLength > 0.0))
+        if (!(totalLength > 0.0) || (explicitTolerance && !std::isfinite(totalLength)))
         {
             return StartPoint();
         }
+
+        const auto pointOnSegment = [&](const ISCSegment2d& segment, double localDistance) {
+            if (explicitTolerance)
+            {
+                if (const auto* line = dynamic_cast<const SCLineSegment2d*>(&segment))
+                {
+                    const double segmentLength = line->Length();
+                    const double parameter = localDistance / segmentLength;
+                    if (!std::isfinite(parameter))
+                    {
+                        return line->startPoint;
+                    }
+                    const SCPoint2d point{line->startPoint.x + (line->endPoint.x - line->startPoint.x) * parameter,
+                                          line->startPoint.y + (line->endPoint.y - line->startPoint.y) * parameter};
+                    return point.IsValid() ? point : line->startPoint;
+                }
+            }
+            return segment.PointAtLength(localDistance, false);
+        };
 
         if (clampToPath)
         {
@@ -316,7 +352,7 @@ namespace Geometry
 
         if (distanceFromStart < 0.0)
         {
-            return impl_->segments.front()->PointAtLength(distanceFromStart, false);
+            return pointOnSegment(*impl_->segments.front(), distanceFromStart);
         }
 
         double prefixLength = 0.0;
@@ -326,7 +362,7 @@ namespace Geometry
             const double segmentEnd = prefixLength + segmentLength;
             if (distanceFromStart <= segmentEnd || i + 1 == impl_->segments.size())
             {
-                return impl_->segments[i]->PointAtLength(distanceFromStart - prefixLength, false);
+                return pointOnSegment(*impl_->segments[i], distanceFromStart - prefixLength);
             }
             prefixLength = segmentEnd;
         }

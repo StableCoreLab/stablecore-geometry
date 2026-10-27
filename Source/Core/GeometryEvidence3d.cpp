@@ -15,6 +15,7 @@
 #include "Brep/SCBrepEdge.h"
 #include "Brep/SCBrepVertex.h"
 #include "Brep/PolyhedronBody.h"
+#include "../Brep/LoopGeometry.h"
 #include "Geometry3d/SCLineCurve3d.h"
 #include "Geometry3d/SCNurbsCurve3d.h"
 #include "Geometry3d/SCPlaneSurface.h"
@@ -802,10 +803,12 @@ namespace Geometry
                         body,loop,*actual,support,*plane,tolerance)) return false;
                     std::vector<std::size_t> ids;
                     for (const auto& coedge : loop.Coedges()) {
-                        if (coedge.EdgeIndex()>=body.EdgeCount()) return false;
+                        std::size_t startVertexIndex = 0;
+                        std::size_t endVertexIndex = 0;
+                        if (!Detail::TryGetCoedgeVertexIndices(body.Edges(), body.VertexCount(), coedge,
+                                                               startVertexIndex, endVertexIndex)) return false;
                         edgeUses[coedge.EdgeIndex()].push_back({i,!coedge.Reversed()});
-                        const auto& edge=body.Edges()[coedge.EdgeIndex()];
-                        ids.push_back(coedge.Reversed()?edge.EndVertexIndex():edge.StartVertexIndex());
+                        ids.push_back(startVertexIndex);
                     }
                     topology.AddLoop(ids,i,outer);
                     return true;
@@ -930,10 +933,8 @@ namespace Geometry
             const auto& face=body.ShellAtRef(0).FaceAtRef(faceIndex);
             const auto ring=[&](const SCBrepLoop& loop) {
                 std::vector<SCPoint3d> points;
-                for (const auto& coedge:loop.Coedges()) {
-                    const auto& edge=body.Edges()[coedge.EdgeIndex()];
-                    points.push_back(body.Vertices()[coedge.Reversed()?edge.EndVertexIndex():edge.StartVertexIndex()].Point());
-                }
+                if (!Detail::AppendRawLoopVertices(body.Vertices(), body.Edges(), loop, points))
+                    return std::optional<bool>{};
                 return HalfOpenRing(origin,points,perturbation);
             };
             auto inside=ring(face.OuterLoopRef());

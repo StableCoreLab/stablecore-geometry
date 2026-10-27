@@ -93,3 +93,18 @@ TEST(PolylineTest, CoversCurrentCapabilities)
     EXPECT_TRUE(reversedMixedPath.StartPoint().AlmostEquals(SCPoint2d(2.0, 1.0), 1e-12));
     EXPECT_TRUE(reversedMixedPath.EndPoint().AlmostEquals(SCPoint2d(0.0, 0.0), 1e-12));
 }
+
+TEST(PolylineTest, ExplicitToleranceSamplesSmallLineAndArc)
+{
+    const auto line = std::make_shared<SCLineSegment2d>(SCPoint2d{0.0, 0.0}, SCPoint2d{1e-10, 0.0});
+    const auto arc = std::make_shared<SCArcSegment2d>(
+        SCPoint2d{1e-10, 1e-10}, 1e-10, -Geometry::kPi * 0.5, Geometry::kPi * 0.5);
+    const SCPolyline2d path({line, arc}, SCPolylineClosure::Open);
+    ASSERT_TRUE(path.IsValid(1e-15));
+    EXPECT_FALSE(path.IsValid());
+    EXPECT_EQ(path.PointAtLength(5e-11), path.StartPoint());
+    EXPECT_TRUE(path.PointAtLength(5e-11, false, 1e-15).AlmostEquals({5e-11, 0.0}, 1e-15));
+    EXPECT_TRUE(path.PointAt(5e-11 / path.Length(), 1e-15).AlmostEquals({5e-11, 0.0}, 1e-15));
+    EXPECT_TRUE(path.PointAtLength(1e-10 + arc->Length() * 0.5, false, 1e-15)
+                    .AlmostEquals(arc->PointAt(0.5), 1e-15));
+}

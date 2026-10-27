@@ -78,15 +78,10 @@ namespace Geometry
                 std::size_t firstStart = static_cast<std::size_t>(-1);
                 for (const SCBrepCoedge& coedge : loop.Coedges())
                 {
-                    if (coedge.EdgeIndex() >= body.EdgeCount())
-                    {
-                        return false;
-                    }
-
-                    const SCBrepEdge& edge = body.EdgeAtRef(coedge.EdgeIndex());
-                    const std::size_t start = coedge.Reversed() ? edge.EndVertexIndex() : edge.StartVertexIndex();
-                    const std::size_t end = coedge.Reversed() ? edge.StartVertexIndex() : edge.EndVertexIndex();
-                    if (start >= body.VertexCount() || end >= body.VertexCount() || start == end ||
+                    std::size_t start = 0;
+                    std::size_t end = 0;
+                    if (!Detail::TryGetCoedgeVertexIndices(body.Edges(), body.VertexCount(), coedge, start, end) ||
+                        start == end ||
                         (expectedStart != static_cast<std::size_t>(-1) && expectedStart != start))
                     {
                         return false;

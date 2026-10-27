@@ -16,6 +16,31 @@ TEST(Line2dCapabilityTest, RejectsInvalidTolerance)
     EXPECT_FALSE(line.IsValid(std::numeric_limits<double>::quiet_NaN()));
 }
 
+TEST(PointVector2dCapabilityTest, AlmostEqualsRejectsInvalidToleranceAndCoordinates)
+{
+    const SCPoint2d point{1.0, 2.0};
+    const SCVector2d vector{1.0, 2.0};
+    const double infinity = std::numeric_limits<double>::infinity();
+
+    EXPECT_TRUE(point.AlmostEquals(vector, 0.0));
+    EXPECT_FALSE(point.AlmostEquals(vector, -1.0));
+    EXPECT_FALSE(point.AlmostEquals(vector, infinity));
+    EXPECT_FALSE(point.AlmostEquals(SCPoint2d{infinity, 2.0}, infinity));
+
+    const float large = std::numeric_limits<float>::max();
+    EXPECT_TRUE((SCPoint2<float>{large, 0.0f}).AlmostEquals({-large, 0.0f}, 1e39));
+}
+
+TEST(Box2dCapabilityTest, AlmostEqualsRejectsInvalidToleranceForEmptyBoxes)
+{
+    const SCBox2d empty;
+    const double infinity = std::numeric_limits<double>::infinity();
+
+    EXPECT_TRUE(empty.AlmostEquals(empty, 0.0));
+    EXPECT_FALSE(empty.AlmostEquals(empty, -1.0));
+    EXPECT_FALSE(empty.AlmostEquals(empty, infinity));
+}
+
 TEST(GeometryTest, CoversTwoDimensionalPrimitives)
 {
     const SCPoint2d a = SCPoint2d::FromXY(0.0, 0.0);

@@ -126,7 +126,7 @@ namespace Geometry
         return ProjectPointToArcSegment(point, static_cast<const SCArcSegment2d&>(segment), clampToSegment);
     }
 
-    double ParameterAtLength(const SCLineSegment2d& segment, double length, bool clampToSegment)
+    double ParameterAtLength(const ISCSegment2d& segment, double length, bool clampToSegment)
     {
         const double totalLength = segment.Length();
         if (totalLength <= Geometry::kDefaultEpsilon)
@@ -141,19 +141,35 @@ namespace Geometry
         return length / totalLength;
     }
 
-    double ParameterAtLength(const SCArcSegment2d& segment, double length, bool clampToSegment)
+    double ParameterAtLength(const ISCSegment2d& segment, double length, bool clampToSegment, double epsilon)
     {
+        if (!std::isfinite(epsilon) || epsilon <= 0.0 || !std::isfinite(length))
+        {
+            return 0.0;
+        }
+
         const double totalLength = segment.Length();
-        if (totalLength <= Geometry::kDefaultEpsilon)
+        if (!std::isfinite(totalLength) || totalLength <= epsilon)
         {
             return 0.0;
         }
 
         if (clampToSegment)
         {
-            length = std::max(0.0, std::min(length, totalLength));
+            length = std::clamp(length, 0.0, totalLength);
         }
-        return length / totalLength;
+        const double parameter = length / totalLength;
+        return std::isfinite(parameter) ? parameter : 0.0;
+    }
+
+    double ParameterAtLength(const SCLineSegment2d& segment, double length, bool clampToSegment)
+    {
+        return ParameterAtLength(static_cast<const ISCSegment2d&>(segment), length, clampToSegment);
+    }
+
+    double ParameterAtLength(const SCArcSegment2d& segment, double length, bool clampToSegment)
+    {
+        return ParameterAtLength(static_cast<const ISCSegment2d&>(segment), length, clampToSegment);
     }
 
     SCVector2d TangentAt(const SCLineSegment2d& segment, double)

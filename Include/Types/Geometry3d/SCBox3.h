@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -46,6 +47,10 @@ namespace Geometry
         {
             if constexpr (std::is_floating_point_v<T>)
             {
+                if (!std::isfinite(eps) || eps < 0.0)
+                {
+                    return false;
+                }
                 if (valid_ != other.valid_)
                 {
                     return false;
