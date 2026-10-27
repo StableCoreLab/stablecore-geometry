@@ -43,6 +43,30 @@ TEST(SegmentTest, ArcValidityRejectsOverflowingGeometry)
     EXPECT_FALSE(interiorOverflow.IsValid());
 }
 
+TEST(SegmentTest, ExplicitToleranceSamplesShortLineAndArc)
+{
+    constexpr double length = 1e-10;
+    constexpr double eps = 1e-15;
+    const SCLineSegment2d line({0.0, 0.0}, {length, 0.0});
+    EXPECT_EQ(line.PointAt(0.5), line.startPoint);
+    EXPECT_EQ(line.PointAtLength(length * 0.5), line.startPoint);
+    EXPECT_TRUE(line.PointAt(0.5, eps).AlmostEquals({length * 0.5, 0.0}, eps));
+    EXPECT_TRUE(line.PointAtLength(length * 0.5, false, eps)
+                    .AlmostEquals({length * 0.5, 0.0}, eps));
+    EXPECT_EQ(line.PointAtLength(length * 2.0, true, eps), line.endPoint);
+    EXPECT_EQ(line.PointAt(0.5, 0.0), line.startPoint);
+    EXPECT_EQ(line.PointAtLength(length * 0.5, false,
+                                 std::numeric_limits<double>::infinity()), line.startPoint);
+
+    const SCArcSegment2d arc({0.0, 0.0}, length, 0.0, Geometry::kPi * 0.5);
+    const SCPoint2d expected{length * std::cos(Geometry::kPi * 0.25),
+                             length * std::sin(Geometry::kPi * 0.25)};
+    EXPECT_TRUE(arc.PointAt(0.5, eps).AlmostEquals(expected, eps));
+    EXPECT_TRUE(arc.PointAtLength(arc.Length() * 0.5, false, eps).AlmostEquals(expected, eps));
+    EXPECT_EQ(arc.PointAtLength(arc.Length() * 2.0, true, eps), arc.EndPoint());
+    EXPECT_EQ(arc.PointAt(0.5, 0.0), arc.StartPoint());
+}
+
 TEST(SegmentTest, CoversCurrentCapabilities)
 {
     static_assert(std::is_abstract_v<ISCSegment2d>);

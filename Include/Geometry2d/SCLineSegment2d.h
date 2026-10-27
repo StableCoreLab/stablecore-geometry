@@ -28,7 +28,9 @@ namespace Geometry
         [[nodiscard]] double Length() const override;
         [[nodiscard]] SCBox2d Bounds() const override;
         [[nodiscard]] SCPoint2d PointAt(double parameter) const override;
+        [[nodiscard]] SCPoint2d PointAt(double parameter, double eps) const;
         [[nodiscard]] SCPoint2d PointAtLength(double distanceFromStart, bool clampToSegment = false) const override;
+        [[nodiscard]] SCPoint2d PointAtLength(double distanceFromStart, bool clampToSegment, double eps) const;
         [[nodiscard]] bool AlmostEquals(const SCLineSegment2d& other, double eps = Geometry::kDefaultEpsilon) const;
         [[nodiscard]] std::string DebugString() const override;
         [[nodiscard]] std::unique_ptr<ISCSegment2d> Clone() const override;

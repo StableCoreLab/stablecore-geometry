@@ -144,10 +144,18 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API SCSegmentProjection2d ProjectPointToArcSegment(const SCPoint2d& point,
                                                                             const SCArcSegment2d& segment,
                                                                             bool clampToSegment = true);
+    [[nodiscard]] GEOMETRY_API SCSegmentProjection2d ProjectPointToArcSegment(const SCPoint2d& point,
+                                                                            const SCArcSegment2d& segment,
+                                                                            bool clampToSegment,
+                                                                            double epsilon);
 
     [[nodiscard]] GEOMETRY_API SCSegmentProjection2d ProjectPointToSegment(const SCPoint2d& point,
                                                                          const ISCSegment2d& segment,
                                                                          bool clampToSegment = true);
+    [[nodiscard]] GEOMETRY_API SCSegmentProjection2d ProjectPointToSegment(const SCPoint2d& point,
+                                                                         const ISCSegment2d& segment,
+                                                                         bool clampToSegment,
+                                                                         double epsilon);
 
     [[nodiscard]] GEOMETRY_API SCSegmentProjection2d ProjectPointToSegment(const SCPoint2d& point,
                                                                          const SCPoint2d& segmentStart,

@@ -61,6 +61,11 @@ namespace Geometry
         {
             return {SCPoint2d{}, 0.0, std::numeric_limits<double>::quiet_NaN(), false};
         }
+
+        [[nodiscard]] SCSegmentProjection3d InvalidSegmentProjection3d()
+        {
+            return {SCPoint3d{}, 0.0, std::numeric_limits<double>::quiet_NaN(), false};
+        }
     }  // namespace
 
     SCSegmentProjection2d ProjectPointToLineSegment(const SCPoint2d& point,
@@ -178,6 +183,48 @@ namespace Geometry
                                        rawParameter <= 1.0 + Geometry::kDefaultParameterEpsilon};
     }
 
+    SCSegmentProjection2d ProjectPointToArcSegment(const SCPoint2d& point,
+                                                 const SCArcSegment2d& segment,
+                                                 bool clampToSegment,
+                                                 double epsilon)
+    {
+        if (!(epsilon > 0.0) || !std::isfinite(epsilon) || !point.IsValid() || !segment.IsValid())
+        {
+            return InvalidSegmentProjection2d();
+        }
+        const double length = segment.Length();
+        const SCVector2d radial = point - segment.center;
+        if (!(length > 0.0) || !std::isfinite(length) ||
+            !std::isfinite(radial.x) || !std::isfinite(radial.y))
+        {
+            return InvalidSegmentProjection2d();
+        }
+
+        const double rawParameter = ParameterOnArc(segment, std::atan2(radial.y, radial.x));
+        if (!std::isfinite(rawParameter))
+        {
+            return InvalidSegmentProjection2d();
+        }
+
+        double parameter = rawParameter;
+        if (clampToSegment && rawParameter > 1.0)
+        {
+            const double distanceToStart = DistanceSquared(point, segment.StartPoint());
+            const double distanceToEnd = DistanceSquared(point, segment.EndPoint());
+            parameter = distanceToStart <= distanceToEnd ? 0.0 : 1.0;
+        }
+        const SCPoint2d projectedPoint = segment.PointAt(parameter);
+        const double revolutionParameter = 2.0 * std::numbers::pi_v<double> / std::abs(segment.sweepAngle);
+        const double parameterTolerance = epsilon / length;
+        const SCSegmentProjection2d projection{
+            projectedPoint,
+            parameter,
+            DistanceSquared(point, projectedPoint),
+            rawParameter <= 1.0 + parameterTolerance ||
+                rawParameter >= revolutionParameter - parameterTolerance};
+        return projection.IsValid() ? projection : InvalidSegmentProjection2d();
+    }
+
     SCSegmentProjection2d ProjectPointToSegment(const SCPoint2d& point, const ISCSegment2d& segment, bool clampToSegment)
     {
         if (segment.Kind() == SCSegmentKind2::Line)
@@ -186,6 +233,24 @@ namespace Geometry
         }
 
         return ProjectPointToArcSegment(point, static_cast<const SCArcSegment2d&>(segment), clampToSegment);
+    }
+
+    SCSegmentProjection2d ProjectPointToSegment(const SCPoint2d& point,
+                                              const ISCSegment2d& segment,
+                                              bool clampToSegment,
+                                              double epsilon)
+    {
+        if (segment.Kind() == SCSegmentKind2::Line)
+        {
+            return ProjectPointToLineSegment(point, static_cast<const SCLineSegment2d&>(segment),
+                                             clampToSegment, epsilon);
+        }
+        if (segment.Kind() == SCSegmentKind2::Arc)
+        {
+            return ProjectPointToArcSegment(point, static_cast<const SCArcSegment2d&>(segment),
+                                            clampToSegment, epsilon);
+        }
+        return InvalidSegmentProjection2d();
     }
 
     double ParameterAtLength(const ISCSegment2d& segment, double length, bool clampToSegment)
@@ -289,26 +354,39 @@ namespace Geometry
                                                     bool clampToSegment,
                                                     const SCGeometryTolerance3d& tolerance)
     {
-        if (!segment.IsValid(tolerance.distanceEpsilon))
+        if (!tolerance.IsValid() || !point.IsValid() ||
+            !segment.startPoint.IsValid() || !segment.endPoint.IsValid())
         {
-            return SCSegmentProjection3d{segment.startPoint, 0.0, (point - segment.startPoint).LengthSquared(), true};
+            return InvalidSegmentProjection3d();
         }
 
         const SCVector3d direction = segment.endPoint - segment.startPoint;
-        const double lengthSquared = direction.LengthSquared();
-        if (lengthSquared <= tolerance.distanceEpsilon * tolerance.distanceEpsilon)
+        const double length = std::hypot(direction.x, direction.y, direction.z);
+        if (!std::isfinite(length))
         {
-            return SCSegmentProjection3d{segment.startPoint, 0.0, (point - segment.startPoint).LengthSquared(), true};
+            return InvalidSegmentProjection3d();
+        }
+        if (length <= tolerance.distanceEpsilon)
+        {
+            const SCSegmentProjection3d projection{segment.startPoint, 0.0,
+                                                    (point - segment.startPoint).LengthSquared(), true};
+            return projection.IsValid() ? projection : InvalidSegmentProjection3d();
         }
 
-        const double rawParameter = Dot(point - segment.startPoint, direction) / lengthSquared;
+        const SCVector3d unitDirection = direction / length;
+        const double rawParameter = Dot(point - segment.startPoint, unitDirection) / length;
+        if (!std::isfinite(rawParameter))
+        {
+            return InvalidSegmentProjection3d();
+        }
         const double parameter = clampToSegment ? std::clamp(rawParameter, 0.0, 1.0) : rawParameter;
         const SCPoint3d projectedPoint = segment.PointAt(parameter);
-        return SCSegmentProjection3d{projectedPoint,
-                                     parameter,
-                                     (point - projectedPoint).LengthSquared(),
-                                     rawParameter >= -tolerance.parameterEpsilon &&
-                                         rawParameter <= 1.0 + tolerance.parameterEpsilon};
+        const SCSegmentProjection3d projection{projectedPoint,
+                                                parameter,
+                                                (point - projectedPoint).LengthSquared(),
+                                                rawParameter >= -tolerance.parameterEpsilon &&
+                                                    rawParameter <= 1.0 + tolerance.parameterEpsilon};
+        return projection.IsValid() ? projection : InvalidSegmentProjection3d();
     }
 
     SCSegmentProjection3d ProjectPointToLineSegment(const SCPoint3d& point,

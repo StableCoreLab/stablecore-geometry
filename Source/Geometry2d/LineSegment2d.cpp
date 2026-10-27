@@ -1,5 +1,6 @@
 #include "Geometry2d/SCLineSegment2d.h"
 
+#include <algorithm>
 #include <memory>
 #include <cmath>
 #include <sstream>
@@ -67,6 +68,18 @@ namespace Geometry
         return PointAtLength(parameter * Length(), false);
     }
 
+    SCPoint2d SCLineSegment2d::PointAt(double parameter, double eps) const
+    {
+        if (!std::isfinite(eps) || eps <= 0.0 || !std::isfinite(parameter) || !IsValid(eps) ||
+            !std::isfinite(Length()))
+        {
+            return startPoint;
+        }
+        const SCPoint2d point{std::lerp(startPoint.x, endPoint.x, parameter),
+                              std::lerp(startPoint.y, endPoint.y, parameter)};
+        return point.IsValid() ? point : startPoint;
+    }
+
     SCPoint2d SCLineSegment2d::PointAtLength(double distanceFromStart, bool clampToSegment) const
     {
         if (!IsValid())
@@ -94,6 +107,24 @@ namespace Geometry
         const double ratio = distanceFromStart / length;
         return SCPoint2d{startPoint.x + (endPoint.x - startPoint.x) * ratio,
                        startPoint.y + (endPoint.y - startPoint.y) * ratio};
+    }
+
+    SCPoint2d SCLineSegment2d::PointAtLength(double distanceFromStart, bool clampToSegment, double eps) const
+    {
+        if (!std::isfinite(distanceFromStart) || !std::isfinite(eps) || eps <= 0.0 || !IsValid(eps))
+        {
+            return startPoint;
+        }
+        const double length = Length();
+        if (!std::isfinite(length) || length <= eps)
+        {
+            return startPoint;
+        }
+        if (clampToSegment)
+        {
+            distanceFromStart = std::clamp(distanceFromStart, 0.0, length);
+        }
+        return PointAt(distanceFromStart / length, eps);
     }
 
     bool SCLineSegment2d::AlmostEquals(const SCLineSegment2d& other, double eps) const

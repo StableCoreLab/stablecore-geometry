@@ -124,6 +124,51 @@ TEST(CoreAlgorithmsTest, SmallCallerToleranceProjectsShortLine)
                                           std::numeric_limits<double>::infinity()).IsValid());
 }
 
+TEST(CoreAlgorithmsTest, SmallCallerToleranceProjectsArcAndGenericSegments)
+{
+    constexpr double radius = 1e-10;
+    constexpr double eps = 1e-15;
+    constexpr double nearAngle = 1e-6;
+    const SCArcSegment2d arc({0.0, 0.0}, radius, 0.0, Geometry::kPi * 0.5);
+    const SCPoint2d beforeStart{radius * std::cos(-nearAngle), radius * std::sin(-nearAngle)};
+    const SCPoint2d afterEnd{radius * std::cos(Geometry::kPi * 0.5 + nearAngle),
+                             radius * std::sin(Geometry::kPi * 0.5 + nearAngle)};
+
+    const auto startProjection = ProjectPointToArcSegment(beforeStart, arc, true, eps);
+    ASSERT_TRUE(startProjection.IsValid());
+    EXPECT_TRUE(startProjection.point.AlmostEquals(arc.StartPoint(), eps));
+    EXPECT_DOUBLE_EQ(startProjection.parameter, 0.0);
+    EXPECT_TRUE(startProjection.isOnSegment);
+
+    const auto endProjection = ProjectPointToArcSegment(afterEnd, arc, true, eps);
+    ASSERT_TRUE(endProjection.IsValid());
+    EXPECT_TRUE(endProjection.point.AlmostEquals(arc.EndPoint(), eps));
+    EXPECT_DOUBLE_EQ(endProjection.parameter, 1.0);
+    EXPECT_TRUE(endProjection.isOnSegment);
+
+    const SCPoint2d farBeforeStart{radius * std::cos(-0.2), radius * std::sin(-0.2)};
+    const auto farProjection = ProjectPointToArcSegment(farBeforeStart, arc, true, eps);
+    EXPECT_TRUE(farProjection.point.AlmostEquals(arc.StartPoint(), eps));
+    EXPECT_FALSE(farProjection.isOnSegment);
+
+    const ISCSegment2d& genericArc = arc;
+    EXPECT_TRUE(ProjectPointToSegment(beforeStart, genericArc, true, eps)
+                    .point.AlmostEquals(arc.StartPoint(), eps));
+    const SCLineSegment2d line({0.0, 0.0}, {radius, 0.0});
+    const ISCSegment2d& genericLine = line;
+    EXPECT_TRUE(ProjectPointToSegment({radius * 0.5, radius * 0.1}, genericLine, true, eps)
+                    .point.AlmostEquals({radius * 0.5, 0.0}, eps));
+    const SCArcSegment2d clockwise({0.0, 0.0}, radius, 0.0, -Geometry::kPi * 0.5);
+    const SCPoint2d beforeClockwiseStart{radius * std::cos(nearAngle), radius * std::sin(nearAngle)};
+    const auto clockwiseProjection = ProjectPointToArcSegment(beforeClockwiseStart, clockwise, true, eps);
+    EXPECT_TRUE(clockwiseProjection.point.AlmostEquals(clockwise.StartPoint(), eps));
+    EXPECT_TRUE(clockwiseProjection.isOnSegment);
+    const auto unbounded = ProjectPointToArcSegment(beforeStart, arc, false, eps);
+    EXPECT_TRUE(unbounded.point.AlmostEquals(beforeStart, eps));
+    EXPECT_GT(unbounded.parameter, 1.0);
+    EXPECT_FALSE(ProjectPointToArcSegment(beforeStart, arc, true, 0.0).IsValid());
+}
+
 TEST(CoreAlgorithmsTest, CoversCurrentCapabilities)
 {
     const SCLineSegment2d line(SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0});

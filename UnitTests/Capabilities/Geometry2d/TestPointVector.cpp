@@ -39,6 +39,20 @@ TEST(Vector2Test, Normalized)
     EXPECT_FALSE(SCVector2d{}.TryNormalized(tryNormalized));
 }
 
+TEST(Vector2Test, LengthAndNormalizationRemainStableAtExtremeScales)
+{
+    const SCVector2d tiny{1e-200, 0.0};
+    EXPECT_NEAR(tiny.Length(), 1e-200, 1e-210);
+    SCVector2d normalized;
+    ASSERT_TRUE(tiny.TryNormalized(normalized, 1e-210));
+    EXPECT_EQ(normalized, (SCVector2d{1.0, 0.0}));
+
+    const SCVector2d large{1e200, 0.0};
+    EXPECT_NEAR(large.Length(), 1e200, 1e190);
+    ASSERT_TRUE(large.TryNormalized(normalized));
+    EXPECT_EQ(normalized, (SCVector2d{1.0, 0.0}));
+}
+
 template <typename T>
 concept SupportsPointPlusPoint = requires(T a, T b) { a + b; };
 

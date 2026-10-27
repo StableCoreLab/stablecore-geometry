@@ -32,8 +32,7 @@ namespace Geometry
 
         [[nodiscard]] auto Length() const -> LengthType
         {
-            using std::sqrt;
-            return sqrt(LengthSquared());
+            return std::hypot(static_cast<LengthType>(this->x), static_cast<LengthType>(this->y));
         }
 
         [[nodiscard]] SCVector2 Normalized(double eps = kDefaultEpsilon) const

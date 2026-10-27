@@ -325,15 +325,7 @@ namespace Geometry
             {
                 if (const auto* line = dynamic_cast<const SCLineSegment2d*>(&segment))
                 {
-                    const double segmentLength = line->Length();
-                    const double parameter = localDistance / segmentLength;
-                    if (!std::isfinite(parameter))
-                    {
-                        return line->startPoint;
-                    }
-                    const SCPoint2d point{line->startPoint.x + (line->endPoint.x - line->startPoint.x) * parameter,
-                                          line->startPoint.y + (line->endPoint.y - line->startPoint.y) * parameter};
-                    return point.IsValid() ? point : line->startPoint;
+                    return line->PointAtLength(localDistance, false, eps);
                 }
             }
             return segment.PointAtLength(localDistance, false);

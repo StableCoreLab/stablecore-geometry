@@ -33,14 +33,19 @@ namespace Geometry
 
         [[nodiscard]] auto Length() const -> LengthType
         {
-            using std::sqrt;
-            return sqrt(LengthSquared());
+            return std::hypot(static_cast<LengthType>(this->x),
+                              static_cast<LengthType>(this->y),
+                              static_cast<LengthType>(this->z));
         }
 
         [[nodiscard]] SCVector3 Normalized(double eps = kDefaultEpsilon) const
         {
+            if (!this->IsValid() || !std::isfinite(eps) || eps < 0.0)
+            {
+                return SCVector3{};
+            }
             const auto length = Length();
-            if (length <= eps)
+            if (!std::isfinite(length) || length <= eps)
             {
                 return SCVector3{};
             }

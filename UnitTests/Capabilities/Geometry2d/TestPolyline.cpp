@@ -104,6 +104,8 @@ TEST(PolylineTest, ExplicitToleranceSamplesSmallLineAndArc)
     EXPECT_FALSE(path.IsValid());
     EXPECT_EQ(path.PointAtLength(5e-11), path.StartPoint());
     EXPECT_TRUE(path.PointAtLength(5e-11, false, 1e-15).AlmostEquals({5e-11, 0.0}, 1e-15));
+    EXPECT_TRUE(path.PointAtLength(-5e-11, false, 1e-15).AlmostEquals({-5e-11, 0.0}, 1e-15));
+    EXPECT_EQ(path.PointAtLength(-5e-11, true, 1e-15), path.StartPoint());
     EXPECT_TRUE(path.PointAt(5e-11 / path.Length(), 1e-15).AlmostEquals({5e-11, 0.0}, 1e-15));
     EXPECT_TRUE(path.PointAtLength(1e-10 + arc->Length() * 0.5, false, 1e-15)
                     .AlmostEquals(arc->PointAt(0.5), 1e-15));

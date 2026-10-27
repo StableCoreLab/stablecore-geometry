@@ -29,6 +29,23 @@ namespace
         EXPECT_FALSE(point.AlmostEquals(Geometry::SCPoint3d{infinity, 2.0, 3.0}, infinity));
     }
 
+    TEST(PointVector3dCapabilityTest, LengthAndDirectionRemainStableAtExtremeScales)
+    {
+        const Geometry::SCVector3d tiny{1e-200, 0.0, 0.0};
+        EXPECT_NEAR(tiny.Length(), 1e-200, 1e-210);
+        EXPECT_EQ(tiny.Normalized(1e-210), (Geometry::SCVector3d{1.0, 0.0, 0.0}));
+        EXPECT_TRUE(Geometry::SCDirection3d::FromVector(tiny, 1e-210).IsValid());
+
+        const Geometry::SCVector3d large{1e200, 0.0, 0.0};
+        EXPECT_NEAR(large.Length(), 1e200, 1e190);
+        EXPECT_EQ(large.Normalized(), (Geometry::SCVector3d{1.0, 0.0, 0.0}));
+
+        const double infinity = std::numeric_limits<double>::infinity();
+        EXPECT_EQ(Geometry::SCVector3d{}.Normalized(-1.0), Geometry::SCVector3d{});
+        EXPECT_EQ(tiny.Normalized(infinity), Geometry::SCVector3d{});
+        EXPECT_EQ((Geometry::SCVector3d{infinity, 0.0, 0.0}.Normalized(0.0)), Geometry::SCVector3d{});
+    }
+
     TEST(Box3dCapabilityTest, AlmostEqualsRejectsInvalidToleranceForEmptyBoxes)
     {
         const Geometry::SCBox3d empty;

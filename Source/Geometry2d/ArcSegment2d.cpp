@@ -1,5 +1,6 @@
 #include "Geometry2d/SCArcSegment2d.h"
 
+#include <algorithm>
 #include <cmath>
 #include <memory>
 #include <numbers>
@@ -123,6 +124,21 @@ namespace Geometry
         return PointAtLength(parameter * Length(), false);
     }
 
+    SCPoint2d SCArcSegment2d::PointAt(double parameter, double eps) const
+    {
+        if (!std::isfinite(eps) || eps <= 0.0 || !std::isfinite(parameter) || !IsValid())
+        {
+            return StartPoint();
+        }
+        const double length = Length();
+        if (!std::isfinite(length) || length <= eps)
+        {
+            return StartPoint();
+        }
+        const SCPoint2d point = PointAtAngle(startAngle + sweepAngle * parameter);
+        return point.IsValid() ? point : StartPoint();
+    }
+
     SCPoint2d SCArcSegment2d::PointAtLength(double distanceFromStart, bool clampToSegment) const
     {
         if (!IsValid())
@@ -148,6 +164,24 @@ namespace Geometry
         }
 
         return PointAtAngle(startAngle + sweepAngle * (distanceFromStart / length));
+    }
+
+    SCPoint2d SCArcSegment2d::PointAtLength(double distanceFromStart, bool clampToSegment, double eps) const
+    {
+        if (!std::isfinite(distanceFromStart) || !std::isfinite(eps) || eps <= 0.0 || !IsValid())
+        {
+            return StartPoint();
+        }
+        const double length = Length();
+        if (!std::isfinite(length) || length <= eps)
+        {
+            return StartPoint();
+        }
+        if (clampToSegment)
+        {
+            distanceFromStart = std::clamp(distanceFromStart, 0.0, length);
+        }
+        return PointAt(distanceFromStart / length, eps);
     }
 
     bool SCArcSegment2d::AlmostEquals(const SCArcSegment2d& other, double eps) const

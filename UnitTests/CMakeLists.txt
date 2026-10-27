@@ -9,6 +9,9 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Core/TestMetricsPolylineBox.cpp
     Capabilities/Core/TestAlgorithmCapabilities.cpp
     Capabilities/Core/TestPathGeometry.cpp
+    Capabilities/Core/TestPathGeometryMapping.cpp
+    Capabilities/Core/TestPathGeometryOffset.cpp
+    Capabilities/Core/TestPathGeometryCorner.cpp
     Capabilities/Core/TestPlaneOps.cpp
     Capabilities/Core/TestPointOps.cpp
     Capabilities/Core/TestPolygonPositiveAreaIntersection.cpp
