@@ -66,3 +66,15 @@ TEST(BoxTest, CoversCurrentCapabilities)
     ASSERT_NE(sameA, different);
     EXPECT_TRUE(sameA.AlmostEquals(sameB, 0.0));
 }
+
+TEST(BoxTest, CenterAvoidsFiniteCoordinateSumOverflow)
+{
+    const SCBox2d positive = SCBox2d::FromMinMax({1e308, 0.0}, {1.5e308, 2.0});
+    const SCBox2d negative = SCBox2d::FromMinMax({-1.5e308, -2.0}, {-1e308, 0.0});
+    ASSERT_TRUE(positive.IsValid());
+    ASSERT_TRUE(negative.IsValid());
+    EXPECT_NEAR(positive.Center().x, 1.25e308, 1e293);
+    EXPECT_NEAR(negative.Center().x, -1.25e308, 1e293);
+    EXPECT_DOUBLE_EQ(positive.Center().y, 1.0);
+    EXPECT_DOUBLE_EQ(negative.Center().y, -1.0);
+}

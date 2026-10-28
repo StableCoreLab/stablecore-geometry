@@ -40,6 +40,16 @@ TEST(GeometryTest, ThreeDimensionalIntegerPrimitivesFollowTheTemplatedFamily)
     EXPECT_TRUE((SCVector3i{1, 2, 3} + SCVector3i{2, 3, 4}) == SCVector3i(3, 5, 7));
 }
 
+TEST(GeometryTest, ThreeDimensionalBoxCenterAvoidsFiniteCoordinateSumOverflow)
+{
+    const SCBox3d box = SCBox3d::FromMinMax({1e308, -1.5e308, 0.0},
+                                            {1.5e308, -1e308, 2.0});
+    ASSERT_TRUE(box.IsValid());
+    EXPECT_NEAR(box.Center().x, 1.25e308, 1e293);
+    EXPECT_NEAR(box.Center().y, -1.25e308, 1e293);
+    EXPECT_DOUBLE_EQ(box.Center().z, 1.0);
+}
+
 TEST(GeometryTest, CoversThreeDimensionalCapabilities)
 {
     const SCLine3d line3 = SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 2.0, 3.0}, SCVector3d{2.0, 0.0, 0.0});

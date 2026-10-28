@@ -287,7 +287,8 @@ namespace Geometry
             return result;
         }
         const auto projection=ProjectPointToLine(vertex.Point(),line,tolerance);
-        if (!std::isfinite(projection.parameter) || !Close(vertex.Point(),line.PointAt(projection.parameter),tolerance.distanceEpsilon)) return result;
+        if (!projection.IsValid() || !projection.isOnLine ||
+            !Close(vertex.Point(),line.PointAt(projection.parameter),tolerance.distanceEpsilon)) return result;
         result.state=State::HasResult; result.payloadValid=true;
         result.payload={true,projection.parameter,vertex.Point()};
         result.evidence.hit=Evidence::Verified;

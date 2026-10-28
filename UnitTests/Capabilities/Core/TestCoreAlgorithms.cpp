@@ -198,6 +198,19 @@ TEST(CoreAlgorithmsTest, ExplicitToleranceComputesShortSegmentTangentsAndNormals
     EXPECT_EQ(TangentAt(arc, std::numeric_limits<double>::max(), epsilon), SCVector2d{});
 }
 
+TEST(CoreAlgorithmsTest, ExplicitToleranceProjectsAndOrientsShortSweepArc)
+{
+    constexpr double epsilon = 1e-9;
+    const SCArcSegment2d arc({0.0, 0.0}, 1e6, 0.0, 1e-10);
+    ASSERT_TRUE(arc.IsValid(epsilon));
+    const auto projection = Geometry::ProjectPointToArcSegment({1e6, 5e-5}, arc, true, epsilon);
+    ASSERT_TRUE(projection.IsValid());
+    EXPECT_NEAR(projection.parameter, 0.5, 1e-6);
+    EXPECT_NEAR(projection.point.y, 5e-5, 1e-12);
+    EXPECT_NEAR(Geometry::TangentAt(arc, 0.5, epsilon).y, 1.0, 1e-12);
+    EXPECT_NEAR(Geometry::NormalAt(arc, 0.5, epsilon).x, -1.0, 1e-12);
+}
+
 TEST(CoreAlgorithmsTest, CoversCurrentCapabilities)
 {
     const SCLineSegment2d line(SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0});

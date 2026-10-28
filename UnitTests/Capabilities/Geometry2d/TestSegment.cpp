@@ -41,6 +41,17 @@ TEST(SegmentTest, ArcValidityRejectsOverflowingGeometry)
     ASSERT_TRUE(interiorOverflow.EndPoint().IsValid());
     EXPECT_FALSE(endpointOverflow.IsValid());
     EXPECT_FALSE(interiorOverflow.IsValid());
+
+    const SCArcSegment2d lengthOverflow({0.0, 0.0}, 1e308, 0.0, Geometry::kPi);
+    ASSERT_TRUE(lengthOverflow.StartPoint().IsValid());
+    ASSERT_TRUE(lengthOverflow.EndPoint().IsValid());
+    EXPECT_FALSE(lengthOverflow.IsValid());
+    EXPECT_EQ(lengthOverflow.Length(), 0.0);
+
+    const SCArcSegment2d lengthUnderflow({0.0, 0.0},
+                                         std::numeric_limits<double>::denorm_min(), 0.0, 1e-8);
+    EXPECT_FALSE(lengthUnderflow.IsValid());
+    EXPECT_EQ(lengthUnderflow.Length(), 0.0);
 }
 
 TEST(SegmentTest, ExplicitToleranceSamplesShortLineAndArc)
@@ -68,6 +79,28 @@ TEST(SegmentTest, ExplicitToleranceSamplesShortLineAndArc)
     EXPECT_TRUE(arc.PointAtLength(arc.Length() * 0.5, false, eps).AlmostEquals(expected, eps));
     EXPECT_EQ(arc.PointAtLength(arc.Length() * 2.0, true, eps), arc.EndPoint());
     EXPECT_EQ(arc.PointAt(0.5, 0.0), arc.StartPoint());
+}
+
+TEST(SegmentTest, ExplicitToleranceAcceptsRepresentableShortSweepArc)
+{
+    constexpr double epsilon = 1e-9;
+    const SCArcSegment2d arc({0.0, 0.0}, 1e6, 0.0, 1e-10);
+    EXPECT_FALSE(arc.IsValid());
+    ASSERT_TRUE(arc.IsValid(epsilon));
+    EXPECT_NEAR(arc.Length(epsilon), 1e-4, 1e-18);
+    EXPECT_NEAR(arc.PointAt(0.5, epsilon).y, 5e-5, 1e-12);
+    EXPECT_NEAR(arc.PointAtLength(5e-5, false, epsilon).y, 5e-5, 1e-12);
+    const SCBox2d box = arc.Bounds(epsilon);
+    ASSERT_TRUE(box.IsValid());
+    EXPECT_NEAR(box.MaxPoint().y, 1e-4, 1e-12);
+    EXPECT_FALSE(arc.IsValid(2e-4));
+    EXPECT_FALSE(arc.Bounds(0.0).IsValid());
+
+    const SCArcSegment2d nearCardinal({0.0, 0.0}, 1e6,
+                                      Geometry::kPi / 2.0 + 5e-10, 1e-10);
+    const SCBox2d narrowBounds = nearCardinal.Bounds(epsilon);
+    ASSERT_TRUE(narrowBounds.IsValid());
+    EXPECT_LT(narrowBounds.MaxPoint().x, -4e-4);
 }
 
 TEST(SegmentTest, LineValidityUsesEuclideanLengthAtToleranceBoundary)

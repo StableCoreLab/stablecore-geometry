@@ -30,6 +30,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry2d/TestPolygon.cpp
     Capabilities/Geometry2d/TestPolyline.cpp
     Capabilities/Geometry2d/TestRelationBoolean.cpp
+    Capabilities/Geometry2d/TestRelationBooleanDegeneracies.cpp
     Capabilities/Geometry2d/TestRingTraversalRegression.cpp
     Capabilities/Geometry2d/TestSearchPoly.cpp
     Capabilities/Geometry2d/TestSearchPolyRepairRanking.cpp
@@ -50,6 +51,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestHealing3dBoundaryArbitration.cpp
     Capabilities/Geometry3d/TestHealing3dVertexTouchArbitration.cpp
     Capabilities/Geometry3d/TestHealing3dShellCombinations.cpp
+    Capabilities/Geometry3d/TestHealing3dMultiFaceShellCombinations.cpp
     Capabilities/Geometry3d/TestHealing3dSupportMismatch.cpp
     Capabilities/Geometry3d/TestHealing3dTrimPlanes.cpp
     Capabilities/Geometry3d/TestSection3d.cpp
@@ -58,6 +60,8 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestSection3dMixedContourHoles.cpp
     Capabilities/Geometry3d/TestSection3dMixedContourOrdering.cpp
     Capabilities/Geometry3d/TestSection3dRebar.cpp
+    Capabilities/Geometry3d/TestSection3dRebarMidplane.cpp
+    Capabilities/Geometry3d/TestSection3dRebarAxisCuts.cpp
     Capabilities/Geometry3d/TestValueTypes3d.cpp
     Capabilities/Geometry3d/TestBrepCore.cpp
     Capabilities/Geometry3d/TestBrepLoopGeometry.cpp
@@ -70,6 +74,8 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestGeometryEvidenceTopology.cpp
     Capabilities/Geometry3d/TestMeshHealingContract.cpp
     Capabilities/Geometry3d/TestNurbsNumerics.cpp
+    Capabilities/Geometry3d/TestNurbsEvaluationNumerics.cpp
+    Capabilities/Geometry3d/TestNurbsWeightExtremes.cpp
     Capabilities/Geometry3d/TestNurbsProjectionIntersection.cpp
     Capabilities/Geometry3d/TestNurbsSurfaceSearch.cpp
     Capabilities/Geometry3d/TestOffsetSurfaceEval.cpp

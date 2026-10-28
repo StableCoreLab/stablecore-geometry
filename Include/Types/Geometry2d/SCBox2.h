@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <numeric>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -71,8 +72,8 @@ namespace Geometry
         {
             assert(IsValid());
             return SCPoint2<MeasureType>(
-                (static_cast<MeasureType>(min_.x) + static_cast<MeasureType>(max_.x)) / static_cast<MeasureType>(2),
-                (static_cast<MeasureType>(min_.y) + static_cast<MeasureType>(max_.y)) / static_cast<MeasureType>(2));
+                std::midpoint(static_cast<MeasureType>(min_.x), static_cast<MeasureType>(max_.x)),
+                std::midpoint(static_cast<MeasureType>(min_.y), static_cast<MeasureType>(max_.y)));
         }
 
         constexpr void ExpandToInclude(const SCPoint2<T>& point)

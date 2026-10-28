@@ -49,17 +49,35 @@ namespace Geometry
 
     bool SCArcSegment2d::IsValid() const
     {
+        return IsValidForTolerance(Geometry::kDefaultAngleEpsilon, 0.0,
+                                   Geometry::kDefaultAngleEpsilon);
+    }
+
+    bool SCArcSegment2d::IsValid(double eps) const
+    {
+        return std::isfinite(eps) && eps > 0.0 && std::isfinite(radius) && radius > 0.0 &&
+               IsValidForTolerance(0.0, eps, eps / radius);
+    }
+
+    bool SCArcSegment2d::IsValidForTolerance(double minimumSweep, double minimumLength,
+                                              double angleEps) const
+    {
         if (!center.IsValid() || !std::isfinite(radius) || !std::isfinite(startAngle) ||
             !std::isfinite(sweepAngle) || !(radius > 0.0) ||
-            !(std::abs(sweepAngle) > Geometry::kDefaultAngleEpsilon) ||
+            !(std::abs(sweepAngle) > minimumSweep) ||
             std::abs(sweepAngle) > 2.0 * std::numbers::pi_v<double> + Geometry::kDefaultAngleEpsilon ||
             !StartPoint().IsValid() || !EndPoint().IsValid())
         {
             return false;
         }
+        const double length = std::abs(sweepAngle) * radius;
+        if (!std::isfinite(length) || length <= minimumLength)
+        {
+            return false;
+        }
         for (double angle : Geometry::kArcBoundsCriticalAngles)
         {
-            if (IsAngleOnArc(angle) && !PointAtAngle(angle).IsValid())
+            if (IsAngleOnArc(angle, angleEps) && !PointAtAngle(angle).IsValid())
             {
                 return false;
             }
@@ -97,6 +115,11 @@ namespace Geometry
         return std::abs(sweepAngle) * radius;
     }
 
+    double SCArcSegment2d::Length(double eps) const
+    {
+        return IsValid(eps) ? std::abs(sweepAngle) * radius : 0.0;
+    }
+
     SCBox2d SCArcSegment2d::Bounds() const
     {
         if (!IsValid())
@@ -104,13 +127,28 @@ namespace Geometry
             return SCBox2d{};
         }
 
+        return BoundsForAngleTolerance(Geometry::kDefaultAngleEpsilon);
+    }
+
+    SCBox2d SCArcSegment2d::Bounds(double eps) const
+    {
+        if (!IsValid(eps))
+        {
+            return SCBox2d{};
+        }
+
+        return BoundsForAngleTolerance(eps / radius);
+    }
+
+    SCBox2d SCArcSegment2d::BoundsForAngleTolerance(double angleEps) const
+    {
         SCBox2d box;
         box.ExpandToInclude(StartPoint());
         box.ExpandToInclude(EndPoint());
 
         for (double angle : Geometry::kArcBoundsCriticalAngles)
         {
-            if (IsAngleOnArc(angle))
+            if (IsAngleOnArc(angle, angleEps))
             {
                 box.ExpandToInclude(PointAtAngle(angle));
             }
@@ -126,12 +164,7 @@ namespace Geometry
 
     SCPoint2d SCArcSegment2d::PointAt(double parameter, double eps) const
     {
-        if (!std::isfinite(eps) || eps <= 0.0 || !std::isfinite(parameter) || !IsValid())
-        {
-            return StartPoint();
-        }
-        const double length = Length();
-        if (!std::isfinite(length) || length <= eps)
+        if (!std::isfinite(parameter) || !IsValid(eps))
         {
             return StartPoint();
         }
@@ -168,15 +201,11 @@ namespace Geometry
 
     SCPoint2d SCArcSegment2d::PointAtLength(double distanceFromStart, bool clampToSegment, double eps) const
     {
-        if (!std::isfinite(distanceFromStart) || !std::isfinite(eps) || eps <= 0.0 || !IsValid())
+        if (!std::isfinite(distanceFromStart) || !IsValid(eps))
         {
             return StartPoint();
         }
-        const double length = Length();
-        if (!std::isfinite(length) || length <= eps)
-        {
-            return StartPoint();
-        }
+        const double length = std::abs(sweepAngle) * radius;
         if (clampToSegment)
         {
             distanceFromStart = std::clamp(distanceFromStart, 0.0, length);
@@ -229,14 +258,19 @@ namespace Geometry
 
     bool SCArcSegment2d::IsAngleOnArc(double candidateAngle) const
     {
+        return IsAngleOnArc(candidateAngle, Geometry::kDefaultAngleEpsilon);
+    }
+
+    bool SCArcSegment2d::IsAngleOnArc(double candidateAngle, double angleEps) const
+    {
         if (sweepAngle >= 0.0)
         {
             const double delta = NormalizeAngle(candidateAngle - startAngle);
-            return delta <= sweepAngle + Geometry::kDefaultAngleEpsilon;
+            return delta <= sweepAngle + angleEps;
         }
 
         const double delta = NormalizeAngle(startAngle - candidateAngle);
-        return delta <= (-sweepAngle) + Geometry::kDefaultAngleEpsilon;
+        return delta <= (-sweepAngle) + angleEps;
     }
 
     SCPoint2d SCArcSegment2d::PointAtAngle(double angle) const

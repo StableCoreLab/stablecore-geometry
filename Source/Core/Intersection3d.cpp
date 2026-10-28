@@ -462,9 +462,11 @@ namespace Geometry
                 parameter = std::clamp(parameter,range.min,range.max);
             }
             const auto point = lineCurve->PointAt(parameter);
+            if (!point.IsValid()) return {};
             const auto projection = ProjectPointToLine(point,line,tolerance);
+            if (!projection.IsValid() || !projection.isOnLine) return {};
             const auto onLine = line.PointAt(projection.parameter);
-            if (!point.IsValid() || !onLine.IsValid() || !std::isfinite(projection.parameter) ||
+            if (!onLine.IsValid() ||
                 Norm(onLine-point)>tolerance.distanceEpsilon) return {};
             return {true,projection.parameter,parameter,point};
         }
@@ -524,9 +526,10 @@ namespace Geometry
             const SCPoint3d actual = curve.PointAt(curveParameter);
             if (!actual.IsValid()) continue;
             const auto projection = ProjectPointToLine(actual, line, tolerance);
+            if (!projection.IsValid() || !projection.isOnLine) continue;
             const auto onLine = line.PointAt(projection.parameter);
             const double distance = Norm(onLine - actual);
-            if (onLine.IsValid() && std::isfinite(projection.parameter) && distance < bestDistance)
+            if (onLine.IsValid() && distance < bestDistance)
             {
                 bestDistance = distance;
                 best = {true, projection.parameter, curveParameter, actual};

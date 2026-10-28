@@ -151,18 +151,20 @@ namespace Geometry
 
         const double outerArea = RingSignedArea(impl_->outerRing, eps);
         // 环方向不是结构有效性的前置条件；NormalizePolygon 会在需要方向语义的
-        // 算法入口统一规范化。这里仅排除零面积退化环。
-        if (!(std::abs(outerArea) > 0.0))
+        // 算法入口统一规范化。这里排除零面积或面积不可表示的环。
+        if (!std::isfinite(outerArea) || outerArea == 0.0)
         {
             return false;
         }
 
+        double totalPerimeter = impl_->outerRing.Length();
         for (const auto& hole : impl_->holes)
         {
             if (!hole.IsValid(eps) || !hole.IsClosed())
             {
                 return false;
             }
+            totalPerimeter += hole.Length();
 
             if (HasSelfIntersection(hole, eps))
             {
@@ -170,7 +172,7 @@ namespace Geometry
             }
 
             const double holeArea = RingSignedArea(hole, eps);
-            if (!(std::abs(holeArea) > 0.0))
+            if (!std::isfinite(holeArea) || holeArea == 0.0)
             {
                 return false;
             }
@@ -215,7 +217,7 @@ namespace Geometry
             }
         }
 
-        return true;
+        return std::isfinite(totalPerimeter);
     }
 
     std::size_t SCPolygon2d::PointCount() const

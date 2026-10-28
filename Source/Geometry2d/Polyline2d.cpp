@@ -160,7 +160,7 @@ namespace Geometry
             }
         }
 
-        if (!(totalLength > 0.0))
+        if (!std::isfinite(totalLength) || totalLength <= 0.0)
         {
             return false;
         }

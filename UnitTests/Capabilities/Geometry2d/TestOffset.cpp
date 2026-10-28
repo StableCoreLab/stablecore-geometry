@@ -394,3 +394,14 @@ TEST(OffsetTest, ExplicitToleranceKeepsSubDefaultStandaloneArcRadius)
     ASSERT_FALSE(overflow.StartPoint().IsValid());
     EXPECT_FALSE(Offset(overflow, 0.0, eps).IsValid());
 }
+
+TEST(OffsetTest, ExplicitToleranceOffsetsRepresentableShortSweepArc)
+{
+    constexpr double epsilon = 1e-9;
+    const SCArcSegment2d source({0.0, 0.0}, 1e6, 0.0, 1e-10);
+    ASSERT_TRUE(source.IsValid(epsilon));
+    const SCArcSegment2d shifted = Offset(source, 100.0, epsilon);
+    EXPECT_TRUE(shifted.IsValid(epsilon));
+    EXPECT_FALSE(shifted.IsValid());
+    EXPECT_NEAR(shifted.radius, 1e6 - 100.0, 1e-9);
+}

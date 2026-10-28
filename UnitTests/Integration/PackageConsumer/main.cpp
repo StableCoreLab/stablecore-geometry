@@ -59,6 +59,9 @@ int main()
         ProjectPointToSegment({5e-11, 1e-11}, static_cast<const ISCSegment2d&>(tinyLine), true, 1e-15)
             .point.AlmostEquals({5e-11, 0.0}, 1e-15);
     const SCArcSegment2d tinyArc({0.0, 0.0}, 1e-10, 0.0, std::numbers::pi_v<double> * 0.5);
+    const SCArcSegment2d shortSweepArc({0.0, 0.0}, 1e6, 0.0, 1e-10);
+    const bool shortSweepArcToleranceAvailable = shortSweepArc.IsValid(1e-9) &&
+        shortSweepArc.Length(1e-9) > 0.0 && shortSweepArc.Bounds(1e-9).IsValid();
     const bool arcProjectionAvailable =
         ProjectPointToArcSegment({1e-10, -1e-16}, tinyArc, true, 1e-15)
             .point.AlmostEquals(tinyArc.StartPoint(), 1e-15) &&
@@ -121,7 +124,8 @@ int main()
                    Contains(box, path) && Intersects(box, path) && polygonToleranceAvailable &&
                    searchCandidateToleranceAvailable && polygonOffsetToleranceAvailable &&
                    primitiveOffsetToleranceAvailable && segmentParameterAvailable && shortProjectionAvailable &&
-                   arcProjectionAvailable && segmentSamplingAvailable && segmentDirectionsAvailable &&
+                   arcProjectionAvailable && shortSweepArcToleranceAvailable &&
+                   segmentSamplingAvailable && segmentDirectionsAvailable &&
                    tinySegmentSamplingAvailable &&
                    subPolylineToleranceAvailable && polylineSamplingToleranceAvailable && area.success &&
                    area.hasPositiveAreaIntersection && fittedPlane.success && arc.success &&

@@ -11,6 +11,7 @@
 #include "../../../Source/Detail/SegmentParameters2d.h"
 #include "../../../Source/Core/Detail/SegmentSubdivision2d.h"
 #include "Geometry.h"
+#include "Support/PolygonBooleanFixtures2d.h"
 
 using Geometry::BuildMultiPolygonByLines;
 using Geometry::Difference;
@@ -22,6 +23,7 @@ using Geometry::SCPolygon2d;
 using Geometry::SCPolyline2d;
 using Geometry::SCPolylineClosure;
 using Geometry::SearchPolygons;
+using Geometry::Test::TotalArea;
 
 namespace
 {
@@ -68,16 +70,6 @@ namespace
         }
 
         return {innerTop, outerLeft, innerBottom, outerTop, innerLeft, outerRight, innerRight, outerBottom};
-    }
-
-    double TotalArea(const SCMultiPolygon2d& polygons)
-    {
-        double total = 0.0;
-        for (std::size_t index = 0; index < polygons.Count(); ++index)
-        {
-            total += polygons[index].Area();
-        }
-        return total;
     }
 
     void ExpectSearchPolyMatchesRebuild(const SCMultiPolyline2d& lines)

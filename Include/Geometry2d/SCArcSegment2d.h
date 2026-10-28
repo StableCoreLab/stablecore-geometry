@@ -28,12 +28,15 @@ namespace Geometry
 
         [[nodiscard]] SCSegmentKind2 Kind() const override;
         [[nodiscard]] bool IsValid() const override;
+        [[nodiscard]] bool IsValid(double eps) const;
         [[nodiscard]] SCArcDirection Direction() const;
         [[nodiscard]] double EndAngle() const;
         [[nodiscard]] SCPoint2d StartPoint() const override;
         [[nodiscard]] SCPoint2d EndPoint() const override;
         [[nodiscard]] double Length() const override;
+        [[nodiscard]] double Length(double eps) const;
         [[nodiscard]] SCBox2d Bounds() const override;
+        [[nodiscard]] SCBox2d Bounds(double eps) const;
         [[nodiscard]] SCPoint2d PointAt(double parameter) const override;
         [[nodiscard]] SCPoint2d PointAt(double parameter, double eps) const;
         [[nodiscard]] SCPoint2d PointAtLength(double distanceFromStart, bool clampToSegment = false) const override;
@@ -50,6 +53,9 @@ namespace Geometry
     private:
         [[nodiscard]] static double NormalizeAngle(double angle);
         [[nodiscard]] bool IsAngleOnArc(double candidateAngle) const;
+        [[nodiscard]] bool IsAngleOnArc(double candidateAngle, double angleEps) const;
+        [[nodiscard]] bool IsValidForTolerance(double minimumSweep, double minimumLength, double angleEps) const;
+        [[nodiscard]] SCBox2d BoundsForAngleTolerance(double angleEps) const;
         [[nodiscard]] SCPoint2d PointAtAngle(double angle) const;
     };
 }  // namespace Geometry

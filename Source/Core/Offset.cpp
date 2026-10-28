@@ -766,7 +766,7 @@ namespace Geometry
 
     SCArcSegment2d Offset(const SCArcSegment2d& segment, double distance, double epsilon)
     {
-        if (!(epsilon > 0.0) || !std::isfinite(epsilon) || !std::isfinite(distance) || !segment.IsValid() ||
+        if (!(epsilon > 0.0) || !std::isfinite(epsilon) || !std::isfinite(distance) || !segment.IsValid(epsilon) ||
             !segment.StartPoint().IsValid() || !segment.EndPoint().IsValid())
         {
             return {};
@@ -781,7 +781,7 @@ namespace Geometry
         }
 
         const SCArcSegment2d shifted(segment.center, adjustedRadius, segment.startAngle, segment.sweepAngle);
-        return shifted.IsValid() && shifted.StartPoint().IsValid() && shifted.EndPoint().IsValid()
+        return shifted.IsValid(epsilon) && shifted.StartPoint().IsValid() && shifted.EndPoint().IsValid()
                    ? shifted
                    : SCArcSegment2d{};
     }

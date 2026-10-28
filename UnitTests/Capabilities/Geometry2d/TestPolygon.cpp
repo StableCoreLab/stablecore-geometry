@@ -90,6 +90,30 @@ TEST(PolygonTest, SmallCallerToleranceRetainsSubDefaultRingEdges)
     EXPECT_TRUE(polygon.Bounds(eps).MaxPoint().AlmostEquals({width, width}, eps));
 }
 
+TEST(PolygonTest, RejectsOverflowingCombinedPerimeter)
+{
+    const SCPolyline2d outer(
+        {{0.0, 0.0}, {6e307, 0.0}, {6e307, 1.0}, {0.0, 1.0}},
+        SCPolylineClosure::Closed);
+    const SCPolyline2d hole(
+        {{1e307, 0.25}, {5e307, 0.25}, {5e307, 0.75}, {1e307, 0.75}},
+        SCPolylineClosure::Closed);
+    ASSERT_TRUE(outer.IsValid());
+    ASSERT_TRUE(hole.IsValid());
+    const SCPolygon2d polygon(outer, {hole});
+    EXPECT_FALSE(polygon.IsValid());
+}
+
+TEST(PolygonTest, RejectsUnrepresentableArea)
+{
+    const SCPolyline2d outer(
+        {{0.0, 0.0}, {1e155, 0.0}, {1e155, 1e155}, {0.0, 1e155}},
+        SCPolylineClosure::Closed);
+    ASSERT_TRUE(outer.IsValid());
+    const SCPolygon2d polygon(outer);
+    EXPECT_FALSE(polygon.IsValid());
+}
+
 TEST(PolygonTest, RejectsInvalidHoleConfigurations)
 {
     SCPolyline2d outerRing = MakeClosedRing({

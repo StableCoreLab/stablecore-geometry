@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numeric>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -78,9 +79,9 @@ namespace Geometry
         [[nodiscard]] constexpr SCPoint3<MeasureType> Center() const
         {
             return SCPoint3<MeasureType>{
-                (static_cast<MeasureType>(minPoint_.x) + static_cast<MeasureType>(maxPoint_.x)) * 0.5,
-                (static_cast<MeasureType>(minPoint_.y) + static_cast<MeasureType>(maxPoint_.y)) * 0.5,
-                (static_cast<MeasureType>(minPoint_.z) + static_cast<MeasureType>(maxPoint_.z)) * 0.5};
+                std::midpoint(static_cast<MeasureType>(minPoint_.x), static_cast<MeasureType>(maxPoint_.x)),
+                std::midpoint(static_cast<MeasureType>(minPoint_.y), static_cast<MeasureType>(maxPoint_.y)),
+                std::midpoint(static_cast<MeasureType>(minPoint_.z), static_cast<MeasureType>(maxPoint_.z))};
         }
 
         constexpr void ExpandToInclude(const SCPoint3<T>& point)

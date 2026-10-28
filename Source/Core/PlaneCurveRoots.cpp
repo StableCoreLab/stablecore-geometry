@@ -736,8 +736,9 @@ namespace Geometry
                     const SCPoint3d point = curve.PointAt(parameter);
                     if (!point.IsValid()) continue;
                     const SCLineProjection3d projection = ProjectPointToLine(point, line, tolerance);
+                    if (!projection.IsValid() || !projection.isOnLine) continue;
                     const SCPoint3d linePoint = line.PointAt(projection.parameter);
-                    if (!std::isfinite(projection.parameter) || !linePoint.IsValid() ||
+                    if (!linePoint.IsValid() ||
                         Norm(linePoint - point) > tolerance.distanceEpsilon) continue;
                     result.hits.push_back({true, projection.parameter, parameter, point});
                 }
@@ -758,8 +759,9 @@ namespace Geometry
         for (const auto& planeHit : planeResult.hits)
         {
             const SCLineProjection3d projection = ProjectPointToLine(planeHit.point, line, tolerance);
+            if (!projection.IsValid() || !projection.isOnLine) continue;
             const SCPoint3d linePoint = line.PointAt(projection.parameter);
-            if (!std::isfinite(projection.parameter) || !linePoint.IsValid() ||
+            if (!linePoint.IsValid() ||
                 Norm(linePoint - planeHit.point) > tolerance.distanceEpsilon) continue;
             result.hits.push_back({true, projection.parameter, planeHit.curveParameter, planeHit.point});
         }

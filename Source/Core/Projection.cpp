@@ -188,11 +188,11 @@ namespace Geometry
                                                  bool clampToSegment,
                                                  double epsilon)
     {
-        if (!(epsilon > 0.0) || !std::isfinite(epsilon) || !point.IsValid() || !segment.IsValid())
+        if (!(epsilon > 0.0) || !std::isfinite(epsilon) || !point.IsValid() || !segment.IsValid(epsilon))
         {
             return InvalidSegmentProjection2d();
         }
-        const double length = segment.Length();
+        const double length = segment.Length(epsilon);
         const SCVector2d radial = point - segment.center;
         if (!(length > 0.0) || !std::isfinite(length) ||
             !std::isfinite(radial.x) || !std::isfinite(radial.y))
@@ -213,7 +213,7 @@ namespace Geometry
             const double distanceToEnd = DistanceSquared(point, segment.EndPoint());
             parameter = distanceToStart <= distanceToEnd ? 0.0 : 1.0;
         }
-        const SCPoint2d projectedPoint = segment.PointAt(parameter);
+        const SCPoint2d projectedPoint = segment.PointAt(parameter, epsilon);
         const double revolutionParameter = 2.0 * std::numbers::pi_v<double> / std::abs(segment.sweepAngle);
         const double parameterTolerance = epsilon / length;
         const SCSegmentProjection2d projection{
@@ -354,11 +354,11 @@ namespace Geometry
     SCVector2d TangentAt(const SCArcSegment2d& segment, double parameter, double epsilon)
     {
         if (!std::isfinite(epsilon) || epsilon <= 0.0 || !std::isfinite(parameter) ||
-            !segment.IsValid() || segment.radius <= epsilon)
+            !segment.IsValid(epsilon))
         {
             return {};
         }
-        const double arcLength = segment.Length();
+        const double arcLength = segment.Length(epsilon);
         if (!std::isfinite(arcLength) || arcLength <= epsilon)
         {
             return {};

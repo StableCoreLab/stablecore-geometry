@@ -110,3 +110,14 @@ TEST(PolylineTest, ExplicitToleranceSamplesSmallLineAndArc)
     EXPECT_TRUE(path.PointAtLength(1e-10 + arc->Length() * 0.5, false, 1e-15)
                     .AlmostEquals(arc->PointAt(0.5), 1e-15));
 }
+
+TEST(PolylineTest, RejectsOverflowingTotalLength)
+{
+    const SCPolyline2d path({SCPoint2d{0.0, 0.0}, SCPoint2d{1e308, 0.0},
+                             SCPoint2d{1e308, 1e308}});
+    ASSERT_EQ(path.SegmentCount(), 2);
+    ASSERT_TRUE(path.SegmentAt(0)->IsValid());
+    ASSERT_TRUE(path.SegmentAt(1)->IsValid());
+    EXPECT_TRUE(std::isinf(path.Length()));
+    EXPECT_FALSE(path.IsValid());
+}
