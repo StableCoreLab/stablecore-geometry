@@ -334,6 +334,63 @@ namespace Geometry
         return TangentAt(static_cast<const SCArcSegment2d&>(segment), parameter);
     }
 
+    SCVector2d TangentAt(const SCLineSegment2d& segment, double parameter, double epsilon)
+    {
+        if (!std::isfinite(epsilon) || epsilon <= 0.0 || !std::isfinite(parameter) ||
+            !segment.IsValid(epsilon))
+        {
+            return {};
+        }
+        const SCVector2d direction = segment.endPoint - segment.startPoint;
+        const double length = direction.Length();
+        if (!std::isfinite(length) || length <= epsilon)
+        {
+            return {};
+        }
+        const SCVector2d tangent = direction / length;
+        return tangent.IsValid() ? tangent : SCVector2d{};
+    }
+
+    SCVector2d TangentAt(const SCArcSegment2d& segment, double parameter, double epsilon)
+    {
+        if (!std::isfinite(epsilon) || epsilon <= 0.0 || !std::isfinite(parameter) ||
+            !segment.IsValid() || segment.radius <= epsilon)
+        {
+            return {};
+        }
+        const double arcLength = segment.Length();
+        if (!std::isfinite(arcLength) || arcLength <= epsilon)
+        {
+            return {};
+        }
+        const double angle = segment.startAngle + segment.sweepAngle * parameter;
+        if (!std::isfinite(angle))
+        {
+            return {};
+        }
+        const SCVector2d unitRadial{std::cos(angle), std::sin(angle)};
+        if (!unitRadial.IsValid())
+        {
+            return {};
+        }
+        return segment.Direction() == SCArcDirection::CounterClockwise
+                   ? SCVector2d{-unitRadial.y, unitRadial.x}
+                   : SCVector2d{unitRadial.y, -unitRadial.x};
+    }
+
+    SCVector2d TangentAt(const ISCSegment2d& segment, double parameter, double epsilon)
+    {
+        if (segment.Kind() == SCSegmentKind2::Line)
+        {
+            return TangentAt(static_cast<const SCLineSegment2d&>(segment), parameter, epsilon);
+        }
+        if (segment.Kind() == SCSegmentKind2::Arc)
+        {
+            return TangentAt(static_cast<const SCArcSegment2d&>(segment), parameter, epsilon);
+        }
+        return {};
+    }
+
     SCVector2d NormalAt(const SCLineSegment2d& segment, double parameter)
     {
         return LeftNormal(TangentAt(segment, parameter));
@@ -347,6 +404,21 @@ namespace Geometry
     SCVector2d NormalAt(const ISCSegment2d& segment, double parameter)
     {
         return LeftNormal(TangentAt(segment, parameter));
+    }
+
+    SCVector2d NormalAt(const SCLineSegment2d& segment, double parameter, double epsilon)
+    {
+        return LeftNormal(TangentAt(segment, parameter, epsilon));
+    }
+
+    SCVector2d NormalAt(const SCArcSegment2d& segment, double parameter, double epsilon)
+    {
+        return LeftNormal(TangentAt(segment, parameter, epsilon));
+    }
+
+    SCVector2d NormalAt(const ISCSegment2d& segment, double parameter, double epsilon)
+    {
+        return LeftNormal(TangentAt(segment, parameter, epsilon));
     }
 
     SCSegmentProjection3d ProjectPointToLineSegment(const SCPoint3d& point,

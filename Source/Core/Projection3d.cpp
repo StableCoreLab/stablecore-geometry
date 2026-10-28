@@ -671,7 +671,10 @@ namespace Geometry
         const double distance=CandidateDistance(point,projected);
         if (!std::isfinite(parameter) || !projected.IsValid() || !std::isfinite(distance))
             return {line.origin,0,std::numeric_limits<double>::infinity(),false};
-        return {projected,parameter,distance*distance,true};
+        const double distanceSquared = distance * distance;
+        if (!std::isfinite(distanceSquared))
+            return {line.origin,0,std::numeric_limits<double>::infinity(),false};
+        return {projected,parameter,distanceSquared,true};
     }
 
     SCCurveProjection3d Detail::SolveCurveProjection(const SCPoint3d& point,

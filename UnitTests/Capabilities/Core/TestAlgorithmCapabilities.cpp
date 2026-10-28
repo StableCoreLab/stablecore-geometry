@@ -81,6 +81,19 @@ TEST(AlgorithmCapabilitiesTest, IntersectExtendedPolicyNoneMatchesIntersectForCo
     EXPECT_TRUE(actual.onSecondSegment);
 }
 
+TEST(AlgorithmCapabilitiesTest, LineProjectionRejectsUnrepresentableSquaredDistance)
+{
+    const SCLine3d line = SCLine3d::FromOriginAndDirection({0.0, 0.0, 0.0}, {1.0, 0.0, 0.0});
+    const auto nearby = Geometry::ProjectPointToLine({0.0, 1e-200, 0.0}, line);
+    ASSERT_TRUE(nearby.IsValid());
+    EXPECT_TRUE(nearby.isOnLine);
+    EXPECT_DOUBLE_EQ(nearby.distanceSquared, 0.0);
+
+    const auto far = Geometry::ProjectPointToLine({0.0, 1e200, 0.0}, line);
+    EXPECT_FALSE(far.IsValid());
+    EXPECT_FALSE(far.isOnLine);
+}
+
 TEST(AlgorithmCapabilitiesTest, ProjectPointToLineSegment3dClampsAndProjects)
 {
     const SCLineSegment3d segment{SCPoint3d{0.0, 0.0, 0.0}, SCPoint3d{2.0, 0.0, 0.0}};

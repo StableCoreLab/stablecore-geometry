@@ -31,8 +31,12 @@ namespace Geometry
 
     bool SCLineSegment2d::IsValid(double eps) const
     {
-        return eps > 0.0 && std::isfinite(eps) && startPoint.IsValid() && endPoint.IsValid() &&
-               !startPoint.AlmostEquals(endPoint, eps);
+        if (!(eps > 0.0) || !std::isfinite(eps) || !startPoint.IsValid() || !endPoint.IsValid())
+        {
+            return false;
+        }
+        const double length = Length();
+        return std::isfinite(length) && length > eps;
     }
 
     SCPoint2d SCLineSegment2d::StartPoint() const
@@ -52,7 +56,12 @@ namespace Geometry
 
     SCBox2d SCLineSegment2d::Bounds() const
     {
-        if (!IsValid())
+        return Bounds(Geometry::kDefaultEpsilon);
+    }
+
+    SCBox2d SCLineSegment2d::Bounds(double eps) const
+    {
+        if (!IsValid(eps))
         {
             return SCBox2d{};
         }

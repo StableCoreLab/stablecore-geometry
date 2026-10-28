@@ -251,9 +251,15 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API SCVector2d TangentAt(const SCLineSegment2d& segment, double parameter);
     [[nodiscard]] GEOMETRY_API SCVector2d TangentAt(const SCArcSegment2d& segment, double parameter);
     [[nodiscard]] GEOMETRY_API SCVector2d TangentAt(const ISCSegment2d& segment, double parameter);
+    [[nodiscard]] GEOMETRY_API SCVector2d TangentAt(const SCLineSegment2d& segment, double parameter, double epsilon);
+    [[nodiscard]] GEOMETRY_API SCVector2d TangentAt(const SCArcSegment2d& segment, double parameter, double epsilon);
+    [[nodiscard]] GEOMETRY_API SCVector2d TangentAt(const ISCSegment2d& segment, double parameter, double epsilon);
 
     [[nodiscard]] GEOMETRY_API SCVector2d NormalAt(const SCLineSegment2d& segment, double parameter);
     [[nodiscard]] GEOMETRY_API SCVector2d NormalAt(const SCArcSegment2d& segment, double parameter);
     [[nodiscard]] GEOMETRY_API SCVector2d NormalAt(const ISCSegment2d& segment, double parameter);
+    [[nodiscard]] GEOMETRY_API SCVector2d NormalAt(const SCLineSegment2d& segment, double parameter, double epsilon);
+    [[nodiscard]] GEOMETRY_API SCVector2d NormalAt(const SCArcSegment2d& segment, double parameter, double epsilon);
+    [[nodiscard]] GEOMETRY_API SCVector2d NormalAt(const ISCSegment2d& segment, double parameter, double epsilon);
 }  // namespace Geometry
 

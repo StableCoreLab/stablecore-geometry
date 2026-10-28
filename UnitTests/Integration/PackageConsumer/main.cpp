@@ -67,8 +67,17 @@ int main()
     const bool segmentSamplingAvailable =
         tinyLine.PointAt(0.5, 1e-15).AlmostEquals({5e-11, 0.0}, 1e-15) &&
         tinyLine.PointAtLength(5e-11, false, 1e-15).AlmostEquals({5e-11, 0.0}, 1e-15) &&
+        tinyLine.Bounds(1e-15).IsValid() &&
         tinyArc.PointAt(0.5, 1e-15).IsValid() &&
         tinyArc.PointAtLength(tinyArc.Length() * 0.5, false, 1e-15).IsValid();
+    const bool segmentDirectionsAvailable =
+        TangentAt(tinyLine, 0.5, 1e-15) == SCVector2d{1.0, 0.0} &&
+        NormalAt(tinyLine, 0.5, 1e-15) == SCVector2d{0.0, 1.0} &&
+        TangentAt(tinyArc, 0.0, 1e-15).AlmostEquals({0.0, 1.0}, 1e-15) &&
+        NormalAt(tinyArc, 0.0, 1e-15).AlmostEquals({-1.0, 0.0}, 1e-15) &&
+        TangentAt(static_cast<const ISCSegment2d&>(tinyLine), 0.5, 1e-15) == SCVector2d{1.0, 0.0} &&
+        NormalAt(static_cast<const ISCSegment2d&>(tinyArc), 0.0, 1e-15)
+            .AlmostEquals({-1.0, 0.0}, 1e-15);
     const SCLineSegment3d tinySegment3d{{0.0, 0.0, 0.0}, {1e-200, 0.0, 0.0}};
     const bool tinySegmentSamplingAvailable =
         tinySegment3d.PointAtLength(5e-201, false, 1e-210) == SCPoint3d{5e-201, 0.0, 0.0};
@@ -112,7 +121,8 @@ int main()
                    Contains(box, path) && Intersects(box, path) && polygonToleranceAvailable &&
                    searchCandidateToleranceAvailable && polygonOffsetToleranceAvailable &&
                    primitiveOffsetToleranceAvailable && segmentParameterAvailable && shortProjectionAvailable &&
-                   arcProjectionAvailable && segmentSamplingAvailable && tinySegmentSamplingAvailable &&
+                   arcProjectionAvailable && segmentSamplingAvailable && segmentDirectionsAvailable &&
+                   tinySegmentSamplingAvailable &&
                    subPolylineToleranceAvailable && polylineSamplingToleranceAvailable && area.success &&
                    area.hasPositiveAreaIntersection && fittedPlane.success && arc.success &&
                    projectedArc.success && mappedOffset.success && corner.success &&

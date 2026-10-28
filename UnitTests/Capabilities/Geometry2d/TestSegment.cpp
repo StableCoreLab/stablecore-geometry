@@ -53,6 +53,9 @@ TEST(SegmentTest, ExplicitToleranceSamplesShortLineAndArc)
     EXPECT_TRUE(line.PointAt(0.5, eps).AlmostEquals({length * 0.5, 0.0}, eps));
     EXPECT_TRUE(line.PointAtLength(length * 0.5, false, eps)
                     .AlmostEquals({length * 0.5, 0.0}, eps));
+    EXPECT_FALSE(line.Bounds().IsValid());
+    EXPECT_TRUE(line.Bounds(eps).AlmostEquals(
+        SCBox2d::FromMinMax({0.0, 0.0}, {length, 0.0}), eps));
     EXPECT_EQ(line.PointAtLength(length * 2.0, true, eps), line.endPoint);
     EXPECT_EQ(line.PointAt(0.5, 0.0), line.startPoint);
     EXPECT_EQ(line.PointAtLength(length * 0.5, false,
@@ -65,6 +68,21 @@ TEST(SegmentTest, ExplicitToleranceSamplesShortLineAndArc)
     EXPECT_TRUE(arc.PointAtLength(arc.Length() * 0.5, false, eps).AlmostEquals(expected, eps));
     EXPECT_EQ(arc.PointAtLength(arc.Length() * 2.0, true, eps), arc.EndPoint());
     EXPECT_EQ(arc.PointAt(0.5, 0.0), arc.StartPoint());
+}
+
+TEST(SegmentTest, LineValidityUsesEuclideanLengthAtToleranceBoundary)
+{
+    constexpr double epsilon = 1e-9;
+    const SCLineSegment2d diagonal({0.0, 0.0}, {0.8e-9, 0.8e-9});
+    EXPECT_GT(diagonal.Length(), epsilon);
+    EXPECT_TRUE(diagonal.IsValid(epsilon));
+    EXPECT_TRUE(diagonal.IsValid());
+    EXPECT_TRUE(diagonal.PointAt(0.5, epsilon).AlmostEquals({0.4e-9, 0.4e-9}, 1e-15));
+
+    const SCLineSegment2d boundary({0.0, 0.0}, {epsilon, 0.0});
+    EXPECT_FALSE(boundary.IsValid(epsilon));
+    const SCLineSegment2d overflowing({-1e308, 0.0}, {1e308, 0.0});
+    EXPECT_FALSE(overflowing.IsValid(epsilon));
 }
 
 TEST(SegmentTest, CoversCurrentCapabilities)

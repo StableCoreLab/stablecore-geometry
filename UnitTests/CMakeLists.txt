@@ -40,18 +40,23 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry2d/TestTopologyIndexing.cpp
     Capabilities/Geometry2d/TestTransformSampling.cpp
     Capabilities/Geometry3d/TestBodyBoolean3d.cpp
+    Capabilities/Geometry3d/TestBodyBooleanPolyhedron3d.cpp
+    Capabilities/Geometry3d/TestBodyBooleanBrep3d.cpp
     Capabilities/Geometry3d/TestBrep3d.cpp
     Capabilities/Geometry3d/TestConversion3d.cpp
     Capabilities/Geometry3d/TestConversionCuboid3d.cpp
     Capabilities/Geometry3d/TestConversionRepresentative3d.cpp
     Capabilities/Geometry3d/TestHealing3d.cpp
     Capabilities/Geometry3d/TestHealing3dBoundaryArbitration.cpp
+    Capabilities/Geometry3d/TestHealing3dVertexTouchArbitration.cpp
     Capabilities/Geometry3d/TestHealing3dShellCombinations.cpp
     Capabilities/Geometry3d/TestHealing3dSupportMismatch.cpp
     Capabilities/Geometry3d/TestHealing3dTrimPlanes.cpp
     Capabilities/Geometry3d/TestSection3d.cpp
     Capabilities/Geometry3d/TestSection3dMixedAreas.cpp
     Capabilities/Geometry3d/TestSection3dMixedContours.cpp
+    Capabilities/Geometry3d/TestSection3dMixedContourHoles.cpp
+    Capabilities/Geometry3d/TestSection3dMixedContourOrdering.cpp
     Capabilities/Geometry3d/TestSection3dRebar.cpp
     Capabilities/Geometry3d/TestValueTypes3d.cpp
     Capabilities/Geometry3d/TestBrepCore.cpp
@@ -59,7 +64,10 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestBrepMeshConversion3d.cpp
     Capabilities/Geometry3d/TestCorePrimitives3d.cpp
     Capabilities/Geometry3d/TestCurveOnSurfaceInterface.cpp
+    Capabilities/Geometry3d/TestCurveOnSurfaceNumerics.cpp
     Capabilities/Geometry3d/TestGeometryEvidence.cpp
+    Capabilities/Geometry3d/TestGeometryEvidenceIntersection.cpp
+    Capabilities/Geometry3d/TestGeometryEvidenceTopology.cpp
     Capabilities/Geometry3d/TestMeshHealingContract.cpp
     Capabilities/Geometry3d/TestNurbsNumerics.cpp
     Capabilities/Geometry3d/TestNurbsProjectionIntersection.cpp

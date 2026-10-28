@@ -27,6 +27,7 @@ namespace Geometry
         [[nodiscard]] SCPoint2d EndPoint() const override;
         [[nodiscard]] double Length() const override;
         [[nodiscard]] SCBox2d Bounds() const override;
+        [[nodiscard]] SCBox2d Bounds(double eps) const;
         [[nodiscard]] SCPoint2d PointAt(double parameter) const override;
         [[nodiscard]] SCPoint2d PointAt(double parameter, double eps) const;
         [[nodiscard]] SCPoint2d PointAtLength(double distanceFromStart, bool clampToSegment = false) const override;

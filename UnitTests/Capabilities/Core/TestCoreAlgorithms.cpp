@@ -169,6 +169,35 @@ TEST(CoreAlgorithmsTest, SmallCallerToleranceProjectsArcAndGenericSegments)
     EXPECT_FALSE(ProjectPointToArcSegment(beforeStart, arc, true, 0.0).IsValid());
 }
 
+TEST(CoreAlgorithmsTest, ExplicitToleranceComputesShortSegmentTangentsAndNormals)
+{
+    constexpr double epsilon = 1e-15;
+    const SCLineSegment2d line({0.0, 0.0}, {1e-10, 0.0});
+    const SCArcSegment2d arc({0.0, 0.0}, 1e-10, 0.0, Geometry::kPi * 0.5);
+    const ISCSegment2d& lineBase = line;
+    const ISCSegment2d& arcBase = arc;
+
+    EXPECT_EQ(TangentAt(line, 0.5), SCVector2d{});
+    EXPECT_EQ(TangentAt(arc, 0.0), SCVector2d{});
+    EXPECT_EQ(TangentAt(line, 0.5, epsilon), (SCVector2d{1.0, 0.0}));
+    EXPECT_EQ(NormalAt(line, 0.5, epsilon), (SCVector2d{0.0, 1.0}));
+    EXPECT_EQ(TangentAt(lineBase, 0.5, epsilon), (SCVector2d{1.0, 0.0}));
+    EXPECT_EQ(NormalAt(lineBase, 0.5, epsilon), (SCVector2d{0.0, 1.0}));
+    EXPECT_TRUE(TangentAt(arc, 0.0, epsilon).AlmostEquals({0.0, 1.0}, epsilon));
+    EXPECT_TRUE(NormalAt(arc, 0.0, epsilon).AlmostEquals({-1.0, 0.0}, epsilon));
+    EXPECT_TRUE(TangentAt(arcBase, 0.0, epsilon).AlmostEquals({0.0, 1.0}, epsilon));
+    EXPECT_TRUE(NormalAt(arcBase, 0.0, epsilon).AlmostEquals({-1.0, 0.0}, epsilon));
+    const SCArcSegment2d clockwise({0.0, 0.0}, 1e-10, 0.0, -Geometry::kPi * 0.5);
+    EXPECT_TRUE(TangentAt(clockwise, 0.0, epsilon).AlmostEquals({0.0, -1.0}, epsilon));
+    EXPECT_EQ(TangentAt(line, 0.5, 1e-10), SCVector2d{});
+    const SCArcSegment2d shortArc({0.0, 0.0}, 1e-10, 0.0, 0.1);
+    EXPECT_EQ(TangentAt(shortArc, 0.5, 2e-11), SCVector2d{});
+    EXPECT_EQ(TangentAt(line, 0.5, 0.0), SCVector2d{});
+    EXPECT_EQ(NormalAt(arc, 0.0, -1.0), SCVector2d{});
+    EXPECT_EQ(TangentAt(line, std::numeric_limits<double>::infinity(), epsilon), SCVector2d{});
+    EXPECT_EQ(TangentAt(arc, std::numeric_limits<double>::max(), epsilon), SCVector2d{});
+}
+
 TEST(CoreAlgorithmsTest, CoversCurrentCapabilities)
 {
     const SCLineSegment2d line(SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0});
