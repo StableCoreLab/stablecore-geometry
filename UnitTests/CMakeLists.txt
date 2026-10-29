@@ -44,7 +44,9 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestBodyBooleanPolyhedron3d.cpp
     Capabilities/Geometry3d/TestBodyBooleanBrep3d.cpp
     Capabilities/Geometry3d/TestBrep3d.cpp
+    Capabilities/Geometry3d/TestConversionBasic3d.cpp
     Capabilities/Geometry3d/TestConversion3d.cpp
+    Capabilities/Geometry3d/TestConversionTinyScale3d.cpp
     Capabilities/Geometry3d/TestConversionCuboid3d.cpp
     Capabilities/Geometry3d/TestConversionRepresentative3d.cpp
     Capabilities/Geometry3d/TestHealing3d.cpp

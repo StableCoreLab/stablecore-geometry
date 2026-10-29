@@ -97,6 +97,70 @@ TEST(TransformSamplingTest, NormalizePreservesArcWhileRemovingZeroLengthLine)
     EXPECT_NEAR(normalizedClosed.Length(), closed.Length(), 1e-12);
 }
 
+TEST(TransformSamplingTest, InsertPointPreservesMixedSegmentsAndPolygonHoles)
+{
+    const auto line = std::make_shared<SCLineSegment2d>(SCPoint2d{0.0, 0.0}, SCPoint2d{1.0, 0.0});
+    const auto arc = std::make_shared<SCArcSegment2d>(
+        SCPoint2d{1.0, 1.0}, 1.0, -Geometry::kPi * 0.5, Geometry::kPi * 0.5);
+    const auto tail = std::make_shared<SCLineSegment2d>(arc->EndPoint(), SCPoint2d{3.0, 1.0});
+    const SCPolyline2d path({line, arc, tail}, SCPolylineClosure::Open);
+    const SCPolyline2d insertedLine = InsertPoint(path, {0.5, 0.0}, 1e-12);
+    ASSERT_TRUE(insertedLine.IsValid(1e-12));
+    ASSERT_EQ(insertedLine.SegmentCount(), 4U);
+    EXPECT_EQ(insertedLine.SegmentAt(2)->Kind(), Geometry::SCSegmentKind2::Arc);
+    EXPECT_EQ(insertedLine.SegmentAt(3)->Kind(), Geometry::SCSegmentKind2::Line);
+    EXPECT_NEAR(insertedLine.Length(), path.Length(), 1e-12);
+
+    const SCPolyline2d insertedArc = InsertPoint(path, arc->PointAt(0.5), 1e-12);
+    ASSERT_TRUE(insertedArc.IsValid(1e-12));
+    ASSERT_EQ(insertedArc.SegmentCount(), 4U);
+    EXPECT_EQ(insertedArc.SegmentAt(1)->Kind(), Geometry::SCSegmentKind2::Arc);
+    EXPECT_EQ(insertedArc.SegmentAt(2)->Kind(), Geometry::SCSegmentKind2::Arc);
+    EXPECT_EQ(insertedArc.SegmentAt(3)->Kind(), Geometry::SCSegmentKind2::Line);
+    EXPECT_NEAR(insertedArc.Length(), path.Length(), 1e-12);
+
+    const auto clockwiseArc = std::make_shared<SCArcSegment2d>(
+        SCPoint2d{0.0, 0.0}, 1.0, Geometry::kPi * 0.5, -Geometry::kPi * 0.5);
+    const auto closingLine = std::make_shared<SCLineSegment2d>(
+        clockwiseArc->EndPoint(), clockwiseArc->StartPoint());
+    const SCPolyline2d closed({clockwiseArc, closingLine}, SCPolylineClosure::Closed);
+    const SCPolyline2d insertedClockwise = InsertPoint(closed, clockwiseArc->PointAt(0.5), 1e-12);
+    ASSERT_TRUE(insertedClockwise.IsValid(1e-12));
+    EXPECT_TRUE(insertedClockwise.IsClosed());
+    ASSERT_EQ(insertedClockwise.SegmentCount(), 3U);
+    EXPECT_EQ(insertedClockwise.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2::Arc);
+    EXPECT_EQ(insertedClockwise.SegmentAt(1)->Kind(), Geometry::SCSegmentKind2::Arc);
+    EXPECT_NEAR(insertedClockwise.Length(), closed.Length(), 1e-12);
+
+    const auto shortSweep = std::make_shared<SCArcSegment2d>(
+        SCPoint2d{0.0, 0.0}, 1e6, 0.0, 1e-10);
+    const SCPolyline2d shortSweepPath({shortSweep}, SCPolylineClosure::Open);
+    const SCPolyline2d insertedShortSweep =
+        InsertPoint(shortSweepPath, shortSweep->PointAt(0.5, 1e-8), 1e-8);
+    ASSERT_TRUE(insertedShortSweep.IsValid(1e-8));
+    ASSERT_EQ(insertedShortSweep.SegmentCount(), 2U);
+    EXPECT_EQ(insertedShortSweep.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2::Arc);
+    EXPECT_EQ(insertedShortSweep.SegmentAt(1)->Kind(), Geometry::SCSegmentKind2::Arc);
+    EXPECT_NEAR(insertedShortSweep.Length(1e-8), shortSweepPath.Length(1e-8), 1e-10);
+
+    const SCPolyline2d outer({{0.0, 0.0}, {4.0, 0.0}, {4.0, 4.0}, {0.0, 4.0}},
+                             SCPolylineClosure::Closed);
+    const SCPolyline2d hole({{1.0, 1.0}, {1.0, 2.0}, {2.0, 2.0}, {2.0, 1.0}},
+                            SCPolylineClosure::Closed);
+    const SCPolygon2d polygon(outer, {hole});
+    const SCPolygon2d insertedPolygon = InsertPoint(polygon, {2.0, 0.0}, 1e-12);
+    ASSERT_TRUE(insertedPolygon.IsValid(1e-12));
+    EXPECT_EQ(insertedPolygon.OuterRing().PointCount(), 5U);
+    EXPECT_EQ(insertedPolygon.HoleCount(), 1U);
+    EXPECT_EQ(insertedPolygon.HoleAt(0).PointCount(), 4U);
+
+    const SCPolygon2d insertedHole = InsertPoint(polygon, {1.0, 1.5}, 1e-12);
+    ASSERT_TRUE(insertedHole.IsValid(1e-12));
+    EXPECT_EQ(insertedHole.OuterRing().PointCount(), 4U);
+    ASSERT_EQ(insertedHole.HoleCount(), 1U);
+    EXPECT_EQ(insertedHole.HoleAt(0).PointCount(), 5U);
+}
+
 TEST(TransformSamplingTest, MirrorDirectionScalePreservesAxis)
 {
     const SCPoint2d point{1.0, 2.0};

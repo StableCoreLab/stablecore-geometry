@@ -310,7 +310,7 @@ namespace Geometry
 
         for (std::size_t i = 0; i < section.polygons.size(); ++i)
         {
-            if (!section.polygons[i].IsValid())
+            if (!section.polygons[i].IsValid(eps))
             {
                 return {false, SCSectionValidationIssue3d::InvalidPolygon, i};
             }

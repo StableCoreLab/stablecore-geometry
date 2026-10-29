@@ -1,5 +1,6 @@
 #include "Core/Section.h"
 #include "../Detail/AffinePlaneGeometry.h"
+#include "../Detail/RingIntegral2d.h"
 
 #include <algorithm>
 #include <array>
@@ -176,11 +177,10 @@ namespace Geometry
 
         bool IsPointOnAnyPolygonBoundary(const SCPoint3d& point, const SCPolyhedronSection3d& section, double eps)
         {
-            const double boundaryEps = std::max(eps, Geometry::kPathOpsComparisonEpsilon);
             const SCPoint2d projected = ProjectPointToSectionBasis(point, section);
             for (const SCPolygon2d& polygon : section.polygons)
             {
-                if (LocatePoint(projected, polygon, boundaryEps) == SCPointContainment2d::OnBoundary)
+                if (LocatePoint(projected, polygon, eps) == SCPointContainment2d::OnBoundary)
                 {
                     return true;
                 }
@@ -190,12 +190,11 @@ namespace Geometry
 
         bool IsPointAtAnyPolygonVertex(const SCPoint3d& point, const SCPolyhedronSection3d& section, double eps)
         {
-            const double boundaryEps = std::max(eps, Geometry::kPathOpsComparisonEpsilon);
             const SCPoint2d projected = ProjectPointToSectionBasis(point, section);
             auto ringContainsVertex = [&](const SCPolyline2d& ring) {
                 for (std::size_t i = 0; i < ring.PointCount(); ++i)
                 {
-                    if (ring.VertexAt(i).AlmostEquals(projected, boundaryEps))
+                    if (ring.VertexAt(i).AlmostEquals(projected, eps))
                     {
                         return true;
                     }
@@ -522,7 +521,7 @@ namespace Geometry
                     const std::size_t previous = (i + contour2d.size() - 1) % contour2d.size();
                     const std::size_t next = (i + 1) % contour2d.size();
                     const SCLineSegment2d chord(contour2d[previous], contour2d[next]);
-                    if (!chord.IsValid())
+                    if (!chord.IsValid(eps))
                     {
                         continue;
                     }
@@ -566,7 +565,7 @@ namespace Geometry
                 for (std::size_t i = 1; i + 1 < contour2d.size(); ++i)
                 {
                     const SCLineSegment2d chord(contour2d[i - 1], contour2d[i + 1]);
-                    if (!chord.IsValid())
+                    if (!chord.IsValid(eps))
                     {
                         continue;
                     }
@@ -894,48 +893,41 @@ namespace Geometry
             return depth;
         }
 
-        SCPolyline2d NormalizeRingOrientation(const SCPolyline2d& ring, bool counterClockwise)
+        SCPolygon2d NormalizePolygonOrientation(const SCPolygon2d& polygon, double eps)
         {
-            const SCRingOrientation2d orientation = Orientation(ring);
-            if (orientation == SCRingOrientation2d::Unknown)
-            {
+            const auto orientRing = [eps](const SCPolyline2d& ring, bool counterClockwise) {
+                const double signedArea = Detail::ComputeSignedArea(ring, eps);
+                if (std::isfinite(signedArea) &&
+                    ((counterClockwise && signedArea < 0.0) ||
+                     (!counterClockwise && signedArea > 0.0)))
+                {
+                    return Reverse(ring);
+                }
                 return ring;
-            }
+            };
 
-            if ((counterClockwise && orientation == SCRingOrientation2d::Clockwise) ||
-                (!counterClockwise && orientation == SCRingOrientation2d::CounterClockwise))
-            {
-                return Reverse(ring);
-            }
-
-            return ring;
-        }
-
-        SCPolygon2d NormalizePolygonOrientation(const SCPolygon2d& polygon)
-        {
-            SCPolyline2d outer = NormalizeRingOrientation(polygon.OuterRing(), true);
+            SCPolyline2d outer = orientRing(polygon.OuterRing(), true);
             std::vector<SCPolyline2d> holes;
             holes.reserve(polygon.HoleCount());
             for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
             {
-                holes.push_back(NormalizeRingOrientation(polygon.HoleAt(i), false));
+                holes.push_back(orientRing(polygon.HoleAt(i), false));
             }
-
             return SCPolygon2d(std::move(outer), std::move(holes));
         }
 
         SCMultiPolygon2d MergeCoplanarPolygonsStable(const std::vector<SCPolygon2d>& polygons, double eps)
         {
-            const double mergeEps = std::max(eps, Geometry::kPathOpsComparisonEpsilon);
+            const double mergeEps = eps;
             std::vector<SCPolygon2d> merged;
             merged.reserve(polygons.size());
             for (const SCPolygon2d& polygon : polygons)
             {
-                SCPolygon2d normalized = NormalizePolygonOrientation(polygon);
+                SCPolygon2d normalized = NormalizePolygonOrientation(polygon, mergeEps);
                 const SCPolygon2d normalizedByLines = NormalizePolygonByLines(normalized, mergeEps);
-                if (normalizedByLines.IsValid())
+                if (normalizedByLines.IsValid(mergeEps))
                 {
-                    normalized = NormalizePolygonOrientation(normalizedByLines);
+                    normalized = NormalizePolygonOrientation(normalizedByLines, mergeEps);
                 }
 
                 merged.push_back(std::move(normalized));
@@ -968,7 +960,7 @@ namespace Geometry
                                 next.push_back(input[index]);
                             }
 
-                            next.push_back(NormalizePolygonOrientation(unioned.PolygonAt(0)));
+                            next.push_back(NormalizePolygonOrientation(unioned.PolygonAt(0), mergeEps));
                             input = std::move(next);
                             changed = true;
                             break;
@@ -1286,7 +1278,8 @@ namespace Geometry
                 }
 
                 rebuilt.push_back(NormalizePolygonOrientation(
-                    SCPolygon2d(SCPolyline2d(cyclePolygons[i].points, SCPolylineClosure::Closed), std::move(holes))));
+                    SCPolygon2d(SCPolyline2d(cyclePolygons[i].points, SCPolylineClosure::Closed), std::move(holes)),
+                    mergeEps));
             }
 
             if (rebuilt.empty())
@@ -1305,22 +1298,19 @@ namespace Geometry
 
         bool IsSectionFrameValid(const SCPolyhedronSection3d& section, double eps)
         {
-            return section.origin.IsValid() && section.uAxis.IsValid() && section.vAxis.IsValid() &&
+            return eps > 0.0 && std::isfinite(eps) &&
+                   section.origin.IsValid() && section.uAxis.IsValid() && section.vAxis.IsValid() &&
                    section.uAxis.Length() > eps && section.vAxis.Length() > eps;
         }
 
-        bool BuildNormalizedSectionPolygons(const SCPolyhedronSection3d& section, SCMultiPolygon2d& polygons)
+        bool BuildNormalizedSectionPolygons(const SCPolyhedronSection3d& section,
+                                            SCMultiPolygon2d& polygons, double eps)
         {
             polygons = SCMultiPolygon2d{};
             for (const SCPolygon2d& polygon : section.polygons)
             {
-                SCPolygon2d normalized = polygon;
-                if (!normalized.IsValid())
-                {
-                    normalized = NormalizePolygonOrientation(polygon);
-                }
-
-                if (!normalized.IsValid())
+                SCPolygon2d normalized = NormalizePolygonOrientation(polygon, eps);
+                if (!normalized.IsValid(eps))
                 {
                     return false;
                 }
@@ -1500,7 +1490,7 @@ namespace Geometry
             polygons.reserve(merged.Size());
             for (std::size_t i = 0; i < merged.Size(); ++i)
             {
-                polygons.push_back(NormalizePolygonOrientation(merged.PolygonAt(i)));
+                polygons.push_back(NormalizePolygonOrientation(merged.PolygonAt(i), eps));
             }
             section.polygons = std::move(polygons);
             RebuildCoplanarSectionGeometryFromPolygons(
@@ -2022,7 +2012,7 @@ namespace Geometry
 
                 EnsureCounterClockwise(contour3d, contour2d);
                 SCPolygon2d polygon(SCPolyline2d(contour2d, SCPolylineClosure::Closed));
-                if (!polygon.IsValid())
+                if (!polygon.IsValid(eps))
                 {
                     if (skipDegenerateClosedLoops)
                     {
@@ -2079,7 +2069,7 @@ namespace Geometry
             hasCoplanarFace = true;
             const FaceSectionData faceData =
                 BuildCoplanarFaceSectionData(face, plane, basis, tolerance.distanceEpsilon);
-            if (!faceData.polygon.IsValid())
+            if (!faceData.polygon.IsValid(tolerance.distanceEpsilon))
             {
                 result.issue = SCSectionIssue3d::InvalidContour;
                 return result;
@@ -2375,7 +2365,7 @@ namespace Geometry
         }
 
         SCMultiPolygon2d polygons;
-        if (!BuildNormalizedSectionPolygons(section, polygons))
+        if (!BuildNormalizedSectionPolygons(section, polygons, eps))
         {
             result.issue = SCSectionFaceRebuildIssue3d::InvalidPolygon;
             return result;
@@ -2765,7 +2755,7 @@ namespace Geometry
         }
 
         SCMultiPolygon2d polygons;
-        if (!BuildNormalizedSectionPolygons(section, polygons))
+        if (!BuildNormalizedSectionPolygons(section, polygons, eps))
         {
             return result;
         }

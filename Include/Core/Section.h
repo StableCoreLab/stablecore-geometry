@@ -1,4 +1,5 @@
 #pragma once
+#include <cmath>
 #include <string>
 #include <vector>
 #include "Brep/SCBrepBody.h"
@@ -46,6 +47,10 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
         {
+            if (!(eps > 0.0) || !std::isfinite(eps))
+            {
+                return false;
+            }
             if (!success)
             {
                 return true;
@@ -83,6 +88,10 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
         {
+            if (!(eps > 0.0) || !std::isfinite(eps))
+            {
+                return false;
+            }
             if (closed ? points.size() < 3 : points.size() < 2)
             {
                 return false;
@@ -118,6 +127,10 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
         {
+            if (!(eps > 0.0) || !std::isfinite(eps))
+            {
+                return false;
+            }
             if (!success)
             {
                 return true;
@@ -147,7 +160,7 @@ namespace Geometry
 
             for (const SCPolygon2d& polygon : polygons)
             {
-                if (!polygon.IsValid())
+                if (!polygon.IsValid(eps))
                 {
                     return false;
                 }

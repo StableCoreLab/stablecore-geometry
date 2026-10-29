@@ -1,3 +1,5 @@
+#include <limits>
+
 #include "Support/SectionFixtures3d.h"
 
 TEST(Section3dCapabilityTest, ValidationAcceptsShortIndependentAxes)
@@ -12,6 +14,48 @@ TEST(Section3dCapabilityTest, ValidationAcceptsShortIndependentAxes)
     section.vAxis = SCVector3d{1.0, 5e-10, 0.0};
     EXPECT_EQ(Geometry::Validate(section).issue,
               Geometry::SCSectionValidationIssue3d::InvalidBasis);
+}
+
+TEST(Section3dCapabilityTest, ValidationPassesCallerToleranceToSectionPolygons)
+{
+    const double nan = std::numeric_limits<double>::quiet_NaN();
+    Geometry::SCSectionPolyline3d contour{false, {{0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}}};
+    EXPECT_FALSE(contour.IsValid(-1.0));
+    EXPECT_FALSE(contour.IsValid(nan));
+    Geometry::SCSectionBodySetRebuildResult3d bodySet{};
+    bodySet.success = true;
+    EXPECT_FALSE(bodySet.IsValid(-1.0));
+    EXPECT_FALSE(bodySet.IsValid(nan));
+
+    Geometry::SCPolyhedronSection3d section{};
+    section.success = true;
+    section.uAxis = SCVector3d{1.0, 0.0, 0.0};
+    section.vAxis = SCVector3d{0.0, 1.0, 0.0};
+    EXPECT_FALSE(section.IsValid(-1.0));
+    EXPECT_FALSE(section.IsValid(nan));
+    EXPECT_FALSE(Geometry::BuildSectionTopology(section, -1.0).IsValid());
+    EXPECT_FALSE(Geometry::BuildSectionTopology(section, nan).IsValid());
+    section.polygons.emplace_back(Geometry::SCPolyline2d(
+        {{0.0, 0.0}, {1e-10, 0.0}, {1e-10, 1e-10}, {0.0, 1e-10}},
+        Geometry::SCPolylineClosure::Closed));
+
+    ASSERT_FALSE(section.polygons.front().IsValid());
+    ASSERT_TRUE(section.polygons.front().IsValid(1e-15));
+    EXPECT_TRUE(section.IsValid(1e-15));
+    EXPECT_TRUE(Geometry::Validate(section, 1e-15).valid);
+    EXPECT_TRUE(Geometry::BuildSectionTopology(section, 1e-15).IsValid());
+    EXPECT_TRUE(Geometry::RebuildSectionFaces(section, 1e-15).success);
+
+    section.polygons.clear();
+    section.polygons.emplace_back(Geometry::SCPolyline2d(
+        {{0.0, 0.0}, {0.0, 1e-10}, {1e-10, 1e-10}, {1e-10, 0.0}},
+        Geometry::SCPolylineClosure::Closed));
+    const auto rebuiltClockwise = Geometry::RebuildSectionFaces(section, 1e-15);
+    ASSERT_TRUE(rebuiltClockwise.success);
+    ASSERT_EQ(rebuiltClockwise.faces.size(), 1U);
+    const auto& vertices = rebuiltClockwise.faces.front().OuterLoopRef().Vertices();
+    ASSERT_EQ(vertices.size(), 4U);
+    EXPECT_GT(Geometry::Cross(vertices[1] - vertices[0], vertices[2] - vertices[1]).z, 0.0);
 }
 
 TEST(Section3dCapabilityTest, RebuildBrepFacePreservesUvWithShortSectionAxis)
@@ -320,6 +364,53 @@ TEST(Section3dCapabilityTest, AdjacentCoplanarFacesMergeIntoSingleSectionPolygon
     ASSERT_EQ(components.components[0].faceIndices.size(), 1);
     ASSERT_EQ(ClassifySectionContent(section), SectionContentKind3d::Area);
     ASSERT_LT(std::abs(section.polygons[0].Area() - 2.0), 1e-12);
+}
+
+TEST(Section3dCapabilityTest, SeparatedSmallCoplanarFacesRespectCallerTolerance)
+{
+    constexpr double side = 1e-10;
+    constexpr double gap = 5e-13;
+    const SCPlane cut = SCPlane::FromPointAndNormal({0.0, 0.0, 0.0}, {0.0, 0.0, 1.0});
+    const PolyhedronBody body({
+        PolyhedronFace3d(cut, PolyhedronLoop3d({{0.0, 0.0, 0.0}, {side, 0.0, 0.0},
+                                                {side, side, 0.0}, {0.0, side, 0.0}})),
+        PolyhedronFace3d(cut, PolyhedronLoop3d({{side + gap, 0.0, 0.0},
+                                                {2.0 * side + gap, 0.0, 0.0},
+                                                {2.0 * side + gap, side, 0.0},
+                                                {side + gap, side, 0.0}}))});
+    Geometry::SCGeometryTolerance3d tolerance{};
+    tolerance.distanceEpsilon = 1e-15;
+    ASSERT_TRUE(body.IsValid(tolerance));
+
+    const auto section = Section(body, cut, tolerance);
+    ASSERT_TRUE(section.success);
+    ASSERT_TRUE(section.IsValid(tolerance.distanceEpsilon));
+    ASSERT_EQ(section.polygons.size(), 2U);
+    const auto firstBounds = section.polygons[0].Bounds(tolerance.distanceEpsilon);
+    const auto secondBounds = section.polygons[1].Bounds(tolerance.distanceEpsilon);
+    const double gapX = std::max(firstBounds.MinPoint().x, secondBounds.MinPoint().x) -
+                        std::min(firstBounds.MaxPoint().x, secondBounds.MaxPoint().x);
+    const double gapY = std::max(firstBounds.MinPoint().y, secondBounds.MinPoint().y) -
+                        std::min(firstBounds.MaxPoint().y, secondBounds.MaxPoint().y);
+    EXPECT_GT(std::max(gapX, gapY), tolerance.distanceEpsilon)
+        << firstBounds.DebugString() << " " << secondBounds.DebugString();
+}
+
+TEST(Section3dCapabilityTest, SmallCoplanarCollinearVertexUsesCallerTolerance)
+{
+    constexpr double side = 1e-10;
+    const SCPlane cut = SCPlane::FromPointAndNormal({0.0, 0.0, 0.0}, {0.0, 0.0, 1.0});
+    const PolyhedronBody body({PolyhedronFace3d(cut, PolyhedronLoop3d(
+        {{0.0, 0.0, 0.0}, {side * 0.5, 0.0, 0.0}, {side, 0.0, 0.0},
+         {side, side, 0.0}, {0.0, side, 0.0}}))});
+    Geometry::SCGeometryTolerance3d tolerance{};
+    tolerance.distanceEpsilon = 1e-15;
+    ASSERT_TRUE(body.IsValid(tolerance));
+
+    const auto section = Section(body, cut, tolerance);
+    ASSERT_TRUE(section.success);
+    ASSERT_EQ(section.contours.size(), 1U);
+    EXPECT_EQ(section.contours.front().points.size(), 4U);
 }
 
 // Demonstrates that the face-merge subset extends beyond two adjacent faces:
