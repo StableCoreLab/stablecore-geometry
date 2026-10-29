@@ -155,6 +155,10 @@ TEST(ShapesPathopsTest, SubPolylineSkipsSubToleranceArcBeforeSelectedLine)
     const SCPolyline2d path(std::vector<std::shared_ptr<Geometry::ISCSegment2d>>{arc, line},
                             SCPolylineClosure::Open);
     ASSERT_TRUE(path.IsValid(eps));
+    EXPECT_NEAR(path.Length(eps), path.Length(), eps);
+    EXPECT_TRUE(path.PointAtLength(arc->Length() * 0.5, false, eps)
+                    .AlmostEquals(arc->PointAt(0.5), 1e-16));
+    EXPECT_GT(path.Bounds(eps).MaxPoint().y, 0.0);
 
     const SCPolyline2d sub = SubPolyline(path, arc->Length() + 0.5, arc->Length() + 1.5, eps);
     ASSERT_TRUE(sub.IsValid(eps));
@@ -162,6 +166,28 @@ TEST(ShapesPathopsTest, SubPolylineSkipsSubToleranceArcBeforeSelectedLine)
     EXPECT_EQ(sub.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2::Line);
     EXPECT_NEAR(sub.StartPoint().x, 0.5, eps);
     EXPECT_NEAR(sub.EndPoint().x, 1.5, eps);
+}
+
+TEST(ShapesPathopsTest, SubPolylineClipsShortSweepArcWithExplicitTolerance)
+{
+    constexpr double eps = 1e-9;
+    const auto line = std::make_shared<SCLineSegment2d>(
+        SCPoint2d{1e6 - 1e-4, 0.0}, SCPoint2d{1e6, 0.0});
+    const auto arc = std::make_shared<Geometry::SCArcSegment2d>(
+        SCPoint2d{0.0, 0.0}, 1e6, 0.0, 1e-10);
+    const SCPolyline2d path(std::vector<std::shared_ptr<Geometry::ISCSegment2d>>{line, arc},
+                            SCPolylineClosure::Open);
+    ASSERT_TRUE(path.IsValid(eps));
+
+    const double start = line->Length() + 2e-5;
+    const double end = line->Length() + 8e-5;
+    EXPECT_FALSE(SubPolyline(path, start, end).IsValid());
+    const SCPolyline2d clipped = SubPolyline(path, start, end, eps);
+    ASSERT_TRUE(clipped.IsValid(eps));
+    ASSERT_EQ(clipped.SegmentCount(), 1U);
+    EXPECT_EQ(clipped.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2::Arc);
+    EXPECT_NEAR(clipped.StartPoint().y, 2e-5, 1e-9);
+    EXPECT_NEAR(clipped.EndPoint().y, 8e-5, 1e-9);
 }
 
 TEST(ShapesPathopsTest, SubPolylineRejectsArcWithOverflowingEndpoint)

@@ -72,6 +72,25 @@ TEST(CoreMultiGeometryTest, BuildsPolygonContainmentTopology)
 
 }
 
+TEST(CoreMultiGeometryTest, ExplicitToleranceBoundsShortSweepPolylineCollection)
+{
+    constexpr double eps = 1e-9;
+    const auto line = std::make_shared<SCLineSegment2d>(
+        SCPoint2d{1e6 - 1e-4, 0.0}, SCPoint2d{1e6, 0.0});
+    const auto arc = std::make_shared<SCArcSegment2d>(
+        SCPoint2d{0.0, 0.0}, 1e6, 0.0, 1e-10);
+    const SCPolyline2d path({line, arc}, SCPolylineClosure::Open);
+    const SCMultiPolyline2d paths({path});
+
+    EXPECT_FALSE(paths.IsValid());
+    ASSERT_TRUE(paths.IsValid(eps));
+    EXPECT_FALSE(paths.IsValid(0.0));
+    EXPECT_FALSE(paths.Bounds().IsValid());
+    const SCBox2d bounds = paths.Bounds(eps);
+    ASSERT_TRUE(bounds.IsValid());
+    EXPECT_NEAR(bounds.MaxPoint().y, 1e-4, 1e-9);
+}
+
 TEST(CoreMultiGeometryTest, QueriesBoxAndKdTrees)
 {
     SCBoxTree2d boxTree;

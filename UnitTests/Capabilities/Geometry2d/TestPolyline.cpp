@@ -121,3 +121,28 @@ TEST(PolylineTest, RejectsOverflowingTotalLength)
     EXPECT_TRUE(std::isinf(path.Length()));
     EXPECT_FALSE(path.IsValid());
 }
+
+TEST(PolylineTest, ExplicitToleranceTraversesShortSweepArc)
+{
+    constexpr double epsilon = 1e-9;
+    const auto line = std::make_shared<SCLineSegment2d>(
+        SCPoint2d{1e6 - 1e-4, 0.0}, SCPoint2d{1e6, 0.0});
+    const auto arc = std::make_shared<SCArcSegment2d>(
+        SCPoint2d{0.0, 0.0}, 1e6, 0.0, 1e-10);
+    const SCPolyline2d path({line, arc}, SCPolylineClosure::Open);
+
+    EXPECT_FALSE(path.IsValid());
+    ASSERT_TRUE(path.IsValid(epsilon));
+    EXPECT_NEAR(path.Length(epsilon), line->Length() + arc->Length(epsilon), 1e-12);
+    EXPECT_NEAR(path.LengthAt(0.75, epsilon), 0.75 * path.Length(epsilon), 1e-12);
+    EXPECT_NEAR(path.ParameterAtLength(path.LengthAt(0.75, epsilon), false, epsilon),
+                0.75, 1e-12);
+    EXPECT_EQ(path.ParameterAtLength(path.Length(epsilon) * 2.0, true, epsilon), 1.0);
+    EXPECT_EQ(path.ParameterAtLength(path.Length(epsilon) * 2.0, false, 0.0), 0.0);
+    EXPECT_LT(path.LengthAt(0.75), path.LengthAt(0.75, epsilon));
+    EXPECT_NEAR(path.PointAtLength(line->Length() + 5e-5, false, epsilon).y, 5e-5, 1e-9);
+    EXPECT_NEAR(path.PointAt(0.75, epsilon).y, 5e-5, 1e-9);
+    const SCBox2d bounds = path.Bounds(epsilon);
+    ASSERT_TRUE(bounds.IsValid());
+    EXPECT_NEAR(bounds.MaxPoint().y, 1e-4, 1e-9);
+}

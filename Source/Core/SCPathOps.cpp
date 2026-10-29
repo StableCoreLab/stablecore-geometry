@@ -71,15 +71,18 @@ namespace Geometry
         [[nodiscard]] SCPolyline2d ClipPolylineLength(const SCPolyline2d& polyline,
                                                        double startLength,
                                                        double endLength,
-                                                       double eps)
+                                                       double eps,
+                                                       bool explicitTolerance)
         {
             if (!(eps > 0.0) || !std::isfinite(eps) || !std::isfinite(startLength) ||
-                !std::isfinite(endLength) || !polyline.IsValid(eps) || endLength < startLength)
+                !std::isfinite(endLength) ||
+                !(explicitTolerance ? polyline.IsValid(eps) : polyline.IsValid()) ||
+                endLength < startLength)
             {
                 return {};
             }
 
-            const double total = polyline.Length();
+            const double total = explicitTolerance ? polyline.Length(eps) : polyline.Length();
             if (!std::isfinite(total))
             {
                 return {};
@@ -96,7 +99,10 @@ namespace Geometry
             for (std::size_t i = 0; i < polyline.SegmentCount(); ++i)
             {
                 const std::unique_ptr<ISCSegment2d> segment = polyline.SegmentAt(i);
-                const double segLen = segment->Length();
+                const auto* arcSegment = explicitTolerance
+                    ? dynamic_cast<const SCArcSegment2d*>(segment.get()) : nullptr;
+                const double segLen = arcSegment != nullptr && arcSegment->IsValid(eps)
+                    ? arcSegment->Length(eps) : segment->Length();
                 if (!(segLen > 0.0) || !std::isfinite(segLen))
                 {
                     return {};
@@ -147,7 +153,8 @@ namespace Geometry
                     auto clippedArc = std::make_shared<SCArcSegment2d>(
                         arc->center, arc->radius, arc->startAngle + arc->sweepAngle * startRatio,
                         arc->sweepAngle * (endRatio - startRatio));
-                    if (!clippedArc->IsValid())
+                    if (!(clippedArc->IsValid() ||
+                          (explicitTolerance && clippedArc->IsValid(eps))))
                     {
                         return {};
                     }
@@ -162,7 +169,8 @@ namespace Geometry
             }
 
             SCPolyline2d clipped(std::move(clippedSegments), SCPolylineClosure::Open);
-            return clipped.IsValid(eps) ? clipped : SCPolyline2d{};
+            return (explicitTolerance ? clipped.IsValid(eps) : clipped.IsValid())
+                ? clipped : SCPolyline2d{};
         }
 
         [[nodiscard]] SCPolygon2d BuildHalfPlaneClipPolygon(const SCPolygon2d& polygon,
@@ -971,7 +979,8 @@ namespace Geometry
 
     SCPolyline2d SubPolyline(const SCPolyline2d& polyline, double startLength, double endLength)
     {
-        return SubPolyline(polyline, startLength, endLength, Geometry::kDefaultEpsilon);
+        return ClipPolylineLength(polyline, startLength, endLength,
+                                  Geometry::kDefaultEpsilon, false);
     }
 
     SCPolyline2d SubPolyline(const SCPolyline2d& polyline,
@@ -979,7 +988,7 @@ namespace Geometry
                              double endLength,
                              double epsilon)
     {
-        return ClipPolylineLength(polyline, startLength, endLength, epsilon);
+        return ClipPolylineLength(polyline, startLength, endLength, epsilon, true);
     }
 
     namespace

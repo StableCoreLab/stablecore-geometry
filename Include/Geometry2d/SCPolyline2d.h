@@ -32,10 +32,12 @@ namespace Geometry
         [[nodiscard]] bool IsValid() const;
         [[nodiscard]] bool IsValid(double eps) const;
         [[nodiscard]] bool IsClosed() const;
+        [[nodiscard]] bool HasNonLineSegments() const;
         [[nodiscard]] std::size_t PointCount() const;
         [[nodiscard]] std::size_t VertexCount() const;
         [[nodiscard]] std::size_t SegmentCount() const;
         [[nodiscard]] double Length() const;
+        [[nodiscard]] double Length(double eps) const;
         [[nodiscard, deprecated("Use VertexAt for an index")]] SCPoint2d PointAt(std::size_t index) const;
         [[nodiscard, deprecated("Use VertexAt for an index")]] SCPoint2d PointAt(int index) const
         {
@@ -51,7 +53,9 @@ namespace Geometry
         [[nodiscard]] SCPoint2d StartPoint() const;
         [[nodiscard]] SCPoint2d EndPoint() const;
         [[nodiscard]] double LengthAt(double parameter) const;
+        [[nodiscard]] double LengthAt(double parameter, double eps) const;
         [[nodiscard]] double ParameterAtLength(double distanceFromStart, bool clampToPath = false) const;
+        [[nodiscard]] double ParameterAtLength(double distanceFromStart, bool clampToPath, double eps) const;
         [[nodiscard]] SCPoint2d PointAtLength(double distanceFromStart, bool clampToPath = false) const;
         [[nodiscard]] SCPoint2d PointAtLength(double distanceFromStart, bool clampToPath, double eps) const;
         [[nodiscard]] std::unique_ptr<ISCSegment2d> SegmentAt(std::size_t index) const;
@@ -64,7 +68,9 @@ namespace Geometry
         std::unique_ptr<Impl> impl_;
 
         explicit SCPolyline2d(std::unique_ptr<Impl> impl);
+        [[nodiscard]] bool IsValidInternal(double eps, bool explicitTolerance) const;
         [[nodiscard]] SCPoint2d PointAtLengthInternal(double distanceFromStart, bool clampToPath,
                                                       double eps, bool explicitTolerance) const;
+        [[nodiscard]] SCBox2d BoundsInternal(double eps, bool explicitTolerance) const;
     };
 }  // namespace Geometry

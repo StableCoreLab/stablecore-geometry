@@ -1,5 +1,6 @@
 #include "Geometry2d/SCPolyline2d.h"
 
+#include <algorithm>
 #include <memory>
 #include <cmath>
 #include <sstream>
@@ -65,6 +66,29 @@ namespace Geometry
             }
             return segments;
         }
+
+        [[nodiscard]] double SegmentLength(const ISCSegment2d& segment, double eps)
+        {
+            if (const auto* arc = dynamic_cast<const SCArcSegment2d*>(&segment))
+            {
+                return arc->IsValid(eps) ? arc->Length(eps) : arc->Length();
+            }
+            return segment.Length();
+        }
+
+        [[nodiscard]] bool SegmentIsValid(const ISCSegment2d& segment, double eps,
+                                          bool explicitTolerance)
+        {
+            if (const auto* line = dynamic_cast<const SCLineSegment2d*>(&segment))
+            {
+                return line->IsValid(eps);
+            }
+            if (const auto* arc = dynamic_cast<const SCArcSegment2d*>(&segment))
+            {
+                return arc->IsValid() || (explicitTolerance && arc->IsValid(eps));
+            }
+            return segment.IsValid();
+        }
     }  // namespace
 
     struct SCPolyline2d::Impl
@@ -128,10 +152,15 @@ namespace Geometry
 
     bool SCPolyline2d::IsValid() const
     {
-        return IsValid(Geometry::kDefaultEpsilon);
+        return IsValidInternal(Geometry::kDefaultEpsilon, false);
     }
 
     bool SCPolyline2d::IsValid(double eps) const
+    {
+        return IsValidInternal(eps, true);
+    }
+
+    bool SCPolyline2d::IsValidInternal(double eps, bool explicitTolerance) const
     {
         if (!(eps > 0.0) || !std::isfinite(eps) || impl_->segments.empty())
         {
@@ -147,13 +176,12 @@ namespace Geometry
                 return false;
             }
 
-            const auto* line = dynamic_cast<const SCLineSegment2d*>(segment.get());
-            if (line != nullptr ? !line->IsValid(eps) : !segment->IsValid())
+            if (!SegmentIsValid(*segment, eps, explicitTolerance))
             {
                 return false;
             }
 
-            totalLength += segment->Length();
+            totalLength += explicitTolerance ? SegmentLength(*segment, eps) : segment->Length();
             if (i > 0 && !IsEqual(impl_->segments[i - 1]->EndPoint(), segment->StartPoint(), eps))
             {
                 return false;
@@ -176,6 +204,18 @@ namespace Geometry
     bool SCPolyline2d::IsClosed() const
     {
         return impl_->closure == SCPolylineClosure::Closed;
+    }
+
+    bool SCPolyline2d::HasNonLineSegments() const
+    {
+        for (const auto& segment : impl_->segments)
+        {
+            if (segment == nullptr || segment->Kind() != SCSegmentKind2::Line)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     std::size_t SCPolyline2d::PointCount() const
@@ -211,6 +251,23 @@ namespace Geometry
         return total;
     }
 
+    double SCPolyline2d::Length(double eps) const
+    {
+        if (!(eps > 0.0) || !std::isfinite(eps))
+        {
+            return 0.0;
+        }
+        double total = 0.0;
+        for (const auto& segment : impl_->segments)
+        {
+            if (segment != nullptr)
+            {
+                total += SegmentLength(*segment, eps);
+            }
+        }
+        return total;
+    }
+
     SCPoint2d SCPolyline2d::PointAt(std::size_t index) const
     {
         return VertexAt(index);
@@ -223,7 +280,7 @@ namespace Geometry
 
     SCPoint2d SCPolyline2d::PointAt(double parameter, double eps) const
     {
-        return PointAtLength(LengthAt(parameter), false, eps);
+        return PointAtLength(parameter * Length(eps), false, eps);
     }
 
     SCPoint2d SCPolyline2d::VertexAt(std::size_t index) const
@@ -268,6 +325,16 @@ namespace Geometry
         return parameter * Length();
     }
 
+    double SCPolyline2d::LengthAt(double parameter, double eps) const
+    {
+        if (!std::isfinite(parameter) || !IsValid(eps))
+        {
+            return 0.0;
+        }
+        const double distance = parameter * Length(eps);
+        return std::isfinite(distance) ? distance : 0.0;
+    }
+
     double SCPolyline2d::ParameterAtLength(double distanceFromStart, bool clampToPath) const
     {
         const double totalLength = Length();
@@ -288,6 +355,26 @@ namespace Geometry
         }
 
         return distanceFromStart / totalLength;
+    }
+
+    double SCPolyline2d::ParameterAtLength(double distanceFromStart, bool clampToPath,
+                                           double eps) const
+    {
+        if (!std::isfinite(distanceFromStart) || !IsValid(eps))
+        {
+            return 0.0;
+        }
+        const double totalLength = Length(eps);
+        if (!(totalLength > 0.0) || !std::isfinite(totalLength))
+        {
+            return 0.0;
+        }
+        if (clampToPath)
+        {
+            distanceFromStart = std::clamp(distanceFromStart, 0.0, totalLength);
+        }
+        const double parameter = distanceFromStart / totalLength;
+        return std::isfinite(parameter) ? parameter : 0.0;
     }
 
     SCPoint2d SCPolyline2d::PointAtLength(double distanceFromStart, bool clampToPath) const
@@ -314,7 +401,7 @@ namespace Geometry
             return StartPoint();
         }
 
-        const double totalLength = Length();
+        const double totalLength = explicitTolerance ? Length(eps) : Length();
         if (!(totalLength > 0.0) || (explicitTolerance && !std::isfinite(totalLength)))
         {
             return StartPoint();
@@ -326,6 +413,12 @@ namespace Geometry
                 if (const auto* line = dynamic_cast<const SCLineSegment2d*>(&segment))
                 {
                     return line->PointAtLength(localDistance, false, eps);
+                }
+                if (const auto* arc = dynamic_cast<const SCArcSegment2d*>(&segment))
+                {
+                    return arc->IsValid(eps)
+                        ? arc->PointAtLength(localDistance, false, eps)
+                        : arc->PointAtLength(localDistance, false);
                 }
             }
             return segment.PointAtLength(localDistance, false);
@@ -350,7 +443,8 @@ namespace Geometry
         double prefixLength = 0.0;
         for (std::size_t i = 0; i < impl_->segments.size(); ++i)
         {
-            const double segmentLength = impl_->segments[i]->Length();
+            const double segmentLength = explicitTolerance
+                ? SegmentLength(*impl_->segments[i], eps) : impl_->segments[i]->Length();
             const double segmentEnd = prefixLength + segmentLength;
             if (distanceFromStart <= segmentEnd || i + 1 == impl_->segments.size())
             {
@@ -375,12 +469,17 @@ namespace Geometry
 
     SCBox2d SCPolyline2d::Bounds() const
     {
-        return Bounds(Geometry::kDefaultEpsilon);
+        return BoundsInternal(Geometry::kDefaultEpsilon, false);
     }
 
     SCBox2d SCPolyline2d::Bounds(double eps) const
     {
-        if (!IsValid(eps))
+        return BoundsInternal(eps, true);
+    }
+
+    SCBox2d SCPolyline2d::BoundsInternal(double eps, bool explicitTolerance) const
+    {
+        if (!(explicitTolerance ? IsValid(eps) : IsValid()))
         {
             return SCBox2d{};
         }
@@ -392,6 +491,10 @@ namespace Geometry
             {
                 box.ExpandToInclude(segment->StartPoint());
                 box.ExpandToInclude(segment->EndPoint());
+            } else if (const auto* arc = explicitTolerance
+                ? dynamic_cast<const SCArcSegment2d*>(segment.get()) : nullptr)
+            {
+                box.ExpandToInclude(arc->IsValid(eps) ? arc->Bounds(eps) : arc->Bounds());
             } else
             {
                 box.ExpandToInclude(segment->Bounds());

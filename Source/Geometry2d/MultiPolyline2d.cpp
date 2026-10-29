@@ -1,5 +1,6 @@
 #include "Geometry2d/SCMultiPolyline2d.h"
 
+#include <cmath>
 #include <sstream>
 #include <utility>
 
@@ -33,6 +34,22 @@ namespace Geometry
     bool SCMultiPolyline2d::IsValid() const
     {
         return Detail::ContainerIsValid(polylines_);
+    }
+
+    bool SCMultiPolyline2d::IsValid(double eps) const
+    {
+        if (!(eps > 0.0) || !std::isfinite(eps))
+        {
+            return false;
+        }
+        for (const SCPolyline2d& polyline : polylines_)
+        {
+            if (!polyline.IsValid(eps))
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     void SCMultiPolyline2d::Clear()
@@ -91,6 +108,21 @@ namespace Geometry
         for (const auto& polyline : polylines_)
         {
             box.ExpandToInclude(polyline.Bounds());
+        }
+        return box;
+    }
+
+    SCBox2d SCMultiPolyline2d::Bounds(double eps) const
+    {
+        SCBox2d box;
+        for (const SCPolyline2d& polyline : polylines_)
+        {
+            const SCBox2d bounds = polyline.Bounds(eps);
+            if (!bounds.IsValid())
+            {
+                return {};
+            }
+            box.ExpandToInclude(bounds);
         }
         return box;
     }

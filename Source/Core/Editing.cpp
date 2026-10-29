@@ -1,5 +1,7 @@
 #include "Core/Editing.h"
 
+#include <memory>
+#include <utility>
 #include <vector>
 
 #include "Core/Relation.h"
@@ -38,8 +40,29 @@ namespace Geometry
 
     SCPolyline2d Normalize(const SCPolyline2d& polyline, double eps)
     {
-        return SCPolyline2d(NormalizedPoints(polyline, eps),
-                          polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
+        if (!polyline.HasNonLineSegments())
+        {
+            return SCPolyline2d(NormalizedPoints(polyline, eps),
+                                polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
+        }
+        std::vector<std::shared_ptr<ISCSegment2d>> segments;
+        segments.reserve(polyline.SegmentCount());
+        for (std::size_t i = 0; i < polyline.SegmentCount(); ++i)
+        {
+            std::unique_ptr<ISCSegment2d> segment = polyline.SegmentAt(i);
+            if (segment == nullptr)
+            {
+                return {};
+            }
+            if (segment->Kind() == SCSegmentKind2::Line &&
+                segment->StartPoint().AlmostEquals(segment->EndPoint(), eps))
+            {
+                continue;
+            }
+            segments.push_back(std::shared_ptr<ISCSegment2d>(std::move(segment)));
+        }
+        return SCPolyline2d(std::move(segments), polyline.IsClosed()
+            ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
     }
 
     SCPolygon2d Normalize(const SCPolygon2d& polygon, double eps)

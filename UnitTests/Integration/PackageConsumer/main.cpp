@@ -87,11 +87,17 @@ int main()
     const bool primitiveOffsetToleranceAvailable = Offset(first, 1.0, 1e-12).IsValid(1e-12) &&
         Offset(planarArc, 0.1, 1e-12).IsValid();
     const SCPolyline2d tinyPath({{0.0, 0.0}, {1e-10, 0.0}, {1e-10, 1e-10}});
+    const SCMultiPolyline2d tinyPaths({tinyPath});
     const bool subPolylineToleranceAvailable =
         SubPolyline(tinyPath, 5e-11, 15e-11, 1e-15).IsValid(1e-15);
     const bool polylineSamplingToleranceAvailable =
         tinyPath.PointAtLength(5e-11, false, 1e-15).AlmostEquals({5e-11, 0.0}, 1e-15) &&
-        tinyPath.PointAt(0.25, 1e-15).AlmostEquals({5e-11, 0.0}, 1e-15);
+        tinyPath.PointAt(0.25, 1e-15).AlmostEquals({5e-11, 0.0}, 1e-15) &&
+        !tinyPath.HasNonLineSegments() &&
+        tinyPath.Length(1e-15) > 0.0 && tinyPath.LengthAt(0.5, 1e-15) > 0.0 &&
+        tinyPath.ParameterAtLength(5e-11, false, 1e-15) > 0.0 &&
+        tinyPaths.IsValid(1e-15) &&
+        tinyPaths.Bounds(1e-15).IsValid();
     const auto normalized = Normalize(path);
     const SCNurbsCurve3d nurbsCurve(1, {{0, 0, 0}, {2, 0, 0}}, {0, 0, 1, 1});
     const SCNurbsSurface nurbsSurface(1, 1, 2, 2,

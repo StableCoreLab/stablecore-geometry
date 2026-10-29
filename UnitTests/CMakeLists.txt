@@ -48,6 +48,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestConversionCuboid3d.cpp
     Capabilities/Geometry3d/TestConversionRepresentative3d.cpp
     Capabilities/Geometry3d/TestHealing3d.cpp
+    Capabilities/Geometry3d/TestHealing3dBoundaryCaps.cpp
     Capabilities/Geometry3d/TestHealing3dBoundaryArbitration.cpp
     Capabilities/Geometry3d/TestHealing3dVertexTouchArbitration.cpp
     Capabilities/Geometry3d/TestHealing3dShellCombinations.cpp
@@ -55,6 +56,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestHealing3dSupportMismatch.cpp
     Capabilities/Geometry3d/TestHealing3dTrimPlanes.cpp
     Capabilities/Geometry3d/TestSection3d.cpp
+    Capabilities/Geometry3d/TestSection3dMixedOpenContours.cpp
     Capabilities/Geometry3d/TestSection3dMixedAreas.cpp
     Capabilities/Geometry3d/TestSection3dMixedContours.cpp
     Capabilities/Geometry3d/TestSection3dMixedContourHoles.cpp

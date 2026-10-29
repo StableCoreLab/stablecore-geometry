@@ -46,6 +46,7 @@ TEST(TransformSamplingTest, CoversCurrentCapabilities)
                           SCPolylineClosure::Open);
     const auto normalized = Normalize(path);
     ASSERT_EQ(normalized.PointCount(), 3);
+    EXPECT_FALSE(path.HasNonLineSegments());
 
     const auto inserted =
         InsertPoint(SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}}, SCPolylineClosure::Open), SCPoint2d{2.0, 0.0});
@@ -69,6 +70,31 @@ TEST(TransformSamplingTest, CoversCurrentCapabilities)
                                        SCPolylineClosure::Closed));
     const auto movedPolygon = Translate(polygon, SCVector2d{1.0, 0.0});
     EXPECT_TRUE(movedPolygon.OuterRing().VertexAt(0).AlmostEquals(SCPoint2d{1.0, 0.0}, 1e-12));
+}
+
+TEST(TransformSamplingTest, NormalizePreservesArcWhileRemovingZeroLengthLine)
+{
+    const auto line = std::make_shared<SCLineSegment2d>(SCPoint2d{0.0, 0.0}, SCPoint2d{1.0, 0.0});
+    const auto duplicate = std::make_shared<SCLineSegment2d>(SCPoint2d{1.0, 0.0}, SCPoint2d{1.0, 0.0});
+    const auto arc = std::make_shared<SCArcSegment2d>(
+        SCPoint2d{1.0, 1.0}, 1.0, -Geometry::kPi * 0.5, Geometry::kPi * 0.5);
+    const SCPolyline2d path({line, duplicate, arc}, SCPolylineClosure::Open);
+    EXPECT_TRUE(path.HasNonLineSegments());
+
+    const SCPolyline2d normalized = Normalize(path, 1e-12);
+    ASSERT_TRUE(normalized.IsValid(1e-12));
+    ASSERT_EQ(normalized.SegmentCount(), 2U);
+    EXPECT_EQ(normalized.SegmentAt(1)->Kind(), Geometry::SCSegmentKind2::Arc);
+    EXPECT_NEAR(normalized.Length(), 1.0 + Geometry::kPi * 0.5, 1e-12);
+    EXPECT_TRUE(normalized.Bounds().MaxPoint().AlmostEquals({2.0, 1.0}, 1e-12));
+
+    const auto closeLine = std::make_shared<SCLineSegment2d>(arc->EndPoint(), arc->StartPoint());
+    const SCPolyline2d closed({arc, closeLine}, SCPolylineClosure::Closed);
+    const SCPolyline2d normalizedClosed = Normalize(closed, 1e-12);
+    ASSERT_TRUE(normalizedClosed.IsValid());
+    EXPECT_TRUE(normalizedClosed.IsClosed());
+    EXPECT_EQ(normalizedClosed.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2::Arc);
+    EXPECT_NEAR(normalizedClosed.Length(), closed.Length(), 1e-12);
 }
 
 TEST(TransformSamplingTest, MirrorDirectionScalePreservesAxis)
