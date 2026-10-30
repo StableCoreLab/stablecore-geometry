@@ -6,6 +6,7 @@
 
 #include "Core/Projection.h"
 #include "Core/Intersection.h"
+#include "Core/Measure.h"
 #include "Geometry3d/ISCCurve3d.h"
 #include "Geometry2d/SCArcSegment2d.h"
 #include "Geometry3d/SCCurveOnSurface.h"
@@ -107,6 +108,7 @@ namespace
         EXPECT_TRUE(planar.PointAt(0.5).IsValid());
         EXPECT_TRUE(planar.Evaluate(0.5, 1).IsValid());
         EXPECT_TRUE(planar.Bounds().IsValid());
+        EXPECT_NEAR(Geometry::Length(planar), uvWidth, tolerance.distanceEpsilon);
 
         const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
             1, 1, 2, 2,
@@ -120,6 +122,7 @@ namespace
         EXPECT_TRUE(curved.PointAt(0.5).IsValid());
         EXPECT_TRUE(curved.Evaluate(0.5, 1).IsValid());
         EXPECT_TRUE(curved.Bounds().IsValid());
+        EXPECT_NEAR(Geometry::Length(curved), uvWidth, tolerance.distanceEpsilon);
     }
 
     TEST(CurveOnSurfaceInterfaceTest, ClosedCurveAndInvalidUvDomainHaveExplicitContracts)

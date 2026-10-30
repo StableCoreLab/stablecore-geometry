@@ -79,6 +79,10 @@ namespace Geometry
 
     SCPolygonValidation2d Validate(const SCPolyline2d& ring, double eps)
     {
+        if (!(eps > 0.0) || !std::isfinite(eps))
+        {
+            return {false, SCPolygonValidationIssue2d::InvalidTolerance};
+        }
         if (!ring.IsClosed() || ring.SegmentCount() == 0)
         {
             return {false,
@@ -105,6 +109,10 @@ namespace Geometry
 
     SCPolygonValidation2d Validate(const SCPolygon2d& polygon, double eps)
     {
+        if (!(eps > 0.0) || !std::isfinite(eps))
+        {
+            return {false, SCPolygonValidationIssue2d::InvalidTolerance};
+        }
         if (!polygon.IsValid(eps))
         {
             if (!polygon.OuterRing().IsClosed())
@@ -134,6 +142,10 @@ namespace Geometry
 
     SCMeshValidation3d Validate(const TriangleMesh& mesh, double eps)
     {
+        if (!(eps > 0.0) || !std::isfinite(eps))
+        {
+            return {false, SCMeshValidationIssue3d::InvalidTolerance, 0};
+        }
         const auto& vertices = mesh.Vertices();
         const auto& triangles = mesh.Triangles();
 
@@ -169,6 +181,10 @@ namespace Geometry
 
     SCPolyhedronValidation3d Validate(const PolyhedronBody& body, double eps)
     {
+        if (!(eps > 0.0) || !std::isfinite(eps))
+        {
+            return {false, SCPolyhedronValidationIssue3d::InvalidTolerance, 0};
+        }
         if (body.IsEmpty())
         {
             return {false, SCPolyhedronValidationIssue3d::EmptyBody, 0};
@@ -206,6 +222,10 @@ namespace Geometry
 
     SCBrepValidation3d Validate(const SCBrepBody& body, const SCGeometryTolerance3d& tolerance)
     {
+        if (!tolerance.IsValid())
+        {
+            return {false, SCBrepValidationIssue3d::InvalidTolerance, 0};
+        }
         if (body.IsEmpty())
         {
             return {false, SCBrepValidationIssue3d::EmptyBody, 0};
@@ -278,6 +298,10 @@ namespace Geometry
 
     SCSectionValidation3d Validate(const SCPolyhedronSection3d& section, double eps)
     {
+        if (!(eps > 0.0) || !std::isfinite(eps))
+        {
+            return {false, SCSectionValidationIssue3d::InvalidTolerance, 0};
+        }
         if (!section.success)
         {
             return {false, SCSectionValidationIssue3d::InvalidSectionState, 0};

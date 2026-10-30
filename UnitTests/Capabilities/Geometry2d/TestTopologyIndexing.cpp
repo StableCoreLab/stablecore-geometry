@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <limits>
 #include <memory>
 
 #include "Core/PolygonRelation2d.h"
@@ -104,4 +105,50 @@ TEST(TopologyIndexingTest, CoversCurrentCapabilities)
     ASSERT_EQ(normalizedTopology.Roots().size(), 1);
     ASSERT_EQ(normalizedTopology.ParentOf(1), 0);
     ASSERT_EQ(Relate(noisyOuter, smallInner), PolygonContainment2d::FirstContainsSecond);
+}
+
+TEST(TopologyIndexingTest, SmallConcaveHolePreventsFalseContainment)
+{
+    constexpr double eps = 1e-15;
+    constexpr double width = 1e-10;
+    constexpr double origin = 2e-8;
+    const SCPolyline2d outerRing(
+        {{0.0, 0.0}, {1e-7, 0.0}, {1e-7, 1e-7}, {0.0, 1e-7}},
+        SCPolylineClosure::Closed);
+    const SCPolyline2d holeRing(
+        {{origin, origin}, {origin + 4 * width, origin},
+         {origin + 4 * width, origin + 4 * width},
+         {origin + 3 * width, origin + 4 * width},
+         {origin + 3 * width, origin + width},
+         {origin + width, origin + width},
+         {origin + width, origin + 4 * width},
+         {origin, origin + 4 * width}},
+        SCPolylineClosure::Closed);
+    ASSERT_FALSE(holeRing.IsValid());
+    ASSERT_TRUE(holeRing.IsValid(eps));
+
+    const SCPolygon2d solid(outerRing);
+    const SCPolygon2d withHole(outerRing, {holeRing});
+    ASSERT_TRUE(solid.IsValid(eps));
+    ASSERT_TRUE(withHole.IsValid(eps));
+    EXPECT_FALSE(Geometry::Contains(withHole, solid, eps));
+    EXPECT_EQ(Geometry::Relate(withHole, solid, eps), PolygonContainment2d::SecondContainsFirst);
+}
+
+TEST(TopologyIndexingTest, TopologyBuildRejectsInvalidToleranceAndClearsPreviousResult)
+{
+    const SCPolygon2d square(SCPolyline2d(
+        {{0.0, 0.0}, {2.0, 0.0}, {2.0, 2.0}, {0.0, 2.0}},
+        SCPolylineClosure::Closed));
+    ASSERT_TRUE(square.IsValid());
+    Geometry::PolygonTopology2d topology;
+    for (double eps : {0.0, -1.0, std::numeric_limits<double>::infinity(),
+                       std::numeric_limits<double>::quiet_NaN()})
+    {
+        ASSERT_TRUE(topology.Build(SCMultiPolygon2d{square}));
+        ASSERT_EQ(topology.Count(), 1U);
+        EXPECT_FALSE(topology.Build(SCMultiPolygon2d{square}, eps));
+        EXPECT_TRUE(topology.IsEmpty());
+        EXPECT_TRUE(topology.Roots().empty());
+    }
 }

@@ -655,7 +655,9 @@ namespace Geometry
 
     double Length(const SCCurveOnSurface& curveOnSurface)
     {
-        if (!curveOnSurface.IsValid() || curveOnSurface.PointCount() < 2)
+        SCGeometryTolerance3d evaluationTolerance{};
+        evaluationTolerance.parameterEpsilon = std::numeric_limits<double>::denorm_min();
+        if (!curveOnSurface.IsValid(evaluationTolerance) || curveOnSurface.PointCount() < 2)
         {
             return 0.0;
         }

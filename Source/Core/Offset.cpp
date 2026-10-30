@@ -73,7 +73,7 @@ namespace Geometry
                     case SCSegmentKind2::Arc: {
                         const auto& sourceArc = static_cast<const SCArcSegment2d&>(*source);
                         const SCArcSegment2d segment = Offset(sourceArc, distance, eps);
-                        if (!segment.IsValid())
+                        if (!segment.IsValid(eps))
                         {
                             return SCPolyline2d(polyline.IsClosed() ? SCPolylineClosure::Closed : SCPolylineClosure::Open);
                         }

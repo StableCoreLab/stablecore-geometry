@@ -19,7 +19,8 @@ namespace Geometry
         TooFewPoints,
         NotClosed,
         InvalidOrientation,
-        SelfIntersection
+        SelfIntersection,
+        InvalidTolerance
     };
 
     struct GEOMETRY_API SCPolygonValidation2d
@@ -34,7 +35,8 @@ namespace Geometry
         InvalidVertex,
         InvalidIndex,
         DuplicateIndex,
-        DegenerateTriangle
+        DegenerateTriangle,
+        InvalidTolerance
     };
 
     struct GEOMETRY_API SCMeshValidation3d
@@ -48,7 +50,8 @@ namespace Geometry
     {
         None,
         EmptyBody,
-        InvalidFace
+        InvalidFace,
+        InvalidTolerance
     };
 
     struct GEOMETRY_API SCPolyhedronValidation3d
@@ -65,7 +68,8 @@ namespace Geometry
         InvalidVertex,
         InvalidEdge,
         InvalidShell,
-        InvalidFaceAdjacency
+        InvalidFaceAdjacency,
+        InvalidTolerance
     };
 
     struct GEOMETRY_API SCBrepValidation3d
@@ -82,7 +86,8 @@ namespace Geometry
         InvalidBasis,
         InvalidSegment,
         InvalidContour,
-        InvalidPolygon
+        InvalidPolygon,
+        InvalidTolerance
     };
 
     struct GEOMETRY_API SCSectionValidation3d

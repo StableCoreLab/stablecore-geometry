@@ -405,3 +405,20 @@ TEST(OffsetTest, ExplicitToleranceOffsetsRepresentableShortSweepArc)
     EXPECT_FALSE(shifted.IsValid());
     EXPECT_NEAR(shifted.radius, 1e6 - 100.0, 1e-9);
 }
+
+TEST(OffsetTest, ExplicitToleranceOffsetsShortSweepArcInsidePolyline)
+{
+    constexpr double epsilon = 1e-9;
+    const SCArcSegment2d arc({0.0, 0.0}, 1e6, 0.0, 1e-10);
+    const SCPolyline2d source(
+        std::vector<std::shared_ptr<Geometry::ISCSegment2d>>{std::make_shared<SCArcSegment2d>(arc)},
+        SCPolylineClosure::Open);
+    ASSERT_FALSE(source.IsValid());
+    ASSERT_TRUE(source.IsValid(epsilon));
+
+    const SCPolyline2d shifted = Offset(source, 100.0, Geometry::SCOffsetOptions2d{}, epsilon);
+    ASSERT_TRUE(shifted.IsValid(epsilon));
+    ASSERT_EQ(shifted.SegmentCount(), 1U);
+    EXPECT_EQ(shifted.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2::Arc);
+    EXPECT_NEAR(shifted.Length(epsilon), (1e6 - 100.0) * 1e-10, 1e-9);
+}

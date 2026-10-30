@@ -20,6 +20,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Core/TestSegmentCodec.cpp
     Capabilities/Core/TestSerialize.cpp
     Capabilities/Core/TestTriangulation.cpp
+    Capabilities/Core/TestValidationTolerance.cpp
     Capabilities/Core/TestUmbrella.cpp
     Capabilities/Geometry2d/TestBox.cpp
     Capabilities/Geometry2d/TestCorePrimitives2d.cpp
@@ -52,6 +53,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestHealing3d.cpp
     Capabilities/Geometry3d/TestHealing3dBoundaryCaps.cpp
     Capabilities/Geometry3d/TestHealing3dBoundaryArbitration.cpp
+    Capabilities/Geometry3d/TestHealing3dPartialOverlapShells.cpp
     Capabilities/Geometry3d/TestHealing3dVertexTouchArbitration.cpp
     Capabilities/Geometry3d/TestHealing3dShellCombinations.cpp
     Capabilities/Geometry3d/TestHealing3dMultiFaceShellCombinations.cpp
@@ -59,6 +61,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestHealing3dSupportMismatchBackfill.cpp
     Capabilities/Geometry3d/TestHealing3dTrimPlanes.cpp
     Capabilities/Geometry3d/TestSection3d.cpp
+    Capabilities/Geometry3d/TestSection3dCoplanarMerges.cpp
     Capabilities/Geometry3d/TestSection3dMixedOpenContours.cpp
     Capabilities/Geometry3d/TestSection3dMixedAreas.cpp
     Capabilities/Geometry3d/TestSection3dMixedContours.cpp
@@ -83,6 +86,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestNurbsEvaluationNumerics.cpp
     Capabilities/Geometry3d/TestNurbsWeightExtremes.cpp
     Capabilities/Geometry3d/TestNurbsProjectionIntersection.cpp
+    Capabilities/Geometry3d/TestNurbsIntersectionIsolation.cpp
     Capabilities/Geometry3d/TestNurbsSurfaceSearch.cpp
     Capabilities/Geometry3d/TestNurbsSurfaceBudgets.cpp
     Capabilities/Geometry3d/TestOffsetSurfaceEval.cpp

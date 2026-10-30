@@ -1,4 +1,5 @@
 #include "Core/PolygonRelation2d.h"
+#include <cmath>
 #include <numeric>
 
 #include <sstream>
@@ -8,6 +9,7 @@
 #include "Core/Relation.h"
 #include "Core/ShapeOps.h"
 #include "Geometry2d/SCPathOps.h"
+#include "../Detail/RingIntegral2d.h"
 
 namespace Geometry
 {
@@ -100,12 +102,12 @@ namespace Geometry
             }
 
             const SCPolyline2d ring = polygon.OuterRing();
-            if (!ring.IsValid() || ring.PointCount() < 3)
+            if (!ring.IsValid(eps) || ring.PointCount() < 3)
             {
                 return false;
             }
 
-            const SCRingOrientation2d orientation = Orientation(ring);
+            const bool clockwise = Detail::ComputeSignedArea(ring, eps) < 0.0;
             for (std::size_t i = 0; i < ring.PointCount(); ++i)
             {
                 const SCPoint2d start = ring.VertexAt(i);
@@ -118,7 +120,7 @@ namespace Geometry
                 }
 
                 SCVector2d inward{-edge.y / length, edge.x / length};
-                if (orientation == SCRingOrientation2d::Clockwise)
+                if (clockwise)
                 {
                     inward = inward * -1.0;
                 }
@@ -173,6 +175,12 @@ namespace Geometry
     bool PolygonTopology2d::Build(const SCMultiPolygon2d& polygons, double eps)
     {
         polygons_.Clear();
+        nodes_.clear();
+        roots_.clear();
+        if (!(eps > 0.0) || !std::isfinite(eps))
+        {
+            return false;
+        }
         for (std::size_t i = 0; i < polygons.Size(); ++i)
         {
             SCPolygon2d normalized = NormalizePolygonByLines(polygons[i], eps);
@@ -182,8 +190,6 @@ namespace Geometry
             }
             polygons_.Add(std::move(normalized));
         }
-        nodes_.clear();
-        roots_.clear();
         nodes_.resize(polygons_.Size());
         for (std::size_t i = 0; i < polygons_.Size(); ++i)
         {
