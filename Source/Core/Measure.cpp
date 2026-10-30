@@ -677,7 +677,7 @@ namespace Geometry
                 const double chord=Distance(a,b);
                 const double split=Distance(a,sample.point)+Distance(sample.point,b);
                 if (!std::isfinite(chord) || !std::isfinite(split)) return std::numeric_limits<double>::infinity();
-                const double allowance=std::max(kDefaultEpsilon*(last-first),
+                const double allowance=std::max(tolerance.distanceEpsilon*(last-first),
                     64*std::numeric_limits<double>::epsilon()*split);
                 if (depth==8 || split-chord<=allowance || middle==first || middle==last) return split;
                 return self(self,first,middle,a,sample.point,depth+1)+self(self,middle,last,sample.point,b,depth+1);
@@ -745,16 +745,20 @@ namespace Geometry
 
     double Volume(const TriangleMesh& mesh, double eps)
     {
-        if (!mesh.IsValid(eps) || !IsClosedTriangleMesh(mesh, eps))
+        if (mesh.TriangleCount() == 0 || !mesh.IsValid(eps) || !IsClosedTriangleMesh(mesh, eps))
         {
             return 0.0;
         }
 
         double signedVolume = 0.0;
-        for (std::size_t i = 0; i < mesh.TriangleCount(); ++i)
+        for (const auto& component : ComputeTriangleConnectedComponents(mesh, eps))
         {
-            const SCTriangle3d triangle = mesh.TriangleAt(i);
-            signedVolume += Dot(triangle.a - SCPoint3d{}, Cross(triangle.b - SCPoint3d{}, triangle.c - SCPoint3d{})) / 6.0;
+            const SCPoint3d origin = mesh.TriangleAt(component.front()).a;
+            for (const std::size_t triangleIndex : component)
+            {
+                const SCTriangle3d triangle = mesh.TriangleAt(triangleIndex);
+                signedVolume += Dot(triangle.a - origin, Cross(triangle.b - origin, triangle.c - origin)) / 6.0;
+            }
         }
         return std::abs(signedVolume);
     }

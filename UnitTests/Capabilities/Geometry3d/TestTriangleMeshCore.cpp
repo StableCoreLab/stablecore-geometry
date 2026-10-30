@@ -5,6 +5,32 @@
 
 using namespace Geometry;
 
+TEST(TriangleMeshToleranceTest, VolumeIsStableAfterLargeTranslation)
+{
+    constexpr double origin = 1e9;
+    const TriangleMesh mesh(
+        {{origin, origin, origin}, {origin + 1, origin, origin},
+         {origin, origin + 1, origin}, {origin, origin, origin + 1}},
+        {{0, 2, 1}, {0, 1, 3}, {1, 2, 3}, {2, 0, 3}});
+    ASSERT_TRUE(mesh.IsValid());
+    ASSERT_TRUE(IsClosedTriangleMesh(mesh));
+    EXPECT_NEAR(Volume(mesh), 1.0 / 6.0, 1e-12);
+}
+
+TEST(TriangleMeshToleranceTest, VolumeIsStableForSeparatedClosedComponents)
+{
+    constexpr double far = 1e9;
+    const TriangleMesh mesh(
+        {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1},
+         {far, far, far}, {far + 1, far, far}, {far, far + 1, far}, {far, far, far + 1}},
+        {{0, 2, 1}, {0, 1, 3}, {1, 2, 3}, {2, 0, 3},
+         {4, 6, 5}, {4, 5, 7}, {5, 6, 7}, {6, 4, 7}});
+    ASSERT_TRUE(mesh.IsValid());
+    ASSERT_TRUE(IsClosedTriangleMesh(mesh));
+    ASSERT_EQ(ComputeTriangleConnectedComponents(mesh).size(), 2U);
+    EXPECT_NEAR(Volume(mesh), 1.0 / 3.0, 1e-12);
+}
+
 TEST(GeometryTest, CoversTriangleMeshCapabilities)
 {
     const TriangleMesh mesh(

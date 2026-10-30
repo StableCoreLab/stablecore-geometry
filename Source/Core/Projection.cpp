@@ -275,7 +275,19 @@ namespace Geometry
             return 0.0;
         }
 
-        const double totalLength = segment.Length();
+        double totalLength = 0.0;
+        if (const auto* arc = dynamic_cast<const SCArcSegment2d*>(&segment))
+        {
+            totalLength = arc->Length(epsilon);
+        }
+        else if (const auto* line = dynamic_cast<const SCLineSegment2d*>(&segment))
+        {
+            totalLength = line->IsValid(epsilon) ? line->Length() : 0.0;
+        }
+        else
+        {
+            totalLength = segment.Length();
+        }
         if (!std::isfinite(totalLength) || totalLength <= epsilon)
         {
             return 0.0;

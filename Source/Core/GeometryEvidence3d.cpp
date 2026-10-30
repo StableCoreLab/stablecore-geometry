@@ -1026,23 +1026,26 @@ namespace Geometry
             return result ? result : std::optional<RayBoundaryRef>{{{2,face,0},{0,face,0,0}}};
         }
 
-        std::vector<RayLoop> BrepRayLoops(const SCBrepBody& body,std::size_t faceIndex)
+        std::optional<std::vector<RayLoop>> BrepRayLoops(const SCBrepBody& body,std::size_t faceIndex)
         {
             const auto& face=body.ShellAtRef(0).FaceAtRef(faceIndex);
             std::vector<RayLoop> result;
             const auto append=[&](const SCBrepLoop& loop) {
                 RayLoop ring;
                 for (const auto& coedge:loop.Coedges()) {
-                    const auto& edge=body.Edges()[coedge.EdgeIndex()];
-                    const auto vertex=coedge.Reversed()?edge.EndVertexIndex():edge.StartVertexIndex();
-                    ring.vertices.push_back(vertex);
-                    ring.points.push_back(body.Vertices()[vertex].Point());
+                    std::size_t startVertexIndex = 0;
+                    std::size_t endVertexIndex = 0;
+                    if (!Detail::TryGetCoedgeVertexIndices(body.Edges(), body.VertexCount(), coedge,
+                                                          startVertexIndex, endVertexIndex)) return false;
+                    ring.vertices.push_back(startVertexIndex);
+                    ring.points.push_back(body.VertexAtRef(startVertexIndex).Point());
                     ring.edges.push_back({coedge.EdgeIndex(),0});
                 }
                 result.push_back(std::move(ring));
+                return true;
             };
-            append(face.OuterLoopRef());
-            for (const auto& hole:face.HoleLoops()) append(hole);
+            if (!append(face.OuterLoopRef())) return std::nullopt;
+            for (const auto& hole:face.HoleLoops()) if (!append(hole)) return std::nullopt;
             return result;
         }
 
@@ -1208,7 +1211,14 @@ namespace Geometry
             const auto hits=IntersectLineBrepBodyWithStatus(line,body,tolerance);
             std::vector<std::vector<RayLoop>> loops;
             if (body.ShellCount()==1)
-                for (std::size_t i=0;i<body.ShellAtRef(0).FaceCount();++i) loops.push_back(BrepRayLoops(body,i));
+                for (std::size_t i=0;i<body.ShellAtRef(0).FaceCount();++i) {
+                    auto faceLoops=BrepRayLoops(body,i);
+                    if (!faceLoops) {
+                        Unknown(result, Reason::TopologyInvalid);
+                        return result;
+                    }
+                    loops.push_back(std::move(*faceLoops));
+                }
             const auto incidence=BuildRayIncidence(loops);
             result=ClassifyBody(point,projection,hits,ClosedBrep(body,tolerance),tolerance,
                 [&](std::size_t index, int side) { return HalfOpenBrepFace(point,body,index,side); },

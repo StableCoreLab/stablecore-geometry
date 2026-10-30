@@ -43,6 +43,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry2d/TestTransformSampling.cpp
     Capabilities/Geometry3d/TestBodyBoolean3d.cpp
     Capabilities/Geometry3d/TestBodyBooleanPolyhedron3d.cpp
+    Capabilities/Geometry3d/TestBodyBooleanRotated3d.cpp
     Capabilities/Geometry3d/TestBodyBooleanBrep3d.cpp
     Capabilities/Geometry3d/TestBrep3d.cpp
     Capabilities/Geometry3d/TestConversionBasic3d.cpp
@@ -78,6 +79,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestCorePrimitives3d.cpp
     Capabilities/Geometry3d/TestCurveOnSurfaceInterface.cpp
     Capabilities/Geometry3d/TestCurveOnSurfaceNumerics.cpp
+    Capabilities/Geometry3d/TestCurveOnSurfaceHighDegree.cpp
     Capabilities/Geometry3d/TestGeometryEvidence.cpp
     Capabilities/Geometry3d/TestGeometryEvidenceIntersection.cpp
     Capabilities/Geometry3d/TestGeometryEvidenceTopology.cpp

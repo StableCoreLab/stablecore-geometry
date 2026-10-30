@@ -50,7 +50,7 @@ namespace Geometry
             return result;
         }
 
-        [[nodiscard]] bool BoundsLexicographicallyLess(const SCBox3d& first, const SCBox3d& second, double epsilon);
+        [[nodiscard]] bool BoundsLexicographicallyLess(const SCBox3d& first, const SCBox3d& second);
 
         [[nodiscard]] bool IsClosedManifoldSingleShell(const SCBrepBody& body, const double epsilon)
         {
@@ -489,8 +489,7 @@ namespace Geometry
             BodyBooleanResult3d result;
             result.issue = BodyBooleanIssue3d::None;
             std::sort(bodies.begin(), bodies.end(), [](const SCBrepBody& first, const SCBrepBody& second) {
-                return BoundsLexicographicallyLess(
-                    first.Bounds(), second.Bounds(), Geometry::kDefaultEpsilon);
+                return BoundsLexicographicallyLess(first.Bounds(), second.Bounds());
             });
             result.bodies = std::move(bodies);
             result.message = message;
@@ -540,29 +539,29 @@ namespace Geometry
                    NearlyEqual(left.MaxPoint().z, right.MaxPoint().z, epsilon);
         }
 
-        [[nodiscard]] bool BoundsLexicographicallyLess(const SCBox3d& first, const SCBox3d& second, double epsilon)
+        [[nodiscard]] bool BoundsLexicographicallyLess(const SCBox3d& first, const SCBox3d& second)
         {
-            if (!NearlyEqual(first.MinPoint().x, second.MinPoint().x, epsilon))
+            if (first.MinPoint().x != second.MinPoint().x)
             {
                 return first.MinPoint().x < second.MinPoint().x;
             }
-            if (!NearlyEqual(first.MinPoint().y, second.MinPoint().y, epsilon))
+            if (first.MinPoint().y != second.MinPoint().y)
             {
                 return first.MinPoint().y < second.MinPoint().y;
             }
-            if (!NearlyEqual(first.MinPoint().z, second.MinPoint().z, epsilon))
+            if (first.MinPoint().z != second.MinPoint().z)
             {
                 return first.MinPoint().z < second.MinPoint().z;
             }
-            if (!NearlyEqual(first.MaxPoint().x, second.MaxPoint().x, epsilon))
+            if (first.MaxPoint().x != second.MaxPoint().x)
             {
                 return first.MaxPoint().x < second.MaxPoint().x;
             }
-            if (!NearlyEqual(first.MaxPoint().y, second.MaxPoint().y, epsilon))
+            if (first.MaxPoint().y != second.MaxPoint().y)
             {
                 return first.MaxPoint().y < second.MaxPoint().y;
             }
-            if (!NearlyEqual(first.MaxPoint().z, second.MaxPoint().z, epsilon))
+            if (first.MaxPoint().z != second.MaxPoint().z)
             {
                 return first.MaxPoint().z < second.MaxPoint().z;
             }

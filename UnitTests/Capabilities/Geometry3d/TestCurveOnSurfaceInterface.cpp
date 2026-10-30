@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <memory>
 #include <type_traits>
 #include <vector>
@@ -143,6 +144,24 @@ namespace
 
         tolerance.distanceEpsilon = -1.0;
         EXPECT_DOUBLE_EQ(Geometry::Length(curve, tolerance), 0.0);
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, LengthRefinesSmallCurvedSurfaceAtCallerTolerance)
+    {
+        constexpr double scale = 1e-7;
+        const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
+            1, 1, 2, 2,
+            std::vector<Geometry::SCPoint3d>{{0, 0, 0}, {scale, 0, 0}, {0, scale, 0},
+                                             {scale, scale, scale}},
+            std::vector<double>{0, 0, 1, 1}, std::vector<double>{0, 0, 1, 1});
+        const Geometry::SCCurveOnSurface curve(surface, Geometry::SCPolyline2d({{0, 0}, {1, 1}}));
+        Geometry::SCGeometryTolerance3d tolerance{};
+        tolerance.distanceEpsilon = 1e-15;
+        ASSERT_TRUE(curve.IsValid(tolerance));
+
+        const double exactLength = scale *
+            (std::sqrt(6.0) / 2.0 + std::asinh(std::sqrt(2.0)) / 2.0);
+        EXPECT_NEAR(Geometry::Length(curve, tolerance), exactLength, 1e-13);
     }
 
     TEST(CurveOnSurfaceInterfaceTest, ClosedCurveAndInvalidUvDomainHaveExplicitContracts)

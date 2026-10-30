@@ -4,6 +4,7 @@
 #include <limits>
 #include <type_traits>
 
+#include "Core/Projection.h"
 #include "Geometry2d/SCArcSegment2d.h"
 #include "Geometry2d/SCLineSegment2d.h"
 #include "Support/Epsilon.h"
@@ -101,6 +102,19 @@ TEST(SegmentTest, ExplicitToleranceAcceptsRepresentableShortSweepArc)
     const SCBox2d narrowBounds = nearCardinal.Bounds(epsilon);
     ASSERT_TRUE(narrowBounds.IsValid());
     EXPECT_LT(narrowBounds.MaxPoint().x, -4e-4);
+}
+
+TEST(SegmentTest, BaseSegmentLengthParameterUsesExplicitArcTolerance)
+{
+    constexpr double epsilon = 1e-9;
+    const SCArcSegment2d arc({0.0, 0.0}, 1e6, 0.0, 1e-10);
+    const ISCSegment2d& segment = arc;
+    ASSERT_FALSE(arc.IsValid());
+    ASSERT_TRUE(arc.IsValid(epsilon));
+    EXPECT_NEAR(Geometry::ParameterAtLength(segment, arc.Length(epsilon) * 0.5,
+                                            false, epsilon), 0.5, 1e-12);
+    EXPECT_DOUBLE_EQ(Geometry::ParameterAtLength(segment, arc.Length(epsilon) * 2.0,
+                                                true, epsilon), 1.0);
 }
 
 TEST(SegmentTest, LineValidityUsesEuclideanLengthAtToleranceBoundary)
