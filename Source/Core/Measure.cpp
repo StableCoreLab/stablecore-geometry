@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <vector>
 
 #include "Core/MeshConversion.h"
 #include "Brep/MeshOps.h"
@@ -670,6 +671,13 @@ namespace Geometry
         double total = 0.0;
         const std::size_t segmentCount=curveOnSurface.UvCurve().IsClosed()?curveOnSurface.PointCount():curveOnSurface.PointCount()-1;
         for (std::size_t segment=0;segment<segmentCount;++segment) {
+            std::vector<double> breaks{0.0, 1.0};
+            if (const auto* surface = dynamic_cast<const SCNurbsSurface*>(curveOnSurface.SupportSurface())) {
+                const SCPoint2d start = curveOnSurface.UvPointAt(segment);
+                const SCPoint2d end = curveOnSurface.UvPointAt((segment+1)%curveOnSurface.PointCount());
+                breaks = Detail::NurbsSurfaceUvSegmentBreaks(
+                    surface->KnotsU(), surface->KnotsV(), start, end);
+            }
             const auto length=[&](auto&& self,double first,double last,const SCPoint3d& a,const SCPoint3d& b,int depth)->double {
                 const double middle=std::lerp(first,last,0.5);
                 const auto sample=Detail::EvaluateCurveOnSurfaceSegment(curveOnSurface,segment,middle);
@@ -679,19 +687,27 @@ namespace Geometry
                 if (!std::isfinite(chord) || !std::isfinite(split)) return std::numeric_limits<double>::infinity();
                 const double allowance=std::max(tolerance.distanceEpsilon*(last-first),
                     64*std::numeric_limits<double>::epsilon()*split);
-                if (depth==8 || split-chord<=allowance || middle==first || middle==last) return split;
+                if (depth==8 || split-chord<=allowance || middle==first || middle==last) {
+                    // Chord-length error is quadratic in interval width for a smooth curve.
+                    return split + std::max(0.0, split-chord)/3.0;
+                }
                 return self(self,first,middle,a,sample.point,depth+1)+self(self,middle,last,sample.point,b,depth+1);
             };
             constexpr std::size_t samples=32;
-            auto previous=Detail::EvaluateCurveOnSurfaceSegment(curveOnSurface,segment,0);
-            if (!previous.valid) return std::numeric_limits<double>::infinity();
-            for (std::size_t i=1;i<=samples;++i) {
-                const double first=static_cast<double>(i-1)/samples,last=static_cast<double>(i)/samples;
-                const auto current=Detail::EvaluateCurveOnSurfaceSegment(curveOnSurface,segment,last);
-                if (!current.valid) return std::numeric_limits<double>::infinity();
-                total+=length(length,first,last,previous.point,current.point,0);
-                if (!std::isfinite(total)) return std::numeric_limits<double>::infinity();
-                previous=current;
+            for (std::size_t piece=1;piece<breaks.size();++piece) {
+                const double pieceFirst=breaks[piece-1], pieceLast=breaks[piece];
+                auto previous=Detail::EvaluateCurveOnSurfaceSegment(curveOnSurface,segment,pieceFirst);
+                if (!previous.valid) return std::numeric_limits<double>::infinity();
+                for (std::size_t i=1;i<=samples;++i) {
+                    const double first=std::lerp(pieceFirst,pieceLast,static_cast<double>(i-1)/samples);
+                    const double last=i==samples?pieceLast:
+                        std::lerp(pieceFirst,pieceLast,static_cast<double>(i)/samples);
+                    const auto current=Detail::EvaluateCurveOnSurfaceSegment(curveOnSurface,segment,last);
+                    if (!current.valid) return std::numeric_limits<double>::infinity();
+                    total+=length(length,first,last,previous.point,current.point,0);
+                    if (!std::isfinite(total)) return std::numeric_limits<double>::infinity();
+                    previous=current;
+                }
             }
         }
         return total;

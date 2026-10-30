@@ -123,30 +123,40 @@ namespace Geometry
 
         [[nodiscard]] bool ComputeShellClosed(const SCBrepShell& shell)
         {
-            std::map<std::size_t, std::size_t> edgeUseCount;
+            struct EdgeUse
+            {
+                std::size_t count{0};
+                int directionBalance{0};
+            };
+            std::map<std::size_t, EdgeUse> edgeUses;
+            const auto addUse = [&](const SCBrepCoedge& coedge) {
+                EdgeUse& use = edgeUses[coedge.EdgeIndex()];
+                ++use.count;
+                use.directionBalance += coedge.Reversed() ? -1 : 1;
+            };
             for (const SCBrepFace& face : shell.Faces())
             {
                 for (const SCBrepCoedge& coedge : face.OuterLoopRef().Coedges())
                 {
-                    ++edgeUseCount[coedge.EdgeIndex()];
+                    addUse(coedge);
                 }
                 for (const SCBrepLoop& hole : face.HoleLoops())
                 {
                     for (const SCBrepCoedge& coedge : hole.Coedges())
                     {
-                        ++edgeUseCount[coedge.EdgeIndex()];
+                        addUse(coedge);
                     }
                 }
             }
 
-            if (edgeUseCount.empty())
+            if (edgeUses.empty())
             {
                 return false;
             }
 
-            for (const auto& [_, count] : edgeUseCount)
+            for (const auto& [_, use] : edgeUses)
             {
-                if (count != 2)
+                if (use.count != 2 || use.directionBalance != 0)
                 {
                     return false;
                 }

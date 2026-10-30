@@ -164,6 +164,52 @@ namespace
         EXPECT_NEAR(Geometry::Length(curve, tolerance), exactLength, 1e-13);
     }
 
+    TEST(CurveOnSurfaceInterfaceTest, LengthRefinesUnitCurvedSurfaceAtTightTolerance)
+    {
+        const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
+            1, 1, 2, 2,
+            std::vector<Geometry::SCPoint3d>{{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 1}},
+            std::vector<double>{0, 0, 1, 1}, std::vector<double>{0, 0, 1, 1});
+        const Geometry::SCCurveOnSurface curve(surface, Geometry::SCPolyline2d({{0, 0}, {1, 1}}));
+        Geometry::SCGeometryTolerance3d tolerance{};
+        tolerance.distanceEpsilon = 1e-15;
+        ASSERT_TRUE(curve.IsValid(tolerance));
+
+        const double exactLength = std::sqrt(6.0) / 2.0 + std::asinh(std::sqrt(2.0)) / 2.0;
+        EXPECT_NEAR(Geometry::Length(curve, tolerance), exactLength, 1e-12);
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, LengthRetainsAccuracyAcrossSurfaceKnot)
+    {
+        constexpr double knot = 0.37;
+        const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
+            1, 1, 3, 2,
+            std::vector<Geometry::SCPoint3d>{{0, 0, 0}, {knot, 0, 0}, {1, 0, 1},
+                                             {0, 1, 0}, {knot, 1, 0}, {1, 1, 1}},
+            std::vector<double>{0, 0, knot, 1, 1}, std::vector<double>{0, 0, 1, 1});
+        const Geometry::SCCurveOnSurface curve(surface, Geometry::SCPolyline2d({{0, 0}, {1, 1}}));
+        Geometry::SCGeometryTolerance3d tolerance{};
+        tolerance.distanceEpsilon = 1e-15;
+        ASSERT_TRUE(curve.IsValid(tolerance));
+
+        const double exactLength = knot * std::sqrt(2.0) +
+            std::sqrt(2.0 * (1.0 - knot) * (1.0 - knot) + 1.0);
+        EXPECT_NEAR(Geometry::Length(curve, tolerance), exactLength, 1e-8);
+        const Geometry::SCCurveOnSurface reversed(surface, Geometry::SCPolyline2d({{1, 1}, {0, 0}}));
+        ASSERT_TRUE(reversed.IsValid(tolerance));
+        EXPECT_NEAR(Geometry::Length(reversed, tolerance), exactLength, 1e-8);
+
+        const auto vertical = std::make_shared<Geometry::SCNurbsSurface>(
+            1, 1, 2, 3,
+            std::vector<Geometry::SCPoint3d>{{0, 0, 0}, {1, 0, 0},
+                                             {0, knot, 0}, {1, knot, 0},
+                                             {0, 1, 1}, {1, 1, 1}},
+            std::vector<double>{0, 0, 1, 1}, std::vector<double>{0, 0, knot, 1, 1});
+        const Geometry::SCCurveOnSurface acrossV(vertical, Geometry::SCPolyline2d({{0, 0}, {1, 1}}));
+        ASSERT_TRUE(acrossV.IsValid(tolerance));
+        EXPECT_NEAR(Geometry::Length(acrossV, tolerance), exactLength, 1e-8);
+    }
+
     TEST(CurveOnSurfaceInterfaceTest, ClosedCurveAndInvalidUvDomainHaveExplicitContracts)
     {
         const auto plane = std::make_shared<Geometry::SCPlaneSurface>(

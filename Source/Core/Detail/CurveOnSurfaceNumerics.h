@@ -143,6 +143,26 @@ namespace Geometry::Detail
         double segmentEnd{1.0};
     };
 
+    [[nodiscard]] inline std::vector<double> NurbsSurfaceUvSegmentBreaks(
+        const std::vector<double>& knotsU, const std::vector<double>& knotsV,
+        const SCPoint2d& first, const SCPoint2d& second)
+    {
+        std::vector<double> breaks{0.0, 1.0};
+        const auto addBreaks = [&](const std::vector<double>& knots, double start, double end) {
+            if (start == end) return;
+            for (const double knot : knots)
+            {
+                const double parameter = (knot - start) / (end - start);
+                if (parameter > 0.0 && parameter < 1.0) breaks.push_back(parameter);
+            }
+        };
+        addBreaks(knotsU, first.x, second.x);
+        addBreaks(knotsV, first.y, second.y);
+        std::sort(breaks.begin(), breaks.end());
+        breaks.erase(std::unique(breaks.begin(), breaks.end()), breaks.end());
+        return breaks;
+    }
+
     struct HomogeneousSurfaceControl
     {
         double x{0.0};
@@ -627,22 +647,8 @@ namespace Geometry::Detail
         RefineNurbsSurfaceAxis(net, surface->DegreeU(), true);
         RefineNurbsSurfaceAxis(net, surface->DegreeV(), false);
 
-        std::vector<double> breaks{0.0, 1.0};
-        const auto addBreaks = [&](const std::vector<double>& knots, double start, double end) {
-            if (start == end) return;
-            for (double knot : knots)
-            {
-                const double parameter = (knot - start) / (end - start);
-                if (parameter > 0.0 && parameter < 1.0)
-                {
-                    breaks.push_back(parameter);
-                }
-            }
-        };
-        addBreaks(net.knotsU, first.x, second.x);
-        addBreaks(net.knotsV, first.y, second.y);
-        std::sort(breaks.begin(), breaks.end());
-        breaks.erase(std::unique(breaks.begin(), breaks.end()), breaks.end());
+        const std::vector<double> breaks = NurbsSurfaceUvSegmentBreaks(
+            net.knotsU, net.knotsV, first, second);
 
         std::vector<RestrictedNurbsSurfaceCurve> pieces;
         for (std::size_t index = 1; index < breaks.size(); ++index)

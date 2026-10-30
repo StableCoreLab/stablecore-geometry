@@ -38,6 +38,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry2d/TestSearchPolyExplanations.cpp
     Capabilities/Geometry2d/TestSegment.cpp
     Capabilities/Geometry2d/TestShapesPathOps.cpp
+    Capabilities/Geometry2d/TestShapesPathOpsPolygon.cpp
     Capabilities/Geometry2d/TestSpatialIndexOracle.cpp
     Capabilities/Geometry2d/TestTopologyIndexing.cpp
     Capabilities/Geometry2d/TestTransformSampling.cpp
@@ -51,12 +52,14 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestConversionTinyScale3d.cpp
     Capabilities/Geometry3d/TestConversionCuboid3d.cpp
     Capabilities/Geometry3d/TestConversionRepresentative3d.cpp
+    Capabilities/Geometry3d/TestConversionClosedRepresentative3d.cpp
     Capabilities/Geometry3d/TestHealing3d.cpp
     Capabilities/Geometry3d/TestHealing3dBoundaryCaps.cpp
     Capabilities/Geometry3d/TestHealing3dBoundaryArbitration.cpp
     Capabilities/Geometry3d/TestHealing3dPartialOverlapShells.cpp
     Capabilities/Geometry3d/TestHealing3dVertexTouchArbitration.cpp
     Capabilities/Geometry3d/TestHealing3dShellCombinations.cpp
+    Capabilities/Geometry3d/TestHealing3dMixedShellCombinations.cpp
     Capabilities/Geometry3d/TestHealing3dMultiFaceShellCombinations.cpp
     Capabilities/Geometry3d/TestHealing3dSupportMismatch.cpp
     Capabilities/Geometry3d/TestHealing3dSupportMismatchBackfill.cpp

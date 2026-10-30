@@ -19,6 +19,33 @@ using Geometry::SCVector3d;
 
 namespace
 {
+    TEST(NurbsNumericsTest, ValidGeometryRejectsInvalidStructuralTolerance)
+    {
+        const SCNurbsCurve3d curve(1, {{0, 0, 0}, {1, 0, 0}}, {0, 0, 1, 1});
+        const SCNurbsSurface surface(1, 1, 2, 2,
+            {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0}},
+            {0, 0, 1, 1}, {0, 0, 1, 1});
+        ASSERT_TRUE(curve.IsValid());
+        ASSERT_TRUE(surface.IsValid());
+
+        Geometry::SCGeometryTolerance3d invalid{};
+        invalid.distanceEpsilon = -1.0;
+        EXPECT_FALSE(curve.IsValid(invalid));
+        EXPECT_FALSE(surface.IsValid(invalid));
+        invalid = {};
+        invalid.angleEpsilon = std::numeric_limits<double>::quiet_NaN();
+        EXPECT_FALSE(curve.IsValid(invalid));
+        EXPECT_FALSE(surface.IsValid(invalid));
+        invalid = {};
+        invalid.parameterEpsilon = -1.0;
+        EXPECT_FALSE(curve.IsValid(invalid));
+        EXPECT_FALSE(surface.IsValid(invalid));
+        invalid = {};
+        invalid.boxPadding = std::numeric_limits<double>::infinity();
+        EXPECT_FALSE(curve.IsValid(invalid));
+        EXPECT_FALSE(surface.IsValid(invalid));
+    }
+
     TEST(NurbsNumericsTest, ExtremeKnotSpanKeepsActualPositionsAndCacheKeysConsistent)
     {
         const double maximum=std::numeric_limits<double>::max();

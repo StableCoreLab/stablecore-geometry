@@ -9,8 +9,7 @@ namespace Geometry
 {
     bool SCNurbsSurface::IsValid(const SCGeometryTolerance3d& tolerance) const
     {
-        (void)tolerance;
-        if (controlPointCountU_ == 0 || controlPointCountV_ == 0 ||
+        if (!tolerance.IsValid() || controlPointCountU_ == 0 || controlPointCountV_ == 0 ||
             controlPoints_.size() / controlPointCountU_ != controlPointCountV_ ||
             controlPoints_.size() != controlPointCountU_ * controlPointCountV_ ||
             weights_.size() != controlPoints_.size() ||

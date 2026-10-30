@@ -9,8 +9,7 @@ namespace Geometry
 {
     bool SCNurbsCurve3d::IsValid(const SCGeometryTolerance3d& tolerance) const
     {
-        (void)tolerance;
-        if (!Detail::ValidKnots(knots_, controlPoints_.size(), degree_) ||
+        if (!tolerance.IsValid() || !Detail::ValidKnots(knots_, controlPoints_.size(), degree_) ||
             weights_.size() != controlPoints_.size())
         {
             return false;
