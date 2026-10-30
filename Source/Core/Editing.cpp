@@ -13,6 +13,11 @@ namespace Geometry
 {
     namespace
     {
+        [[nodiscard]] bool IsValidEditingTolerance(double eps)
+        {
+            return eps > 0.0 && std::isfinite(eps);
+        }
+
         [[nodiscard]] std::vector<SCPoint2d> NormalizedPoints(const SCPolyline2d& polyline, double eps)
         {
             std::vector<SCPoint2d> points;
@@ -42,6 +47,10 @@ namespace Geometry
 
     SCPolyline2d Normalize(const SCPolyline2d& polyline, double eps)
     {
+        if (!IsValidEditingTolerance(eps))
+        {
+            return {};
+        }
         if (!polyline.HasNonLineSegments())
         {
             return SCPolyline2d(NormalizedPoints(polyline, eps),
@@ -69,6 +78,10 @@ namespace Geometry
 
     SCPolygon2d Normalize(const SCPolygon2d& polygon, double eps)
     {
+        if (!IsValidEditingTolerance(eps))
+        {
+            return {};
+        }
         std::vector<SCPolyline2d> holes;
         holes.reserve(polygon.HoleCount());
         for (std::size_t i = 0; i < polygon.HoleCount(); ++i)
@@ -80,6 +93,10 @@ namespace Geometry
 
     SCPolyline2d InsertPoint(const SCPolyline2d& polyline, const SCPoint2d& point, double eps)
     {
+        if (!IsValidEditingTolerance(eps))
+        {
+            return {};
+        }
         if (polyline.HasNonLineSegments())
         {
             std::vector<std::shared_ptr<ISCSegment2d>> segments;
@@ -160,6 +177,10 @@ namespace Geometry
 
     SCPolygon2d InsertPoint(const SCPolygon2d& polygon, const SCPoint2d& point, double eps)
     {
+        if (!IsValidEditingTolerance(eps))
+        {
+            return {};
+        }
         std::vector<SCPolyline2d> holes;
         holes.reserve(polygon.HoleCount());
         for (std::size_t i = 0; i < polygon.HoleCount(); ++i)

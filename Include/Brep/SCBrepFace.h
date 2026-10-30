@@ -99,9 +99,9 @@ namespace Geometry
 
         [[nodiscard]] SCBox3d Bounds() const
         {
-            if (outerTrim_.IsValid())
+            SCBox3d bounds = outerTrim_.Bounds();
+            if (bounds.IsValid())
             {
-                SCBox3d bounds = outerTrim_.Bounds();
                 for (const SCCurveOnSurface& trim : holeTrims_)
                 {
                     const SCBox3d trimBounds = trim.Bounds();

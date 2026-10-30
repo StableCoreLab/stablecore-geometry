@@ -1,7 +1,9 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <limits>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -11,6 +13,7 @@
 #include "Geometry2d/SCPolygon2d.h"
 #include "Geometry3d/SCLineCurve3d.h"
 #include "Geometry3d/SCPlaneSurface.h"
+#include "../../Brep/LoopGeometry.h"
 #include "../../Detail/AffinePlaneGeometry.h"
 #include "CurveOnSurfaceNumerics.h"
 
@@ -39,7 +42,8 @@ namespace Geometry::Detail
             holes.push_back(trim.UvCurve());
         }
         polygon = SCPolygon2d(face.OuterTrim().UvCurve(), std::move(holes));
-        return polygon.IsValid();
+        return polygon.IsValid(std::max(tolerance.parameterEpsilon,
+                                        std::numeric_limits<double>::denorm_min()));
     }
 
     [[nodiscard]] inline bool TryBuildPlanarLoopTrim(
@@ -65,15 +69,16 @@ namespace Geometry::Detail
         };
         for (std::size_t index = 0; index < loop.CoedgeCount(); ++index)
         {
-            const SCBrepCoedge& coedge = loop.Coedges()[index];
-            if (coedge.EdgeIndex() >= body.EdgeCount())
+            const SCBrepCoedge& coedge = loop.CoedgeAtRef(index);
+            std::size_t start = 0;
+            std::size_t end = 0;
+            if (!TryGetCoedgeVertexIndices(body.Edges(), body.VertexCount(), coedge, start, end))
             {
                 return false;
             }
-            const SCBrepEdge& edge = body.Edges()[coedge.EdgeIndex()];
+            const SCBrepEdge& edge = body.EdgeAtRef(coedge.EdgeIndex());
             const auto* lineCurve = dynamic_cast<const SCLineCurve3d*>(edge.Curve());
-            if (lineCurve == nullptr || edge.StartVertexIndex() >= body.VertexCount() ||
-                edge.EndVertexIndex() >= body.VertexCount())
+            if (lineCurve == nullptr)
             {
                 return false;
             }
@@ -82,15 +87,13 @@ namespace Geometry::Detail
             {
                 return false;
             }
-            const SCPoint3d vertexStart = body.Vertices()[edge.StartVertexIndex()].Point();
-            const SCPoint3d vertexEnd = body.Vertices()[edge.EndVertexIndex()].Point();
+            const SCPoint3d vertexStart = body.VertexAtRef(edge.StartVertexIndex()).Point();
+            const SCPoint3d vertexEnd = body.VertexAtRef(edge.EndVertexIndex()).Point();
             if (!closeEnough(lineCurve->PointAt(range.min), vertexStart) ||
                 !closeEnough(lineCurve->PointAt(range.max), vertexEnd))
             {
                 return false;
             }
-            const std::size_t start = coedge.Reversed() ? edge.EndVertexIndex() : edge.StartVertexIndex();
-            const std::size_t end = coedge.Reversed() ? edge.StartVertexIndex() : edge.EndVertexIndex();
             if (index == 0)
             {
                 firstVertex = start;
@@ -100,7 +103,7 @@ namespace Geometry::Detail
                 return false;
             }
             previousEnd = end;
-            const SCPoint3d point = body.Vertices()[start].Point();
+            const SCPoint3d point = body.VertexAtRef(start).Point();
             SCPoint2d uv;
             if (!TryAffinePlaneUv(planeSurface, point, tolerance, uv) ||
                 !closeEnough(point, planeSurface.PointAt(uv.x, uv.y)))

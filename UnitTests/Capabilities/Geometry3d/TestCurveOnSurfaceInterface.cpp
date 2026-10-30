@@ -85,6 +85,43 @@ namespace
         EXPECT_NE(clonedComposition->SupportSurface(), composed.SupportSurface());
     }
 
+    TEST(CurveOnSurfaceInterfaceTest, SmallUvSegmentUsesCallerParameterToleranceAcrossEvaluation)
+    {
+        constexpr double uvWidth = 1e-10;
+        Geometry::SCGeometryTolerance3d tolerance{};
+        tolerance.distanceEpsilon = 1e-15;
+        tolerance.parameterEpsilon = 1e-15;
+
+        const auto plane = std::make_shared<Geometry::SCPlaneSurface>(
+            Geometry::SCPlaneSurface::FromPlane(
+                Geometry::SCPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1}), {-1, 1}, {-1, 1}));
+        const Geometry::SCCurveOnSurface planar(
+            plane, Geometry::SCPolyline2d({{0.0, 0.0}, {uvWidth, 0.0}}));
+        ASSERT_FALSE(planar.IsValid());
+        ASSERT_TRUE(planar.UvCurve().IsValid(tolerance.parameterEpsilon));
+        EXPECT_TRUE(planar.IsValid(tolerance));
+        auto exactParameters = tolerance;
+        exactParameters.parameterEpsilon = 0.0;
+        EXPECT_TRUE(planar.IsValid(exactParameters));
+        EXPECT_NEAR(planar.UvAt(0.5).x, uvWidth * 0.5, tolerance.parameterEpsilon);
+        EXPECT_TRUE(planar.PointAt(0.5).IsValid());
+        EXPECT_TRUE(planar.Evaluate(0.5, 1).IsValid());
+        EXPECT_TRUE(planar.Bounds().IsValid());
+
+        const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
+            1, 1, 2, 2,
+            std::vector<Geometry::SCPoint3d>{{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0}},
+            std::vector<double>{0, 0, 1, 1}, std::vector<double>{0, 0, 1, 1});
+        const Geometry::SCCurveOnSurface curved(
+            surface, Geometry::SCPolyline2d({{0.5, 0.5}, {0.5 + uvWidth, 0.5}}));
+        ASSERT_FALSE(curved.IsValid());
+        EXPECT_TRUE(curved.IsValid(tolerance));
+        EXPECT_TRUE(curved.UvAt(0.5).IsValid());
+        EXPECT_TRUE(curved.PointAt(0.5).IsValid());
+        EXPECT_TRUE(curved.Evaluate(0.5, 1).IsValid());
+        EXPECT_TRUE(curved.Bounds().IsValid());
+    }
+
     TEST(CurveOnSurfaceInterfaceTest, ClosedCurveAndInvalidUvDomainHaveExplicitContracts)
     {
         const auto plane = std::make_shared<Geometry::SCPlaneSurface>(
@@ -113,6 +150,7 @@ namespace
         const Geometry::SCCurveOnSurface outside(
             surface, Geometry::SCPolyline2d({{0, 0}, {2, 0}}));
         EXPECT_FALSE(outside.IsValid());
+        EXPECT_FALSE(outside.Bounds().IsValid());
 
         const Geometry::SCCurveOnSurface diagonal(
             surface, Geometry::SCPolyline2d({{0, 0}, {1, 1}}));

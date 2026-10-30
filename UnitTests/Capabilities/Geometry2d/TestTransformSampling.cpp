@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <cmath>
+#include <limits>
 #include <memory>
 
 #include "Core/Editing.h"
@@ -159,6 +160,24 @@ TEST(TransformSamplingTest, InsertPointPreservesMixedSegmentsAndPolygonHoles)
     EXPECT_EQ(insertedHole.OuterRing().PointCount(), 4U);
     ASSERT_EQ(insertedHole.HoleCount(), 1U);
     EXPECT_EQ(insertedHole.HoleAt(0).PointCount(), 5U);
+}
+
+TEST(TransformSamplingTest, EditingRejectsInvalidTolerance)
+{
+    const SCPolyline2d line({{0.0, 0.0}, {2.0, 0.0}, {2.0, 2.0}}, SCPolylineClosure::Open);
+    const SCPolygon2d polygon(SCPolyline2d(
+        {{0.0, 0.0}, {2.0, 0.0}, {2.0, 2.0}, {0.0, 2.0}}, SCPolylineClosure::Closed));
+    ASSERT_TRUE(line.IsValid());
+    ASSERT_TRUE(polygon.IsValid());
+
+    for (double eps : {0.0, -1.0, std::numeric_limits<double>::infinity(),
+                       std::numeric_limits<double>::quiet_NaN()})
+    {
+        EXPECT_FALSE(Normalize(line, eps).IsValid());
+        EXPECT_FALSE(Normalize(polygon, eps).IsValid());
+        EXPECT_FALSE(InsertPoint(line, {1.0, 0.0}, eps).IsValid());
+        EXPECT_FALSE(InsertPoint(polygon, {1.0, 0.0}, eps).IsValid());
+    }
 }
 
 TEST(TransformSamplingTest, MirrorDirectionScalePreservesAxis)

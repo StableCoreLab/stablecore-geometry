@@ -56,6 +56,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestHealing3dShellCombinations.cpp
     Capabilities/Geometry3d/TestHealing3dMultiFaceShellCombinations.cpp
     Capabilities/Geometry3d/TestHealing3dSupportMismatch.cpp
+    Capabilities/Geometry3d/TestHealing3dSupportMismatchBackfill.cpp
     Capabilities/Geometry3d/TestHealing3dTrimPlanes.cpp
     Capabilities/Geometry3d/TestSection3d.cpp
     Capabilities/Geometry3d/TestSection3dMixedOpenContours.cpp
@@ -68,6 +69,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestSection3dRebarAxisCuts.cpp
     Capabilities/Geometry3d/TestValueTypes3d.cpp
     Capabilities/Geometry3d/TestBrepCore.cpp
+    Capabilities/Geometry3d/TestBrepFaceRegion.cpp
     Capabilities/Geometry3d/TestBrepLoopGeometry.cpp
     Capabilities/Geometry3d/TestBrepMeshConversion3d.cpp
     Capabilities/Geometry3d/TestCorePrimitives3d.cpp
@@ -82,6 +84,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestNurbsWeightExtremes.cpp
     Capabilities/Geometry3d/TestNurbsProjectionIntersection.cpp
     Capabilities/Geometry3d/TestNurbsSurfaceSearch.cpp
+    Capabilities/Geometry3d/TestNurbsSurfaceBudgets.cpp
     Capabilities/Geometry3d/TestOffsetSurfaceEval.cpp
     Capabilities/Geometry3d/TestSectionRebuildCore.cpp
     Capabilities/Geometry3d/TestTriangleMeshCore.cpp

@@ -8,22 +8,49 @@
 
 namespace Geometry
 {
-    bool SCCurveOnSurface::IsValid(const SCGeometryTolerance3d& tolerance) const
+    namespace
     {
-        if (!tolerance.IsValid() || supportSurface_ == nullptr || !supportSurface_->IsValid(tolerance) ||
-            !uvCurve_.IsValid() || uvCurve_.SegmentCount() == 0)
+        [[nodiscard]] bool HasValidLineUvCurve(const SCPolyline2d& uvCurve, double eps)
         {
-            return false;
-        }
-
-        // 现有曲面曲线求交按 UV 顶点间的直线段求值。
-        for (std::size_t index = 0; index < uvCurve_.SegmentCount(); ++index)
-        {
-            const auto segment = uvCurve_.SegmentAt(index);
-            if (segment == nullptr || segment->Kind() != SCSegmentKind2::Line)
+            if (!uvCurve.IsValid(eps) || uvCurve.SegmentCount() == 0)
             {
                 return false;
             }
+            for (std::size_t index = 0; index < uvCurve.SegmentCount(); ++index)
+            {
+                const auto segment = uvCurve.SegmentAt(index);
+                if (segment == nullptr || segment->Kind() != SCSegmentKind2::Line)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        [[nodiscard]] double PositiveParameterEpsilon(double eps)
+        {
+            // 折线显式入口要求正容差；用最小正值表达精确的零参数容差。
+            return std::max(eps, std::numeric_limits<double>::denorm_min());
+        }
+
+        [[nodiscard]] SCGeometryTolerance3d EvaluationTolerance()
+        {
+            SCGeometryTolerance3d tolerance{};
+            tolerance.parameterEpsilon = std::numeric_limits<double>::denorm_min();
+            return tolerance;
+        }
+    }
+
+    bool SCCurveOnSurface::IsValid(const SCGeometryTolerance3d& tolerance) const
+    {
+        if (!tolerance.IsValid() || supportSurface_ == nullptr || !supportSurface_->IsValid(tolerance))
+        {
+            return false;
+        }
+        const double uvEps = PositiveParameterEpsilon(tolerance.parameterEpsilon);
+        if (!HasValidLineUvCurve(uvCurve_, uvEps))
+        {
+            return false;
         }
 
         if (dynamic_cast<const SCPlaneSurface*>(supportSurface_.get()) != nullptr)
@@ -31,7 +58,7 @@ namespace Geometry
             return true;
         }
 
-        const SCBox2d uvBounds = uvCurve_.Bounds();
+        const SCBox2d uvBounds = uvCurve_.Bounds(uvEps);
         const SCIntervald uRange = supportSurface_->URange();
         const SCIntervald vRange = supportSurface_->VRange();
         return uvBounds.IsValid() && uRange.IsValid() && vRange.IsValid() &&
@@ -68,7 +95,8 @@ namespace Geometry
         SCPoint2d invalid{};
         invalid.x = std::numeric_limits<double>::quiet_NaN();
         const std::size_t segmentCount = uvCurve_.SegmentCount();
-        if (segmentCount == 0 || !uvCurve_.IsValid() || !std::isfinite(parameter) || parameter < 0.0 ||
+        if (!HasValidLineUvCurve(uvCurve_, std::numeric_limits<double>::denorm_min()) ||
+            !std::isfinite(parameter) || parameter < 0.0 ||
             parameter > static_cast<double>(segmentCount))
         {
             return invalid;
@@ -88,7 +116,7 @@ namespace Geometry
         SCCurveEval3d result{};
         result.point.x = std::numeric_limits<double>::quiet_NaN();
         const std::size_t segmentCount = uvCurve_.SegmentCount();
-        if (!IsValid() || !std::isfinite(parameter) || parameter < 0.0 ||
+        if (!IsValid(EvaluationTolerance()) || !std::isfinite(parameter) || parameter < 0.0 ||
             parameter > static_cast<double>(segmentCount))
         {
             return result;
@@ -120,7 +148,7 @@ namespace Geometry
 
     SCBox3d SCCurveOnSurface::Bounds() const
     {
-        if (!IsValid())
+        if (!IsValid(EvaluationTolerance()))
         {
             return {};
         }

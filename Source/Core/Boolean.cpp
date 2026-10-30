@@ -189,13 +189,26 @@ namespace Geometry
             {
                 return false;
             }
-            SCPolyline2d repairedRing = Normalize(source.OuterRing(), *repairEps);
-            if (!repairedRing.IsValid() || repairedRing.PointCount() != 4)
+            for (bool reverseInput : {false, true})
             {
-                return false;
+                SCPolyline2d repairedRing = Normalize(
+                    reverseInput ? Reverse(source.OuterRing()) : source.OuterRing(), *repairEps);
+                if (!repairedRing.IsValid(eps) || repairedRing.PointCount() != 4)
+                {
+                    continue;
+                }
+                if (Detail::ComputeSignedArea(repairedRing, eps) < 0.0)
+                {
+                    repairedRing = Reverse(repairedRing);
+                }
+                SCPolygon2d candidate(std::move(repairedRing));
+                if (TryBuildAxisAlignedBox(candidate, box, eps))
+                {
+                    repaired = std::move(candidate);
+                    return true;
+                }
             }
-            repaired = SCPolygon2d(std::move(repairedRing));
-            return TryBuildAxisAlignedBox(repaired, box, eps);
+            return false;
         }
 
         [[nodiscard]] std::vector<SCPoint2d> ClipPointsToAxisAlignedBox(const std::vector<SCPoint2d>& points,
@@ -308,7 +321,7 @@ namespace Geometry
                 return fallback;
             }
             const SCPolyline2d normalizedOuter = Normalize(subject.OuterRing(), *repairEps);
-            if (!normalizedOuter.IsValid() || normalizedOuter.PointCount() < 3)
+            if (!normalizedOuter.IsValid(eps) || normalizedOuter.PointCount() < 3)
             {
                 return fallback;
             }
@@ -329,7 +342,7 @@ namespace Geometry
             }
 
             SCPolyline2d clippedRing(std::move(clipped), SCPolylineClosure::Closed);
-            if (Detail::ComputeSignedArea(clippedRing) < 0.0)
+            if (Detail::ComputeSignedArea(clippedRing, eps) < 0.0)
             {
                 clippedRing = Reverse(clippedRing);
             }
@@ -648,7 +661,7 @@ namespace Geometry
             if (simplifiedOuter.size() >= 3)
             {
                 SCPolyline2d simplifiedRing(std::move(simplifiedOuter), SCPolylineClosure::Closed);
-                if (Detail::ComputeSignedArea(simplifiedRing) < 0.0)
+                if (Detail::ComputeSignedArea(simplifiedRing, eps) < 0.0)
                 {
                     simplifiedRing = Reverse(simplifiedRing);
                 }

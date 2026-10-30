@@ -207,6 +207,39 @@ TEST(RelationBooleanTest, SmallCallerTolerancePreservesRepairedTinyBoxBoolean)
     }
 }
 
+TEST(RelationBooleanTest, RepairedSubDefaultScaleBoxRespectsCallerTolerance)
+{
+    constexpr double eps = 1e-15;
+    constexpr double width = 1e-10;
+    const SCPolygon2d first(SCPolyline2d(
+        {{0.0, 0.0}, {width, 0.0}, {width, width}, {0.0, width}},
+        SCPolylineClosure::Closed));
+    const SCPolygon2d second(SCPolyline2d(
+        {{0.0, 0.0}, {width / 2.0, 0.0}, {width / 2.0 - width / 1000.0, 0.0},
+         {width / 2.0, width}, {0.0, width}},
+        SCPolylineClosure::Closed));
+    ASSERT_TRUE(first.IsValid(eps));
+    ASSERT_FALSE(second.IsValid(eps));
+
+    for (const SCPolygon2d& damaged : {second, SCPolygon2d(Reverse(second.OuterRing()))})
+    {
+        const auto intersection = Intersect(first, damaged, eps);
+        ASSERT_EQ(intersection.Count(), 1U);
+        ASSERT_TRUE(intersection.IsValid(eps));
+        EXPECT_NEAR(intersection[0].Area(eps), width * width / 2.0, width * width * 1e-5);
+
+        const auto difference = Difference(first, damaged, eps);
+        ASSERT_EQ(difference.Count(), 1U);
+        ASSERT_TRUE(difference.IsValid(eps));
+        EXPECT_NEAR(difference[0].Area(eps), width * width / 2.0, width * width * 1e-5);
+
+        const auto united = Union(first, damaged, eps);
+        ASSERT_EQ(united.Count(), 1U);
+        ASSERT_TRUE(united.IsValid(eps));
+        EXPECT_NEAR(united[0].Area(eps), width * width, width * width * 1e-5);
+    }
+}
+
 TEST(RelationBooleanTest, SmallCallerToleranceMergesVerticallyRepairedBoxUnion)
 {
     constexpr double eps = 1e-15;
