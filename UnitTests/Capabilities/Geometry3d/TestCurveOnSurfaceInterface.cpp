@@ -109,6 +109,7 @@ namespace
         EXPECT_TRUE(planar.Evaluate(0.5, 1).IsValid());
         EXPECT_TRUE(planar.Bounds().IsValid());
         EXPECT_NEAR(Geometry::Length(planar), uvWidth, tolerance.distanceEpsilon);
+        EXPECT_NEAR(Geometry::Length(planar, tolerance), uvWidth, tolerance.distanceEpsilon);
 
         const auto surface = std::make_shared<Geometry::SCNurbsSurface>(
             1, 1, 2, 2,
@@ -123,6 +124,25 @@ namespace
         EXPECT_TRUE(curved.Evaluate(0.5, 1).IsValid());
         EXPECT_TRUE(curved.Bounds().IsValid());
         EXPECT_NEAR(Geometry::Length(curved), uvWidth, tolerance.distanceEpsilon);
+        EXPECT_NEAR(Geometry::Length(curved, tolerance), uvWidth, tolerance.distanceEpsilon);
+    }
+
+    TEST(CurveOnSurfaceInterfaceTest, LengthAcceptsCallerSurfaceDistanceTolerance)
+    {
+        const auto surface = std::make_shared<Geometry::SCPlaneSurface>(
+            Geometry::SCPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1e-10}),
+            Geometry::SCVector3d{1, 0, 0}, Geometry::SCVector3d{0, 1, 0},
+            Geometry::SCIntervald{-1, 1}, Geometry::SCIntervald{-1, 1});
+        const Geometry::SCCurveOnSurface curve(surface, Geometry::SCPolyline2d({{0, 0}, {1, 0}}));
+        Geometry::SCGeometryTolerance3d tolerance{};
+        tolerance.distanceEpsilon = 1e-15;
+        ASSERT_FALSE(curve.IsValid());
+        ASSERT_TRUE(curve.IsValid(tolerance));
+        EXPECT_DOUBLE_EQ(Geometry::Length(curve), 0.0);
+        EXPECT_NEAR(Geometry::Length(curve, tolerance), 1.0, tolerance.distanceEpsilon);
+
+        tolerance.distanceEpsilon = -1.0;
+        EXPECT_DOUBLE_EQ(Geometry::Length(curve, tolerance), 0.0);
     }
 
     TEST(CurveOnSurfaceInterfaceTest, ClosedCurveAndInvalidUvDomainHaveExplicitContracts)

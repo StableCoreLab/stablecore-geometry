@@ -168,6 +168,9 @@ namespace Geometry
     // 有限采样不提供任意曲面的全局误差证明，不用于拓扑排除或硬剪枝。
     // 实际位置或累积长度不可表示时返回 +infinity。
     [[nodiscard]] GEOMETRY_API double Length(const SCCurveOnSurface& curveOnSurface);
+    // 按调用者的曲面距离与 UV 参数容差校验；无效曲线或容差返回零。
+    [[nodiscard]] GEOMETRY_API double Length(const SCCurveOnSurface& curveOnSurface,
+                                             const SCGeometryTolerance3d& tolerance);
 
     [[nodiscard]] GEOMETRY_API double Area(const SCTriangle3d& triangle);
     [[nodiscard]] GEOMETRY_API double Area(const PolyhedronFace3d& face, const SCGeometryTolerance3d& tolerance = {});
@@ -177,6 +180,7 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API double Area(const TriangleMesh& mesh);
 
     [[nodiscard]] GEOMETRY_API double Volume(const TriangleMesh& mesh);
+    [[nodiscard]] GEOMETRY_API double Volume(const TriangleMesh& mesh, double eps);
     [[nodiscard]] GEOMETRY_API double Volume(const PolyhedronBody& body, const SCGeometryTolerance3d& tolerance = {});
     [[nodiscard]] GEOMETRY_API double Volume(const SCBrepBody& body, const SCGeometryTolerance3d& tolerance = {});
     [[deprecated("Use the overload taking SCGeometryTolerance3d")]]

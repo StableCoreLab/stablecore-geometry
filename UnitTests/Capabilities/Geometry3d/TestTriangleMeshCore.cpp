@@ -244,3 +244,107 @@ TEST(GeometryTest, CoversTriangleMeshCapabilities)
     ASSERT_EQ(invalidMeshValidation.issue, SCMeshValidationIssue3d::DegenerateTriangle);
 
 }
+
+TEST(TriangleMeshToleranceTest, SmallOpenTriangleBoundaryUsesCallerTolerance)
+{
+    constexpr double side = 1e-10;
+    constexpr double eps = 1e-15;
+    const TriangleMesh mesh(
+        {{0, 0, 0}, {side, 0, 0}, {0, side, 0}},
+        {TriangleMesh::TriangleIndices{0, 1, 2}});
+    ASSERT_FALSE(mesh.IsValid());
+    ASSERT_TRUE(mesh.IsValid(eps));
+    EXPECT_TRUE(ExtractBoundaryLoops(mesh).empty());
+    EXPECT_EQ(ExtractBoundaryEdges(mesh, eps).size(), 3U);
+    const auto loops = ExtractBoundaryLoops(mesh, eps);
+    ASSERT_EQ(loops.size(), 1U);
+    EXPECT_TRUE(loops.front().closed);
+    EXPECT_EQ(loops.front().vertexIndices.size(), 3U);
+}
+
+TEST(TriangleMeshToleranceTest, SmallClosedTetrahedronTopologyUsesCallerTolerance)
+{
+    constexpr double side = 1e-10;
+    constexpr double eps = 1e-15;
+    const TriangleMesh mesh(
+        {{0, 0, 0}, {side, 0, 0}, {0, side, 0}, {0, 0, side}},
+        {{0, 2, 1}, {0, 1, 3}, {1, 2, 3}, {2, 0, 3}});
+    ASSERT_FALSE(mesh.IsValid());
+    ASSERT_TRUE(mesh.IsValid(eps));
+    EXPECT_FALSE(IsManifoldTriangleMesh(mesh));
+    EXPECT_TRUE(IsManifoldTriangleMesh(mesh, eps));
+    EXPECT_TRUE(IsConsistentlyOrientedTriangleMesh(mesh, eps));
+    const auto adjacency = ComputeTriangleAdjacency(mesh, eps);
+    ASSERT_EQ(adjacency.size(), 4U);
+    for (const auto& triangle : adjacency)
+    {
+        for (std::size_t edge = 0; edge < 3; ++edge)
+        {
+            EXPECT_TRUE(triangle.HasNeighbor(edge));
+        }
+    }
+    EXPECT_TRUE(TriangleAdjacency(mesh, 0, eps).HasNeighbor(0));
+    EXPECT_TRUE(ExtractNonManifoldEdges(mesh, eps).empty());
+    const auto components = ComputeTriangleConnectedComponents(mesh, eps);
+    ASSERT_EQ(components.size(), 1U);
+    EXPECT_EQ(components.front().size(), 4U);
+    const auto shells = ComputeMeshShells(mesh, eps);
+    ASSERT_EQ(shells.size(), 1U);
+    EXPECT_TRUE(shells.front().closed);
+    EXPECT_TRUE(shells.front().manifold);
+    EXPECT_TRUE(shells.front().consistentlyOriented);
+}
+
+TEST(TriangleMeshToleranceTest, SmallNonManifoldEdgeUsesCallerTolerance)
+{
+    constexpr double side = 1e-10;
+    constexpr double eps = 1e-15;
+    const TriangleMesh mesh(
+        {{0, 0, 0}, {side, 0, 0}, {0, side, 0}, {0, 0, side}, {0, -side, 0}},
+        {{0, 1, 2}, {1, 0, 3}, {0, 1, 4}});
+    ASSERT_TRUE(mesh.IsValid(eps));
+    EXPECT_TRUE(ExtractNonManifoldEdges(mesh).empty());
+    const auto edges = ExtractNonManifoldEdges(mesh, eps);
+    ASSERT_EQ(edges.size(), 1U);
+    EXPECT_EQ(edges.front().incidentTriangles.size(), 3U);
+    EXPECT_FALSE(IsManifoldTriangleMesh(mesh, eps));
+}
+
+TEST(TriangleMeshToleranceTest, SmallOpenTetrahedronRepairUsesCallerTolerance)
+{
+    constexpr double side = 1e-10;
+    constexpr double eps = 1e-15;
+    const TriangleMesh mesh(
+        {{0, 0, 0}, {side, 0, 0}, {0, side, 0}, {0, 0, side}},
+        {{0, 1, 3}, {1, 2, 3}, {2, 0, 3}});
+    ASSERT_TRUE(mesh.IsValid(eps));
+    ASSERT_FALSE(mesh.IsValid());
+    ASSERT_TRUE(IsManifoldTriangleMesh(mesh, eps));
+    ASSERT_EQ(ExtractBoundaryLoops(mesh, eps).size(), 1U);
+
+    const auto oriented = OrientTriangleMeshConsistently(mesh, eps);
+    EXPECT_TRUE(oriented.success);
+    EXPECT_EQ(oriented.issue, MeshRepairIssue3d::None);
+    EXPECT_TRUE(oriented.IsValid(eps));
+    const auto single = CloseSinglePlanarBoundaryLoop(mesh, eps);
+    EXPECT_TRUE(single.success);
+    EXPECT_EQ(single.issue, MeshRepairIssue3d::None);
+    if (single.success)
+    {
+        EXPECT_FALSE(single.IsValid());
+        EXPECT_TRUE(single.IsValid(eps));
+        EXPECT_TRUE(IsClosedTriangleMesh(single.mesh, eps));
+    }
+    const auto all = ClosePlanarBoundaryLoops(mesh, eps);
+    EXPECT_TRUE(all.success);
+    EXPECT_EQ(all.issue, MeshRepairIssue3d::None);
+    if (all.success)
+    {
+        EXPECT_TRUE(all.IsValid(eps));
+        EXPECT_TRUE(IsClosedTriangleMesh(all.mesh, eps));
+    }
+    const auto healed = Heal(mesh, eps);
+    ASSERT_TRUE(healed.success);
+    EXPECT_EQ(healed.issue, HealingIssue3d::None);
+    EXPECT_TRUE(IsClosedTriangleMesh(healed.mesh, eps));
+}

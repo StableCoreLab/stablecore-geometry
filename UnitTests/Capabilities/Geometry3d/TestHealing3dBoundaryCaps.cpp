@@ -27,6 +27,40 @@ using Geometry::SCPlaneSurface;
 using Geometry::SCPoint3d;
 using Geometry::SCVector3d;
 
+TEST(Healing3dCapabilityTest, AggressiveCapUsesCallerToleranceForSmallPlanarShell)
+{
+    constexpr double side = 1e-10;
+    SCGeometryTolerance3d tolerance{};
+    tolerance.distanceEpsilon = 1e-15;
+    tolerance.parameterEpsilon = 1e-20;
+    std::vector<SCBrepVertex> vertices{
+        SCBrepVertex({0, 0, 0}), SCBrepVertex({side, 0, 0}),
+        SCBrepVertex({side, side, 0}), SCBrepVertex({0, side, 0})};
+    std::vector<SCBrepEdge> edges;
+    for (std::size_t index = 0; index < 4; ++index)
+    {
+        const std::size_t next = (index + 1) % 4;
+        const SCPoint3d first = vertices[index].Point();
+        const SCPoint3d second = vertices[next].Point();
+        edges.emplace_back(std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
+                               SCLine3d::FromOriginAndDirection(first, second - first), {0, 1})),
+                           index, next);
+    }
+    const SCBrepLoop loop({SCBrepCoedge(0), SCBrepCoedge(1),
+                           SCBrepCoedge(2), SCBrepCoedge(3)});
+    const auto surface = std::make_shared<SCPlaneSurface>(
+        SCPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1}),
+        SCVector3d{1e6, 0, 0}, SCVector3d{0, 1e6, 0},
+        SCIntervald{-1, 1}, SCIntervald{-1, 1});
+    const SCBrepBody body(vertices, edges, {SCBrepShell({SCBrepFace(surface, loop)}, false)});
+    ASSERT_TRUE(body.IsValid(tolerance));
+    const auto healed = Heal(body, tolerance, HealingPolicy3d::Aggressive);
+    ASSERT_TRUE(healed.success);
+    ASSERT_TRUE(healed.body.IsValid(tolerance));
+    EXPECT_TRUE(healed.body.ShellAt(0).IsClosed());
+    EXPECT_EQ(healed.body.FaceCount(), 2U);
+}
+
 // Demonstrates the more general standalone aggressive boundary-cap subset:
 // a shared-edge multi-face shell with support-plane mismatch and missing trims
 // is first backfilled by conservative healing, then closed by adding a single

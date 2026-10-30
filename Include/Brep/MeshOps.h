@@ -82,23 +82,39 @@ namespace Geometry
 
     [[nodiscard]] GEOMETRY_API MeshTriangleAdjacency3d TriangleAdjacency(const TriangleMesh& mesh,
                                                                          std::size_t triangleIndex);
+    [[nodiscard]] GEOMETRY_API MeshTriangleAdjacency3d TriangleAdjacency(const TriangleMesh& mesh,
+                                                                         std::size_t triangleIndex, double eps);
 
     [[nodiscard]] GEOMETRY_API std::vector<MeshTriangleAdjacency3d> ComputeTriangleAdjacency(const TriangleMesh& mesh);
+    [[nodiscard]] GEOMETRY_API std::vector<MeshTriangleAdjacency3d> ComputeTriangleAdjacency(const TriangleMesh& mesh,
+                                                                                              double eps);
 
     [[nodiscard]] GEOMETRY_API std::vector<MeshBoundaryEdge3d> ExtractBoundaryEdges(const TriangleMesh& mesh);
+    [[nodiscard]] GEOMETRY_API std::vector<MeshBoundaryEdge3d> ExtractBoundaryEdges(const TriangleMesh& mesh,
+                                                                                     double eps);
 
     [[nodiscard]] GEOMETRY_API std::vector<MeshBoundaryLoop3d> ExtractBoundaryLoops(const TriangleMesh& mesh);
+    [[nodiscard]] GEOMETRY_API std::vector<MeshBoundaryLoop3d> ExtractBoundaryLoops(const TriangleMesh& mesh,
+                                                                                     double eps);
 
     [[nodiscard]] GEOMETRY_API bool IsClosedTriangleMesh(const TriangleMesh& mesh);
+    [[nodiscard]] GEOMETRY_API bool IsClosedTriangleMesh(const TriangleMesh& mesh, double eps);
 
     [[nodiscard]] GEOMETRY_API std::vector<MeshNonManifoldEdge3d> ExtractNonManifoldEdges(const TriangleMesh& mesh);
+    [[nodiscard]] GEOMETRY_API std::vector<MeshNonManifoldEdge3d> ExtractNonManifoldEdges(const TriangleMesh& mesh,
+                                                                                           double eps);
 
     [[nodiscard]] GEOMETRY_API bool IsManifoldTriangleMesh(const TriangleMesh& mesh);
+    [[nodiscard]] GEOMETRY_API bool IsManifoldTriangleMesh(const TriangleMesh& mesh, double eps);
 
     [[nodiscard]] GEOMETRY_API std::vector<std::vector<std::size_t>> ComputeTriangleConnectedComponents(
         const TriangleMesh& mesh);
+    [[nodiscard]] GEOMETRY_API std::vector<std::vector<std::size_t>> ComputeTriangleConnectedComponents(
+        const TriangleMesh& mesh, double eps);
 
     [[nodiscard]] GEOMETRY_API bool IsConsistentlyOrientedTriangleMesh(const TriangleMesh& mesh);
+    [[nodiscard]] GEOMETRY_API bool IsConsistentlyOrientedTriangleMesh(const TriangleMesh& mesh, double eps);
 
     [[nodiscard]] GEOMETRY_API std::vector<MeshShell3d> ComputeMeshShells(const TriangleMesh& mesh);
+    [[nodiscard]] GEOMETRY_API std::vector<MeshShell3d> ComputeMeshShells(const TriangleMesh& mesh, double eps);
 }  // namespace Geometry

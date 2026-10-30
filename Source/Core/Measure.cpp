@@ -657,7 +657,12 @@ namespace Geometry
     {
         SCGeometryTolerance3d evaluationTolerance{};
         evaluationTolerance.parameterEpsilon = std::numeric_limits<double>::denorm_min();
-        if (!curveOnSurface.IsValid(evaluationTolerance) || curveOnSurface.PointCount() < 2)
+        return Length(curveOnSurface, evaluationTolerance);
+    }
+
+    double Length(const SCCurveOnSurface& curveOnSurface, const SCGeometryTolerance3d& tolerance)
+    {
+        if (!curveOnSurface.IsValid(tolerance) || curveOnSurface.PointCount() < 2)
         {
             return 0.0;
         }
@@ -705,7 +710,7 @@ namespace Geometry
             return 0.0;
         }
 
-        return std::abs(projection.polygon.Area());
+        return std::abs(projection.polygon.Area(tolerance.distanceEpsilon));
     }
 
     double Area(const SCBrepFace& face, const SCGeometryTolerance3d& tolerance)
@@ -735,7 +740,12 @@ namespace Geometry
 
     double Volume(const TriangleMesh& mesh)
     {
-        if (!mesh.IsValid() || !IsClosedTriangleMesh(mesh))
+        return Volume(mesh, Geometry::kDefaultEpsilon);
+    }
+
+    double Volume(const TriangleMesh& mesh, double eps)
+    {
+        if (!mesh.IsValid(eps) || !IsClosedTriangleMesh(mesh, eps))
         {
             return 0.0;
         }
@@ -761,7 +771,7 @@ namespace Geometry
             return 0.0;
         }
 
-        return Volume(conversion.mesh);
+        return Volume(conversion.mesh, tolerance.distanceEpsilon);
     }
 
     double Volume(const SCBrepBody& body, const SCGeometryTolerance3d& tolerance)
@@ -776,7 +786,7 @@ namespace Geometry
             return 0.0;
         }
 
-        return Volume(conversion.mesh);
+        return Volume(conversion.mesh, tolerance.distanceEpsilon);
     }
 
     double Volume(const PolyhedronBody& body, double eps)

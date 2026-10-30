@@ -1,8 +1,8 @@
 #include "Core/Healing.h"
 
 #include <algorithm>
-#include <array>
 #include <cmath>
+#include <limits>
 #include <map>
 #include <memory>
 #include <utility>
@@ -10,6 +10,7 @@
 
 #include "Core/MeshRepair.h"
 #include "../Brep/LoopGeometry.h"
+#include "../Detail/RingIntegral2d.h"
 #include "Core/Relation.h"
 #include "Core/ShapeOps.h"
 #include "Core/Validation.h"
@@ -41,8 +42,9 @@ namespace Geometry
                                                  const SCBrepLoop& loop,
                                                   const SCPlaneSurface& planeSurface,
                                                   SCCurveOnSurface& trim,
-                                                  double eps)
+                                                  const SCGeometryTolerance3d& tolerance)
             {
+                const double eps = tolerance.distanceEpsilon;
                 std::vector<SCPoint3d> loopVertices;
                 if (!Detail::AppendLoopVertices(body, loop, loopVertices, eps))
                 {
@@ -63,13 +65,13 @@ namespace Geometry
 
                 trim = SCCurveOnSurface(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()),
                                         SCPolyline2d(std::move(uvPoints), SCPolylineClosure::Closed));
-                return trim.IsValid(SCGeometryTolerance3d{eps, eps, eps});
+                return trim.IsValid(tolerance);
             }
 
             [[nodiscard]] bool BuildHealedFace(const SCBrepBody& body,
                                                const SCBrepFace& face,
                                                SCBrepFace& healedFace,
-                                               double eps)
+                                               const SCGeometryTolerance3d& tolerance)
             {
                 const auto* planeSurface = dynamic_cast<const SCPlaneSurface*>(face.SupportSurface());
                 if (planeSurface == nullptr)
@@ -78,9 +80,9 @@ namespace Geometry
                 }
 
                 SCCurveOnSurface outerTrim = face.OuterTrim();
-                if (!outerTrim.IsValid(SCGeometryTolerance3d{eps, eps, eps}))
+                if (!outerTrim.IsValid(tolerance))
                 {
-                    if (!BuildTrimFromLoop(body, face.OuterLoopRef(), *planeSurface, outerTrim, eps))
+                    if (!BuildTrimFromLoop(body, face.OuterLoopRef(), *planeSurface, outerTrim, tolerance))
                     {
                         return false;
                     }
@@ -98,12 +100,12 @@ namespace Geometry
 
                 for (std::size_t i = 0; i < face.HoleCount(); ++i)
                 {
-                    if (holeTrims[i].IsValid(SCGeometryTolerance3d{eps, eps, eps}))
+                    if (holeTrims[i].IsValid(tolerance))
                     {
                         continue;
                     }
 
-                    if (!BuildTrimFromLoop(body, face.HoleAtRef(i), *planeSurface, holeTrims[i], eps))
+                    if (!BuildTrimFromLoop(body, face.HoleAtRef(i), *planeSurface, holeTrims[i], tolerance))
                     {
                         return false;
                     }
@@ -114,7 +116,7 @@ namespace Geometry
                                       std::vector<SCBrepLoop>(face.HoleLoops().begin(), face.HoleLoops().end()),
                                       std::move(outerTrim),
                                       std::move(holeTrims));
-                return healedFace.IsValid(SCGeometryTolerance3d{eps, eps, eps});
+                return healedFace.IsValid(tolerance);
             }
 
         }  // namespace TrimBackfill
@@ -238,7 +240,7 @@ namespace Geometry
                                                                    const SCGeometryTolerance3d& tolerance,
                                                                     SCPlaneSurface& planeSurface)
             {
-                const double eps = std::max(tolerance.distanceEpsilon, Geometry::kDefaultEpsilon);
+                const double eps = tolerance.distanceEpsilon;
                 std::vector<std::size_t> vertexIndices;
                 vertexIndices.reserve(shell.FaceCount() * 8);
 
@@ -295,19 +297,23 @@ namespace Geometry
                         {
                             secondPoint = body.VertexAtRef(vertexIndices[k]).Point();
                             const SCVector3d computedNormal = Cross(firstPoint - origin, secondPoint - origin);
-                            if (computedNormal.Length() <= eps)
+                            const double edgeScale = std::max((firstPoint - origin).Length(),
+                                                              (secondPoint - origin).Length());
+                            const double normalLength = computedNormal.Length();
+                            if (!computedNormal.IsValid() || !std::isfinite(edgeScale) ||
+                                !std::isfinite(normalLength) || normalLength <= eps * edgeScale)
                             {
                                 continue;
                             }
 
-                            SCVector3d alignedNormal = computedNormal;
+                            SCVector3d alignedNormal = computedNormal.Normalized(0.0);
                             if (Dot(alignedNormal, referenceNormal) < 0.0)
                             {
                                 alignedNormal = alignedNormal * -1.0;
                             }
 
                             const SCPlane shellPlane = SCPlane::FromPointAndNormal(origin, alignedNormal);
-                            const double planeTolerance = std::max(tolerance.distanceEpsilon, 16.0 * eps);
+                            const double planeTolerance = 16.0 * eps;
                             bool allCoplanar = true;
                             for (const std::size_t vertexIndex : vertexIndices)
                             {
@@ -334,16 +340,16 @@ namespace Geometry
                 return foundPlane;
             }
 
-            [[nodiscard]] SCPolyline2d NormalizeRingOrientationForShellCap(const SCPolyline2d& ring, bool counterClockwise)
+            [[nodiscard]] SCPolyline2d NormalizeRingOrientationForShellCap(
+                const SCPolyline2d& ring, bool counterClockwise, double eps)
             {
-                const SCRingOrientation2d orientation = Orientation(ring);
-                if (orientation == SCRingOrientation2d::Unknown)
+                if (!ring.IsValid(eps))
                 {
                     return {};
                 }
 
-                if ((counterClockwise && orientation == SCRingOrientation2d::Clockwise) ||
-                    (!counterClockwise && orientation == SCRingOrientation2d::CounterClockwise))
+                const bool clockwise = Detail::ComputeSignedArea(ring, eps) < 0.0;
+                if (counterClockwise == clockwise)
                 {
                     return Reverse(ring);
                 }
@@ -355,10 +361,12 @@ namespace Geometry
                                                       const SCBrepShell& shell,
                                                       const std::map<std::size_t, std::size_t>& edgeUseCount,
                                                       const SCPlaneSurface& planeSurface,
-                                                      double eps,
+                                                      const SCGeometryTolerance3d& tolerance,
                                                       std::vector<BoundaryLoopInfo>& boundaryLoops)
             {
                 boundaryLoops.clear();
+                const double uvEps = std::max(tolerance.parameterEpsilon,
+                                              std::numeric_limits<double>::denorm_min());
 
                 std::vector<BoundaryHalfEdge> halfEdges;
                 auto collectBoundaryFromLoop = [&](const SCBrepLoop& loop) {
@@ -468,7 +476,9 @@ namespace Geometry
                     for (const SCPoint3d& point : loopVertices)
                     {
                         SCPoint2d uv;
-                        if (!Detail::ProjectPointToPlaneUv(point, planeSurface, uv, eps, Detail::PlaneUvPurpose::ApproximateRepair))
+                        if (!Detail::ProjectPointToPlaneUv(point, planeSurface, uv,
+                                                           tolerance.distanceEpsilon,
+                                                           Detail::PlaneUvPurpose::ApproximateRepair))
                         {
                             return false;
                         }
@@ -476,27 +486,28 @@ namespace Geometry
                     }
 
                     const SCPolyline2d uvRing(std::move(uvPoints), SCPolylineClosure::Closed);
-                    const SCPolyline2d normalizedUvRing = NormalizeRingOrientationForShellCap(uvRing, true);
-                    if (!normalizedUvRing.IsValid())
+                    const SCPolyline2d normalizedUvRing = NormalizeRingOrientationForShellCap(uvRing, true, uvEps);
+                    if (!normalizedUvRing.IsValid(uvEps))
                     {
                         return false;
                     }
 
                     const SCPolygon2d projectedPolygon(normalizedUvRing);
-                    if (!projectedPolygon.IsValid())
+                    if (!projectedPolygon.IsValid(uvEps))
                     {
                         return false;
                     }
 
-                    const SCPoint2d samplePoint = projectedPolygon.Centroid();
+                    const SCPoint2d samplePoint = projectedPolygon.Centroid(uvEps);
                     if (!samplePoint.IsValid() ||
-                        LocatePoint(samplePoint, projectedPolygon, eps) == SCPointContainment2d::Outside)
+                        LocatePoint(samplePoint, projectedPolygon, uvEps) == SCPointContainment2d::Outside)
                     {
                         return false;
                     }
 
                     boundaryLoops.push_back(BoundaryLoopInfo{
-                        SCBrepLoop(std::move(loopCoedges)), normalizedUvRing, samplePoint, projectedPolygon.Area()});
+                        SCBrepLoop(std::move(loopCoedges)), normalizedUvRing, samplePoint,
+                        projectedPolygon.Area(uvEps)});
                 }
 
                 return !boundaryLoops.empty();
@@ -516,10 +527,12 @@ namespace Geometry
 
                 std::vector<SCPolygon2d> projectedPolygons;
                 projectedPolygons.reserve(boundaryLoops.size());
+                const double uvEps = std::max(tolerance.parameterEpsilon,
+                                              std::numeric_limits<double>::denorm_min());
                 for (const BoundaryLoopInfo& loopInfo : boundaryLoops)
                 {
                     const SCPolygon2d polygon(loopInfo.normalizedUvRing);
-                    if (!polygon.IsValid())
+                    if (!polygon.IsValid(uvEps))
                     {
                         return false;
                     }
@@ -542,7 +555,7 @@ namespace Geometry
 
                         const SCPointContainment2d containment = LocatePoint(boundaryLoops[loopIndex].samplePoint,
                                                                            projectedPolygons[candidateIndex],
-                                                                           tolerance.distanceEpsilon);
+                                                                           uvEps);
                         if (containment == SCPointContainment2d::Outside)
                         {
                             continue;
@@ -580,7 +593,7 @@ namespace Geometry
                     const SCBrepLoop outerLoop = Aggressive::ReversedLoop(boundaryLoops[loopIndex].loop);
                     SCCurveOnSurface outerTrim{};
                     if (!TrimBackfill::BuildTrimFromLoop(
-                            body, outerLoop, planeSurface, outerTrim, tolerance.distanceEpsilon))
+                            body, outerLoop, planeSurface, outerTrim, tolerance))
                     {
                         return false;
                     }
@@ -597,7 +610,7 @@ namespace Geometry
                         const SCBrepLoop holeLoop = Aggressive::ReversedLoop(boundaryLoops[childIndex].loop);
                         SCCurveOnSurface holeTrim{};
                         if (!TrimBackfill::BuildTrimFromLoop(
-                                body, holeLoop, planeSurface, holeTrim, tolerance.distanceEpsilon))
+                                body, holeLoop, planeSurface, holeTrim, tolerance))
                         {
                             return false;
                         }
@@ -637,7 +650,7 @@ namespace Geometry
 
                 std::vector<BoundaryLoopInfo> boundaryLoops;
                 if (!BuildBoundaryLoopInfos(
-                        body, shell, edgeUseCount, shellPlaneSurface, tolerance.distanceEpsilon, boundaryLoops))
+                        body, shell, edgeUseCount, shellPlaneSurface, tolerance, boundaryLoops))
                 {
                     return false;
                 }
@@ -660,14 +673,22 @@ namespace Geometry
         {
 
             using BoundaryEdgeKey = std::pair<std::size_t, std::size_t>;
-            using BoundaryGeometryPointKey = std::array<long long, 3>;
-            using BoundaryGeometryEdgeKey = std::pair<BoundaryGeometryPointKey, BoundaryGeometryPointKey>;
 
             struct BoundaryGeometrySegment
             {
                 SCPoint3d startPoint{};
                 SCPoint3d endPoint{};
             };
+
+            [[nodiscard]] bool SameBoundaryGeometryEdge(const BoundaryGeometrySegment& first,
+                                                       const BoundaryGeometrySegment& second,
+                                                       double eps)
+            {
+                return (first.startPoint.AlmostEquals(second.startPoint, eps) &&
+                        first.endPoint.AlmostEquals(second.endPoint, eps)) ||
+                       (first.startPoint.AlmostEquals(second.endPoint, eps) &&
+                        first.endPoint.AlmostEquals(second.startPoint, eps));
+            }
 
             [[nodiscard]] BoundaryEdgeKey MakeBoundaryEdgeKey(std::size_t firstVertexIndex,
                                                               std::size_t secondVertexIndex)
@@ -678,28 +699,6 @@ namespace Geometry
                 }
 
                 return {firstVertexIndex, secondVertexIndex};
-            }
-
-            [[nodiscard]] BoundaryGeometryPointKey QuantizeBoundaryPointKey(const SCPoint3d& point, double eps)
-            {
-                const double safeEps = std::max(eps, Geometry::kDefaultEpsilon);
-                return BoundaryGeometryPointKey{static_cast<long long>(std::llround(point.x / safeEps)),
-                                                static_cast<long long>(std::llround(point.y / safeEps)),
-                                                static_cast<long long>(std::llround(point.z / safeEps))};
-            }
-
-            [[nodiscard]] BoundaryGeometryEdgeKey MakeBoundaryGeometryEdgeKey(const SCPoint3d& firstPoint,
-                                                                              const SCPoint3d& secondPoint,
-                                                                              double eps)
-            {
-                BoundaryGeometryPointKey firstKey = QuantizeBoundaryPointKey(firstPoint, eps);
-                BoundaryGeometryPointKey secondKey = QuantizeBoundaryPointKey(secondPoint, eps);
-                if (secondKey < firstKey)
-                {
-                    std::swap(firstKey, secondKey);
-                }
-
-                return {firstKey, secondKey};
             }
 
             void CollectShellBoundaryEdgeKeys(const SCBrepBody& body,
@@ -743,52 +742,6 @@ namespace Geometry
                 std::sort(boundaryEdgeKeys.begin(), boundaryEdgeKeys.end());
                 boundaryEdgeKeys.erase(std::unique(boundaryEdgeKeys.begin(), boundaryEdgeKeys.end()),
                                        boundaryEdgeKeys.end());
-            }
-
-            void CollectShellBoundaryGeometryEdgeKeys(const SCBrepBody& body,
-                                                      const SCBrepShell& shell,
-                                                      double eps,
-                                                      std::vector<BoundaryGeometryEdgeKey>& boundaryGeometryEdgeKeys)
-            {
-                boundaryGeometryEdgeKeys.clear();
-
-                std::map<std::size_t, std::size_t> edgeUseCount;
-                ShellCap::AccumulateShellEdgeUseCounts(shell, edgeUseCount);
-
-                auto appendBoundaryEdgesFromLoop = [&](const SCBrepLoop& loop) {
-                    for (const SCBrepCoedge& coedge : loop.Coedges())
-                    {
-                        const auto countIt = edgeUseCount.find(coedge.EdgeIndex());
-                        if (countIt == edgeUseCount.end() || countIt->second != 1U)
-                        {
-                            continue;
-                        }
-
-                        std::size_t startVertexIndex = kInvalidIndex;
-                        std::size_t endVertexIndex = kInvalidIndex;
-                        if (!ShellCap::TryGetCoedgeVertexIndices(body, coedge, startVertexIndex, endVertexIndex))
-                        {
-                            continue;
-                        }
-
-                        boundaryGeometryEdgeKeys.push_back(MakeBoundaryGeometryEdgeKey(
-                            body.VertexAtRef(startVertexIndex).Point(), body.VertexAtRef(endVertexIndex).Point(), eps));
-                    }
-                };
-
-                for (const SCBrepFace& face : shell.Faces())
-                {
-                    appendBoundaryEdgesFromLoop(face.OuterLoopRef());
-                    for (const SCBrepLoop& hole : face.HoleLoops())
-                    {
-                        appendBoundaryEdgesFromLoop(hole);
-                    }
-                }
-
-                std::sort(boundaryGeometryEdgeKeys.begin(), boundaryGeometryEdgeKeys.end());
-                boundaryGeometryEdgeKeys.erase(
-                    std::unique(boundaryGeometryEdgeKeys.begin(), boundaryGeometryEdgeKeys.end()),
-                    boundaryGeometryEdgeKeys.end());
             }
 
             void CollectShellBoundaryGeometrySegments(const SCBrepBody& body,
@@ -931,7 +884,6 @@ namespace Geometry
                                                                       const SCGeometryTolerance3d& tolerance)
             {
                 std::vector<std::vector<BoundaryEdgeKey>> shellBoundaryEdgeKeys(body.ShellCount());
-                std::vector<std::vector<BoundaryGeometryEdgeKey>> shellBoundaryGeometryEdgeKeys(body.ShellCount());
                 std::vector<std::vector<BoundaryGeometrySegment>> shellBoundaryGeometrySegments(body.ShellCount());
                 for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
                 {
@@ -942,8 +894,6 @@ namespace Geometry
                     }
 
                     CollectShellBoundaryEdgeKeys(body, shell, shellBoundaryEdgeKeys[shellIndex]);
-                    CollectShellBoundaryGeometryEdgeKeys(
-                        body, shell, tolerance.distanceEpsilon, shellBoundaryGeometryEdgeKeys[shellIndex]);
                     CollectShellBoundaryGeometrySegments(body, shell, shellBoundaryGeometrySegments[shellIndex]);
                 }
 
@@ -974,24 +924,8 @@ namespace Geometry
                             }
                         }
 
-                        bool sharesBoundaryGeometryEdge = false;
+                        bool sharesBoundaryGeometry = false;
                         if (!sharesBoundaryEdge)
-                        {
-                            for (const BoundaryGeometryEdgeKey& boundaryGeometryEdgeKey :
-                                 shellBoundaryGeometryEdgeKeys[first])
-                            {
-                                if (std::binary_search(shellBoundaryGeometryEdgeKeys[second].begin(),
-                                                       shellBoundaryGeometryEdgeKeys[second].end(),
-                                                       boundaryGeometryEdgeKey))
-                                {
-                                    sharesBoundaryGeometryEdge = true;
-                                    break;
-                                }
-                            }
-                        }
-
-                        bool sharesPartiallyOverlappedBoundarySpan = false;
-                        if (!sharesBoundaryEdge && !sharesBoundaryGeometryEdge)
                         {
                             for (const BoundaryGeometrySegment& firstBoundarySegment :
                                  shellBoundaryGeometrySegments[first])
@@ -999,22 +933,25 @@ namespace Geometry
                                 for (const BoundaryGeometrySegment& secondBoundarySegment :
                                      shellBoundaryGeometrySegments[second])
                                 {
-                                    if (BoundaryGeometrySegmentsPartiallyOverlap(
+                                    if (SameBoundaryGeometryEdge(firstBoundarySegment,
+                                                                 secondBoundarySegment,
+                                                                 tolerance.distanceEpsilon) ||
+                                        BoundaryGeometrySegmentsPartiallyOverlap(
                                             firstBoundarySegment, secondBoundarySegment, tolerance.distanceEpsilon))
                                     {
-                                        sharesPartiallyOverlappedBoundarySpan = true;
+                                        sharesBoundaryGeometry = true;
                                         break;
                                     }
                                 }
 
-                                if (sharesPartiallyOverlappedBoundarySpan)
+                                if (sharesBoundaryGeometry)
                                 {
                                     break;
                                 }
                             }
                         }
 
-                        if (sharesBoundaryEdge || sharesBoundaryGeometryEdge || sharesPartiallyOverlappedBoundarySpan)
+                        if (sharesBoundaryEdge || sharesBoundaryGeometry)
                         {
                             competing[first] = true;
                             competing[second] = true;
@@ -1045,8 +982,12 @@ namespace Geometry
                         if (ShellCap::TryBuildStandaloneShellPlaneSurface(body, shell, tolerance, shellPlaneSurface))
                         {
                             SCPlane shellPlane;
-                            if (!Detail::TryActualPlane(shellPlaneSurface,tolerance,shellPlane)) { shellSupportMismatch[shellIndex]=true; continue; }
-                            const double eps = std::max(tolerance.distanceEpsilon, Geometry::kDefaultEpsilon);
+                            if (!Detail::TryActualPlane(shellPlaneSurface, tolerance, shellPlane))
+                            {
+                                shellSupportMismatch[shellIndex] = true;
+                                continue;
+                            }
+                            const double eps = tolerance.distanceEpsilon;
                             for (const SCBrepFace& face : shell.Faces())
                             {
                                 const auto* facePlaneSurface = dynamic_cast<const SCPlaneSurface*>(face.SupportSurface());
@@ -1057,7 +998,11 @@ namespace Geometry
                                 }
 
                                 SCPlane facePlane;
-                                if (!Detail::TryActualPlane(*facePlaneSurface,tolerance,facePlane)) { shellSupportMismatch[shellIndex]=true; break; }
+                                if (!Detail::TryActualPlane(*facePlaneSurface, tolerance, facePlane))
+                                {
+                                    shellSupportMismatch[shellIndex] = true;
+                                    break;
+                                }
                                 if (!IsParallel(shellPlane.UnitNormal(eps), facePlane.UnitNormal(eps), tolerance) ||
                                     std::abs(shellPlane.SignedDistanceTo(facePlane.origin, eps)) >
                                         tolerance.distanceEpsilon)
@@ -1274,7 +1219,7 @@ namespace Geometry
             {
                 SCBrepFace healedFace{};
                 if (!TrimBackfill::BuildHealedFace(
-                        body, shell.FaceAtRef(faceIndex), healedFace, tolerance.distanceEpsilon))
+                        body, shell.FaceAtRef(faceIndex), healedFace, tolerance))
                 {
                     return {false, HealingIssue3d::RepairFailed, {}};
                 }

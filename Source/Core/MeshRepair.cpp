@@ -73,20 +73,23 @@ namespace Geometry
                 const SCVector3d first = loopVertices[i] - basis.origin;
                 const SCVector3d second = loopVertices[i + 1] - basis.origin;
                 const SCVector3d normal = Cross(first, second);
-                if (normal.Length() <= eps)
+                const double normalLength = normal.Length();
+                const double edgeScale = std::max(first.Length(), second.Length());
+                if (!normal.IsValid() || !std::isfinite(normalLength) ||
+                    !std::isfinite(edgeScale) || normalLength <= eps * edgeScale)
                 {
                     continue;
                 }
 
-                basis.normal = normal.Normalized(eps);
+                basis.normal = normal.Normalized(0.0);
                 const SCVector3d axis =
                     std::abs(basis.normal.x) <= std::abs(basis.normal.y) &&
                             std::abs(basis.normal.x) <= std::abs(basis.normal.z)
                         ? SCVector3d{1.0, 0.0, 0.0}
                         : (std::abs(basis.normal.y) <= std::abs(basis.normal.z) ? SCVector3d{0.0, 1.0, 0.0}
                                                                                 : SCVector3d{0.0, 0.0, 1.0});
-                basis.u = Cross(basis.normal, axis).Normalized(eps);
-                basis.v = Cross(basis.normal, basis.u).Normalized(eps);
+                basis.u = Cross(basis.normal, axis).Normalized(0.0);
+                basis.v = Cross(basis.normal, basis.u).Normalized(0.0);
                 return basis;
             }
 
@@ -95,7 +98,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsPlanarLoop(const std::vector<SCPoint3d>& loopVertices, const PlaneBasis& basis, double eps)
         {
-            if (basis.normal.Length() <= eps)
+            if (!basis.normal.IsValid() || !(basis.normal.Length() > 0.0))
             {
                 return false;
             }
@@ -125,12 +128,12 @@ namespace Geometry
             return {false, MeshRepairIssue3d::InvalidMesh, {}};
         }
 
-        if (!IsManifoldTriangleMesh(mesh))
+        if (!IsManifoldTriangleMesh(mesh, eps))
         {
             return {false, MeshRepairIssue3d::NonManifold, {}};
         }
 
-        const auto adjacency = ComputeTriangleAdjacency(mesh);
+        const auto adjacency = ComputeTriangleAdjacency(mesh, eps);
         std::vector<int> flipParity(mesh.TriangleCount(), -1);
         for (std::size_t seed = 0; seed < mesh.TriangleCount(); ++seed)
         {
@@ -192,12 +195,12 @@ namespace Geometry
             return {false, MeshRepairIssue3d::InvalidMesh, {}};
         }
 
-        if (!IsManifoldTriangleMesh(mesh))
+        if (!IsManifoldTriangleMesh(mesh, eps))
         {
             return {false, MeshRepairIssue3d::NonManifold, {}};
         }
 
-        const auto boundaryLoops = ExtractBoundaryLoops(mesh);
+        const auto boundaryLoops = ExtractBoundaryLoops(mesh, eps);
         if (boundaryLoops.size() != 1 || !boundaryLoops.front().closed)
         {
             return {false, MeshRepairIssue3d::UnsupportedBoundaryTopology, {}};
@@ -213,12 +216,12 @@ namespace Geometry
             return {false, MeshRepairIssue3d::InvalidMesh, {}};
         }
 
-        if (!IsManifoldTriangleMesh(mesh))
+        if (!IsManifoldTriangleMesh(mesh, eps))
         {
             return {false, MeshRepairIssue3d::NonManifold, {}};
         }
 
-        const auto boundaryLoops = ExtractBoundaryLoops(mesh);
+        const auto boundaryLoops = ExtractBoundaryLoops(mesh, eps);
         if (boundaryLoops.empty())
         {
             return {false, MeshRepairIssue3d::UnsupportedBoundaryTopology, {}};

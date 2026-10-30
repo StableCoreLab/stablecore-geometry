@@ -154,8 +154,13 @@ namespace Geometry
 
     std::vector<MeshTriangleAdjacency3d> ComputeTriangleAdjacency(const TriangleMesh& mesh)
     {
+        return ComputeTriangleAdjacency(mesh, Geometry::kDefaultEpsilon);
+    }
+
+    std::vector<MeshTriangleAdjacency3d> ComputeTriangleAdjacency(const TriangleMesh& mesh, double eps)
+    {
         std::vector<MeshTriangleAdjacency3d> adjacency(mesh.TriangleCount());
-        if (!mesh.IsValid())
+        if (!mesh.IsValid(eps))
         {
             return adjacency;
         }
@@ -182,18 +187,28 @@ namespace Geometry
 
     MeshTriangleAdjacency3d TriangleAdjacency(const TriangleMesh& mesh, std::size_t triangleIndex)
     {
+        return TriangleAdjacency(mesh, triangleIndex, Geometry::kDefaultEpsilon);
+    }
+
+    MeshTriangleAdjacency3d TriangleAdjacency(const TriangleMesh& mesh, std::size_t triangleIndex, double eps)
+    {
         if (triangleIndex >= mesh.TriangleCount())
         {
             return {};
         }
 
-        return ComputeTriangleAdjacency(mesh).at(triangleIndex);
+        return ComputeTriangleAdjacency(mesh, eps).at(triangleIndex);
     }
 
     std::vector<MeshBoundaryEdge3d> ExtractBoundaryEdges(const TriangleMesh& mesh)
     {
+        return ExtractBoundaryEdges(mesh, Geometry::kDefaultEpsilon);
+    }
+
+    std::vector<MeshBoundaryEdge3d> ExtractBoundaryEdges(const TriangleMesh& mesh, double eps)
+    {
         std::vector<MeshBoundaryEdge3d> boundaryEdges;
-        if (!mesh.IsValid())
+        if (!mesh.IsValid(eps))
         {
             return boundaryEdges;
         }
@@ -219,13 +234,23 @@ namespace Geometry
 
     bool IsClosedTriangleMesh(const TriangleMesh& mesh)
     {
-        return mesh.IsValid() && ExtractBoundaryEdges(mesh).empty();
+        return IsClosedTriangleMesh(mesh, Geometry::kDefaultEpsilon);
+    }
+
+    bool IsClosedTriangleMesh(const TriangleMesh& mesh, double eps)
+    {
+        return mesh.IsValid(eps) && ExtractBoundaryEdges(mesh, eps).empty();
     }
 
     std::vector<MeshBoundaryLoop3d> ExtractBoundaryLoops(const TriangleMesh& mesh)
     {
+        return ExtractBoundaryLoops(mesh, Geometry::kDefaultEpsilon);
+    }
+
+    std::vector<MeshBoundaryLoop3d> ExtractBoundaryLoops(const TriangleMesh& mesh, double eps)
+    {
         std::vector<MeshBoundaryLoop3d> loops;
-        const auto boundaryEdges = ExtractBoundaryEdges(mesh);
+        const auto boundaryEdges = ExtractBoundaryEdges(mesh, eps);
         if (boundaryEdges.empty())
         {
             return loops;
@@ -340,8 +365,13 @@ namespace Geometry
 
     std::vector<MeshNonManifoldEdge3d> ExtractNonManifoldEdges(const TriangleMesh& mesh)
     {
+        return ExtractNonManifoldEdges(mesh, Geometry::kDefaultEpsilon);
+    }
+
+    std::vector<MeshNonManifoldEdge3d> ExtractNonManifoldEdges(const TriangleMesh& mesh, double eps)
+    {
         std::vector<MeshNonManifoldEdge3d> nonManifoldEdges;
-        if (!mesh.IsValid())
+        if (!mesh.IsValid(eps))
         {
             return nonManifoldEdges;
         }
@@ -362,13 +392,23 @@ namespace Geometry
 
     bool IsManifoldTriangleMesh(const TriangleMesh& mesh)
     {
-        return mesh.IsValid() && ExtractNonManifoldEdges(mesh).empty();
+        return IsManifoldTriangleMesh(mesh, Geometry::kDefaultEpsilon);
+    }
+
+    bool IsManifoldTriangleMesh(const TriangleMesh& mesh, double eps)
+    {
+        return mesh.IsValid(eps) && ExtractNonManifoldEdges(mesh, eps).empty();
     }
 
     std::vector<std::vector<std::size_t>> ComputeTriangleConnectedComponents(const TriangleMesh& mesh)
     {
+        return ComputeTriangleConnectedComponents(mesh, Geometry::kDefaultEpsilon);
+    }
+
+    std::vector<std::vector<std::size_t>> ComputeTriangleConnectedComponents(const TriangleMesh& mesh, double eps)
+    {
         std::vector<std::vector<std::size_t>> components;
-        if (!mesh.IsValid())
+        if (!mesh.IsValid(eps))
         {
             return components;
         }
@@ -425,7 +465,12 @@ namespace Geometry
 
     bool IsConsistentlyOrientedTriangleMesh(const TriangleMesh& mesh)
     {
-        if (!mesh.IsValid())
+        return IsConsistentlyOrientedTriangleMesh(mesh, Geometry::kDefaultEpsilon);
+    }
+
+    bool IsConsistentlyOrientedTriangleMesh(const TriangleMesh& mesh, double eps)
+    {
+        if (!mesh.IsValid(eps))
         {
             return false;
         }
@@ -450,13 +495,18 @@ namespace Geometry
 
     std::vector<MeshShell3d> ComputeMeshShells(const TriangleMesh& mesh)
     {
+        return ComputeMeshShells(mesh, Geometry::kDefaultEpsilon);
+    }
+
+    std::vector<MeshShell3d> ComputeMeshShells(const TriangleMesh& mesh, double eps)
+    {
         std::vector<MeshShell3d> shells;
-        if (!mesh.IsValid())
+        if (!mesh.IsValid(eps))
         {
             return shells;
         }
 
-        const auto components = ComputeTriangleConnectedComponents(mesh);
+        const auto components = ComputeTriangleConnectedComponents(mesh, eps);
         if (components.empty())
         {
             return shells;

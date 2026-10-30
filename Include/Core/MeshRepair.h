@@ -23,7 +23,12 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid() const
         {
-            return !success || mesh.IsValid();
+            return IsValid(Geometry::kDefaultEpsilon);
+        }
+
+        [[nodiscard]] bool IsValid(double eps) const
+        {
+            return !success || mesh.IsValid(eps);
         }
     };
 

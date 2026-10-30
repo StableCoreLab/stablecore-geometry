@@ -25,6 +25,59 @@ using Geometry::SCPlaneSurface;
 using Geometry::SCPoint3d;
 using Geometry::SCVector3d;
 
+TEST(Healing3dCapabilityTest, NearbySeparateShellsDoNotCompeteAtCallerTolerance)
+{
+    constexpr double side = 1e-7;
+    constexpr double separation = 2e-10;
+    SCGeometryTolerance3d tolerance{};
+    tolerance.distanceEpsilon = 1e-15;
+    tolerance.parameterEpsilon = 1e-15;
+    std::vector<SCBrepVertex> vertices;
+    std::vector<SCBrepEdge> edges;
+    auto appendShell = [&](double z) {
+        const std::size_t vertexBase = vertices.size();
+        for (const SCPoint3d point : std::vector<SCPoint3d>{
+                 {0, 0, z}, {side, 0, z}, {side, side, z},
+                 {0, side, z}, {2 * side, 0, z}, {2 * side, side, z}})
+        {
+            vertices.emplace_back(point);
+        }
+        const std::size_t edgeBase = edges.size();
+        auto addEdge = [&](std::size_t start, std::size_t end) {
+            const SCPoint3d first = vertices[vertexBase + start].Point();
+            const SCPoint3d second = vertices[vertexBase + end].Point();
+            edges.emplace_back(std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(
+                                   SCLine3d::FromOriginAndDirection(first, second - first), {0, 1})),
+                               vertexBase + start, vertexBase + end);
+        };
+        addEdge(0, 1);
+        addEdge(1, 2);
+        addEdge(2, 3);
+        addEdge(3, 0);
+        addEdge(1, 4);
+        addEdge(4, 5);
+        addEdge(5, 2);
+        const SCBrepLoop left({SCBrepCoedge(edgeBase), SCBrepCoedge(edgeBase + 1),
+                               SCBrepCoedge(edgeBase + 2), SCBrepCoedge(edgeBase + 3)});
+        const SCBrepLoop right({SCBrepCoedge(edgeBase + 4), SCBrepCoedge(edgeBase + 5),
+                                SCBrepCoedge(edgeBase + 6), SCBrepCoedge(edgeBase + 1, true)});
+        const auto surface = std::make_shared<SCPlaneSurface>(SCPlaneSurface::FromPlane(
+            SCPlane::FromPointAndNormal({0, 0, z}, {0, 0, 1})));
+        return SCBrepShell({SCBrepFace(surface, left), SCBrepFace(surface, right)}, false);
+    };
+    const SCBrepShell firstShell = appendShell(0.0);
+    const SCBrepShell secondShell = appendShell(separation);
+    const SCBrepBody body(vertices, edges, {firstShell, secondShell});
+    ASSERT_TRUE(body.IsValid(tolerance));
+    const auto healed = Heal(body, tolerance, HealingPolicy3d::Aggressive);
+    ASSERT_TRUE(healed.success);
+    ASSERT_TRUE(healed.body.IsValid(tolerance));
+    ASSERT_EQ(healed.body.ShellCount(), 2U);
+    EXPECT_TRUE(healed.body.ShellAt(0).IsClosed());
+    EXPECT_TRUE(healed.body.ShellAt(1).IsClosed());
+    EXPECT_EQ(healed.body.FaceCount(), 6U);
+}
+
 // Demonstrates competing-shell arbitration now also recognizes duplicated
 // topology that occupies the same geometric boundary loop: the independent
 // shell still closes, while the two geometrically coincident shells remain

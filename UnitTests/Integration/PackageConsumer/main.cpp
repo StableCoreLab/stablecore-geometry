@@ -111,7 +111,24 @@ int main()
     const SCCurveOnSurface composedCurve(curveSurface, SCPolyline2d({{0, 0}, {1, 0}}));
     const ISCCurve3d& genericCurve = composedCurve;
     const bool genericCurveAvailable = genericCurve.IsValid() &&
-        genericCurve.PointAt(0.5).AlmostEquals({0.5, 0, 0});
+        genericCurve.PointAt(0.5).AlmostEquals({0.5, 0, 0}) &&
+        Length(composedCurve, SCGeometryTolerance3d{}) > 0.0;
+    constexpr double tinySide = 1e-10;
+    const TriangleMesh tinyTetrahedron(
+        {{0, 0, 0}, {tinySide, 0, 0}, {0, tinySide, 0}, {0, 0, tinySide}},
+        {{0, 2, 1}, {0, 1, 3}, {1, 2, 3}, {2, 0, 3}});
+    const bool tinyVolumeAvailable = IsClosedTriangleMesh(tinyTetrahedron, 1e-15) &&
+        IsManifoldTriangleMesh(tinyTetrahedron, 1e-15) &&
+        IsConsistentlyOrientedTriangleMesh(tinyTetrahedron, 1e-15) &&
+        ComputeTriangleConnectedComponents(tinyTetrahedron, 1e-15).size() == 1 &&
+        ComputeMeshShells(tinyTetrahedron, 1e-15).size() == 1 &&
+        ComputeTriangleAdjacency(tinyTetrahedron, 1e-15).size() == 4 &&
+        TriangleAdjacency(tinyTetrahedron, 0, 1e-15).HasNeighbor(0) &&
+        ExtractNonManifoldEdges(tinyTetrahedron, 1e-15).empty() &&
+        ExtractBoundaryEdges(tinyTetrahedron, 1e-15).empty() && Volume(tinyTetrahedron, 1e-15) > 0.0;
+    const TriangleMesh tinyOpenTriangle(
+        {{0, 0, 0}, {tinySide, 0, 0}, {0, tinySide, 0}}, {{0, 1, 2}});
+    const bool tinyBoundaryAvailable = ExtractBoundaryLoops(tinyOpenTriangle, 1e-15).size() == 1;
     const std::array<const ISCCurve3d*, 1> snapCurves{&genericCurve};
     const auto snappedCurve = SnapPointToCurves3d({0.5, 0.1, 0.0}, snapCurves, 0.2);
     const bool curveSnapAvailable = snappedCurve.snapped && snappedCurve.segmentIndex == 0 &&
@@ -138,7 +155,7 @@ int main()
                    projectedArc.success && mappedOffset.success && corner.success &&
                    legacyOffset.IsValid() && planarArc.AlmostEquals(planarArc, kDefaultEpsilon, kDefaultAngleEpsilon) &&
                    normalized.IsValid() && nurbsAvailable && genericCurveAvailable && curveSnapAvailable &&
-                   topologyReferencesAvailable &&
+                   topologyReferencesAvailable && tinyVolumeAvailable && tinyBoundaryAvailable &&
                    offsetAvailable
                ? 0
                : 1;
