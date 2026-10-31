@@ -323,6 +323,8 @@ namespace
         EXPECT_EQ(genericPlaneMiss.evidence.reasons, surfacePlaneMiss.evidence.reasons);
         EXPECT_EQ(genericPlaneMiss.evidence.negativeCompleteness,
                   Geometry::SCGeometryEvidenceState::Unknown);
+        EXPECT_EQ(genericPlaneMiss.evidence.hit, Geometry::SCGeometryEvidenceState::Unknown);
+        EXPECT_EQ(surfacePlaneMiss.evidence.hit, Geometry::SCGeometryEvidenceState::Unknown);
     }
 
     TEST(CurveOnSurfaceInterfaceTest, PlanarSurfaceCurveCollectsMultipleVerifiedLineAndPlaneHits)

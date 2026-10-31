@@ -1,4 +1,5 @@
 #pragma once
+#include <cmath>
 #include "Brep/SCBrepBody.h"
 #include "Brep/PolyhedronBody.h"
 #include "Export/GeometryExport.h"
@@ -23,7 +24,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
         {
-            return !success || face.IsValid(eps);
+            return std::isfinite(eps) && eps >= 0.0 && (!success || face.IsValid(eps));
         }
     };
 
@@ -36,7 +37,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
         {
-            return !success || body.IsValid(eps);
+            return std::isfinite(eps) && eps >= 0.0 && (!success || body.IsValid(eps));
         }
     };
 
@@ -49,7 +50,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const
         {
-            return !success || body.IsValid(tolerance);
+            return tolerance.IsValid() && (!success || body.IsValid(tolerance));
         }
     };
 

@@ -184,6 +184,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
         {
+            if (!(eps > 0.0) || !std::isfinite(eps)) return false;
             if (!success)
             {
                 return true;
@@ -214,7 +215,8 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
         {
-            return !success || body.IsValid(eps) || body.IsEmpty();
+            return eps > 0.0 && std::isfinite(eps) &&
+                   (!success || body.IsValid(eps) || body.IsEmpty());
         }
     };
 
@@ -226,6 +228,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const
         {
+            if (!tolerance.IsValid()) return false;
             if (!success)
             {
                 return true;
@@ -251,7 +254,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const
         {
-            return !success || body.IsValid(tolerance) || body.IsEmpty();
+            return tolerance.IsValid() && (!success || body.IsValid(tolerance) || body.IsEmpty());
         }
     };
 
@@ -264,6 +267,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const
         {
+            if (!tolerance.IsValid()) return false;
             if (!success)
             {
                 return true;
@@ -368,7 +372,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
         {
-            return !success || mesh.IsValid(eps);
+            return eps > 0.0 && std::isfinite(eps) && (!success || mesh.IsValid(eps));
         }
     };
 
@@ -381,6 +385,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(double eps = Geometry::kDefaultEpsilon) const
         {
+            if (!(eps > 0.0) || !std::isfinite(eps)) return false;
             if (!success)
             {
                 return true;

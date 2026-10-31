@@ -45,7 +45,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const
         {
-            return !success || face.IsValid(tolerance);
+            return tolerance.IsValid() && (!success || face.IsValid(tolerance));
         }
     };
 
@@ -57,7 +57,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const
         {
-            return !success || shell.IsValid(tolerance);
+            return tolerance.IsValid() && (!success || shell.IsValid(tolerance));
         }
     };
 
@@ -69,7 +69,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const
         {
-            return !success || body.IsValid(tolerance);
+            return tolerance.IsValid() && (!success || body.IsValid(tolerance));
         }
     };
 

@@ -49,7 +49,7 @@ namespace Geometry
             return SCDirection3d::FromVector(-value);
         }
 
-        [[nodiscard]] bool AlmostEquals(const SCDirection3d& other, double angleEps = kDefaultEpsilon) const
+        [[nodiscard]] bool AlmostEquals(const SCDirection3d& other, double angleEps = kDefaultAngleEpsilon) const
         {
             if (!IsValid() || !other.IsValid() || !std::isfinite(angleEps) || angleEps < 0.0)
             {

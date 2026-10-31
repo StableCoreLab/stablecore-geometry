@@ -77,6 +77,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestSection3dRebarMidplane.cpp
     Capabilities/Geometry3d/TestSection3dRebarAxisCuts.cpp
     Capabilities/Geometry3d/TestValueTypes3d.cpp
+    Capabilities/Geometry3d/TestResultTolerance3d.cpp
     Capabilities/Geometry3d/TestBrepCore.cpp
     Capabilities/Geometry3d/TestBrepFaceRegion.cpp
     Capabilities/Geometry3d/TestBrepLoopGeometry.cpp

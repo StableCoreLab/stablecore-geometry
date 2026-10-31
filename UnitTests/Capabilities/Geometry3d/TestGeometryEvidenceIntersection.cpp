@@ -93,6 +93,157 @@ namespace
         EXPECT_EQ(LocatePointWithStatus(SCPoint3d{},mesh).state,SCGeometryOperationState::InvalidInput);
     }
 
+    TEST(GeometryEvidenceTest, UnrepresentablePlaneOffsetKeepsHitUnknown)
+    {
+        const auto first = Geometry::SCPlane::FromPointAndNormal(
+            {-1e308, 0.0, 0.0}, {1.0, 0.0, 0.0});
+        const auto second = Geometry::SCPlane::FromPointAndNormal(
+            {1e308, 0.0, 0.0}, {1.0, 0.0, 0.0});
+        const auto line = Geometry::SCLine3d::FromOriginAndDirection(
+            {1e308, 0.0, 0.0}, {0.0, 1.0, 0.0});
+        ASSERT_TRUE(first.IsValid());
+        ASSERT_TRUE(second.IsValid());
+        ASSERT_TRUE(line.IsValid());
+
+        const auto lineResult = Geometry::IntersectLinePlaneWithStatus(line, first);
+        EXPECT_EQ(lineResult.state, SCGeometryOperationState::Unknown);
+        EXPECT_EQ(lineResult.evidence.hit, SCGeometryEvidenceState::Unknown);
+        const auto planeResult = Geometry::IntersectPlanePlaneWithStatus(first, second);
+        EXPECT_EQ(planeResult.state, SCGeometryOperationState::Unknown);
+        EXPECT_EQ(planeResult.evidence.hit, SCGeometryEvidenceState::Unknown);
+    }
+
+    TEST(GeometryEvidenceTest, UnrepresentableVertexDistanceKeepsHitUnknown)
+    {
+        const Geometry::SCBrepVertex vertex({1e308, 0.0, 0.0});
+        const auto line = Geometry::SCLine3d::FromOriginAndDirection(
+            {-1e308, 0.0, 0.0}, {0.0, 1.0, 0.0});
+        const auto plane = Geometry::SCPlane::FromPointAndNormal(
+            {-1e308, 0.0, 0.0}, {1.0, 0.0, 0.0});
+        ASSERT_TRUE(vertex.IsValid());
+        ASSERT_TRUE(line.IsValid());
+        ASSERT_TRUE(plane.IsValid());
+
+        const auto lineResult = Geometry::IntersectLineBrepVertexWithStatus(line, vertex);
+        EXPECT_EQ(lineResult.state, SCGeometryOperationState::Unknown);
+        EXPECT_EQ(lineResult.evidence.hit, SCGeometryEvidenceState::Unknown);
+        const auto planeResult = Geometry::IntersectPlaneBrepVertexWithStatus(plane, vertex);
+        EXPECT_EQ(planeResult.state, SCGeometryOperationState::Unknown);
+        EXPECT_EQ(planeResult.evidence.hit, SCGeometryEvidenceState::Unknown);
+    }
+
+    TEST(GeometryEvidenceTest, UnprovenLineCurveMissKeepsHitUnknown)
+    {
+        const auto line = Geometry::SCLine3d::FromOriginAndDirection(
+            {0.0, 0.0, 0.0}, {1.0, 0.0, 0.0});
+        const auto offset = Geometry::SCLine3d::FromOriginAndDirection(
+            {0.0, 1.0, 0.0}, {1.0, 0.0, 0.0});
+        const auto curve = Geometry::SCLineCurve3d::FromLine(offset, {0.0, 1.0});
+        ASSERT_TRUE(curve.IsValid());
+
+        const auto result = Geometry::IntersectLineCurveWithStatus(line, curve);
+        EXPECT_EQ(result.state, SCGeometryOperationState::Unknown);
+        EXPECT_FALSE(result.payloadValid);
+        EXPECT_EQ(result.evidence.hit, SCGeometryEvidenceState::Unknown);
+        EXPECT_EQ(result.evidence.negativeCompleteness, SCGeometryEvidenceState::Unknown);
+    }
+
+    TEST(GeometryEvidenceTest, UnavailablePlanarSurfaceOffsetKeepsHitUnknown)
+    {
+        const auto plane = Geometry::SCPlane::FromPointAndNormal(
+            {-1e308, 0.0, 0.0}, {1.0, 0.0, 0.0});
+        const Geometry::SCPlaneSurface surface(
+            plane, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0},
+            {-1.0, 1.0}, {-1.0, 1.0});
+        const auto line = Geometry::SCLine3d::FromOriginAndDirection(
+            {1e308, 0.0, 0.0}, {0.0, 1.0, 0.0});
+        ASSERT_TRUE(surface.IsValid());
+        ASSERT_TRUE(line.IsValid());
+
+        const auto result = Geometry::IntersectLineSurfaceWithStatus(line, surface);
+        EXPECT_EQ(result.state, SCGeometryOperationState::Unknown);
+        EXPECT_FALSE(result.payloadValid);
+        EXPECT_EQ(result.evidence.hit, SCGeometryEvidenceState::Unknown);
+        EXPECT_EQ(result.evidence.negativeCompleteness, SCGeometryEvidenceState::Unknown);
+    }
+
+    TEST(GeometryEvidenceTest, UnavailableTriangleEvaluationKeepsHitUnknown)
+    {
+        Geometry::SCGeometryTolerance3d tolerance{};
+        tolerance.distanceEpsilon = 1e-25;
+        const Geometry::TriangleMesh mesh(
+            {{0.0, 0.0, 0.0}, {1e308, 0.0, 0.0}, {1e308, 1e-20, 0.0}},
+            {{0, 1, 2}});
+        ASSERT_TRUE(mesh.IsValid(tolerance.distanceEpsilon));
+
+        const auto line = Geometry::SCLine3d::FromOriginAndDirection(
+            {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0});
+        const auto result = Geometry::IntersectLineTriangleMeshWithStatus(
+            line, mesh, tolerance);
+        EXPECT_EQ(result.state, SCGeometryOperationState::Unknown);
+        EXPECT_FALSE(result.payloadValid);
+        EXPECT_EQ(result.evidence.hit, SCGeometryEvidenceState::Unknown);
+        EXPECT_EQ(result.evidence.negativeCompleteness, SCGeometryEvidenceState::Unknown);
+        ASSERT_EQ(result.triangles.size(), 1U);
+        EXPECT_EQ(result.triangles.front().hit, SCGeometryEvidenceState::Unknown);
+        EXPECT_TRUE(Geometry::HasGeometryFailureReason(
+            result.evidence.reasons, SCGeometryFailureReason::EvaluationUnavailable));
+    }
+
+    TEST(GeometryEvidenceTest, UnavailablePolyhedronProjectionKeepsHitUnknown)
+    {
+        Geometry::SCGeometryTolerance3d tolerance{};
+        tolerance.distanceEpsilon = 1e-12;
+        const Geometry::PolyhedronFace3d face(
+            Geometry::SCPlane::FromPointAndNormal({}, {0.0, 0.0, 1.0}),
+            Geometry::PolyhedronLoop3d(
+                {{-1e308, 0.0, 0.0}, {1e308, 0.0, 0.0}, {0.0, 1.0, 0.0}}));
+        ASSERT_TRUE(face.IsValid(tolerance));
+        const auto line = Geometry::SCLine3d::FromOriginAndDirection(
+            {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0});
+        const auto faceResult = Geometry::IntersectLinePolyhedronFaceWithStatus(
+            line, face, tolerance);
+        EXPECT_EQ(faceResult.state, SCGeometryOperationState::Unknown);
+        EXPECT_EQ(faceResult.evidence.hit, SCGeometryEvidenceState::Unknown);
+        const Geometry::PolyhedronBody body({face});
+        ASSERT_TRUE(body.IsValid(tolerance));
+        const auto bodyResult = Geometry::IntersectLinePolyhedronBodyWithStatus(
+            line, body, tolerance);
+        EXPECT_EQ(bodyResult.state, SCGeometryOperationState::Unknown);
+        EXPECT_EQ(bodyResult.evidence.hit, SCGeometryEvidenceState::Unknown);
+    }
+
+    TEST(GeometryEvidenceTest, UnavailableBrepFacePreparationKeepsHitUnknown)
+    {
+        auto edges = Geometry::Test::BuildPlanarBrepEdgesAtZ5();
+        edges[0] = Geometry::SCBrepEdge(
+            std::make_shared<Geometry::SCLineCurve3d>(
+                Geometry::SCLineCurve3d::FromLine(
+                    Geometry::SCLine3d::FromOriginAndDirection(
+                        {0.0, 0.0, 0.0}, {2.0, 0.0, 0.0}), {0.0, 1.0})),
+            0, 1);
+        const Geometry::SCBrepFace face(
+            std::make_shared<Geometry::SCPlaneSurface>(
+                Geometry::Test::BuildFinitePlaneSurfaceAtZ5()),
+            Geometry::Test::BuildPlanarBrepOuterLoop());
+        const Geometry::SCBrepBody body(
+            Geometry::Test::BuildPlanarBrepVerticesAtZ5(), std::move(edges),
+            {Geometry::SCBrepShell({face}, false)});
+        ASSERT_TRUE(body.IsValid());
+        const auto line = Geometry::SCLine3d::FromOriginAndDirection(
+            {1.0, 1.0, 6.0}, {0.0, 0.0, -1.0});
+        const auto result = Geometry::IntersectLineBrepBodyWithStatus(line, body);
+        EXPECT_EQ(result.state, SCGeometryOperationState::Unknown);
+        EXPECT_EQ(result.evidence.hit, SCGeometryEvidenceState::Unknown);
+        ASSERT_EQ(result.faces.size(), 1U);
+        EXPECT_EQ(result.faces.front().result.evidence.hit,
+                  SCGeometryEvidenceState::Unknown);
+
+        const auto faceResult = Geometry::IntersectLineBrepFaceWithStatus(line, face);
+        EXPECT_EQ(faceResult.state, SCGeometryOperationState::Unknown);
+        EXPECT_EQ(faceResult.evidence.hit, SCGeometryEvidenceState::Unknown);
+    }
+
     TEST(GeometryEvidenceTest, PlanarFaceListAndCoplanarContinuumHaveDifferentPayloadRules)
     {
         using namespace Geometry;

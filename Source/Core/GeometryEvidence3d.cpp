@@ -57,6 +57,7 @@ namespace Geometry
         {
             Result result{};
             Unknown(result, Reason::SearchIncomplete | Reason::NoProof);
+            result.evidence.hit = Evidence::Unknown;
             if (payload.intersects && payload.IsValid() && std::isfinite(payload.lineParameter) &&
                 Detail::SameRoundedPosition(actual, payload.point) &&
                 Close(line.PointAt(payload.lineParameter), actual, tolerance.distanceEpsilon)) {
@@ -68,7 +69,10 @@ namespace Geometry
             if (complete) {
                 result.evidence.negativeCompleteness = Evidence::Verified;
                 result.evidence.reasons = Reason::None;
-                if (!result.payloadValid) result.state = State::NoResult;
+                if (!result.payloadValid) {
+                    result.state = State::NoResult;
+                    result.evidence.hit = Evidence::NotApplicable;
+                }
             }
             return result;
         }
@@ -181,6 +185,7 @@ namespace Geometry
         SCLinePlaneIntersection3dWithStatus result{};
         if (!tolerance.IsValid() || !line.IsValid(tolerance.distanceEpsilon) || !plane.IsValid(tolerance.distanceEpsilon)) return result;
         Unknown(result,Reason::NoProof);
+        result.evidence.hit=Evidence::Unknown;
         const auto hit=Intersect(line,plane,tolerance);
         SCVector3d direction, normal;
         if (!Detail::TryUnitVector(line.direction,direction) || !Detail::TryUnitVector(plane.normal,normal)) return result;
@@ -194,6 +199,7 @@ namespace Geometry
             result.evidence.reasons=Reason::NonUnique;
         } else if (denominator==0 && std::abs(height)>tolerance.distanceEpsilon) {
             result.state=State::NoResult;
+            result.evidence.hit=Evidence::NotApplicable;
             result.evidence.negativeCompleteness=Evidence::Verified;
             result.evidence.reasons=Reason::None;
         } else if (hit.intersects && std::isfinite(hit.parameter) && hit.point.IsValid() &&
@@ -213,6 +219,7 @@ namespace Geometry
         SCPlanePlaneIntersection3dWithStatus result{};
         if (!tolerance.IsValid() || !first.IsValid(tolerance.distanceEpsilon) || !second.IsValid(tolerance.distanceEpsilon)) return result;
         Unknown(result,Reason::NoProof);
+        result.evidence.hit=Evidence::Unknown;
         SCVector3d a,b;
         if (!Detail::TryUnitVector(first.normal,a) || !Detail::TryUnitVector(second.normal,b)) return result;
         const auto cross=Cross(a,b);
@@ -230,6 +237,7 @@ namespace Geometry
                 result.evidence.reasons=Reason::NonUnique;
             } else {
                 result.state=State::NoResult;
+                result.evidence.hit=Evidence::NotApplicable;
                 result.evidence.negativeCompleteness=Evidence::Verified;
             }
             return result;
@@ -278,10 +286,12 @@ namespace Geometry
         SCLineBrepVertexIntersection3dWithStatus result{};
         if (!tolerance.IsValid() || !line.IsValid(tolerance.distanceEpsilon) || !vertex.IsValid()) return result;
         Unknown(result,Reason::Unrepresentable);
+        result.evidence.hit=Evidence::Unknown;
         const double distance=Distance(vertex.Point(),line,tolerance);
         if (!std::isfinite(distance)) return result;
         if (distance>tolerance.distanceEpsilon) {
             result.state=State::NoResult;
+            result.evidence.hit=Evidence::NotApplicable;
             result.evidence.negativeCompleteness=Evidence::Verified;
             result.evidence.reasons=Reason::None;
             return result;
@@ -303,11 +313,13 @@ namespace Geometry
         SCPlaneBrepVertexIntersection3dWithStatus result{};
         if (!tolerance.IsValid() || !plane.IsValid(tolerance.distanceEpsilon) || !vertex.IsValid()) return result;
         Unknown(result,Reason::Unrepresentable);
+        result.evidence.hit=Evidence::Unknown;
         const double distance=std::abs(plane.SignedDistanceTo(vertex.Point(),tolerance.distanceEpsilon));
         if (!std::isfinite(distance)) return result;
         result.evidence.negativeCompleteness=Evidence::Verified;
         result.evidence.reasons=Reason::None;
         result.state=State::NoResult;
+        result.evidence.hit=Evidence::NotApplicable;
         if (distance<=tolerance.distanceEpsilon) {
             result.state=State::HasResult; result.payloadValid=true;
             result.payload={true,vertex.Point()}; result.evidence.hit=Evidence::Verified;
@@ -382,6 +394,7 @@ namespace Geometry
                 const auto all = CollectPlanarRegionHits(line, *plane, polygon, tolerance);
                 SCLineSurfaceIntersection3dWithStatus result{};
                 Unknown(result, Reason::NoProof);
+                result.evidence.hit = Evidence::Unknown;
                 if (all.continuous) {
                     result.state = State::NonUnique;
                     result.payload.liesOnSurface = true;
@@ -399,7 +412,10 @@ namespace Geometry
                 if (all.complete) {
                     result.evidence.negativeCompleteness = Evidence::Verified;
                     result.evidence.reasons = Reason::None;
-                    if (all.hits.empty()) result.state = State::NoResult;
+                    if (all.hits.empty()) {
+                        result.state = State::NoResult;
+                        result.evidence.hit = Evidence::NotApplicable;
+                    }
                 }
                 return result;
             }
@@ -449,6 +465,7 @@ namespace Geometry
         SCPlaneCurveOnSurfaceIntersection3dWithStatus result{};
         if (!tolerance.IsValid() || !plane.IsValid(tolerance.distanceEpsilon) || !curve.IsValid(tolerance)) return result;
         Unknown(result, Reason::SearchIncomplete | Reason::NoProof);
+        result.evidence.hit = Evidence::Unknown;
         const auto hit = Intersect(plane, curve, tolerance);
         if (hit.intersects && hit.IsValid() &&
             Detail::SameRoundedPosition(curve.SupportSurface()->PointAt(hit.uv.x, hit.uv.y), hit.point) &&
@@ -467,6 +484,7 @@ namespace Geometry
         SCLineBrepFaceIntersection3dWithStatus result{};
         if (!tolerance.IsValid() || !line.IsValid(tolerance.distanceEpsilon) || !face.IsValid(tolerance)) return result;
         Unknown(result, Reason::RegionUnavailable);
+        result.evidence.hit = Evidence::Unknown;
         result.evidence.region = Evidence::Unknown;
         SCPolygon2d polygon;
         if (!Detail::TryBuildPolygonFromBrepFaceTrims(face, tolerance, polygon)) return result;
@@ -486,6 +504,7 @@ namespace Geometry
                 result.evidence.negativeCompleteness = Evidence::Verified;
                 result.evidence.reasons = Reason::None;
                 result.state = all.hits.empty() ? State::NoResult : State::HasResult;
+                if (all.hits.empty()) result.evidence.hit = Evidence::NotApplicable;
             }
         } else {
             result.hits=Detail::CollectLineFaceHits(line,face,tolerance);
@@ -507,6 +526,7 @@ namespace Geometry
         const auto projection = ProjectFaceToPolygon2d(face, tolerance);
         SCLinePolyhedronFaceIntersection3dWithStatus result{};
         Unknown(result, Reason::EvaluationUnavailable);
+        result.evidence.hit = Evidence::Unknown;
         if (!projection.success) return result;
         const SCPlaneSurface surface(face.SupportPlane(), projection.uAxis, projection.vAxis, {-1,1}, {-1,1});
         const auto all = CollectPlanarRegionHits(line, surface, projection.polygon, tolerance);
@@ -524,7 +544,10 @@ namespace Geometry
             result.payloadValid = true;
             result.state = State::HasResult;
             result.evidence.hit = Evidence::Verified;
-        } else if (all.complete && !all.continuous) result.state = State::NoResult;
+        } else if (all.complete && !all.continuous) {
+            result.state = State::NoResult;
+            result.evidence.hit = Evidence::NotApplicable;
+        }
         if (all.complete && !all.continuous) {
             result.evidence.negativeCompleteness = Evidence::Verified;
             result.evidence.reasons = Reason::None;
@@ -555,6 +578,7 @@ namespace Geometry
                     faceResult = IntersectLineBrepFaceWithStatus(line, prepared, tolerance);
                 else {
                     Unknown(faceResult, Reason::RegionUnavailable);
+                    faceResult.evidence.hit = Evidence::Unknown;
                     faceResult.evidence.region = Evidence::Unknown;
                 }
                 result.faces.push_back({shellIndex,local,flat,faceResult});
@@ -581,8 +605,11 @@ namespace Geometry
             result.state = State::NonUnique;
             result.evidence.hit = Evidence::Verified;
             result.evidence.negativeCompleteness = Evidence::NotApplicable;
-        } else if (result.evidence.negativeCompleteness == Evidence::Verified) result.state = State::NoResult;
-        else result.state = State::Unknown;
+        } else {
+            const bool complete = result.evidence.negativeCompleteness == Evidence::Verified;
+            result.state = complete ? State::NoResult : State::Unknown;
+            result.evidence.hit = complete ? Evidence::NotApplicable : Evidence::Unknown;
+        }
         return result;
     }
 
@@ -617,7 +644,11 @@ namespace Geometry
             result.state = State::NonUnique;
             result.evidence.hit = Evidence::Verified;
             result.evidence.negativeCompleteness = Evidence::NotApplicable;
-        } else result.state = result.evidence.negativeCompleteness == Evidence::Verified ? State::NoResult : State::Unknown;
+        } else {
+            const bool complete = result.evidence.negativeCompleteness == Evidence::Verified;
+            result.state = complete ? State::NoResult : State::Unknown;
+            result.evidence.hit = complete ? Evidence::NotApplicable : Evidence::Unknown;
+        }
         return result;
     }
 
@@ -638,6 +669,7 @@ namespace Geometry
                 !Detail::TryUnitVector(Cross(ab,ac),normal)) {
                 SCGeometryEvidenceStatus unavailable{};
                 unavailable.region=Evidence::Unknown;
+                unavailable.hit=Evidence::Unknown;
                 unavailable.negativeCompleteness=Evidence::Unknown;
                 unavailable.reasons=Reason::EvaluationUnavailable;
                 result.triangles.push_back(unavailable);
@@ -668,7 +700,11 @@ namespace Geometry
             result.state = State::NonUnique;
             result.evidence.hit = Evidence::Verified;
             result.evidence.negativeCompleteness = Evidence::NotApplicable;
-        } else result.state = result.evidence.negativeCompleteness == Evidence::Verified ? State::NoResult : State::Unknown;
+        } else {
+            const bool complete = result.evidence.negativeCompleteness == Evidence::Verified;
+            result.state = complete ? State::NoResult : State::Unknown;
+            result.evidence.hit = complete ? Evidence::NotApplicable : Evidence::Unknown;
+        }
         return result;
     }
 

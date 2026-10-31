@@ -1,4 +1,5 @@
 #pragma once
+#include <cmath>
 #include "Export/GeometryExport.h"
 #include "Geometry3d/TriangleMesh.h"
 #include "Support/Epsilon.h"
@@ -28,7 +29,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(double eps) const
         {
-            return !success || mesh.IsValid(eps);
+            return std::isfinite(eps) && eps >= 0.0 && (!success || mesh.IsValid(eps));
         }
     };
 
