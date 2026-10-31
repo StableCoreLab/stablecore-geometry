@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <limits>
 #include <sstream>
 #include <string>
 
@@ -17,7 +18,8 @@ namespace Geometry
 
         [[nodiscard]] bool IsDegenerate(double eps = kDefaultEpsilon) const
         {
-            if (!std::isfinite(eps) || eps < 0.0) return true;
+            if (!std::isfinite(eps) || eps < 0.0 ||
+                !a.IsValid() || !b.IsValid() || !c.IsValid()) return true;
             const SCVector3d ab = b - a;
             const SCVector3d bc = c - b;
             const SCVector3d ca = a - c;
@@ -40,15 +42,19 @@ namespace Geometry
                 opposite = b - c;
                 baseLength = caLength;
             }
-            if (!(baseLength > 0.0)) return true;
+            if (!(baseLength > 0.0) || !std::isfinite(baseLength) ||
+                !std::isfinite(abLength) || !std::isfinite(bcLength) ||
+                !std::isfinite(caLength)) return true;
 
             const SCVector3d normal = Cross(*base / baseLength, opposite);
-            return std::hypot(normal.x, normal.y, normal.z) <= eps;
+            const double height = std::hypot(normal.x, normal.y, normal.z);
+            return !std::isfinite(height) || height <= eps;
         }
 
         [[nodiscard]] bool IsValid(double eps = kDefaultEpsilon) const
         {
-            return a.IsValid() && b.IsValid() && c.IsValid() && !IsDegenerate(eps);
+            const double area = Area();
+            return !IsDegenerate(eps) && std::isfinite(area) && area > 0.0;
         }
 
         [[nodiscard]] SCBox3d Bounds() const
@@ -72,7 +78,40 @@ namespace Geometry
 
         [[nodiscard]] double Area() const
         {
-            return 0.5 * Normal().Length();
+            if (!a.IsValid() || !b.IsValid() || !c.IsValid())
+            {
+                return std::numeric_limits<double>::quiet_NaN();
+            }
+            const SCVector3d ab = b - a;
+            const SCVector3d bc = c - b;
+            const SCVector3d ca = a - c;
+            const double abLength = std::hypot(ab.x, ab.y, ab.z);
+            const double bcLength = std::hypot(bc.x, bc.y, bc.z);
+            const double caLength = std::hypot(ca.x, ca.y, ca.z);
+            if (!std::isfinite(abLength) || !std::isfinite(bcLength) ||
+                !std::isfinite(caLength))
+            {
+                return std::numeric_limits<double>::infinity();
+            }
+            const SCVector3d* base = &ab;
+            SCVector3d opposite = c - a;
+            double baseLength = abLength;
+            if (bcLength > baseLength)
+            {
+                base = &bc;
+                opposite = a - b;
+                baseLength = bcLength;
+            }
+            if (caLength > baseLength)
+            {
+                base = &ca;
+                opposite = b - c;
+                baseLength = caLength;
+            }
+            if (!(baseLength > 0.0)) return 0.0;
+            const SCVector3d normal = Cross(*base / baseLength, opposite);
+            const double height = std::hypot(normal.x, normal.y, normal.z);
+            return (baseLength * 0.5) * height;
         }
 
         [[nodiscard]] SCPoint3d Centroid() const

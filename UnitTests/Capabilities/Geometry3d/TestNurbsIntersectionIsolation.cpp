@@ -87,6 +87,47 @@ namespace
                       tolerance.distanceEpsilon);
     }
 
+    TEST(NurbsNumericsTest, UnprovenEmptyCurveIntersectionsKeepHitEvidenceUnknown)
+    {
+        const SCNurbsCurve3d curve(2,
+            {{0.0, 0.0, 1e-4}, {0.5, 0.0, 5e-7}, {1.0, 0.0, 1e-4}},
+            {0.0, 0.0, 0.0, 1.0, 1.0, 1.0});
+        const Geometry::SCPlane plane = Geometry::SCPlane::FromPointAndNormal(
+            {0.0, 0.0, 0.0}, {0.0, 0.0, 1.0});
+        const SCLine3d line = SCLine3d::FromOriginAndDirection(
+            {0.0, 0.0, 0.0}, {1.0, 0.0, 0.0});
+        Geometry::SCGeometryTolerance3d tolerance{};
+        tolerance.distanceEpsilon = 1e-6;
+        ASSERT_TRUE(curve.IsValid(tolerance));
+
+        const auto planeResult = Geometry::IntersectAllPlaneCurveWithStatus(plane, curve, tolerance);
+        const auto lineResult = Geometry::IntersectAllLineCurveWithStatus(line, curve, tolerance);
+        for (const auto* result : {&planeResult.evidence, &lineResult.evidence})
+        {
+            EXPECT_EQ(result->hit, Geometry::SCGeometryEvidenceState::Unknown);
+            EXPECT_EQ(result->negativeCompleteness, Geometry::SCGeometryEvidenceState::Unknown);
+        }
+        EXPECT_TRUE(planeResult.hits.empty());
+        EXPECT_TRUE(lineResult.hits.empty());
+        EXPECT_EQ(planeResult.state, Geometry::SCGeometryOperationState::Unknown);
+        EXPECT_EQ(lineResult.state, Geometry::SCGeometryOperationState::Unknown);
+
+        const SCNurbsCurve3d separated(1,
+            {{0.0, 0.0, 1.0}, {1.0, 0.0, 2.0}},
+            {0.0, 0.0, 1.0, 1.0});
+        const auto provenPlaneMiss = Geometry::IntersectAllPlaneCurveWithStatus(
+            plane, separated, tolerance);
+        const auto provenLineMiss = Geometry::IntersectAllLineCurveWithStatus(
+            line, separated, tolerance);
+        for (const auto* result : {&provenPlaneMiss.evidence, &provenLineMiss.evidence})
+        {
+            EXPECT_EQ(result->hit, Geometry::SCGeometryEvidenceState::NotApplicable);
+            EXPECT_EQ(result->negativeCompleteness, Geometry::SCGeometryEvidenceState::Verified);
+        }
+        EXPECT_EQ(provenPlaneMiss.state, Geometry::SCGeometryOperationState::NoResult);
+        EXPECT_EQ(provenLineMiss.state, Geometry::SCGeometryOperationState::NoResult);
+    }
+
     TEST(NurbsNumericsTest, PlaneCurveIsolationKeepsRefinementInsideCandidateCells)
     {
         const SCNurbsCurve3d curve(2,

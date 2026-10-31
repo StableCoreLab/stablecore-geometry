@@ -5,6 +5,24 @@
 
 using namespace Geometry;
 
+TEST(TriangleMeshToleranceTest, UnrepresentableTrianglesAreInvalid)
+{
+    const SCTriangle3d triangle{{-1e308, 0.0, 0.0}, {1e308, 0.0, 0.0},
+                                {0.0, 1e308, 0.0}};
+    const TriangleMesh mesh(
+        {triangle.a, triangle.b, triangle.c}, {{0, 1, 2}});
+    EXPECT_TRUE(triangle.IsDegenerate());
+    EXPECT_FALSE(triangle.IsValid());
+    EXPECT_FALSE(mesh.IsValid());
+
+    const SCTriangle3d hugeArea{{0.0, 0.0, 0.0}, {1e200, 0.0, 0.0},
+                                {0.0, 1e200, 0.0}};
+    const TriangleMesh hugeAreaMesh(
+        {hugeArea.a, hugeArea.b, hugeArea.c}, {{0, 1, 2}});
+    EXPECT_FALSE(hugeArea.IsValid());
+    EXPECT_FALSE(hugeAreaMesh.IsValid());
+}
+
 TEST(TriangleMeshToleranceTest, VolumeIsStableAfterLargeTranslation)
 {
     constexpr double origin = 1e9;

@@ -25,7 +25,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const override
         {
-            return line_.IsValid(tolerance.distanceEpsilon) && parameterRange_.IsValid();
+            return tolerance.IsValid() && line_.IsValid(tolerance.distanceEpsilon) && parameterRange_.IsValid();
         }
 
         [[nodiscard]] SCIntervald ParameterRange() const override

@@ -133,7 +133,8 @@ namespace Geometry
             const auto validLoop = [edgeCount](const SCBrepLoop& loop) {
                 return edgeCount == nullptr ? loop.IsValid() : loop.IsValid(*edgeCount);
             };
-            if (supportSurface_ == nullptr || !supportSurface_->IsValid(tolerance) || !validLoop(outerLoop_))
+            if (!tolerance.IsValid() || supportSurface_ == nullptr || !supportSurface_->IsValid(tolerance) ||
+                !validLoop(outerLoop_))
             {
                 return false;
             }

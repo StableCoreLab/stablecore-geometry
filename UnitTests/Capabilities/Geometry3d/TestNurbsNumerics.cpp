@@ -21,27 +21,34 @@ namespace
 {
     TEST(NurbsNumericsTest, ValidGeometryRejectsInvalidStructuralTolerance)
     {
+        const Geometry::SCLineCurve3d line = Geometry::SCLineCurve3d::FromLine(
+            Geometry::SCLine3d::FromOriginAndDirection({0, 0, 0}, {1, 0, 0}), {0, 1});
         const SCNurbsCurve3d curve(1, {{0, 0, 0}, {1, 0, 0}}, {0, 0, 1, 1});
         const SCNurbsSurface surface(1, 1, 2, 2,
             {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0}},
             {0, 0, 1, 1}, {0, 0, 1, 1});
+        ASSERT_TRUE(line.IsValid());
         ASSERT_TRUE(curve.IsValid());
         ASSERT_TRUE(surface.IsValid());
 
         Geometry::SCGeometryTolerance3d invalid{};
         invalid.distanceEpsilon = -1.0;
+        EXPECT_FALSE(line.IsValid(invalid));
         EXPECT_FALSE(curve.IsValid(invalid));
         EXPECT_FALSE(surface.IsValid(invalid));
         invalid = {};
         invalid.angleEpsilon = std::numeric_limits<double>::quiet_NaN();
+        EXPECT_FALSE(line.IsValid(invalid));
         EXPECT_FALSE(curve.IsValid(invalid));
         EXPECT_FALSE(surface.IsValid(invalid));
         invalid = {};
         invalid.parameterEpsilon = -1.0;
+        EXPECT_FALSE(line.IsValid(invalid));
         EXPECT_FALSE(curve.IsValid(invalid));
         EXPECT_FALSE(surface.IsValid(invalid));
         invalid = {};
         invalid.boxPadding = std::numeric_limits<double>::infinity();
+        EXPECT_FALSE(line.IsValid(invalid));
         EXPECT_FALSE(curve.IsValid(invalid));
         EXPECT_FALSE(surface.IsValid(invalid));
     }
@@ -175,6 +182,49 @@ namespace
             return std::make_unique<MisleadingCurveEval>(*this);
         }
     };
+
+    TEST(NurbsNumericsTest, CompositeSurfacesRejectInvalidToleranceWithPermissiveComponents)
+    {
+        const auto curve = std::make_shared<PointOnlyPlaneTouchCurve>(false);
+        const Geometry::SCRuledSurface ruled(curve, curve);
+        const Geometry::SCOffsetSurface offset(std::make_shared<PointOnlyPatchSurface>(), 1.0);
+        ASSERT_TRUE(ruled.IsValid());
+        ASSERT_TRUE(offset.IsValid());
+
+        Geometry::SCGeometryTolerance3d invalid{};
+        invalid.angleEpsilon = std::numeric_limits<double>::quiet_NaN();
+        EXPECT_FALSE(ruled.IsValid(invalid));
+        EXPECT_FALSE(offset.IsValid(invalid));
+    }
+
+    TEST(NurbsNumericsTest, BrepContainersRejectInvalidToleranceWithPermissiveGeometry)
+    {
+        const Geometry::SCBrepEdge edge(std::make_shared<PointOnlyPlaneTouchCurve>(false), 0, 1);
+        const Geometry::SCBrepFace face(
+            std::make_shared<PointOnlyPatchSurface>(),
+            Geometry::SCBrepLoop({Geometry::SCBrepCoedge(0, false)}));
+        const Geometry::SCBrepShell shell({face});
+        const Geometry::SCBrepBody body(
+            {Geometry::SCBrepVertex({0, 0, 0}), Geometry::SCBrepVertex({1, 0, 0})},
+            {edge}, {shell});
+        ASSERT_TRUE(edge.IsValid());
+        ASSERT_TRUE(edge.IsValid(2));
+        ASSERT_TRUE(face.IsValid());
+        ASSERT_TRUE(face.IsValidWithEdgeCount(1));
+        ASSERT_TRUE(shell.IsValid());
+        ASSERT_TRUE(shell.IsValid(1));
+        ASSERT_TRUE(body.IsValid());
+
+        Geometry::SCGeometryTolerance3d invalid{};
+        invalid.angleEpsilon = std::numeric_limits<double>::quiet_NaN();
+        EXPECT_FALSE(edge.IsValid(invalid));
+        EXPECT_FALSE(edge.IsValid(2, invalid));
+        EXPECT_FALSE(face.IsValid(invalid));
+        EXPECT_FALSE(face.IsValidWithEdgeCount(1, invalid));
+        EXPECT_FALSE(shell.IsValid(invalid));
+        EXPECT_FALSE(shell.IsValid(1, invalid));
+        EXPECT_FALSE(body.IsValid(invalid));
+    }
 
     TEST(NurbsNumericsTest, PointOnlyCurvePlaneIntersectionFindsQuarterTouch)
     {

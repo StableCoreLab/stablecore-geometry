@@ -100,7 +100,7 @@ namespace Geometry
                     return false;
                 }
 
-                if (SCTriangle3d{vertices_[tri[0]], vertices_[tri[1]], vertices_[tri[2]]}.IsDegenerate(eps))
+                if (!SCTriangle3d{vertices_[tri[0]], vertices_[tri[1]], vertices_[tri[2]]}.IsValid(eps))
                 {
                     return false;
                 }

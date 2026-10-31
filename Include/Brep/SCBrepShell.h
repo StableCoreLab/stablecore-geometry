@@ -22,7 +22,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const
         {
-            if (faces_.empty())
+            if (!tolerance.IsValid() || faces_.empty())
             {
                 return false;
             }
@@ -40,7 +40,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(std::size_t edgeCount, const SCGeometryTolerance3d& tolerance = {}) const
         {
-            if (faces_.empty())
+            if (!tolerance.IsValid() || faces_.empty())
             {
                 return false;
             }

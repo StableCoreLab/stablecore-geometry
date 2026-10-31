@@ -559,8 +559,9 @@ namespace Geometry
         result.state = result.hits.empty() ? (complete ? SCGeometryOperationState::NoResult
                                                        : SCGeometryOperationState::Unknown)
                                            : SCGeometryOperationState::HasResult;
-        result.evidence.hit = result.hits.empty() ? SCGeometryEvidenceState::NotApplicable
-                                                   : SCGeometryEvidenceState::Verified;
+        result.evidence.hit = result.hits.empty()
+            ? (complete ? SCGeometryEvidenceState::NotApplicable : SCGeometryEvidenceState::Unknown)
+            : SCGeometryEvidenceState::Verified;
         result.evidence.negativeCompleteness = complete ? SCGeometryEvidenceState::Verified
                                                          : SCGeometryEvidenceState::Unknown;
         result.evidence.reasons = complete ? SCGeometryFailureReason::None
@@ -769,8 +770,10 @@ namespace Geometry
             return first.curveParameter < second.curveParameter;
         });
         result.evidence = planeResult.evidence;
-        result.evidence.hit = result.hits.empty() ? SCGeometryEvidenceState::NotApplicable
-                                                   : SCGeometryEvidenceState::Verified;
+        result.evidence.hit = result.hits.empty()
+            ? (result.evidence.negativeCompleteness == SCGeometryEvidenceState::Verified
+                ? SCGeometryEvidenceState::NotApplicable : SCGeometryEvidenceState::Unknown)
+            : SCGeometryEvidenceState::Verified;
         result.state = result.hits.empty()
             ? (result.evidence.negativeCompleteness == SCGeometryEvidenceState::Verified
                 ? SCGeometryOperationState::NoResult : SCGeometryOperationState::Unknown)

@@ -2,8 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
-#include <map>
 #include <memory>
+#include <vector>
 
 #include "../Detail/RingIntegral2d.h"
 #include "Support/StableNumerics.h"
@@ -201,25 +201,6 @@ namespace Geometry
         return {true, SCPolyhedronValidationIssue3d::None, 0};
     }
 
-    namespace
-    {
-        struct UndirectedEdgeKey
-        {
-            std::size_t first{0};
-            std::size_t second{0};
-
-            [[nodiscard]] bool operator<(const UndirectedEdgeKey& other) const
-            {
-                return first < other.first || (first == other.first && second < other.second);
-            }
-        };
-
-        [[nodiscard]] UndirectedEdgeKey MakeUndirectedEdgeKey(std::size_t a, std::size_t b)
-        {
-            return a < b ? UndirectedEdgeKey{a, b} : UndirectedEdgeKey{b, a};
-        }
-    }  // namespace
-
     SCBrepValidation3d Validate(const SCBrepBody& body, const SCGeometryTolerance3d& tolerance)
     {
         if (!tolerance.IsValid())
@@ -233,7 +214,7 @@ namespace Geometry
 
         for (std::size_t i = 0; i < body.VertexCount(); ++i)
         {
-            if (!body.VertexAt(i).IsValid())
+            if (!body.VertexAtRef(i).IsValid())
             {
                 return {false, SCBrepValidationIssue3d::InvalidVertex, i};
             }
@@ -241,7 +222,7 @@ namespace Geometry
 
         for (std::size_t i = 0; i < body.EdgeCount(); ++i)
         {
-            if (!body.EdgeAt(i).IsValid(tolerance))
+            if (!body.EdgeAtRef(i).IsValid(tolerance))
             {
                 return {false, SCBrepValidationIssue3d::InvalidEdge, i};
             }
@@ -249,7 +230,7 @@ namespace Geometry
 
         for (std::size_t i = 0; i < body.ShellCount(); ++i)
         {
-            if (!body.ShellAt(i).IsValid(tolerance))
+            if (!body.ShellAtRef(i).IsValid(tolerance))
             {
                 return {false, SCBrepValidationIssue3d::InvalidShell, i};
             }
@@ -260,22 +241,21 @@ namespace Geometry
             return {false, SCBrepValidationIssue3d::InvalidShell, 0};
         }
 
-        std::map<UndirectedEdgeKey, std::size_t> edgeUseCounts;
+        std::vector<std::size_t> edgeUseCounts(body.EdgeCount(), 0);
         for (std::size_t shellIndex = 0; shellIndex < body.ShellCount(); ++shellIndex)
         {
-            const SCBrepShell shell = body.ShellAt(shellIndex);
+            const SCBrepShell& shell = body.ShellAtRef(shellIndex);
             for (std::size_t faceIndex = 0; faceIndex < shell.FaceCount(); ++faceIndex)
             {
-                const SCBrepFace face = shell.FaceAt(faceIndex);
+                const SCBrepFace& face = shell.FaceAtRef(faceIndex);
                 auto accumulateLoop = [&](const SCBrepLoop& loop) {
                     for (const SCBrepCoedge& coedge : loop.Coedges())
                     {
-                        const SCBrepEdge edge = body.EdgeAt(coedge.EdgeIndex());
-                        ++edgeUseCounts[MakeUndirectedEdgeKey(edge.StartVertexIndex(), edge.EndVertexIndex())];
+                        ++edgeUseCounts[coedge.EdgeIndex()];
                     }
                 };
 
-                accumulateLoop(face.OuterLoop());
+                accumulateLoop(face.OuterLoopRef());
                 for (const SCBrepLoop& hole : face.HoleLoops())
                 {
                     accumulateLoop(hole);
@@ -285,9 +265,7 @@ namespace Geometry
 
         for (std::size_t edgeIndex = 0; edgeIndex < body.EdgeCount(); ++edgeIndex)
         {
-            const SCBrepEdge edge = body.EdgeAt(edgeIndex);
-            const auto it = edgeUseCounts.find(MakeUndirectedEdgeKey(edge.StartVertexIndex(), edge.EndVertexIndex()));
-            if (it == edgeUseCounts.end() || it->second == 0 || it->second > 2)
+            if (edgeUseCounts[edgeIndex] == 0 || edgeUseCounts[edgeIndex] > 2)
             {
                 return {false, SCBrepValidationIssue3d::InvalidFaceAdjacency, edgeIndex};
             }

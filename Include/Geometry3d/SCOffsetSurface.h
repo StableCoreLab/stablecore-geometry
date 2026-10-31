@@ -27,7 +27,8 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const override
         {
-            return baseSurface_ != nullptr && baseSurface_->IsValid(tolerance) && std::isfinite(offsetDistance_);
+            return tolerance.IsValid() && baseSurface_ != nullptr && baseSurface_->IsValid(tolerance) &&
+                   std::isfinite(offsetDistance_);
         }
 
         [[nodiscard]] SCIntervald URange() const override

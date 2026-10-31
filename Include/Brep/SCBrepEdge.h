@@ -23,7 +23,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const
         {
-            return curve3d_ != nullptr && curve3d_->IsValid(tolerance) &&
+            return tolerance.IsValid() && curve3d_ != nullptr && curve3d_->IsValid(tolerance) &&
                    startVertexIndex_ != static_cast<std::size_t>(-1) &&
                    endVertexIndex_ != static_cast<std::size_t>(-1) &&
                    startVertexIndex_ != endVertexIndex_;

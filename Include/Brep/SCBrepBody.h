@@ -30,7 +30,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const
         {
-            if (shells_.empty())
+            if (!tolerance.IsValid() || shells_.empty())
             {
                 return false;
             }

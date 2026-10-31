@@ -31,6 +31,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry2d/TestPolygon.cpp
     Capabilities/Geometry2d/TestPolyline.cpp
     Capabilities/Geometry2d/TestRelationBoolean.cpp
+    Capabilities/Geometry2d/TestRelationBooleanEdgeCases.cpp
     Capabilities/Geometry2d/TestRelationBooleanDegeneracies.cpp
     Capabilities/Geometry2d/TestRingTraversalRegression.cpp
     Capabilities/Geometry2d/TestSearchPoly.cpp
@@ -68,6 +69,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestSection3dCoplanarMerges.cpp
     Capabilities/Geometry3d/TestSection3dMixedOpenContours.cpp
     Capabilities/Geometry3d/TestSection3dMixedAreas.cpp
+    Capabilities/Geometry3d/TestSection3dMixedStrip.cpp
     Capabilities/Geometry3d/TestSection3dMixedContours.cpp
     Capabilities/Geometry3d/TestSection3dMixedContourHoles.cpp
     Capabilities/Geometry3d/TestSection3dMixedContourOrdering.cpp

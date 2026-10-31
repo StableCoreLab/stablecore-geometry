@@ -31,7 +31,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const override
         {
-            return first_ != nullptr && second_ != nullptr && first_->IsValid(tolerance) &&
+            return tolerance.IsValid() && first_ != nullptr && second_ != nullptr && first_->IsValid(tolerance) &&
                    second_->IsValid(tolerance) && vRange_.IsValid();
         }
 
