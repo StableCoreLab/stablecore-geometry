@@ -8,6 +8,9 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Core/TestGeometryTestSupport.cpp
     Capabilities/Core/TestMetricsPolylineBox.cpp
     Capabilities/Core/TestAlgorithmCapabilities.cpp
+    Capabilities/Core/TestAlgorithmCapabilityIndexes.cpp
+    Capabilities/Core/TestAlgorithmCapabilityIntersections.cpp
+    Capabilities/Core/TestAlgorithmCapabilityQueries.cpp
     Capabilities/Core/TestPathGeometry.cpp
     Capabilities/Core/TestPathGeometryMapping.cpp
     Capabilities/Core/TestPathGeometryOffset.cpp
@@ -27,6 +30,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry2d/TestMatrixTransform2d.cpp
     Capabilities/Geometry2d/TestMeasure2d.cpp
     Capabilities/Geometry2d/TestOffset.cpp
+    Capabilities/Geometry2d/TestOffsetTolerance.cpp
     Capabilities/Geometry2d/TestPointVector.cpp
     Capabilities/Geometry2d/TestPolygon.cpp
     Capabilities/Geometry2d/TestPolyline.cpp

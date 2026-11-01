@@ -115,6 +115,32 @@ namespace Geometry
             return -NormalizeAngle(arc.startAngle - angle) / arc.sweepAngle;
         }
 
+        [[nodiscard]] bool SegmentValidAtTolerance(const ISCSegment2d& segment, double eps)
+        {
+            if (!std::isfinite(eps) || eps <= 0.0)
+            {
+                return false;
+            }
+            if (const auto* line = dynamic_cast<const SCLineSegment2d*>(&segment))
+            {
+                return line->IsValid(eps);
+            }
+            if (const auto* arc = dynamic_cast<const SCArcSegment2d*>(&segment))
+            {
+                return arc->IsValid(eps);
+            }
+            return segment.IsValid();
+        }
+
+        [[nodiscard]] double SegmentLengthAtTolerance(const ISCSegment2d& segment, double eps)
+        {
+            if (const auto* arc = dynamic_cast<const SCArcSegment2d*>(&segment))
+            {
+                return arc->IsValid(eps) ? arc->Length(eps) : arc->Length();
+            }
+            return segment.Length();
+        }
+
         void SortIntersectionPointsByFirstParameter(std::array<SCIntersectionPoint2d, 2>& points, std::size_t pointCount)
         {
             if (pointCount == 2 && points[1].parameterOnFirst < points[0].parameterOnFirst)
@@ -489,12 +515,18 @@ namespace Geometry
                                                                       const SCArcSegment2d& second,
                                                                       double eps)
         {
-            const bool firstFullCircle = AlmostEqual(std::abs(first.sweepAngle), kTwoPi, eps);
-            const bool secondFullCircle = AlmostEqual(std::abs(second.sweepAngle), kTwoPi, eps);
+            const double firstAngleEps = eps / first.radius;
+            const double secondAngleEps = eps / second.radius;
+            const bool firstFullCircle = AlmostEqual(std::abs(first.sweepAngle), kTwoPi, firstAngleEps);
+            const bool secondFullCircle = AlmostEqual(std::abs(second.sweepAngle), kTwoPi, secondAngleEps);
             if (firstFullCircle && secondFullCircle)
             {
-                return MakeOverlapIntersection(SCIntersectionPoint2d{first.StartPoint(), 0.0, 0.0},
-                                               SCIntersectionPoint2d{first.PointAt(0.5), 0.5, 0.5});
+                const double middleAngle = first.startAngle + first.sweepAngle * 0.5;
+                return MakeOverlapIntersection(
+                    SCIntersectionPoint2d{first.StartPoint(), 0.0,
+                                          ArcParameterAtAngle(second, first.startAngle)},
+                    SCIntersectionPoint2d{first.PointAt(0.5), 0.5,
+                                          ArcParameterAtAngle(second, middleAngle)});
             }
 
             const SCPoint2d firstStart = first.StartPoint();
@@ -502,10 +534,10 @@ namespace Geometry
             const SCPoint2d secondStart = second.StartPoint();
             const SCPoint2d secondEnd = second.EndPoint();
 
-            const bool firstStartOnSecond = IsAngleOnArc(second, first.startAngle, eps);
-            const bool firstEndOnSecond = IsAngleOnArc(second, first.EndAngle(), eps);
-            const bool secondStartOnFirst = IsAngleOnArc(first, second.startAngle, eps);
-            const bool secondEndOnFirst = IsAngleOnArc(first, second.EndAngle(), eps);
+            const bool firstStartOnSecond = IsAngleOnArc(second, first.startAngle, secondAngleEps);
+            const bool firstEndOnSecond = IsAngleOnArc(second, first.EndAngle(), secondAngleEps);
+            const bool secondStartOnFirst = IsAngleOnArc(first, second.startAngle, firstAngleEps);
+            const bool secondEndOnFirst = IsAngleOnArc(first, second.EndAngle(), firstAngleEps);
 
             std::array<SCIntersectionPoint2d, 4> candidates{};
             std::size_t candidateCount = 0;
@@ -575,7 +607,15 @@ namespace Geometry
                     std::swap(candidates[0], candidates[1]);
                 }
 
-                return MakeOverlapIntersection(candidates[0], candidates[1]);
+                SCSegmentIntersection2d result = MakeOverlapIntersection(candidates[0], candidates[1]);
+                const double midpointParameter =
+                    0.5 * (candidates[0].parameterOnFirst + candidates[1].parameterOnFirst);
+                const double midpointAngle = first.startAngle + first.sweepAngle * midpointParameter;
+                if (!IsAngleOnArc(second, midpointAngle, secondAngleEps))
+                {
+                    result.kind = SCIntersectionKind2d::Point;
+                }
+                return result;
             }
 
             std::sort(candidates.begin(),
@@ -584,7 +624,20 @@ namespace Geometry
                           return lhs.parameterOnFirst < rhs.parameterOnFirst;
                       });
 
-            return MakeOverlapIntersection(candidates[0], candidates[1]);
+            for (std::size_t index = 1; index < candidateCount; ++index)
+            {
+                const double midpointParameter =
+                    0.5 * (candidates[index - 1].parameterOnFirst + candidates[index].parameterOnFirst);
+                const double midpointAngle = first.startAngle + first.sweepAngle * midpointParameter;
+                if (IsAngleOnArc(second, midpointAngle, secondAngleEps))
+                {
+                    return MakeOverlapIntersection(candidates[index - 1], candidates[index]);
+                }
+            }
+
+            SCSegmentIntersection2d result = MakeOverlapIntersection(candidates[0], candidates[1]);
+            result.kind = SCIntersectionKind2d::Point;
+            return result;
         }
 
         [[nodiscard]] SCClosestPoints2d ClosestPointsLineLineInternal(const SCLineSegment2d& first,
@@ -759,7 +812,7 @@ namespace Geometry
                                                                     const SCArcSegment2d& second,
                                                                     double eps)
         {
-            if (!first.IsValid() || !second.IsValid())
+            if (!std::isfinite(eps) || eps <= 0.0 || !first.IsValid(eps) || !second.IsValid(eps))
             {
                 return MakeNoIntersection();
             }
@@ -808,7 +861,8 @@ namespace Geometry
             {
                 const double angleFirst = std::atan2(point.y - first.center.y, point.x - first.center.x);
                 const double angleSecond = std::atan2(point.y - second.center.y, point.x - second.center.x);
-                if (!IsAngleOnArc(first, angleFirst, eps) || !IsAngleOnArc(second, angleSecond, eps))
+                if (!IsAngleOnArc(first, angleFirst, eps / first.radius) ||
+                    !IsAngleOnArc(second, angleSecond, eps / second.radius))
                 {
                     continue;
                 }
@@ -827,6 +881,10 @@ namespace Geometry
                 }
 
                 AddIntersectionPoint(result, SCIntersectionKind2d::Point, point, firstParameter, secondParameter, eps);
+                if (result.pointCount == 2)
+                {
+                    result.kind = SCIntersectionKind2d::Point;
+                }
             }
 
             return result;
@@ -839,15 +897,17 @@ namespace Geometry
                                                                                 double eps)
         {
             SCExtendedIntersection2d result;
-            if (!first.IsValid() || !second.IsValid())
+            if (!std::isfinite(eps) || eps <= 0.0 || !first.IsValid(eps) || !second.IsValid(eps))
             {
                 return result;
             }
 
             if (SameCircle(first, second, eps))
             {
-                const bool firstActsAsFullCircle = extendFirst || AlmostEqual(std::abs(first.sweepAngle), kTwoPi, eps);
-                const bool secondActsAsFullCircle = extendSecond || AlmostEqual(std::abs(second.sweepAngle), kTwoPi, eps);
+                const bool firstActsAsFullCircle =
+                    extendFirst || AlmostEqual(std::abs(first.sweepAngle), kTwoPi, eps / first.radius);
+                const bool secondActsAsFullCircle =
+                    extendSecond || AlmostEqual(std::abs(second.sweepAngle), kTwoPi, eps / second.radius);
 
                 if (firstActsAsFullCircle && secondActsAsFullCircle)
                 {
@@ -930,8 +990,8 @@ namespace Geometry
             {
                 const double angleFirst = std::atan2(point.y - first.center.y, point.x - first.center.x);
                 const double angleSecond = std::atan2(point.y - second.center.y, point.x - second.center.x);
-                if ((!extendFirst && !IsAngleOnArc(first, angleFirst, eps)) ||
-                    (!extendSecond && !IsAngleOnArc(second, angleSecond, eps)))
+                if ((!extendFirst && !IsAngleOnArc(first, angleFirst, eps / first.radius)) ||
+                    (!extendSecond && !IsAngleOnArc(second, angleSecond, eps / second.radius)))
                 {
                     continue;
                 }
@@ -955,6 +1015,10 @@ namespace Geometry
                                      firstParameter,
                                      secondParameter,
                                      eps);
+                if (intersection.pointCount == 2)
+                {
+                    intersection.kind = SCIntersectionKind2d::Point;
+                }
             }
 
             if (!intersection.HasIntersection())
@@ -974,9 +1038,13 @@ namespace Geometry
             {
                 const double firstParameter = result.points[index].parameterOnFirst;
                 const double secondParameter = result.points[index].parameterOnSecond;
-                result.onFirstSegment = result.onFirstSegment && firstParameter >= -eps && firstParameter <= 1.0 + eps;
+                const double firstParameterEps = eps / first.Length();
+                const double secondParameterEps = eps / second.Length();
+                result.onFirstSegment = result.onFirstSegment && firstParameter >= -firstParameterEps &&
+                                        firstParameter <= 1.0 + firstParameterEps;
                 result.onSecondSegment =
-                    result.onSecondSegment && secondParameter >= -eps && secondParameter <= 1.0 + eps;
+                    result.onSecondSegment && secondParameter >= -secondParameterEps &&
+                    secondParameter <= 1.0 + secondParameterEps;
             }
             return result;
         }
@@ -1164,7 +1232,7 @@ namespace Geometry
                                                             const std::vector<double>& segmentLengths,
                                                             double totalLength)
         {
-            if (totalLength <= Geometry::kDefaultEpsilon)
+            if (!(totalLength > 0.0) || !std::isfinite(totalLength))
             {
                 return 0.0;
             }
@@ -1202,16 +1270,25 @@ namespace Geometry
                                                                      double eps)
         {
             SCLineIntersection2d result;
-            const SCVector2d p = first.origin - SCPoint2d{};
-            const SCVector2d q = second.origin - SCPoint2d{};
+            if (!std::isfinite(eps) || eps < 0.0 || !first.IsValid(eps) || !second.IsValid(eps))
+            {
+                return result;
+            }
             const SCVector2d r = first.direction;
             const SCVector2d s = second.direction;
             const SCVector2d qp = second.origin - first.origin;
+            const double firstLength = r.Length();
+            const double secondLength = s.Length();
             const double det = Cross(r, s);
-            if (std::abs(det) <= eps)
+            const double offsetCross = Cross(qp, r);
+            if (!std::isfinite(det) || !std::isfinite(offsetCross))
+            {
+                return result;
+            }
+            if (std::abs(det) <= eps * std::max(firstLength, secondLength))
             {
                 result.parallel = true;
-                if (std::abs(Cross(qp, r)) <= eps)
+                if (std::abs(offsetCross) <= eps * firstLength)
                 {
                     result.kind = SCIntersectionKind2d::Overlap;
                     result.collinear = true;
@@ -1221,7 +1298,7 @@ namespace Geometry
             }
 
             const double t = Cross(qp, s) / det;
-            const double u = Cross(qp, r) / det;
+            const double u = offsetCross / det;
             const SCPoint2d point = first.PointAt(t);
             result = MakeLinePointIntersection(point, t, u);
             return result;
@@ -1236,7 +1313,8 @@ namespace Geometry
             if (lineLine.kind == SCIntersectionKind2d::Point)
             {
                 const double segmentParameter = lineLine.points[0].parameterOnSecond;
-                if (segmentParameter < -eps || segmentParameter > 1.0 + eps)
+                const double parameterEps = eps / segment.Length();
+                if (segmentParameter < -parameterEps || segmentParameter > 1.0 + parameterEps)
                 {
                     return {};
                 }
@@ -1273,7 +1351,7 @@ namespace Geometry
                                                                        bool extendArc,
                                                                        double eps)
         {
-            if (!line.IsValid(eps) || !arc.IsValid())
+            if (!line.IsValid(eps) || !arc.IsValid(eps))
             {
                 return {};
             }
@@ -1281,7 +1359,15 @@ namespace Geometry
             const SCVector2d direction = line.direction;
             const SCVector2d fromCenter = line.origin - arc.center;
             const double a = Dot(direction, direction);
-            if (a <= eps)
+            if (!(a > 0.0) || !std::isfinite(a))
+            {
+                return {};
+            }
+            const double lineLength = std::sqrt(a);
+            const double parameterEps = eps / lineLength;
+            const double angleEps = eps / arc.radius;
+            const double lineDistance = std::abs(Cross(fromCenter, direction)) / lineLength;
+            if (!std::isfinite(lineDistance) || lineDistance - arc.radius > eps)
             {
                 return {};
             }
@@ -1289,7 +1375,7 @@ namespace Geometry
             const double b = 2.0 * Dot(fromCenter, direction);
             const double c = Dot(fromCenter, fromCenter) - arc.radius * arc.radius;
             const double discriminant = b * b - 4.0 * a * c;
-            if (discriminant < -eps)
+            if (!std::isfinite(discriminant))
             {
                 return {};
             }
@@ -1306,8 +1392,8 @@ namespace Geometry
                 const double angle = std::atan2(point.y - arc.center.y, point.x - arc.center.x);
                 const double arcParameter = arc.sweepAngle >= 0.0 ? (angle - arc.startAngle) / arc.sweepAngle
                                                                    : (arc.startAngle - angle) / (-arc.sweepAngle);
-                const bool onLine = extendLine || (t >= -eps && t <= 1.0 + eps);
-                const bool onArc = extendArc || IsAngleOnArc(arc, angle, eps);
+                const bool onLine = extendLine || (t >= -parameterEps && t <= 1.0 + parameterEps);
+                const bool onArc = extendArc || IsAngleOnArc(arc, angle, angleEps);
                 if (!onLine || !onArc)
                 {
                     continue;
@@ -1326,8 +1412,8 @@ namespace Geometry
                 }
                 if (!hasPoint)
                 {
-                    result.kind = AlmostEqual(discriminant, 0.0, eps) ? SCIntersectionKind2d::Tangent
-                                                                       : SCIntersectionKind2d::Point;
+                    result.kind = std::abs(lineDistance - arc.radius) <= eps
+                                      ? SCIntersectionKind2d::Tangent : SCIntersectionKind2d::Point;
                     result.pointCount = 1;
                     result.points[0] = SCIntersectionPoint2d{point, clampedT, clampedArcParameter};
                     hasPoint = true;
@@ -1340,6 +1426,10 @@ namespace Geometry
                                          clampedT,
                                          clampedArcParameter,
                                          eps);
+                    if (result.pointCount == 2)
+                    {
+                        result.kind = SCIntersectionKind2d::Point;
+                    }
                 }
             }
 
@@ -1351,7 +1441,7 @@ namespace Geometry
                                                                                                  double eps)
         {
             std::vector<SCPolylineIntersectionPoint2d> result;
-            if (!first.IsValid() || !second.IsValid())
+            if (!first.IsValid(eps) || !second.IsValid(eps))
             {
                 return result;
             }
@@ -1365,14 +1455,14 @@ namespace Geometry
             for (std::size_t i = 0; i < first.SegmentCount(); ++i)
             {
                 const auto segment = first.SegmentAt(i);
-                const double length = segment == nullptr ? 0.0 : segment->Length();
+                const double length = segment == nullptr ? 0.0 : SegmentLengthAtTolerance(*segment, eps);
                 firstSegmentLengths.push_back(length);
                 firstTotalLength += length;
             }
             for (std::size_t i = 0; i < second.SegmentCount(); ++i)
             {
                 const auto segment = second.SegmentAt(i);
-                const double length = segment == nullptr ? 0.0 : segment->Length();
+                const double length = segment == nullptr ? 0.0 : SegmentLengthAtTolerance(*segment, eps);
                 secondSegmentLengths.push_back(length);
                 secondTotalLength += length;
             }
@@ -1455,7 +1545,7 @@ namespace Geometry
                                                          double eps)
     {
         std::vector<SCPolylineIntersectionPoint2d> result;
-        if (!polyline.IsValid() || !segment.IsValid())
+        if (!polyline.IsValid(eps) || !SegmentValidAtTolerance(segment, eps))
         {
             return result;
         }
@@ -1466,7 +1556,7 @@ namespace Geometry
         for (std::size_t i = 0; i < polyline.SegmentCount(); ++i)
         {
             const auto polySegment = polyline.SegmentAt(i);
-            const double length = polySegment == nullptr ? 0.0 : polySegment->Length();
+            const double length = polySegment == nullptr ? 0.0 : SegmentLengthAtTolerance(*polySegment, eps);
             segmentLengths.push_back(length);
             totalLength += length;
         }
@@ -1529,7 +1619,7 @@ namespace Geometry
                                                SCExtensionPolicy policy,
                                                double eps)
     {
-        if (!first.IsValid() || !second.IsValid())
+        if (!SegmentValidAtTolerance(first, eps) || !SegmentValidAtTolerance(second, eps))
         {
             return {};
         }
@@ -1546,6 +1636,8 @@ namespace Geometry
         {
             const SCLineSegment2d& firstLine = static_cast<const SCLineSegment2d&>(first);
             const SCLineSegment2d& secondLine = static_cast<const SCLineSegment2d&>(second);
+            const double firstParameterEps = eps / firstLine.Length();
+            const double secondParameterEps = eps / secondLine.Length();
             const SCLine2d lineA = SCLine2d::FromTwoPoints(firstLine.startPoint, firstLine.endPoint);
             const SCLine2d lineB = SCLine2d::FromTwoPoints(secondLine.startPoint, secondLine.endPoint);
             const SCLineIntersection2d lineIntersection = Intersect(lineA, lineB, eps);
@@ -1581,21 +1673,23 @@ namespace Geometry
                 {
                     std::swap(result.points[0], result.points[1]);
                 }
-                result.onFirstSegment = result.points[0].parameterOnFirst >= -eps &&
-                                       result.points[0].parameterOnFirst <= 1.0 + eps &&
-                                       result.points[1].parameterOnFirst >= -eps &&
-                                       result.points[1].parameterOnFirst <= 1.0 + eps;
-                result.onSecondSegment = result.points[0].parameterOnSecond >= -eps &&
-                                        result.points[0].parameterOnSecond <= 1.0 + eps &&
-                                        result.points[1].parameterOnSecond >= -eps &&
-                                        result.points[1].parameterOnSecond <= 1.0 + eps;
+                result.onFirstSegment = result.points[0].parameterOnFirst >= -firstParameterEps &&
+                                       result.points[0].parameterOnFirst <= 1.0 + firstParameterEps &&
+                                       result.points[1].parameterOnFirst >= -firstParameterEps &&
+                                       result.points[1].parameterOnFirst <= 1.0 + firstParameterEps;
+                result.onSecondSegment = result.points[0].parameterOnSecond >= -secondParameterEps &&
+                                        result.points[0].parameterOnSecond <= 1.0 + secondParameterEps &&
+                                        result.points[1].parameterOnSecond >= -secondParameterEps &&
+                                        result.points[1].parameterOnSecond <= 1.0 + secondParameterEps;
                 return result;
             }
 
             const double firstParameter = lineIntersection.points[0].parameterOnFirst;
             const double secondParameter = lineIntersection.points[0].parameterOnSecond;
-            const bool onFirst = extendFirst || (firstParameter >= -eps && firstParameter <= 1.0 + eps);
-            const bool onSecond = extendSecond || (secondParameter >= -eps && secondParameter <= 1.0 + eps);
+            const bool onFirst = extendFirst ||
+                                 (firstParameter >= -firstParameterEps && firstParameter <= 1.0 + firstParameterEps);
+            const bool onSecond = extendSecond ||
+                                  (secondParameter >= -secondParameterEps && secondParameter <= 1.0 + secondParameterEps);
             if (!onFirst || !onSecond)
             {
                 return result;
@@ -1604,8 +1698,8 @@ namespace Geometry
             result.kind = SCIntersectionKind2d::Point;
             result.pointCount = 1;
             result.points[0] = lineIntersection.points[0];
-            result.onFirstSegment = firstParameter >= -eps && firstParameter <= 1.0 + eps;
-            result.onSecondSegment = secondParameter >= -eps && secondParameter <= 1.0 + eps;
+            result.onFirstSegment = firstParameter >= -firstParameterEps && firstParameter <= 1.0 + firstParameterEps;
+            result.onSecondSegment = secondParameter >= -secondParameterEps && secondParameter <= 1.0 + secondParameterEps;
             return result;
         }
 
@@ -1629,10 +1723,12 @@ namespace Geometry
             }
             if (intersection.pointCount >= 1)
             {
-                result.onFirstSegment = result.points[0].parameterOnFirst >= -eps && result.points[0].parameterOnFirst <= 1.0 + eps;
+                const double lineParameterEps = eps / lineSegment.Length();
+                result.onFirstSegment = result.points[0].parameterOnFirst >= -lineParameterEps &&
+                                        result.points[0].parameterOnFirst <= 1.0 + lineParameterEps;
                 result.onSecondSegment = IsAngleOnArc(arc,
                                                       arc.startAngle + arc.sweepAngle * result.points[0].parameterOnSecond,
-                                                      eps);
+                                                      eps / arc.radius);
             }
             return result;
         }
