@@ -128,6 +128,44 @@ namespace
         EXPECT_EQ(provenLineMiss.state, Geometry::SCGeometryOperationState::NoResult);
     }
 
+    TEST(NurbsNumericsTest, LineCurveUnrepresentableProjectionKeepsCompletenessUnknown)
+    {
+        const SCNurbsCurve3d curve(1,
+            {{-1e308, 0.0, -1.0}, {-1e308, 0.0, 1.0}},
+            {0.0, 0.0, 1.0, 1.0});
+        const SCLine3d line = SCLine3d::FromOriginAndDirection(
+            {1e308, 0.0, 0.0}, {1.0, 0.0, 0.0});
+        const Geometry::SCPlane plane = Geometry::SCPlane::FromPointAndNormal(
+            {1e308, 0.0, 0.0}, {0.0, 0.0, 1.0});
+        const Geometry::SCGeometryTolerance3d tolerance{};
+        ASSERT_TRUE(curve.IsValid(tolerance));
+        ASSERT_TRUE(line.IsValid(tolerance.distanceEpsilon));
+
+        const auto planeResult = Geometry::IntersectAllPlaneCurveWithStatus(plane, curve, tolerance);
+        ASSERT_FALSE(planeResult.hits.empty());
+        ASSERT_EQ(planeResult.evidence.negativeCompleteness,
+                  Geometry::SCGeometryEvidenceState::Verified);
+
+        const auto lineResult = Geometry::IntersectAllLineCurveWithStatus(line, curve, tolerance);
+        EXPECT_TRUE(lineResult.hits.empty());
+        EXPECT_EQ(lineResult.state, Geometry::SCGeometryOperationState::Unknown);
+        EXPECT_EQ(lineResult.evidence.hit, Geometry::SCGeometryEvidenceState::Unknown);
+        EXPECT_EQ(lineResult.evidence.negativeCompleteness,
+                  Geometry::SCGeometryEvidenceState::Unknown);
+
+        const SCNurbsCurve3d separated(1,
+            {{0.0, 2.0, -1.0}, {0.0, 2.0, 1.0}},
+            {0.0, 0.0, 1.0, 1.0});
+        const SCLine3d ordinaryLine = SCLine3d::FromOriginAndDirection(
+            {0.0, 0.0, 0.0}, {1.0, 0.0, 0.0});
+        const auto provenMiss = Geometry::IntersectAllLineCurveWithStatus(
+            ordinaryLine, separated, tolerance);
+        EXPECT_TRUE(provenMiss.hits.empty());
+        EXPECT_EQ(provenMiss.state, Geometry::SCGeometryOperationState::NoResult);
+        EXPECT_EQ(provenMiss.evidence.negativeCompleteness,
+                  Geometry::SCGeometryEvidenceState::Verified);
+    }
+
     TEST(NurbsNumericsTest, PlaneCurveIsolationKeepsRefinementInsideCandidateCells)
     {
         const SCNurbsCurve3d curve(2,

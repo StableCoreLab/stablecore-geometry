@@ -4,6 +4,7 @@
 #include <limits>
 #include <type_traits>
 
+#include "Core/Intersection.h"
 #include "Core/Projection.h"
 #include "Geometry2d/SCArcSegment2d.h"
 #include "Geometry2d/SCLineSegment2d.h"
@@ -29,6 +30,33 @@ TEST(SegmentTest, ArcComparisonSeparatesDistanceAndAngleTolerance)
     EXPECT_FALSE(arc.AlmostEquals(arc, -1.0, 1e-3));
     EXPECT_FALSE(arc.AlmostEquals(arc, 1e-3, std::numeric_limits<double>::infinity()));
     EXPECT_TRUE(arc.AlmostEquals(rotated, 1e-3));
+}
+
+TEST(SegmentTest, ExplicitToleranceLineArcIntersectionPreservesSmallSweepParameter)
+{
+    constexpr double eps = 1e-12;
+    const SCArcSegment2d arc({0.0, 0.0}, 1.0, 0.0, 1e-10);
+    const SCLineSegment2d line({0.9, 5e-11}, {1.1, 5e-11});
+    ASSERT_FALSE(arc.IsValid());
+    ASSERT_TRUE(arc.IsValid(eps));
+    const auto result = Geometry::Intersect(line, arc, eps);
+    ASSERT_EQ(result.pointCount, 1U);
+    EXPECT_NEAR(result.points[0].point.y, 5e-11, eps);
+    EXPECT_NEAR(result.points[0].parameterOnSecond, 0.5, 1e-5);
+}
+
+TEST(SegmentTest, ExplicitToleranceLineArcIntersectionUsesLinearSeparation)
+{
+    constexpr double eps = 1e-12;
+    const SCArcSegment2d arc({0.0, 0.0}, 1e-8, 0.0, Geometry::kPi);
+    const SCLineSegment2d crossing({-2e-8, 0.0}, {2e-8, 0.0});
+    const auto twoPoints = Geometry::Intersect(crossing, arc, eps);
+    ASSERT_EQ(twoPoints.pointCount, 2U);
+    EXPECT_EQ(twoPoints.kind, Geometry::SCIntersectionKind2d::Point);
+
+    const SCLineSegment2d separated({-2e-8, 1.1e-8}, {2e-8, 1.1e-8});
+    const auto noPoint = Geometry::Intersect(separated, arc, eps);
+    EXPECT_EQ(noPoint.pointCount, 0U);
 }
 
 TEST(SegmentTest, ArcValidityRejectsOverflowingGeometry)

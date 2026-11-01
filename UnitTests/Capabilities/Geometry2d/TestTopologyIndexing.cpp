@@ -47,6 +47,50 @@ TEST(TopologyIndexingTest, SegmentSearchQueriesAndFindsNearestSegment)
     ASSERT_EQ(search.Nearest(SCPoint2d{2.0, -0.2})->id, lineId);
 }
 
+TEST(TopologyIndexingTest, SegmentSearchKeepsInvalidEntriesOutOfQueries)
+{
+    SCSegmentSearch2d search;
+    const std::size_t invalidId = search.Add(std::shared_ptr<const Geometry::ISCSegment2d>{});
+    const SCLineSegment2d line({0.0, 0.0}, {2.0, 0.0});
+    const std::size_t lineId = search.Add(line);
+    ASSERT_TRUE(search.Contains(invalidId));
+    ASSERT_NE(search.Find(invalidId), nullptr);
+    EXPECT_FALSE(search.IsValid());
+
+    const SCBox2d box = SCBox2d::FromMinMax({0.5, -0.5}, {1.5, 0.5});
+    EXPECT_EQ(search.QueryIntersecting(box), std::vector<std::size_t>{lineId});
+    EXPECT_EQ(search.QueryIntersecting(line), std::vector<std::size_t>{lineId});
+    ASSERT_EQ(search.QueryWithinDistance({1.0, 0.5}, 1.0).size(), 1U);
+    EXPECT_TRUE(search.QueryWithinDistance({1.0, 0.5}, -1.0).empty());
+    ASSERT_TRUE(search.Nearest({1.0, 0.5}).has_value());
+    EXPECT_EQ(search.Nearest({1.0, 0.5})->id, lineId);
+    ASSERT_EQ(search.QueryKNearest({1.0, 0.5}, 2).size(), 1U);
+
+    SCSegmentSearch2d stale({Geometry::SCSegmentSearchEntry2d{42, {}, box}});
+    EXPECT_TRUE(stale.QueryIntersecting(box).empty());
+    EXPECT_TRUE(stale.QueryIntersecting(line).empty());
+    SCSegmentSearch2d staleBounds({Geometry::SCSegmentSearchEntry2d{
+        43, std::make_shared<SCLineSegment2d>(line),
+        SCBox2d::FromMinMax({100.0, 100.0}, {101.0, 101.0})}});
+    EXPECT_EQ(staleBounds.QueryIntersecting(box), std::vector<std::size_t>{43});
+
+    EXPECT_TRUE(search.Remove(invalidId));
+    EXPECT_TRUE(search.IsValid());
+}
+
+TEST(TopologyIndexingTest, SegmentSearchBoxQueryUsesExplicitToleranceForShortSegment)
+{
+    const SCLineSegment2d shortLine({0.0, 0.0}, {1e-10, 0.0});
+    ASSERT_FALSE(shortLine.IsValid());
+    ASSERT_TRUE(shortLine.IsValid(1e-12));
+    SCSegmentSearch2d search;
+    const std::size_t id = search.Add(shortLine);
+    const SCBox2d box = SCBox2d::FromMinMax({-1e-11, -1e-11}, {1.1e-10, 1e-11});
+    EXPECT_EQ(search.QueryIntersecting(box, 1e-12), std::vector<std::size_t>{id});
+    const SCLineSegment2d crossing({5e-11, -5e-11}, {5e-11, 5e-11});
+    EXPECT_EQ(search.QueryIntersecting(crossing, 1e-12), std::vector<std::size_t>{id});
+}
+
 TEST(TopologyIndexingTest, PolygonRelationsAndTopologyAreConsistent)
 {
     const SCPolygon2d outer(SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{10.0, 0.0}, SCPoint2d{10.0, 10.0}, SCPoint2d{0.0, 10.0}},

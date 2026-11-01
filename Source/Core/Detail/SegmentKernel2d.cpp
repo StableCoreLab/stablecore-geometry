@@ -16,6 +16,19 @@ namespace Geometry::Detail
             return std::isfinite(value);
         }
 
+        [[nodiscard]] bool ValidAtTolerance(const ISCSegment2d& segment, double tolerance)
+        {
+            if (const auto* line = dynamic_cast<const SCLineSegment2d*>(&segment))
+            {
+                return line->IsValid(tolerance);
+            }
+            if (const auto* arc = dynamic_cast<const SCArcSegment2d*>(&segment))
+            {
+                return arc->IsValid(tolerance);
+            }
+            return false;
+        }
+
         [[nodiscard]] bool ValidParameters(std::span<const double> parameters, double tolerance)
         {
             if (parameters.size() < 2 || !Finite(tolerance) || tolerance <= 0.0 ||
@@ -80,7 +93,9 @@ namespace Geometry::Detail
                                                     const ISCSegment2d& second,
                                                     double tolerance)
     {
-        if (!first.IsValid() || !second.IsValid() || !IsKernelSegment(first) || !IsKernelSegment(second))
+        if (!Finite(tolerance) || tolerance < 0.0 || !IsKernelSegment(first) ||
+            !IsKernelSegment(second) || !ValidAtTolerance(first, tolerance) ||
+            !ValidAtTolerance(second, tolerance))
         {
             return {};
         }

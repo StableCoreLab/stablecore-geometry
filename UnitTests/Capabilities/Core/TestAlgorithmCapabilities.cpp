@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <limits>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -395,6 +396,16 @@ TEST(AlgorithmCapabilitiesTest, SegmentSearch3dNearestUsesProvidedTolerance)
 
     const auto looseHit = search.Nearest(SCPoint3d{0.0, 1.0, 0.0}, SCGeometryTolerance3d{1e-3, 1e-9, 1e-9});
     EXPECT_FALSE(looseHit.has_value());
+
+    SCSegmentSearch3d tinySearch;
+    const SCLine3d tinyLine = SCLine3d::FromOriginAndDirection(
+        {0.0, 0.0, 0.0}, {1e-10, 0.0, 0.0});
+    tinySearch.Add(SCLineCurve3d::FromLine(tinyLine, SCIntervald{0.0, 1.0}));
+    EXPECT_FALSE(tinySearch.IsValid());
+    const auto tinyHit = tinySearch.Nearest(
+        {0.0, 1.0, 0.0}, SCGeometryTolerance3d{1e-12, 1e-12, 1e-12});
+    ASSERT_TRUE(tinyHit.has_value());
+    EXPECT_EQ(tinyHit->id, 0U);
 }
 
 TEST(AlgorithmCapabilitiesTest, SegmentSearch3dUsesBoxIndexForExactQueries)
@@ -431,6 +442,54 @@ TEST(AlgorithmCapabilitiesTest, SegmentSearch3dUsesBoxIndexForExactQueries)
     const auto nearestAfterRemove = search.Nearest(queryPoint);
     ASSERT_TRUE(nearestAfterRemove.has_value());
     EXPECT_EQ(nearestAfterRemove->id, 19U);
+}
+
+TEST(AlgorithmCapabilitiesTest, SegmentSearch3dBoxQueryChecksCurrentCurveBounds)
+{
+    const SCBox3d queryBox = SCBox3d::FromMinMax({0.5, -0.5, -0.5}, {1.5, 0.5, 0.5});
+    const SCBox3d distantBox = SCBox3d::FromMinMax({100.0, 100.0, 100.0},
+                                                   {101.0, 101.0, 101.0});
+    const SCLineCurve3d curve = SCLineCurve3d::FromLine(
+        SCLine3d::FromOriginAndDirection({0.0, 0.0, 0.0}, {2.0, 0.0, 0.0}),
+        SCIntervald{0.0, 1.0});
+    ASSERT_TRUE(curve.IsValid());
+
+    SCSegmentSearch3d staleBounds({Geometry::SCSegmentSearchEntry3d{
+        7, std::make_shared<SCLineCurve3d>(curve), distantBox}});
+    EXPECT_EQ(staleBounds.QueryIntersecting(queryBox), std::vector<std::size_t>{7});
+    SCSegmentSearch3d missingBounds({Geometry::SCSegmentSearchEntry3d{
+        10, std::make_shared<SCLineCurve3d>(curve), SCBox3d{}}});
+    EXPECT_FALSE(missingBounds.IsValid());
+    EXPECT_EQ(missingBounds.QueryIntersecting(queryBox), std::vector<std::size_t>{10});
+    ASSERT_EQ(missingBounds.QueryWithinDistance({1.0, 0.5, 0.0}, 1.0).size(), 1U);
+
+    SCSegmentSearch3d emptyCurve({Geometry::SCSegmentSearchEntry3d{8, {}, queryBox}});
+    EXPECT_TRUE(emptyCurve.QueryIntersecting(queryBox).empty());
+
+    const SCLineCurve3d invalidCurve = SCLineCurve3d::FromLine(
+        SCLine3d::FromOriginAndDirection({0.0, 0.0, 0.0}, {2.0, 0.0, 0.0}),
+        SCIntervald{1.0, 0.0});
+    ASSERT_FALSE(invalidCurve.IsValid());
+    SCSegmentSearch3d invalidGeometry({Geometry::SCSegmentSearchEntry3d{
+        9, std::make_shared<SCLineCurve3d>(invalidCurve), queryBox}});
+    EXPECT_FALSE(invalidGeometry.IsValid());
+    EXPECT_TRUE(invalidGeometry.QueryIntersecting(queryBox).empty());
+}
+
+TEST(AlgorithmCapabilitiesTest, SegmentSearch3dBoxQueryUsesExplicitToleranceForShortCurve)
+{
+    const SCLineCurve3d shortCurve = SCLineCurve3d::FromLine(
+        SCLine3d::FromOriginAndDirection({0.0, 0.0, 0.0}, {1e-10, 0.0, 0.0}),
+        SCIntervald{0.0, 1.0});
+    ASSERT_FALSE(shortCurve.IsValid());
+    SCGeometryTolerance3d tolerance{};
+    tolerance.distanceEpsilon = 1e-12;
+    ASSERT_TRUE(shortCurve.IsValid(tolerance));
+    SCSegmentSearch3d search;
+    const std::size_t id = search.Add(shortCurve);
+    const SCBox3d box = SCBox3d::FromMinMax({-1e-11, -1e-11, -1e-11},
+                                            {1.1e-10, 1e-11, 1e-11});
+    EXPECT_EQ(search.QueryIntersecting(box, 1e-12), std::vector<std::size_t>{id});
 }
 
 TEST(AlgorithmCapabilitiesTest, ThreeDimensionalPointContainmentHasItsOwnEnum)

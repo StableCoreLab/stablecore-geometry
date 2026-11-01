@@ -34,6 +34,35 @@ TEST(IntersectionResultValidity3dTest, RejectsNonFiniteHitParameters)
     EXPECT_FALSE(meshHit.IsValid());
 }
 
+TEST(IntersectionResultValidity3dTest, RejectsEmptyOrInactiveAggregateHits)
+{
+    SCLineBrepBodyIntersection3d brepHit;
+    brepHit.intersects = true;
+    EXPECT_FALSE(brepHit.IsValid());
+    brepHit.faceIndices = {0};
+    brepHit.hits = {SCLineBrepFaceIntersection3d{}};
+    EXPECT_FALSE(brepHit.IsValid());
+    brepHit.hits[0].intersects = true;
+    EXPECT_TRUE(brepHit.IsValid());
+
+    SCLinePolyhedronBodyIntersection3d polyhedronHit;
+    polyhedronHit.intersects = true;
+    EXPECT_FALSE(polyhedronHit.IsValid());
+    polyhedronHit.faceIndices = {0};
+    polyhedronHit.hits = {SCLinePolyhedronFaceIntersection3d{}};
+    EXPECT_FALSE(polyhedronHit.IsValid());
+    polyhedronHit.hits[0].intersects = true;
+    EXPECT_TRUE(polyhedronHit.IsValid());
+
+    SCLineTriangleMeshIntersection3d meshHit;
+    meshHit.intersects = true;
+    EXPECT_FALSE(meshHit.IsValid());
+    meshHit.triangleIndices = {0};
+    meshHit.lineParameters = {0.5};
+    meshHit.points = {{1.0, 2.0, 3.0}};
+    EXPECT_TRUE(meshHit.IsValid());
+}
+
 TEST(GeometryTest, ThreeDimensionalIntegerPrimitivesFollowTheTemplatedFamily)
 {
     const SCPoint3i minimum{1, 2, 3};

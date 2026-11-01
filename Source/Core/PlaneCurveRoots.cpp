@@ -757,19 +757,41 @@ namespace Geometry
             return result;
         }
 
+        bool verifiedCandidates = true;
         for (const auto& planeHit : planeResult.hits)
         {
             const SCLineProjection3d projection = ProjectPointToLine(planeHit.point, line, tolerance);
-            if (!projection.IsValid() || !projection.isOnLine) continue;
+            if (!projection.IsValid())
+            {
+                verifiedCandidates = false;
+                continue;
+            }
+            if (!projection.isOnLine) continue;
             const SCPoint3d linePoint = line.PointAt(projection.parameter);
-            if (!linePoint.IsValid() ||
-                Norm(linePoint - planeHit.point) > tolerance.distanceEpsilon) continue;
+            if (!linePoint.IsValid())
+            {
+                verifiedCandidates = false;
+                continue;
+            }
+            const double separation = Norm(linePoint - planeHit.point);
+            if (!std::isfinite(separation))
+            {
+                verifiedCandidates = false;
+                continue;
+            }
+            if (separation > tolerance.distanceEpsilon) continue;
             result.hits.push_back({true, projection.parameter, planeHit.curveParameter, planeHit.point});
         }
         std::sort(result.hits.begin(), result.hits.end(), [](const auto& first, const auto& second) {
             return first.curveParameter < second.curveParameter;
         });
         result.evidence = planeResult.evidence;
+        if (!verifiedCandidates)
+        {
+            result.evidence.negativeCompleteness = SCGeometryEvidenceState::Unknown;
+            result.evidence.reasons |= SCGeometryFailureReason::Unrepresentable |
+                                       SCGeometryFailureReason::SearchIncomplete;
+        }
         result.evidence.hit = result.hits.empty()
             ? (result.evidence.negativeCompleteness == SCGeometryEvidenceState::Verified
                 ? SCGeometryEvidenceState::NotApplicable : SCGeometryEvidenceState::Unknown)

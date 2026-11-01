@@ -102,7 +102,7 @@ namespace Geometry
 
         [[nodiscard]] double ArcParameterAtAngle(const SCArcSegment2d& arc, double angle)
         {
-            if (AlmostEqual(arc.sweepAngle, 0.0, Geometry::kDefaultAngleEpsilon))
+            if (arc.sweepAngle == 0.0)
             {
                 return 0.0;
             }
@@ -406,7 +406,7 @@ namespace Geometry
                                                                      const SCArcSegment2d& arc,
                                                                      double eps)
         {
-            if (!line.IsValid() || !arc.IsValid())
+            if (!std::isfinite(eps) || eps <= 0.0 || !line.IsValid(eps) || !arc.IsValid(eps))
             {
                 return MakeNoIntersection();
             }
@@ -414,7 +414,15 @@ namespace Geometry
             const SCVector2d direction = line.endPoint - line.startPoint;
             const SCVector2d fromCenter = line.startPoint - arc.center;
             const double a = Dot(direction, direction);
-            if (a <= eps)
+            if (!(a > 0.0) || !std::isfinite(a))
+            {
+                return MakeNoIntersection();
+            }
+            const double lineLength = std::sqrt(a);
+            const double parameterEps = eps / lineLength;
+            const double angleEps = eps / arc.radius;
+            const double lineDistance = std::abs(Cross(fromCenter, direction)) / lineLength;
+            if (!std::isfinite(lineDistance) || lineDistance - arc.radius > eps)
             {
                 return MakeNoIntersection();
             }
@@ -422,7 +430,7 @@ namespace Geometry
             const double b = 2.0 * Dot(fromCenter, direction);
             const double c = Dot(fromCenter, fromCenter) - arc.radius * arc.radius;
             const double discriminant = b * b - 4.0 * a * c;
-            if (discriminant < -eps)
+            if (!std::isfinite(discriminant))
             {
                 return MakeNoIntersection();
             }
@@ -436,15 +444,15 @@ namespace Geometry
             bool hasPoint = false;
             for (double root : roots)
             {
-                if (root < -eps || root > 1.0 + eps)
+                if (root < -parameterEps || root > 1.0 + parameterEps)
                 {
                     continue;
                 }
 
                 const double parameter = Clamp(root, 0.0, 1.0);
-                const SCPoint2d point = line.PointAt(parameter);
+                const SCPoint2d point = line.PointAt(parameter, eps);
                 const double angle = std::atan2(point.y - arc.center.y, point.x - arc.center.x);
-                if (!IsAngleOnArc(arc, angle, eps))
+                if (!IsAngleOnArc(arc, angle, angleEps))
                 {
                     continue;
                 }
@@ -456,12 +464,17 @@ namespace Geometry
                         point,
                         parameter,
                         arcParameter,
-                        AlmostEqual(discriminant, 0.0, eps) ? SCIntersectionKind2d::Tangent : SCIntersectionKind2d::Point);
+                        std::abs(lineDistance - arc.radius) <= eps
+                            ? SCIntersectionKind2d::Tangent : SCIntersectionKind2d::Point);
                     hasPoint = true;
                     continue;
                 }
 
                 AddIntersectionPoint(result, SCIntersectionKind2d::Point, point, parameter, arcParameter, eps);
+                if (result.pointCount == 2)
+                {
+                    result.kind = SCIntersectionKind2d::Point;
+                }
             }
 
             return result;

@@ -146,12 +146,19 @@ namespace Geometry
 
     std::vector<std::size_t> SCSegmentSearch3d::QueryIntersecting(const SCBox3d& box, double eps) const
     {
-        if (entryIndices_.size() != entries_.size())
+        SCGeometryTolerance3d tolerance{};
+        tolerance.distanceEpsilon = eps;
+        tolerance.boxPadding = eps;
+        if (!tolerance.IsValid()) return {};
+        const auto queryable = [&tolerance](const SCSegmentSearchEntry3d& entry) {
+            return entry.curve != nullptr && entry.curve->IsValid(tolerance);
+        };
+        if (hasUntrustedBounds_ || entryIndices_.size() != entries_.size())
         {
             std::vector<std::size_t> result;
             for (const auto& entry : entries_)
             {
-                if (Intersects(entry.box, box, eps))
+                if (queryable(entry) && Intersects(entry.curve->Bounds(), box, eps))
                 {
                     result.push_back(entry.id);
                 }
@@ -159,6 +166,10 @@ namespace Geometry
             return result;
         }
         std::vector<std::size_t> result = boxTree_.Query(box, eps);
+        result.erase(std::remove_if(result.begin(), result.end(), [this, &queryable](std::size_t id) {
+            const auto* entry = Find(id);
+            return entry == nullptr || !queryable(*entry);
+        }), result.end());
         std::sort(result.begin(), result.end(), [this](std::size_t lhs, std::size_t rhs) {
             return entryIndices_.at(lhs) < entryIndices_.at(rhs);
         });
@@ -207,6 +218,12 @@ namespace Geometry
         {
             const double distance = StableDistance(first, second);
             return std::isfinite(distance) && distance <= maximum;
+        }
+
+        [[nodiscard]] bool Queryable(const SCSegmentSearchEntry3d& entry,
+                                     const SCGeometryTolerance3d& tolerance)
+        {
+            return entry.curve != nullptr && entry.curve->IsValid(tolerance);
         }
     }  // namespace
 
@@ -260,7 +277,7 @@ namespace Geometry
         for (const std::size_t index : candidateIndices)
         {
             const auto& entry = entries_[index];
-            if (entry.curve == nullptr)
+            if (!Queryable(entry, tolerance))
             {
                 continue;
             }
@@ -328,7 +345,7 @@ namespace Geometry
             hits.reserve(entries_.size());
             for (const auto& entry : entries_)
             {
-                if (entry.curve == nullptr)
+                if (!Queryable(entry, tolerance))
                 {
                     continue;
                 }
@@ -361,7 +378,7 @@ namespace Geometry
                     continue;
                 }
                 const auto* entry = Find(boxHit.id);
-                if (entry == nullptr || entry->curve == nullptr)
+                if (entry == nullptr || !Queryable(*entry, tolerance))
                 {
                     continue;
                 }

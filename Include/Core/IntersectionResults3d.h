@@ -71,14 +71,14 @@ namespace Geometry
                 return true;
             }
 
-            if (faceIndices.size() != hits.size())
+            if (hits.empty() || faceIndices.size() != hits.size())
             {
                 return false;
             }
 
             for (const SCLineBrepFaceIntersection3d& hit : hits)
             {
-                if (!hit.IsValid())
+                if (!hit.intersects || !hit.IsValid())
                 {
                     return false;
                 }
@@ -170,14 +170,14 @@ namespace Geometry
                 return true;
             }
 
-            if (faceIndices.size() != hits.size())
+            if (hits.empty() || faceIndices.size() != hits.size())
             {
                 return false;
             }
 
             for (const SCLinePolyhedronFaceIntersection3d& hit : hits)
             {
-                if (!hit.IsValid())
+                if (!hit.intersects || !hit.IsValid())
                 {
                     return false;
                 }
@@ -200,7 +200,8 @@ namespace Geometry
                 return true;
             }
 
-            if (triangleIndices.size() != lineParameters.size() || lineParameters.size() != points.size())
+            if (points.empty() || triangleIndices.size() != lineParameters.size() ||
+                lineParameters.size() != points.size())
             {
                 return false;
             }

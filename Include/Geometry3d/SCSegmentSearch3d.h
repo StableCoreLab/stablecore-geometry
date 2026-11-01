@@ -27,7 +27,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid() const
         {
-            return curve != nullptr && box.IsValid();
+            return curve != nullptr && curve->IsValid() && box.IsValid();
         }
     };
 

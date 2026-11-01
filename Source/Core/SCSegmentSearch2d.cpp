@@ -5,6 +5,7 @@
 #include "Core/Projection.h"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <sstream>
 #include <utility>
@@ -13,6 +14,22 @@
 
 namespace Geometry
 {
+    namespace
+    {
+        [[nodiscard]] SCBox2d BoundsAtTolerance(const ISCSegment2d& segment, double eps)
+        {
+            if (const auto* line = dynamic_cast<const SCLineSegment2d*>(&segment))
+            {
+                return line->Bounds(eps);
+            }
+            if (const auto* arc = dynamic_cast<const SCArcSegment2d*>(&segment))
+            {
+                return arc->Bounds(eps);
+            }
+            return segment.IsValid() ? segment.Bounds() : SCBox2d{};
+        }
+    }  // namespace
+
     SCSegmentSearch2d::SCSegmentSearch2d(std::vector<SCSegmentSearchEntry2d> entries) : entries_(std::move(entries))
     {
         for (const auto& entry : entries_)
@@ -29,10 +46,9 @@ namespace Geometry
 
     std::size_t SCSegmentSearch2d::Add(std::shared_ptr<const ISCSegment2d> segment)
     {
+        const SCBox2d box = segment != nullptr ? segment->Bounds() : SCBox2d{};
         const std::size_t id = nextId_++;
-        entries_.push_back(
-            SCSegmentSearchEntry2d{id, std::move(segment), entries_.empty() ? SCBox2d{} : entries_.back().box});
-        entries_.back().box = entries_.back().segment->Bounds();
+        entries_.push_back(SCSegmentSearchEntry2d{id, std::move(segment), box});
         return id;
     }
 
@@ -78,9 +94,12 @@ namespace Geometry
     std::vector<std::size_t> SCSegmentSearch2d::QueryIntersecting(const SCBox2d& box, double eps) const
     {
         std::vector<std::size_t> result;
+        if (!std::isfinite(eps) || eps < 0.0) return result;
         for (const auto& entry : entries_)
         {
-            if (Intersects(entry.box, box, eps))
+            if (entry.segment == nullptr) continue;
+            const SCBox2d currentBounds = BoundsAtTolerance(*entry.segment, eps);
+            if (currentBounds.IsValid() && Intersects(currentBounds, box, eps))
             {
                 result.push_back(entry.id);
             }
@@ -91,9 +110,14 @@ namespace Geometry
     std::vector<std::size_t> SCSegmentSearch2d::QueryIntersecting(const ISCSegment2d& segment, double eps) const
     {
         std::vector<std::size_t> result;
+        if (!std::isfinite(eps) || eps < 0.0 || !BoundsAtTolerance(segment, eps).IsValid())
+        {
+            return result;
+        }
         for (const auto& entry : entries_)
         {
-            if (HasIntersection(*entry.segment, segment, eps))
+            if (entry.segment != nullptr && BoundsAtTolerance(*entry.segment, eps).IsValid() &&
+                HasIntersection(*entry.segment, segment, eps))
             {
                 result.push_back(entry.id);
             }
@@ -104,11 +128,16 @@ namespace Geometry
     std::vector<SCSegmentSearchHit2d> SCSegmentSearch2d::QueryWithinDistance(const SCPoint2d& point, double maxDistance) const
     {
         std::vector<SCSegmentSearchHit2d> result;
+        if (!(maxDistance >= 0.0))
+        {
+            return result;
+        }
         const double maxDistanceSquared = maxDistance * maxDistance;
         for (const auto& entry : entries_)
         {
+            if (!entry.IsValid()) continue;
             const auto projection = ProjectPointToSegment(point, *entry.segment, true);
-            if (projection.distanceSquared <= maxDistanceSquared)
+            if (projection.IsValid() && projection.distanceSquared <= maxDistanceSquared)
             {
                 result.push_back(SCSegmentSearchHit2d{entry.id,
                                                     projection.point,
@@ -125,8 +154,9 @@ namespace Geometry
         std::optional<SCSegmentSearchHit2d> best;
         for (const auto& entry : entries_)
         {
+            if (!entry.IsValid()) continue;
             const auto projection = ProjectPointToSegment(point, *entry.segment, true);
-            if (!best || projection.distanceSquared < best->distanceSquared)
+            if (projection.IsValid() && (!best || projection.distanceSquared < best->distanceSquared))
             {
                 best = SCSegmentSearchHit2d{entry.id,
                                           projection.point,
@@ -152,6 +182,7 @@ namespace Geometry
         hits.reserve(entries_.size());
         for (const auto& entry : entries_)
         {
+            if (!entry.IsValid()) continue;
             const auto projection = ProjectPointToSegment(point, *entry.segment, true);
             if (!projection.IsValid() || projection.distanceSquared > maxDistanceSquared)
             {
