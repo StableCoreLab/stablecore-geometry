@@ -18,7 +18,7 @@ namespace Geometry
     {
         SCPoint3d point{};
         double parameter{0.0};
-        double distanceSquared{0.0};
+        double distanceSquared{-1.0};
         bool isOnSegment{false};
 
         [[nodiscard]] bool IsValid() const
@@ -58,7 +58,7 @@ namespace Geometry
     {
         SCPoint3d point{};
         double parameter{0.0};
-        double distanceSquared{0.0};
+        double distanceSquared{-1.0};
         bool isOnLine{false};
 
         [[nodiscard]] bool IsValid() const
@@ -72,7 +72,7 @@ namespace Geometry
     {
         SCPoint3d point{};
         double signedDistance{0.0};
-        double distanceSquared{0.0};
+        double distanceSquared{-1.0};
 
         [[nodiscard]] bool IsValid() const
         {
@@ -151,7 +151,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid() const
         {
-            return !success || projection.IsValid();
+            return !success || (projection.success && projection.IsValid());
         }
     };
 
@@ -206,7 +206,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid() const
         {
-            return !success || projection.IsValid();
+            return !success || (projection.success && projection.IsValid());
         }
     };
 

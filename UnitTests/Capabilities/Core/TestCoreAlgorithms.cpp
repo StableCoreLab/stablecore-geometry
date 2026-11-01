@@ -298,3 +298,68 @@ TEST(CoreAlgorithmsTest, CoversCurrentCapabilities)
     const SCSnapResult2d snap = SnapPointToSegments(SCPoint2d{1.0, 1.0}, snapSegments, 2.0);
     ASSERT_TRUE(snap.snapped);
 }
+
+TEST(CoreAlgorithmsTest, AxisOperationsAcceptCallerToleranceForShortSegments)
+{
+    const SCLineSegment2d line({0.0, 0.0}, {1e-10, 0.0});
+    constexpr double epsilon = 1e-12;
+    ASSERT_TRUE(line.IsValid(epsilon));
+
+    const auto sample = SampleAxis(line, 0.25, epsilon);
+    EXPECT_TRUE(sample.IsValid());
+    EXPECT_NEAR(sample.point.x, 2.5e-11, 1e-25);
+    EXPECT_NEAR(sample.tangent.x, 1.0, 1e-12);
+    EXPECT_NEAR(sample.normal.y, 1.0, 1e-12);
+
+    const auto atLength = SampleAxisAtLength(line, 5e-11, true, epsilon);
+    EXPECT_TRUE(atLength.IsValid());
+    EXPECT_NEAR(atLength.point.x, 5e-11, 1e-25);
+    EXPECT_NEAR(atLength.parameter, 0.5, 1e-12);
+
+    const auto projection = ProjectPointToAxis({2.5e-11, 1e-11}, line, epsilon);
+    ASSERT_TRUE(projection.projection.IsValid());
+    EXPECT_NEAR(projection.projection.point.x, 2.5e-11, 1e-25);
+    EXPECT_NEAR(projection.projection.parameter, 0.25, 1e-12);
+    EXPECT_NEAR(projection.tangent.x, 1.0, 1e-12);
+
+    const SCArcSegment2d arc({0.0, 0.0}, 1.0, 0.0, 1e-10);
+    ASSERT_TRUE(arc.IsValid(epsilon));
+    const auto arcSample = SampleAxisAtLength(arc, 5e-11, true, epsilon);
+    EXPECT_TRUE(arcSample.IsValid());
+    EXPECT_NEAR(arcSample.point.y, 5e-11, 1e-20);
+    EXPECT_NEAR(arcSample.tangent.y, 1.0, 1e-12);
+    const auto arcProjection = ProjectPointToAxis({1.0, 5e-11}, arc, epsilon);
+    ASSERT_TRUE(arcProjection.projection.IsValid());
+    EXPECT_NEAR(arcProjection.projection.parameter, 0.5, 1e-12);
+    EXPECT_FALSE(ProjectPointToAxis({2.5e-11, 1e-11}, line, 0.0).projection.IsValid());
+    EXPECT_FALSE(SampleAxis(line, 0.25, 0.0).IsValid());
+    EXPECT_FALSE(SampleAxisAtLength(line, 5e-11, true, 0.0).IsValid());
+    EXPECT_FALSE(SCAxisSample2d{}.IsValid());
+    EXPECT_FALSE(SCAxisProjection2d{}.IsValid());
+    EXPECT_FALSE(SCSegmentProjection2d{}.IsValid());
+    EXPECT_FALSE(ProjectPointToArcSegment({1.0, 0.0}, SCArcSegment2d{}, true).IsValid());
+}
+
+TEST(CoreAlgorithmsTest, ClosestPointsResultRejectsInvalidPayload)
+{
+    EXPECT_FALSE(SCClosestPoints2d{}.IsValid());
+    SCClosestPoints2d result{{0.0, 0.0}, {1.0, 0.0}, 0.0, 1.0, 1.0};
+    ASSERT_TRUE(result.IsValid());
+    result.parameterOnFirst = std::numeric_limits<double>::infinity();
+    EXPECT_FALSE(result.IsValid());
+    result.parameterOnFirst = 0.0;
+    result.distanceSquared = std::numeric_limits<double>::infinity();
+    EXPECT_FALSE(result.IsValid());
+}
+
+TEST(CoreAlgorithmsTest, SnapResultRejectsInvalidPayload)
+{
+    EXPECT_TRUE(SCSnapResult2d{}.IsValid());
+    SCSnapResult2d result{true, {1.0, 0.0}, 1.0, 0, 0.5};
+    ASSERT_TRUE(result.IsValid());
+    result.parameter = std::numeric_limits<double>::infinity();
+    EXPECT_FALSE(result.IsValid());
+    result.parameter = 0.5;
+    result.distanceSquared = -1.0;
+    EXPECT_FALSE(result.IsValid());
+}

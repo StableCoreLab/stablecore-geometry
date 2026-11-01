@@ -454,6 +454,7 @@ namespace Geometry
                 result.payload = hit;
             } else {
                 Unknown(result, Reason::SearchIncomplete | Reason::NoProof);
+                result.evidence.hit = Evidence::Unknown;
             }
         }
         return result;

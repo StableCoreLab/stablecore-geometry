@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cmath>
 #include <memory>
 
 #include "Core/GeometryTypesPrimitives.h"
@@ -129,7 +130,11 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid() const
         {
-            return point.IsValid() && tangent.IsValid() && normal.IsValid();
+            const double tangentLength = tangent.Length();
+            const double normalLength = normal.Length();
+            return point.IsValid() && std::isfinite(parameter) && tangent.IsValid() && normal.IsValid() &&
+                   std::isfinite(tangentLength) && tangentLength > 0.0 &&
+                   std::isfinite(normalLength) && normalLength > 0.0;
         }
     };
 
@@ -141,7 +146,11 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid() const
         {
-            return projection.IsValid() && tangent.IsValid() && normal.IsValid();
+            const double tangentLength = tangent.Length();
+            const double normalLength = normal.Length();
+            return projection.IsValid() && tangent.IsValid() && normal.IsValid() &&
+                   std::isfinite(tangentLength) && tangentLength > 0.0 &&
+                   std::isfinite(normalLength) && normalLength > 0.0;
         }
     };
 

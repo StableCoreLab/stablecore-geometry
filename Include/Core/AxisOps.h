@@ -11,10 +11,18 @@
 namespace Geometry
 {
     [[nodiscard]] GEOMETRY_API SCAxisSample2d SampleAxis(const ISCSegment2d& segment, double parameter);
+    [[nodiscard]] GEOMETRY_API SCAxisSample2d SampleAxis(const ISCSegment2d& segment,
+                                                        double parameter, double epsilon);
     [[nodiscard]] GEOMETRY_API SCAxisSample2d SampleAxisAtLength(const ISCSegment2d& segment,
                                                                double length,
                                                                bool clampToSegment = true);
+    [[nodiscard]] GEOMETRY_API SCAxisSample2d SampleAxisAtLength(const ISCSegment2d& segment,
+                                                                double length, bool clampToSegment,
+                                                                double epsilon);
     [[nodiscard]] GEOMETRY_API SCAxisProjection2d ProjectPointToAxis(const SCPoint2d& point, const ISCSegment2d& segment);
+    [[nodiscard]] GEOMETRY_API SCAxisProjection2d ProjectPointToAxis(const SCPoint2d& point,
+                                                                    const ISCSegment2d& segment,
+                                                                    double epsilon);
 
     [[nodiscard]] GEOMETRY_API std::unique_ptr<ISCSegment2d> Reverse(const ISCSegment2d& segment);
 

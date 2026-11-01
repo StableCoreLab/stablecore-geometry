@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "Core/Algorithms.h"
+#include "Core/Projection.h"
 #include "Geometry2d/SCArcSegment2d.h"
 #include "Geometry2d/SCLineSegment2d.h"
 #include "Support/Epsilon.h"
@@ -160,6 +161,33 @@ namespace Geometry
         return SCAxisSample2d{point, tangent, normal, parameter};
     }
 
+    SCAxisSample2d SampleAxis(const ISCSegment2d& segment, double parameter, double epsilon)
+    {
+        if (!(epsilon > 0.0) || !std::isfinite(epsilon) || !std::isfinite(parameter))
+        {
+            return {};
+        }
+        SCPoint2d point;
+        if (segment.Kind() == SCSegmentKind2::Line)
+        {
+            point = static_cast<const SCLineSegment2d&>(segment).PointAt(parameter, epsilon);
+        }
+        else if (segment.Kind() == SCSegmentKind2::Arc)
+        {
+            point = static_cast<const SCArcSegment2d&>(segment).PointAt(parameter, epsilon);
+        }
+        else
+        {
+            return {};
+        }
+        if (!point.IsValid())
+        {
+            return {};
+        }
+        const SCVector2d tangent = TangentAt(segment, parameter, epsilon);
+        return {point, tangent, LeftNormal(tangent), parameter};
+    }
+
     SCAxisSample2d SampleAxisAtLength(const ISCSegment2d& segment, double length, bool clampToSegment)
     {
         const double totalLength = segment.Length();
@@ -176,6 +204,47 @@ namespace Geometry
         return SampleAxis(segment, length / totalLength);
     }
 
+    SCAxisSample2d SampleAxisAtLength(const ISCSegment2d& segment, double length,
+                                     bool clampToSegment, double epsilon)
+    {
+        if (!(epsilon > 0.0) || !std::isfinite(epsilon) || !std::isfinite(length))
+        {
+            return {};
+        }
+        double totalLength = 0.0;
+        if (segment.Kind() == SCSegmentKind2::Line)
+        {
+            const auto& line = static_cast<const SCLineSegment2d&>(segment);
+            if (!line.IsValid(epsilon))
+            {
+                return {};
+            }
+            totalLength = line.Length();
+        }
+        else if (segment.Kind() == SCSegmentKind2::Arc)
+        {
+            const auto& arc = static_cast<const SCArcSegment2d&>(segment);
+            if (!arc.IsValid(epsilon))
+            {
+                return {};
+            }
+            totalLength = arc.Length(epsilon);
+        }
+        else
+        {
+            return {};
+        }
+        if (!(totalLength > epsilon) || !std::isfinite(totalLength))
+        {
+            return {};
+        }
+        if (clampToSegment)
+        {
+            length = std::clamp(length, 0.0, totalLength);
+        }
+        return SampleAxis(segment, length / totalLength, epsilon);
+    }
+
     SCAxisProjection2d ProjectPointToAxis(const SCPoint2d& point, const ISCSegment2d& segment)
     {
         if (segment.Kind() == SCSegmentKind2::Line)
@@ -190,6 +259,18 @@ namespace Geometry
         const SCSegmentProjection2d projection = ProjectPointToArcSegmentImpl(point, arc, true);
         const SCVector2d tangent = UnitTangentAt(arc, projection.parameter);
         return SCAxisProjection2d{projection, tangent, LeftNormal(tangent)};
+    }
+
+    SCAxisProjection2d ProjectPointToAxis(const SCPoint2d& point,
+                                         const ISCSegment2d& segment, double epsilon)
+    {
+        const SCSegmentProjection2d projection = ProjectPointToSegment(point, segment, true, epsilon);
+        if (!projection.IsValid())
+        {
+            return {projection, {}, {}};
+        }
+        const SCVector2d tangent = TangentAt(segment, projection.parameter, epsilon);
+        return {projection, tangent, LeftNormal(tangent)};
     }
 
     std::unique_ptr<ISCSegment2d> Reverse(const ISCSegment2d& segment)

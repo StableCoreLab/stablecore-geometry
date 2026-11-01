@@ -14,7 +14,7 @@ namespace Geometry
     {
         SCPoint2d point{};
         double parameter{0.0};
-        double distanceSquared{0.0};
+        double distanceSquared{-1.0};
         bool isOnSegment{false};
 
         [[nodiscard]] bool IsValid() const
@@ -45,11 +45,13 @@ namespace Geometry
         SCPoint2d secondPoint{};
         double parameterOnFirst{0.0};
         double parameterOnSecond{0.0};
-        double distanceSquared{0.0};
+        double distanceSquared{-1.0};
 
         [[nodiscard]] bool IsValid() const
         {
-            return firstPoint.IsValid() && secondPoint.IsValid() && distanceSquared >= 0.0;
+            return firstPoint.IsValid() && secondPoint.IsValid() &&
+                   std::isfinite(parameterOnFirst) && std::isfinite(parameterOnSecond) &&
+                   std::isfinite(distanceSquared) && distanceSquared >= 0.0;
         }
     };
 
@@ -63,7 +65,8 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid() const
         {
-            return !snapped || point.IsValid();
+            return !snapped || (point.IsValid() && std::isfinite(parameter) &&
+                                std::isfinite(distanceSquared) && distanceSquared >= 0.0);
         }
     };
 }  // namespace Geometry

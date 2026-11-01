@@ -94,6 +94,34 @@ TEST(AlgorithmCapabilitiesTest, LineProjectionRejectsUnrepresentableSquaredDista
     EXPECT_FALSE(far.isOnLine);
 }
 
+TEST(AlgorithmCapabilitiesTest, DefaultPrimitiveProjectionsAreInvalid)
+{
+    EXPECT_FALSE(Geometry::SCSegmentProjection3d{}.IsValid());
+    EXPECT_FALSE(Geometry::SCLineProjection3d{}.IsValid());
+    EXPECT_FALSE(Geometry::SCPlaneProjection3d{}.IsValid());
+}
+
+TEST(AlgorithmCapabilitiesTest, BodyProjectionSuccessRequiresSuccessfulFace)
+{
+    Geometry::SCBrepBodyProjection3d brep{};
+    EXPECT_TRUE(brep.IsValid());
+    brep.success = true;
+    EXPECT_FALSE(brep.IsValid());
+    brep.projection.success = true;
+    EXPECT_TRUE(brep.IsValid());
+    brep.projection.distanceSquared = -1.0;
+    EXPECT_FALSE(brep.IsValid());
+
+    Geometry::SCPolyhedronBodyProjection3d polyhedron{};
+    EXPECT_TRUE(polyhedron.IsValid());
+    polyhedron.success = true;
+    EXPECT_FALSE(polyhedron.IsValid());
+    polyhedron.projection.success = true;
+    EXPECT_TRUE(polyhedron.IsValid());
+    polyhedron.projection.distanceSquared = -1.0;
+    EXPECT_FALSE(polyhedron.IsValid());
+}
+
 TEST(AlgorithmCapabilitiesTest, ProjectPointToLineSegment3dClampsAndProjects)
 {
     const SCLineSegment3d segment{SCPoint3d{0.0, 0.0, 0.0}, SCPoint3d{2.0, 0.0, 0.0}};
