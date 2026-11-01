@@ -211,7 +211,7 @@ TEST(CoreAlgorithmsTest, ExplicitToleranceProjectsAndOrientsShortSweepArc)
     EXPECT_NEAR(Geometry::NormalAt(arc, 0.5, epsilon).x, -1.0, 1e-12);
 }
 
-TEST(CoreAlgorithmsTest, CoversCurrentCapabilities)
+TEST(CoreAlgorithmsTest, MeasuresAndProjectsBasicSegments)
 {
     const SCLineSegment2d line(SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0});
     const SCArcSegment2d arc(SCPoint2d{0.0, 0.0}, 2.0, 0.0, Geometry::kPi * 0.5);
@@ -231,6 +231,12 @@ TEST(CoreAlgorithmsTest, CoversCurrentCapabilities)
     EXPECT_TRUE(line.PointAtLength(2.0, true).AlmostEquals(SCPoint2d{2.0, 0.0}, 1e-12));
     EXPECT_TRUE(TangentAt(line, 0.5).AlmostEquals(SCVector2d{1.0, 0.0}, 1e-12));
     EXPECT_TRUE(NormalAt(line, 0.5).AlmostEquals(SCVector2d{0.0, 1.0}, 1e-12));
+}
+
+TEST(CoreAlgorithmsTest, IntersectsAndFindsClosestBasicSegments)
+{
+    const SCLineSegment2d line(SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0});
+    const SCArcSegment2d arc(SCPoint2d{0.0, 0.0}, 2.0, 0.0, Geometry::kPi * 0.5);
 
     const SCLineSegment2d vertical(SCPoint2d{2.0, -1.0}, SCPoint2d{2.0, 1.0});
     const SCSegmentIntersection2d lineLineIntersection = Intersect(line, vertical);
@@ -247,7 +253,10 @@ TEST(CoreAlgorithmsTest, CoversCurrentCapabilities)
 
     const SCClosestPoints2d closest = ClosestPoints(line, secondArc);
     ASSERT_TRUE(closest.IsValid());
+}
 
+TEST(CoreAlgorithmsTest, ComputesPolygonAreaAndRingOrientation)
+{
     const SCPolyline2d ccwRing({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}, SCPoint2d{4.0, 4.0}, SCPoint2d{0.0, 4.0}},
                              SCPolylineClosure::Closed);
     const SCPolyline2d holeRing(
@@ -258,6 +267,12 @@ TEST(CoreAlgorithmsTest, CoversCurrentCapabilities)
     ASSERT_EQ(Orientation(ccwRing), SCRingOrientation2d::CounterClockwise);
     ASSERT_TRUE(IsCounterClockwise(ccwRing));
     ASSERT_TRUE(IsClockwise(holeRing));
+}
+
+TEST(CoreAlgorithmsTest, ReversesSegmentsAndClosesPaths)
+{
+    const SCLineSegment2d line(SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0});
+    const SCArcSegment2d arc(SCPoint2d{0.0, 0.0}, 2.0, 0.0, Geometry::kPi * 0.5);
 
     const SCLineSegment2d reversedLine = Reverse(line);
     EXPECT_TRUE(reversedLine.startPoint.AlmostEquals(line.endPoint, 1e-12));
@@ -276,6 +291,12 @@ TEST(CoreAlgorithmsTest, CoversCurrentCapabilities)
     ASSERT_EQ(closedArcPath.SegmentAt(0)->Kind(), SCSegmentKind2::Line);
     ASSERT_EQ(closedArcPath.SegmentAt(1)->Kind(), SCSegmentKind2::Arc);
     ASSERT_EQ(closedArcPath.SegmentAt(2)->Kind(), SCSegmentKind2::Line);
+}
+
+TEST(CoreAlgorithmsTest, SamplesAxisAndEditsSegments)
+{
+    const SCLineSegment2d line(SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0});
+    const SCArcSegment2d arc(SCPoint2d{0.0, 0.0}, 2.0, 0.0, Geometry::kPi * 0.5);
 
     const SCAxisSample2d sample = SampleAxis(line, 0.5);
     EXPECT_TRUE(sample.point.AlmostEquals(SCPoint2d{2.0, 0.0}, 1e-12));
@@ -291,6 +312,12 @@ TEST(CoreAlgorithmsTest, CoversCurrentCapabilities)
     const SCSegmentTrim2d trim = TrimSegment(arc, 0.25, 0.75);
     ASSERT_TRUE(trim.success);
     ASSERT_EQ(trim.segment->Kind(), SCSegmentKind2::Arc);
+}
+
+TEST(CoreAlgorithmsTest, SnapsToBasicSegments)
+{
+    const SCLineSegment2d line(SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0});
+    const SCArcSegment2d arc(SCPoint2d{0.0, 0.0}, 2.0, 0.0, Geometry::kPi * 0.5);
 
     const std::unique_ptr<ISCSegment2d> lineClone = line.Clone();
     const std::unique_ptr<ISCSegment2d> arcClone = arc.Clone();

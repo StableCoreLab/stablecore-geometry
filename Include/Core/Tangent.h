@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cmath>
 
 #include "Export/GeometryExport.h"
 #include "Geometry2d/SCArcSegment2d.h"
@@ -19,7 +20,18 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid() const
         {
-            return pointCount <= 2;
+            if (pointCount > points.size() || (pointInsideCircle && pointCount != 0))
+            {
+                return false;
+            }
+            for (std::size_t index = 0; index < pointCount; ++index)
+            {
+                if (!points[index].IsValid() || !std::isfinite(angles[index]))
+                {
+                    return false;
+                }
+            }
+            return true;
         }
     };
 

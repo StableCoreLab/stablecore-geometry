@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <limits>
 #include <utility>
 #include <vector>
 
@@ -45,6 +46,25 @@ TEST(AlgorithmCapabilitiesTest, TangentPointsReturnsTwoPointsForExternalPoint)
     EXPECT_TRUE(result.points[1].AlmostEquals(SCPoint2d{2.5, 2.5 * std::sqrt(3.0)}, 1e-12));
 }
 
+TEST(AlgorithmCapabilitiesTest, TangentPointsRejectInvalidActivePayload)
+{
+    SCTangentPoints2d result{};
+    EXPECT_TRUE(result.IsValid());
+    result.pointCount = 1;
+    ASSERT_TRUE(result.IsValid());
+    result.points[0].x = std::numeric_limits<double>::infinity();
+    EXPECT_FALSE(result.IsValid());
+    result.points[0].x = 0.0;
+    result.angles[0] = std::numeric_limits<double>::quiet_NaN();
+    EXPECT_FALSE(result.IsValid());
+    result.angles[0] = 0.0;
+    result.pointInsideCircle = true;
+    EXPECT_FALSE(result.IsValid());
+    result.pointInsideCircle = false;
+    result.pointCount = 3;
+    EXPECT_FALSE(result.IsValid());
+}
+
 TEST(AlgorithmCapabilitiesTest, Line2dIntersectionFindsPointAndSegmentHit)
 {
     const SCLine2d first = SCLine2d::FromTwoPoints(SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0});
@@ -79,6 +99,33 @@ TEST(AlgorithmCapabilitiesTest, IntersectExtendedPolicyNoneMatchesIntersectForCo
     EXPECT_TRUE(actual.points[1].point.AlmostEquals(expected.points[1].point, 1e-12));
     EXPECT_TRUE(actual.onFirstSegment);
     EXPECT_TRUE(actual.onSecondSegment);
+}
+
+TEST(AlgorithmCapabilitiesTest, IntersectionPointsRejectNonFiniteParameters)
+{
+    Geometry::SCIntersectionPoint2d point{{1.0, 2.0}, 0.25, 0.5};
+    ASSERT_TRUE(point.IsValid());
+    point.parameterOnFirst = std::numeric_limits<double>::infinity();
+    EXPECT_FALSE(point.IsValid());
+    point.parameterOnFirst = 0.25;
+    point.parameterOnSecond = std::numeric_limits<double>::quiet_NaN();
+    EXPECT_FALSE(point.IsValid());
+
+    Geometry::SCPolylineIntersectionPoint2d polyline{};
+    polyline.kind = SCIntersectionKind2d::Point;
+    polyline.point = {1.0, 2.0};
+    ASSERT_TRUE(polyline.IsValid());
+    polyline.parameterOnFirstSegment = std::numeric_limits<double>::infinity();
+    EXPECT_FALSE(polyline.IsValid());
+    polyline.parameterOnFirstSegment = 0.25;
+    polyline.parameterOnSecondSegment = std::numeric_limits<double>::quiet_NaN();
+    EXPECT_FALSE(polyline.IsValid());
+    polyline.parameterOnSecondSegment = 0.5;
+    polyline.globalParameterOnFirst = std::numeric_limits<double>::infinity();
+    EXPECT_FALSE(polyline.IsValid());
+    polyline.globalParameterOnFirst = 0.25;
+    polyline.globalParameterOnSecond = std::numeric_limits<double>::quiet_NaN();
+    EXPECT_FALSE(polyline.IsValid());
 }
 
 TEST(AlgorithmCapabilitiesTest, LineProjectionRejectsUnrepresentableSquaredDistance)

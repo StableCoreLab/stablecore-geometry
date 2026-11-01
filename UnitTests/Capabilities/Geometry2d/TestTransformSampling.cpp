@@ -23,7 +23,7 @@ using Geometry::Stretch;
 using Geometry::Translate;
 using Geometry::SCVector2d;
 
-TEST(TransformSamplingTest, CoversCurrentCapabilities)
+TEST(TransformSamplingTest, TranslatesRotatesMirrorsAndStretches)
 {
     const SCLineSegment2d line(SCPoint2d{0.0, 0.0}, SCPoint2d{2.0, 0.0});
     const auto moved = Translate(line, SCVector2d{1.0, 2.0});
@@ -38,7 +38,10 @@ TEST(TransformSamplingTest, CoversCurrentCapabilities)
     const auto stretched =
         Stretch(SCPoint2d{1.0, 1.0}, SCBox2d::FromMinMax(SCPoint2d{0.0, 0.0}, SCPoint2d{2.0, 2.0}), SCVector2d{3.0, 0.0});
     EXPECT_TRUE(stretched.AlmostEquals(SCPoint2d{4.0, 1.0}, 1e-12));
+}
 
+TEST(TransformSamplingTest, SamplesArcAndEditsPolyline)
+{
     const SCArcSegment2d arc(SCPoint2d{0.0, 0.0}, 1.0, 0.0, Geometry::kPi * 0.5);
     const auto arcSamples = SampleByMaxAngle(arc, Geometry::kPi * 0.25);
     ASSERT_EQ(arcSamples.size(), 3);
@@ -52,7 +55,10 @@ TEST(TransformSamplingTest, CoversCurrentCapabilities)
     const auto inserted =
         InsertPoint(SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}}, SCPolylineClosure::Open), SCPoint2d{2.0, 0.0});
     ASSERT_EQ(inserted.PointCount(), 3);
+}
 
+TEST(TransformSamplingTest, TransformsMixedPolylineAndPolygon)
+{
     const SCPolyline2d mixedPath(
         {std::make_shared<SCLineSegment2d>(SCPoint2d{0.0, 0.0}, SCPoint2d{1.0, 0.0}),
          std::make_shared<SCArcSegment2d>(

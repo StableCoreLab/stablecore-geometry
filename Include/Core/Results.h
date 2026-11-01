@@ -51,7 +51,8 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid() const
         {
-            return point.IsValid();
+            return point.IsValid() && std::isfinite(parameterOnFirst) &&
+                   std::isfinite(parameterOnSecond);
         }
 
         [[nodiscard]] bool AlmostEquals(const SCIntersectionPoint2d& other, double eps = Geometry::kDefaultEpsilon) const
@@ -116,7 +117,9 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid() const
         {
-            return kind != SCIntersectionKind2d::None && point.IsValid();
+            return kind != SCIntersectionKind2d::None && point.IsValid() &&
+                   std::isfinite(parameterOnFirstSegment) && std::isfinite(parameterOnSecondSegment) &&
+                   std::isfinite(globalParameterOnFirst) && std::isfinite(globalParameterOnSecond);
         }
     };
 

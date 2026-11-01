@@ -2,25 +2,15 @@
 #include <cmath>
 #include <concepts>
 
-#include "Geometry2d/SCArcSegment2d.h"
-#include "Geometry2d/SCLineSegment2d.h"
 #include "Support/Geometry2d/Normalize2.h"
 #include "Support/Epsilon.h"
-#include "Types/Geometry2d/SCBox2.h"
 
-using Geometry::SCArcDirection;
-using Geometry::SCArcSegment2d;
-using Geometry::SCBox2d;
-using Geometry::SCBox2i;
 using Geometry::Cross;
 using Geometry::Dot;
 using Geometry::IsEqual;
 using Geometry::IsZero;
-using Geometry::SCLineSegment2d;
 using Geometry::SCPoint2d;
 using Geometry::SCPoint2i;
-using Geometry::ISCSegment2d;
-using Geometry::SCSegmentKind2;
 using Geometry::TryNormalize;
 using Geometry::SCVector2d;
 using Geometry::SCVector2i;
@@ -64,7 +54,6 @@ concept SupportsPointNegate = requires(T a) { -a; };
 
 TEST(PointVectorTest, CoversPointAndVectorContracts)
 {
-    static_assert(std::is_abstract_v<ISCSegment2d>);
     static_assert(!std::same_as<SCPoint2d, SCVector2d>);
     static_assert(!SupportsPointPlusPoint<SCPoint2d>);
     static_assert(!SupportsPointScalarMul<SCPoint2d>);
@@ -107,55 +96,4 @@ TEST(PointVectorTest, CoversPointAndVectorContracts)
     ASSERT_LT(std::abs(normalized.Length() - 1.0), 1e-12);
 
     EXPECT_FALSE(SCVector2d(1e-12, 0.0).TryNormalized(normalized));
-
-}
-
-TEST(PointVectorTest, HandlesBoxAndSegmentGeometry)
-{
-    SCBox2i emptyBox;
-    ASSERT_FALSE(emptyBox.IsValid());
-
-    emptyBox.ExpandToInclude(SCPoint2i(2, 3));
-    ASSERT_TRUE(emptyBox.IsValid());
-    ASSERT_EQ(emptyBox.MinPoint(), SCPoint2i(2, 3));
-    ASSERT_EQ(emptyBox.MaxPoint(), SCPoint2i(2, 3));
-    ASSERT_EQ(emptyBox.Width(), 0.0);
-    ASSERT_EQ(emptyBox.Height(), 0.0);
-
-    const SCBox2d boxA(SCPoint2d(1.0, 2.0), SCPoint2d(4.0, 6.0));
-    ASSERT_TRUE(boxA.IsValid());
-    ASSERT_LT(std::abs(boxA.Width() - 3.0), 1e-12);
-    ASSERT_LT(std::abs(boxA.Height() - 4.0), 1e-12);
-    ASSERT_LT(std::abs(boxA.Area() - 12.0), 1e-12);
-    EXPECT_TRUE(boxA.Center().AlmostEquals(SCPoint2d(2.5, 4.0), 1e-12));
-
-    const SCLineSegment2d line(SCPoint2d(1.0, 2.0), SCPoint2d(4.0, 6.0));
-    ASSERT_EQ(line.Kind(), SCSegmentKind2::Line);
-    ASSERT_TRUE(line.IsValid());
-    ASSERT_LT(std::abs(line.Length() - 5.0), 1e-12);
-    EXPECT_TRUE(line.PointAt(0.5).AlmostEquals(SCPoint2d(2.5, 4.0), 1e-12));
-    EXPECT_TRUE(line.PointAtLength(2.5).AlmostEquals(SCPoint2d(2.5, 4.0), 1e-12));
-    EXPECT_TRUE(line.PointAtLength(-2.5, true).AlmostEquals(SCPoint2d(1.0, 2.0), 1e-12));
-
-    const SCBox2d lineBox = line.Bounds();
-    ASSERT_TRUE(lineBox.IsValid());
-    EXPECT_TRUE(lineBox.MinPoint().AlmostEquals(SCPoint2d(1.0, 2.0), 1e-12));
-    EXPECT_TRUE(lineBox.MaxPoint().AlmostEquals(SCPoint2d(4.0, 6.0), 1e-12));
-
-    const ISCSegment2d& lineAsSegment = line;
-    ASSERT_EQ(lineAsSegment.Kind(), SCSegmentKind2::Line);
-    EXPECT_TRUE(lineAsSegment.PointAt(0.5).AlmostEquals(SCPoint2d(2.5, 4.0), 1e-12));
-
-    const SCArcSegment2d arc(SCPoint2d(0.0, 0.0), 1.0, 0.0, Geometry::kPi / 2.0, SCArcDirection::CounterClockwise);
-    ASSERT_EQ(arc.Kind(), SCSegmentKind2::Arc);
-    ASSERT_TRUE(arc.IsValid());
-    ASSERT_LT(std::abs(arc.Length() - (Geometry::kPi / 2.0)), 1e-12);
-    EXPECT_TRUE(arc.StartPoint().AlmostEquals(SCPoint2d(1.0, 0.0), 1e-12));
-    EXPECT_TRUE(arc.EndPoint().AlmostEquals(SCPoint2d(0.0, 1.0), 1e-12));
-    EXPECT_TRUE(arc.PointAt(0.5).AlmostEquals(SCPoint2d(std::sqrt(2.0) / 2.0, std::sqrt(2.0) / 2.0), 1e-12));
-
-    const SCBox2d arcBox = arc.Bounds();
-    ASSERT_TRUE(arcBox.IsValid());
-    EXPECT_TRUE(arcBox.MinPoint().AlmostEquals(SCPoint2d(0.0, 0.0), 1e-12));
-    EXPECT_TRUE(arcBox.MaxPoint().AlmostEquals(SCPoint2d(1.0, 1.0), 1e-12));
 }

@@ -8,7 +8,7 @@ using Geometry::SCBox2i;
 using Geometry::SCPoint2d;
 using Geometry::SCPoint2i;
 
-TEST(BoxTest, CoversCurrentCapabilities)
+TEST(BoxTest, IntegerBoxValidityAndMetrics)
 {
     SCBox2i emptyBox;
     ASSERT_FALSE(emptyBox.IsValid());
@@ -30,7 +30,10 @@ TEST(BoxTest, CoversCurrentCapabilities)
     ASSERT_EQ(boxA.Height(), 4.0);
     ASSERT_EQ(boxA.Area(), 12.0);
     EXPECT_TRUE(boxA.Center().AlmostEquals(SCPoint2d(2.5, 4.0), 1e-12));
+}
 
+TEST(BoxTest, ExpansionIgnoresInvalidBox)
+{
     SCBox2i expanded;
     expanded.ExpandToInclude(SCPoint2i(5, 7));
     ASSERT_TRUE(expanded.IsValid());
@@ -48,7 +51,10 @@ TEST(BoxTest, CoversCurrentCapabilities)
     const SCBox2i beforeIgnored = expanded;
     expanded.ExpandToInclude(SCBox2i(SCPoint2i(10, 10), SCPoint2i(4, 12)));
     ASSERT_EQ(expanded, beforeIgnored);
+}
 
+TEST(BoxTest, FloatingMetricsAndIntegerValueComparison)
+{
     SCBox2d floatingBox;
     floatingBox.ExpandToInclude(SCPoint2d(1.5, 2.5));
     floatingBox.ExpandToInclude(SCPoint2d(-0.5, 3.0));
@@ -77,4 +83,24 @@ TEST(BoxTest, CenterAvoidsFiniteCoordinateSumOverflow)
     EXPECT_NEAR(negative.Center().x, -1.25e308, 1e293);
     EXPECT_DOUBLE_EQ(positive.Center().y, 1.0);
     EXPECT_DOUBLE_EQ(negative.Center().y, -1.0);
+}
+
+TEST(BoxTest, IntegerExpansionAndFloatingDimensions)
+{
+    SCBox2i emptyBox;
+    ASSERT_FALSE(emptyBox.IsValid());
+
+    emptyBox.ExpandToInclude(SCPoint2i(2, 3));
+    ASSERT_TRUE(emptyBox.IsValid());
+    ASSERT_EQ(emptyBox.MinPoint(), SCPoint2i(2, 3));
+    ASSERT_EQ(emptyBox.MaxPoint(), SCPoint2i(2, 3));
+    ASSERT_EQ(emptyBox.Width(), 0.0);
+    ASSERT_EQ(emptyBox.Height(), 0.0);
+
+    const SCBox2d boxA(SCPoint2d(1.0, 2.0), SCPoint2d(4.0, 6.0));
+    ASSERT_TRUE(boxA.IsValid());
+    ASSERT_LT(std::abs(boxA.Width() - 3.0), 1e-12);
+    ASSERT_LT(std::abs(boxA.Height() - 4.0), 1e-12);
+    ASSERT_LT(std::abs(boxA.Area() - 12.0), 1e-12);
+    EXPECT_TRUE(boxA.Center().AlmostEquals(SCPoint2d(2.5, 4.0), 1e-12));
 }

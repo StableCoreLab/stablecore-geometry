@@ -18,7 +18,7 @@ using Geometry::SCPolyline2d;
 using Geometry::SCPolylineClosure;
 using Geometry::Reverse;
 
-TEST(PolylineTest, CoversCurrentCapabilities)
+TEST(PolylineTest, OpenPathSupportsSamplingAndBounds)
 {
     SCPolyline2d emptyPath;
     ASSERT_FALSE(emptyPath.IsValid());
@@ -52,7 +52,11 @@ TEST(PolylineTest, CoversCurrentCapabilities)
     ASSERT_TRUE(openBox.IsValid());
     EXPECT_TRUE(openBox.MinPoint().AlmostEquals(SCPoint2d(0.0, 0.0), 1e-12));
     EXPECT_TRUE(openBox.MaxPoint().AlmostEquals(SCPoint2d(3.0, 4.0), 1e-12));
+}
 
+TEST(PolylineTest, RejectsDisconnectedPathAndSupportsClosedPaths)
+{
+    auto first = std::make_shared<SCLineSegment2d>(SCPoint2d(0.0, 0.0), SCPoint2d(3.0, 0.0));
     auto broken = std::make_shared<SCLineSegment2d>(SCPoint2d(10.0, 10.0), SCPoint2d(11.0, 10.0));
     SCPolyline2d invalidOpen({first, broken}, SCPolylineClosure::Open);
     ASSERT_FALSE(invalidOpen.IsValid());
@@ -73,7 +77,10 @@ TEST(PolylineTest, CoversCurrentCapabilities)
     ASSERT_TRUE(closedByRepeatedPoint.IsValid());
     ASSERT_EQ(closedByRepeatedPoint.SegmentCount(), 3);
     ASSERT_EQ(closedByRepeatedPoint.VertexCount(), 3);
+}
 
+TEST(PolylineTest, MixedLineArcSupportsBoundsAndReverse)
+{
     auto line = std::make_shared<SCLineSegment2d>(SCPoint2d(0.0, 0.0), SCPoint2d(1.0, 0.0));
     auto arc = std::make_shared<SCArcSegment2d>(SCPoint2d(1.0, 1.0), 1.0, -Geometry::kPi / 2.0, 0.0, SCArcDirection::CounterClockwise);
     SCPolyline2d mixedPath({line, arc}, SCPolylineClosure::Open);

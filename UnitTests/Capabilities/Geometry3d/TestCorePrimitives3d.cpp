@@ -6,6 +6,14 @@
 
 using namespace Geometry;
 
+TEST(GeometryTest, ThreeDimensionalPointVectorComparisonAcrossTypes)
+{
+    const SCPoint3d coordinates{1.0, 2.0, 3.0};
+    const SCVector3d components{1.0, 2.0, 3.0};
+    EXPECT_TRUE(coordinates.AlmostEquals(components));
+    EXPECT_TRUE(components.AlmostEquals(coordinates));
+}
+
 TEST(IntersectionResultValidity3dTest, RejectsNonFiniteHitParameters)
 {
     SCLinePlaneIntersection3d planeHit;
@@ -50,7 +58,7 @@ TEST(GeometryTest, ThreeDimensionalBoxCenterAvoidsFiniteCoordinateSumOverflow)
     EXPECT_DOUBLE_EQ(box.Center().z, 1.0);
 }
 
-TEST(GeometryTest, CoversThreeDimensionalCapabilities)
+TEST(GeometryTest, LineCurveEvaluationBoundsAndClone)
 {
     const SCLine3d line3 = SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 2.0, 3.0}, SCVector3d{2.0, 0.0, 0.0});
     const SCLineCurve3d lineCurve = SCLineCurve3d::FromLine(line3, SCIntervald{-2.0, 3.0});
@@ -74,7 +82,10 @@ TEST(GeometryTest, CoversThreeDimensionalCapabilities)
     ASSERT_NE(lineClone, nullptr);
     ASSERT_TRUE(lineClone->IsValid());
     ASSERT_TRUE(lineClone->PointAt(-2.0).AlmostEquals(SCPoint3d{-3.0, 2.0, 3.0}, 1e-12));
+}
 
+TEST(GeometryTest, PlaneSurfaceEvaluationBoundsAndClone)
+{
     const SCPlane supportPlane = Geometry::Test::BuildSupportPlaneAtZ5();
     const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
     ASSERT_TRUE(planeSurface.IsValid());
@@ -97,7 +108,10 @@ TEST(GeometryTest, CoversThreeDimensionalCapabilities)
     ASSERT_NE(surfaceClone, nullptr);
     ASSERT_TRUE(surfaceClone->IsValid());
     EXPECT_NEAR(supportPlane.SignedDistanceTo(surfaceClone->PointAt(-2.0, -3.0)), 0.0, 1e-12);
+}
 
+TEST(GeometryTest, NurbsCurveEvaluationProjectionAndClone)
+{
     const SCNurbsCurve3d nurbsCurve(1,
                                   {
                                       SCPoint3d{0.0, 0.0, 0.0},
@@ -126,7 +140,10 @@ TEST(GeometryTest, CoversThreeDimensionalCapabilities)
     ASSERT_NE(nurbsCurveClone, nullptr);
     ASSERT_TRUE(nurbsCurveClone->IsValid());
     ASSERT_TRUE(nurbsCurveClone->PointAt(0.5).AlmostEquals(SCPoint3d{1.0, 1.0, 0.0}, 1e-12));
+}
 
+TEST(GeometryTest, NurbsSurfaceEvaluationBoundsAndClone)
+{
     const SCNurbsSurface nurbsSurface = Geometry::Test::BuildUnitNurbsSurface();
     ASSERT_TRUE(nurbsSurface.IsValid());
     EXPECT_NEAR(nurbsSurface.StartU(), 0.0, 1e-12);
@@ -145,7 +162,10 @@ TEST(GeometryTest, CoversThreeDimensionalCapabilities)
     ASSERT_NE(nurbsSurfaceClone, nullptr);
     ASSERT_TRUE(nurbsSurfaceClone->IsValid());
     ASSERT_TRUE(nurbsSurfaceClone->PointAt(0.25, 0.75).AlmostEquals(SCPoint3d{0.5, 1.5, 0.0}, 1e-12));
+}
 
+TEST(GeometryTest, LineCurveQueriesAndRuledSurface)
+{
     const SCLineCurve3d lowerRail = SCLineCurve3d::FromLine(
         SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{2.0, 0.0, 0.0}), SCIntervald{0.0, 1.0});
     const SCLineCurve3d upperRail = SCLineCurve3d::FromLine(
@@ -176,7 +196,11 @@ TEST(GeometryTest, CoversThreeDimensionalCapabilities)
     const auto ruledEval = ruledSurface.Evaluate(0.25, 0.25, 1);
     ASSERT_TRUE(ruledEval.IsValid());
     EXPECT_NEAR(ruledEval.normal.Length(), 4.0, 1e-12);
+}
 
+TEST(GeometryTest, OffsetSurfaceBoundsAndPoint)
+{
+    const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
     const SCOffsetSurface offsetSurface = SCOffsetSurface::FromSurface(planeSurface, 2.0);
     ASSERT_TRUE(offsetSurface.IsValid());
     ASSERT_NE(offsetSurface.BaseSurface(), nullptr);
@@ -186,7 +210,12 @@ TEST(GeometryTest, CoversThreeDimensionalCapabilities)
     ASSERT_TRUE(offsetBounds.IsValid());
     ASSERT_LE(offsetBounds.MinPoint().z, 3.0 + 1e-12);
     ASSERT_GE(offsetBounds.MaxPoint().z, 7.0 - 1e-12);
+}
 
+TEST(GeometryTest, CurveOnSurfaceQueries)
+{
+    const SCPlane supportPlane = Geometry::Test::BuildSupportPlaneAtZ5();
+    const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
     const SCCurveOnSurface curveOnSurface(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()),
                                         SCPolyline2d(
                                             {
@@ -222,7 +251,12 @@ TEST(GeometryTest, CoversThreeDimensionalCapabilities)
     ASSERT_TRUE(planeCurveOnSurfaceIntersection.point.AlmostEquals(SCPoint3d{-2.0, -3.0, 5.0}, 1e-12));
     ASSERT_EQ(LocatePoint(SCPoint3d{0.0, -1.0, 5.0}, curveOnSurface), SCPointContainment3d::OnBoundary);
     ASSERT_EQ(LocatePoint(SCPoint3d{0.0, -1.0, 6.0}, curveOnSurface), SCPointContainment3d::Outside);
+}
 
+TEST(GeometryTest, PlaneAndNurbsSurfaceProjectionAndIntersection)
+{
+    const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
+    const SCNurbsSurface nurbsSurface = Geometry::Test::BuildUnitNurbsSurface();
     const auto planeSurfaceProjection = ProjectPointToSurface(SCPoint3d{0.5, -1.0, 8.0}, planeSurface);
     ASSERT_TRUE(planeSurfaceProjection.success);
     ASSERT_TRUE(planeSurfaceProjection.IsValid());
@@ -253,7 +287,13 @@ TEST(GeometryTest, CoversThreeDimensionalCapabilities)
     EXPECT_NEAR(nurbsSurfaceIntersection.u, 0.3, 5e-2);
     EXPECT_NEAR(nurbsSurfaceIntersection.v, 0.7, 5e-2);
     EXPECT_NEAR(nurbsSurfaceIntersection.point.z, 0.0, 1e-12);
+}
 
+TEST(GeometryTest, ThreeDimensionalDistanceAndLength)
+{
+    const SCPlane supportPlane = Geometry::Test::BuildSupportPlaneAtZ5();
+    const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
+    const SCNurbsSurface nurbsSurface = Geometry::Test::BuildUnitNurbsSurface();
     EXPECT_NEAR(Distance(SCPoint3d{0.0, 0.0, 0.0}, SCPoint3d{1.0, 2.0, 2.0}), 3.0, 1e-12);
     EXPECT_NEAR(Distance(SCPoint3d{0.0, 2.0, 0.0},
                                        SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{1.0, 0.0, 0.0})),
@@ -264,5 +304,4 @@ TEST(GeometryTest, CoversThreeDimensionalCapabilities)
     EXPECT_NEAR(Distance(SCPoint3d{0.6, 1.4, 1.0}, nurbsSurface), 1.0, 5e-2);
     EXPECT_NEAR(
         Length(SCLineSegment3d::FromStartEnd(SCPoint3d{0.0, 0.0, 0.0}, SCPoint3d{0.0, 3.0, 4.0})), 5.0, 1e-12);
-
 }
