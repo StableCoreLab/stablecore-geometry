@@ -1,13 +1,20 @@
 #pragma once
 
 #include "Core/GeometryEvidence.h"
-#include "Core/GeometryTypes.h"
+#include "Core/Geometry2dResults.h"
+#include "Core/ProjectionResults.h"
 #include "Export/GeometryExport.h"
 #include "Geometry2d/SCArcSegment2d.h"
 #include "Types/Geometry2d/SCLine2d.h"
 #include "Geometry2d/SCLineSegment2d.h"
 #include "Geometry2d/SCPolygon2d.h"
 #include "Geometry2d/ISCSegment2d.h"
+#include "Types/Geometry3d/SCLine3d.h"
+#include "Types/Geometry3d/SCLineSegment3d.h"
+#include "Types/Geometry3d/SCPlane.h"
+
+#include <cstddef>
+#include <vector>
 
 namespace Geometry
 {

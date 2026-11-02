@@ -489,7 +489,6 @@ namespace Geometry
 
         if (const auto* nurbs = dynamic_cast<const SCNurbsCurve3d*>(&curve);
             nurbs != nullptr && nurbs->Degree() >= 1 &&
-            nurbs->Degree() <= Detail::kMaxNurbsRootDegree &&
             std::count(nurbs->Knots().begin(), nurbs->Knots().end(), range.min) >= nurbs->Degree() + 1 &&
             std::count(nurbs->Knots().begin(), nurbs->Knots().end(), range.max) >= nurbs->Degree() + 1)
         {
@@ -1078,7 +1077,6 @@ namespace Geometry
 
         if (const auto* nurbs = dynamic_cast<const SCNurbsCurve3d*>(&curve);
             nurbs != nullptr && nurbs->Degree() >= 1 &&
-            nurbs->Degree() <= Detail::kMaxNurbsRootDegree &&
             std::count(nurbs->Knots().begin(), nurbs->Knots().end(), range.min) >= nurbs->Degree() + 1 &&
             std::count(nurbs->Knots().begin(), nurbs->Knots().end(), range.max) >= nurbs->Degree() + 1)
         {

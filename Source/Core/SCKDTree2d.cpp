@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <bit>
+#include <cmath>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <utility>
@@ -145,7 +147,7 @@ namespace Geometry
         void QueryRadius(const SCKDTree2d::Node* node,
                          const std::vector<SCKDTreeEntry2d>& entries,
                          const SCPoint2d& point,
-                         double maxDistanceSquared,
+                         double maxDistance,
                          std::vector<std::size_t>& result)
         {
             if (node == nullptr)
@@ -153,7 +155,9 @@ namespace Geometry
                 return;
             }
 
-            if (node->active && DistanceSquared(entries[node->entryIndex].point, point) <= maxDistanceSquared)
+            if (node->active &&
+                std::hypot(entries[node->entryIndex].point.x - point.x,
+                           entries[node->entryIndex].point.y - point.y) <= maxDistance)
             {
                 result.push_back(entries[node->entryIndex].id);
             }
@@ -161,17 +165,19 @@ namespace Geometry
             const double delta = Coordinate(point, node->axis) - Coordinate(node->splitPoint, node->axis);
             const SCKDTree2d::Node* nearChild = delta <= 0.0 ? node->left.get() : node->right.get();
             const SCKDTree2d::Node* farChild = delta <= 0.0 ? node->right.get() : node->left.get();
-            QueryRadius(nearChild, entries, point, maxDistanceSquared, result);
-            if (delta * delta <= maxDistanceSquared)
+            QueryRadius(nearChild, entries, point, maxDistance, result);
+            if (std::abs(delta) <= maxDistance)
             {
-                QueryRadius(farChild, entries, point, maxDistanceSquared, result);
+                QueryRadius(farChild, entries, point, maxDistance, result);
             }
         }
 
         void QueryNearest(const SCKDTree2d::Node* node,
                           const std::vector<SCKDTreeEntry2d>& entries,
                           const SCPoint2d& point,
-                          std::optional<SCKDTreeHit2d>& best)
+                          std::optional<SCKDTreeHit2d>& best,
+                          double& bestDistance,
+                          double& bestQuarterDistance)
         {
             if (node == nullptr)
             {
@@ -181,20 +187,32 @@ namespace Geometry
             if (node->active)
             {
                 const SCKDTreeEntry2d& entry = entries[node->entryIndex];
-                const double distanceSquared = DistanceSquared(entry.point, point);
-                if (!best || distanceSquared < best->distanceSquared)
+                const double distance = std::hypot(entry.point.x - point.x, entry.point.y - point.y);
+                const double quarterDistance = std::isinf(distance)
+                    ? std::hypot(entry.point.x * 0.25 - point.x * 0.25,
+                                 entry.point.y * 0.25 - point.y * 0.25)
+                    : 0.0;
+                if (!best || distance < bestDistance ||
+                    (std::isinf(distance) && std::isinf(bestDistance) && quarterDistance < bestQuarterDistance))
                 {
-                    best = SCKDTreeHit2d{entry.id, entry.point, distanceSquared};
+                    best = SCKDTreeHit2d{entry.id, entry.point, DistanceSquared(entry.point, point)};
+                    bestDistance = distance;
+                    bestQuarterDistance = quarterDistance;
                 }
             }
 
             const double delta = Coordinate(point, node->axis) - Coordinate(node->splitPoint, node->axis);
             const SCKDTree2d::Node* nearChild = delta <= 0.0 ? node->left.get() : node->right.get();
             const SCKDTree2d::Node* farChild = delta <= 0.0 ? node->right.get() : node->left.get();
-            QueryNearest(nearChild, entries, point, best);
-            if (!best || delta * delta < best->distanceSquared)
+            QueryNearest(nearChild, entries, point, best, bestDistance, bestQuarterDistance);
+            const double planeDistance = std::abs(delta);
+            const double quarterPlaneDistance = std::abs(Coordinate(point, node->axis) * 0.25 -
+                                                         Coordinate(node->splitPoint, node->axis) * 0.25);
+            if (!best || planeDistance < bestDistance ||
+                (std::isinf(planeDistance) && std::isinf(bestDistance) &&
+                 quarterPlaneDistance < bestQuarterDistance))
             {
-                QueryNearest(farChild, entries, point, best);
+                QueryNearest(farChild, entries, point, best, bestDistance, bestQuarterDistance);
             }
         }
     }  // namespace
@@ -390,6 +408,10 @@ namespace Geometry
     std::vector<std::size_t> SCKDTree2d::Query(const SCPoint2d& point, double eps) const
     {
         std::vector<std::size_t> result;
+        if (!point.IsValid())
+        {
+            return result;
+        }
         QueryExact(root_.get(), entries_, point, eps, result);
         return result;
     }
@@ -397,15 +419,24 @@ namespace Geometry
     std::vector<std::size_t> SCKDTree2d::QueryWithinDistance(const SCPoint2d& point, double maxDistance) const
     {
         std::vector<std::size_t> result;
-        const double maxDistanceSquared = maxDistance * maxDistance;
-        QueryRadius(root_.get(), entries_, point, maxDistanceSquared, result);
+        if (!point.IsValid() || std::isnan(maxDistance) || maxDistance < 0.0)
+        {
+            return result;
+        }
+        QueryRadius(root_.get(), entries_, point, maxDistance, result);
         return result;
     }
 
     std::optional<SCKDTreeHit2d> SCKDTree2d::Nearest(const SCPoint2d& point) const
     {
+        if (!point.IsValid())
+        {
+            return std::nullopt;
+        }
         std::optional<SCKDTreeHit2d> best;
-        QueryNearest(root_.get(), entries_, point, best);
+        double bestDistance = std::numeric_limits<double>::infinity();
+        double bestQuarterDistance = std::numeric_limits<double>::infinity();
+        QueryNearest(root_.get(), entries_, point, best, bestDistance, bestQuarterDistance);
         return best;
     }
 

@@ -2,10 +2,9 @@
 
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <memory>
 
-#include "Core/GeometryTypesPrimitives.h"
-#include "Core/GeometryTypes.h"
 #include "Core/Geometry2dResults.h"
 #include "Export/GeometryExport.h"
 #include "Geometry2d/ISCSegment2d.h"
@@ -13,10 +12,6 @@
 #include "Types/Geometry2d/SCBox2.h"
 #include "Types/Geometry2d/SCPoint2.h"
 #include "Types/Geometry2d/SCVector2.h"
-#include "Types/Geometry3d/SCBox3.h"
-#include "Types/Geometry3d/SCIntervald.h"
-#include "Types/Geometry3d/SCLine3d.h"
-#include "Types/Geometry3d/SCPlane.h"
 
 namespace Geometry
 {

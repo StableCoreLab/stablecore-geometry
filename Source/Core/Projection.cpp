@@ -57,6 +57,17 @@ namespace Geometry
             return SCVector2d{-tangent.y, tangent.x};
         }
 
+        [[nodiscard]] double ClampedArcProjectionParameter(const SCPoint2d& point,
+                                                           const SCArcSegment2d& segment,
+                                                           double rawParameter)
+        {
+            if (rawParameter > 1.0)
+            {
+                return Distance(point, segment.StartPoint()) <= Distance(point, segment.EndPoint()) ? 0.0 : 1.0;
+            }
+            return Clamp01(rawParameter);
+        }
+
         [[nodiscard]] SCSegmentProjection2d InvalidSegmentProjection2d()
         {
             return {SCPoint2d{}, 0.0, std::numeric_limits<double>::quiet_NaN(), false};
@@ -65,6 +76,24 @@ namespace Geometry
         [[nodiscard]] SCSegmentProjection3d InvalidSegmentProjection3d()
         {
             return {SCPoint3d{}, 0.0, std::numeric_limits<double>::quiet_NaN(), false};
+        }
+
+        [[nodiscard]] double LineProjectionParameter(const SCPoint2d& point,
+                                                     const SCLineSegment2d& segment,
+                                                     const SCVector2d& direction,
+                                                     double length)
+        {
+            const double lengthSquared = direction.LengthSquared();
+            if (std::isnormal(lengthSquared))
+            {
+                const double parameter = Geometry::Dot(point - segment.startPoint, direction) / lengthSquared;
+                if (std::isfinite(parameter))
+                {
+                    return parameter;
+                }
+            }
+            const SCVector2d unit{direction.x / length, direction.y / length};
+            return Geometry::Dot(point - segment.startPoint, unit) / length;
         }
     }  // namespace
 
@@ -78,8 +107,7 @@ namespace Geometry
         }
 
         const SCVector2d direction = segment.endPoint - segment.startPoint;
-        const double lengthSquared = direction.LengthSquared();
-        const double rawParameter = Geometry::Dot(point - segment.startPoint, direction) / lengthSquared;
+        const double rawParameter = LineProjectionParameter(point, segment, direction, segment.Length());
         const double parameter = clampToSegment ? Clamp01(rawParameter) : rawParameter;
         const SCPoint2d projectedPoint = segment.PointAt(parameter);
 
@@ -107,13 +135,12 @@ namespace Geometry
 
         const SCVector2d direction = segment.endPoint - segment.startPoint;
         const double length = std::hypot(direction.x, direction.y);
-        const double lengthSquared = direction.LengthSquared();
-        if (!std::isfinite(length) || !(lengthSquared > 0.0) || !std::isfinite(lengthSquared))
+        if (!std::isfinite(length) || !(length > 0.0))
         {
             return InvalidSegmentProjection2d();
         }
 
-        const double rawParameter = Geometry::Dot(point - segment.startPoint, direction) / lengthSquared;
+        const double rawParameter = LineProjectionParameter(point, segment, direction, length);
         if (!std::isfinite(rawParameter))
         {
             return InvalidSegmentProjection2d();
@@ -173,7 +200,8 @@ namespace Geometry
         const SCVector2d radial = point - segment.center;
         double angle = std::atan2(radial.y, radial.x);
         const double rawParameter = ParameterOnArc(segment, angle);
-        const double parameter = clampToSegment ? Clamp01(rawParameter) : rawParameter;
+        const double parameter = clampToSegment ? ClampedArcProjectionParameter(point, segment, rawParameter)
+                                                : rawParameter;
         const SCPoint2d projectedPoint = segment.PointAt(parameter);
 
         return SCSegmentProjection2d{projectedPoint,
@@ -206,13 +234,8 @@ namespace Geometry
             return InvalidSegmentProjection2d();
         }
 
-        double parameter = rawParameter;
-        if (clampToSegment && rawParameter > 1.0)
-        {
-            const double distanceToStart = DistanceSquared(point, segment.StartPoint());
-            const double distanceToEnd = DistanceSquared(point, segment.EndPoint());
-            parameter = distanceToStart <= distanceToEnd ? 0.0 : 1.0;
-        }
+        const double parameter = clampToSegment ? ClampedArcProjectionParameter(point, segment, rawParameter)
+                                                : rawParameter;
         const SCPoint2d projectedPoint = segment.PointAt(parameter, epsilon);
         const double revolutionParameter = 2.0 * std::numbers::pi_v<double> / std::abs(segment.sweepAngle);
         const double parameterTolerance = epsilon / length;

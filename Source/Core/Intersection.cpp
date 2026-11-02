@@ -428,6 +428,48 @@ namespace Geometry
             return MakePointIntersection(intersectionPoint, clampedT, clampedU);
         }
 
+        [[nodiscard]] bool LineCircleParameters(const SCPoint2d& origin,
+                                                const SCVector2d& direction,
+                                                const SCArcSegment2d& arc,
+                                                double eps,
+                                                std::array<double, 2>& parameters,
+                                                double& lineDistance)
+        {
+            const double lineLength = direction.Length();
+            const SCVector2d fromCenter = origin - arc.center;
+            if (!std::isfinite(lineLength) || !(lineLength > 0.0) || !fromCenter.IsValid())
+            {
+                return false;
+            }
+
+            const SCVector2d unitDirection = direction / lineLength;
+            double signedDistance = Cross(fromCenter, unitDirection);
+            double alongLine = Dot(fromCenter, unitDirection);
+            double offsetScale = 1.0;
+            if (!std::isfinite(signedDistance) || !std::isfinite(alongLine))
+            {
+                const SCVector2d halfOffset{fromCenter.x * 0.5, fromCenter.y * 0.5};
+                signedDistance = Cross(halfOffset, unitDirection);
+                alongLine = Dot(halfOffset, unitDirection);
+                offsetScale = 2.0;
+            }
+            lineDistance = std::abs(signedDistance) * offsetScale;
+            if (!std::isfinite(lineDistance) || !std::isfinite(alongLine) || lineDistance - arc.radius > eps)
+            {
+                return false;
+            }
+
+            const double halfChord = std::sqrt(std::max(0.0, arc.radius - lineDistance))
+                                   * std::sqrt(arc.radius) * std::sqrt(1.0 + lineDistance / arc.radius);
+            if (!std::isfinite(halfChord))
+            {
+                return false;
+            }
+            parameters = {((-alongLine - halfChord / offsetScale) / lineLength) * offsetScale,
+                          ((-alongLine + halfChord / offsetScale) / lineLength) * offsetScale};
+            return true;
+        }
+
         [[nodiscard]] SCSegmentIntersection2d IntersectLineArcInternal(const SCLineSegment2d& line,
                                                                      const SCArcSegment2d& arc,
                                                                      double eps)
@@ -438,39 +480,21 @@ namespace Geometry
             }
 
             const SCVector2d direction = line.endPoint - line.startPoint;
-            const SCVector2d fromCenter = line.startPoint - arc.center;
-            const double a = Dot(direction, direction);
-            if (!(a > 0.0) || !std::isfinite(a))
+            std::array<double, 2> roots{};
+            double lineDistance = 0.0;
+            if (!LineCircleParameters(line.startPoint, direction, arc, eps, roots, lineDistance))
             {
                 return MakeNoIntersection();
             }
-            const double lineLength = std::sqrt(a);
+            const double lineLength = direction.Length();
             const double parameterEps = eps / lineLength;
             const double angleEps = eps / arc.radius;
-            const double lineDistance = std::abs(Cross(fromCenter, direction)) / lineLength;
-            if (!std::isfinite(lineDistance) || lineDistance - arc.radius > eps)
-            {
-                return MakeNoIntersection();
-            }
-
-            const double b = 2.0 * Dot(fromCenter, direction);
-            const double c = Dot(fromCenter, fromCenter) - arc.radius * arc.radius;
-            const double discriminant = b * b - 4.0 * a * c;
-            if (!std::isfinite(discriminant))
-            {
-                return MakeNoIntersection();
-            }
-
-            const double sqrtDiscriminant = discriminant <= 0.0 ? 0.0 : std::sqrt(discriminant);
-            const double invDenominator = 0.5 / a;
-            const double roots[2] = {(-b - sqrtDiscriminant) * invDenominator,
-                                     (-b + sqrtDiscriminant) * invDenominator};
 
             SCSegmentIntersection2d result;
             bool hasPoint = false;
             for (double root : roots)
             {
-                if (root < -parameterEps || root > 1.0 + parameterEps)
+                if (!std::isfinite(root) || root < -parameterEps || root > 1.0 + parameterEps)
                 {
                     continue;
                 }
@@ -1248,11 +1272,25 @@ namespace Geometry
 
         void AppendPolylineIntersection(std::vector<SCPolylineIntersectionPoint2d>& result,
                                         const SCPolylineIntersectionPoint2d& candidate,
-                                        double eps)
+                                        double eps,
+                                        double firstLength,
+                                        double secondLength,
+                                        bool firstClosed,
+                                        bool secondClosed)
         {
+            const double firstParameterEps = firstLength > 0.0 ? eps / firstLength : 0.0;
+            const double secondParameterEps = secondLength > 0.0 ? eps / secondLength : 0.0;
+            auto samePosition = [](double lhs, double rhs, double parameterEps, bool closed) {
+                const double separation = std::abs(lhs - rhs);
+                return separation <= parameterEps || (closed && std::abs(1.0 - separation) <= parameterEps);
+            };
             for (auto& existing : result)
             {
-                if (existing.point.AlmostEquals(candidate.point, eps))
+                if (existing.point.AlmostEquals(candidate.point, eps) &&
+                    samePosition(existing.globalParameterOnFirst, candidate.globalParameterOnFirst,
+                                 firstParameterEps, firstClosed) &&
+                    samePosition(existing.globalParameterOnSecond, candidate.globalParameterOnSecond,
+                                 secondParameterEps, secondClosed))
                 {
                     if (candidate.globalParameterOnFirst < existing.globalParameterOnFirst)
                     {
@@ -1276,19 +1314,53 @@ namespace Geometry
             }
             const SCVector2d r = first.direction;
             const SCVector2d s = second.direction;
-            const SCVector2d qp = second.origin - first.origin;
+            SCVector2d qp = second.origin - first.origin;
+            double offsetScale = 1.0;
+            if (!qp.IsValid())
+            {
+                qp = SCVector2d{0.5 * second.origin.x - 0.5 * first.origin.x,
+                                0.5 * second.origin.y - 0.5 * first.origin.y};
+                offsetScale = 2.0;
+            }
             const double firstLength = r.Length();
             const double secondLength = s.Length();
-            const double det = Cross(r, s);
-            const double offsetCross = Cross(qp, r);
-            if (!std::isfinite(det) || !std::isfinite(offsetCross))
+            if (!qp.IsValid() || !std::isfinite(firstLength) || !std::isfinite(secondLength))
             {
                 return result;
             }
-            if (std::abs(det) <= eps * std::max(firstLength, secondLength))
+            const SCVector2d unitFirst = r / firstLength;
+            const SCVector2d unitSecond = s / secondLength;
+            double det = Cross(unitFirst, unitSecond);
+            double offsetCross = Cross(qp, unitFirst);
+            double parallelThreshold = eps / std::min(firstLength, secondLength);
+            double collinearThreshold = eps / offsetScale;
+            double firstParameterScale = firstLength;
+            double secondParameterScale = secondLength;
+            bool useRawDirections = false;
+            // 单位方向可能丢失可表示的极小斜率，此时复用仍可表示的原始叉积。
+            if (det == 0.0)
+            {
+                const double rawDet = Cross(r, s);
+                const double rawOffsetCross = Cross(qp, r);
+                if (std::isfinite(rawDet) && rawDet != 0.0 && std::isfinite(rawOffsetCross))
+                {
+                    det = rawDet;
+                    offsetCross = rawOffsetCross;
+                    parallelThreshold = eps * std::max(firstLength, secondLength);
+                    collinearThreshold = (eps / offsetScale) * firstLength;
+                    firstParameterScale = 1.0;
+                    secondParameterScale = 1.0;
+                    useRawDirections = true;
+                }
+            }
+            if (!std::isfinite(offsetCross))
+            {
+                return result;
+            }
+            if (std::abs(det) <= parallelThreshold)
             {
                 result.parallel = true;
-                if (std::abs(offsetCross) <= eps * firstLength)
+                if (std::abs(offsetCross) <= collinearThreshold)
                 {
                     result.kind = SCIntersectionKind2d::Overlap;
                     result.collinear = true;
@@ -1297,9 +1369,18 @@ namespace Geometry
                 return result;
             }
 
-            const double t = Cross(qp, s) / det;
-            const double u = offsetCross / det;
+            const double numeratorCross = Cross(qp, useRawDirections ? s : unitSecond);
+            const double t = ((numeratorCross / det) / firstParameterScale) * offsetScale;
+            const double u = ((offsetCross / det) / secondParameterScale) * offsetScale;
+            if (!std::isfinite(t) || !std::isfinite(u))
+            {
+                return result;
+            }
             const SCPoint2d point = first.PointAt(t);
+            if (!point.IsValid())
+            {
+                return result;
+            }
             result = MakeLinePointIntersection(point, t, u);
             return result;
         }
@@ -1357,38 +1438,29 @@ namespace Geometry
             }
 
             const SCVector2d direction = line.direction;
-            const SCVector2d fromCenter = line.origin - arc.center;
-            const double a = Dot(direction, direction);
-            if (!(a > 0.0) || !std::isfinite(a))
+            std::array<double, 2> roots{};
+            double lineDistance = 0.0;
+            if (!LineCircleParameters(line.origin, direction, arc, eps, roots, lineDistance))
             {
                 return {};
             }
-            const double lineLength = std::sqrt(a);
+            const double lineLength = direction.Length();
             const double parameterEps = eps / lineLength;
             const double angleEps = eps / arc.radius;
-            const double lineDistance = std::abs(Cross(fromCenter, direction)) / lineLength;
-            if (!std::isfinite(lineDistance) || lineDistance - arc.radius > eps)
-            {
-                return {};
-            }
-
-            const double b = 2.0 * Dot(fromCenter, direction);
-            const double c = Dot(fromCenter, fromCenter) - arc.radius * arc.radius;
-            const double discriminant = b * b - 4.0 * a * c;
-            if (!std::isfinite(discriminant))
-            {
-                return {};
-            }
-
-            const double sqrtDiscriminant = discriminant <= 0.0 ? 0.0 : std::sqrt(discriminant);
-            const double invDenominator = 0.5 / a;
-            const double roots[2] = {(-b - sqrtDiscriminant) * invDenominator, (-b + sqrtDiscriminant) * invDenominator};
 
             SCSegmentIntersection2d result;
             bool hasPoint = false;
             for (double t : roots)
             {
+                if (!std::isfinite(t))
+                {
+                    continue;
+                }
                 const SCPoint2d point = line.PointAt(t);
+                if (!point.IsValid())
+                {
+                    continue;
+                }
                 const double angle = std::atan2(point.y - arc.center.y, point.x - arc.center.x);
                 const double arcParameter = arc.sweepAngle >= 0.0 ? (angle - arc.startAngle) / arc.sweepAngle
                                                                    : (arc.startAngle - angle) / (-arc.sweepAngle);
@@ -1499,7 +1571,8 @@ namespace Geometry
                                                                        point.parameterOnSecond,
                                                                        PolylineSegmentGlobalParameter(first, i, point.parameterOnFirst, firstSegmentLengths, firstTotalLength),
                                                                        PolylineSegmentGlobalParameter(second, j, point.parameterOnSecond, secondSegmentLengths, secondTotalLength)};
-                        AppendPolylineIntersection(result, polyPoint, eps);
+                        AppendPolylineIntersection(result, polyPoint, eps, firstTotalLength, secondTotalLength,
+                                                   first.IsClosed(), second.IsClosed());
                     }
                 }
             }
@@ -1560,6 +1633,7 @@ namespace Geometry
             segmentLengths.push_back(length);
             totalLength += length;
         }
+        const double otherLength = SegmentLengthAtTolerance(segment, eps);
 
         for (std::size_t i = 0; i < polyline.SegmentCount(); ++i)
         {
@@ -1586,7 +1660,8 @@ namespace Geometry
                                                                point.parameterOnSecond,
                                                                PolylineSegmentGlobalParameter(polyline, i, point.parameterOnFirst, segmentLengths, totalLength),
                                                                point.parameterOnSecond};
-                AppendPolylineIntersection(result, polyPoint, eps);
+                AppendPolylineIntersection(result, polyPoint, eps, totalLength, otherLength,
+                                           polyline.IsClosed(), false);
             }
         }
 
@@ -1611,6 +1686,18 @@ namespace Geometry
             std::swap(point.parameterOnFirstSegment, point.parameterOnSecondSegment);
             std::swap(point.globalParameterOnFirst, point.globalParameterOnSecond);
         }
+        std::sort(result.begin(), result.end(), [](const SCPolylineIntersectionPoint2d& lhs,
+                                                   const SCPolylineIntersectionPoint2d& rhs) {
+            if (lhs.parameterOnFirstSegment != rhs.parameterOnFirstSegment)
+            {
+                return lhs.parameterOnFirstSegment < rhs.parameterOnFirstSegment;
+            }
+            if (lhs.segmentIndexOnSecond != rhs.segmentIndexOnSecond)
+            {
+                return lhs.segmentIndexOnSecond < rhs.segmentIndexOnSecond;
+            }
+            return lhs.parameterOnSecondSegment < rhs.parameterOnSecondSegment;
+        });
         return result;
     }
 
@@ -1724,11 +1811,20 @@ namespace Geometry
             if (intersection.pointCount >= 1)
             {
                 const double lineParameterEps = eps / lineSegment.Length();
-                result.onFirstSegment = result.points[0].parameterOnFirst >= -lineParameterEps &&
-                                        result.points[0].parameterOnFirst <= 1.0 + lineParameterEps;
-                result.onSecondSegment = IsAngleOnArc(arc,
-                                                      arc.startAngle + arc.sweepAngle * result.points[0].parameterOnSecond,
-                                                      eps / arc.radius);
+                const double angleEps = eps / arc.radius;
+                result.onFirstSegment = true;
+                result.onSecondSegment = true;
+                for (std::size_t index = 0; index < intersection.pointCount; ++index)
+                {
+                    const SCIntersectionPoint2d& point = result.points[index];
+                    result.onFirstSegment = result.onFirstSegment &&
+                                            point.parameterOnFirst >= -lineParameterEps &&
+                                            point.parameterOnFirst <= 1.0 + lineParameterEps;
+                    result.onSecondSegment = result.onSecondSegment &&
+                                             IsAngleOnArc(arc,
+                                                          arc.startAngle + arc.sweepAngle * point.parameterOnSecond,
+                                                          angleEps);
+                }
             }
             return result;
         }

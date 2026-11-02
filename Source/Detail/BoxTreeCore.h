@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <memory>
 #include <utility>
@@ -8,6 +9,9 @@
 
 namespace Geometry::Detail
 {
+    template <typename Traits, typename Point, typename Box>
+    [[nodiscard]] int CompareBoxTreeDistances(const Point& point, const Box& lhs, const Box& rhs);
+
     template <typename Entry, typename Traits>
     [[nodiscard]] auto ComputeBoxTreeBounds(const std::vector<Entry>& entries, const std::vector<std::size_t>& indices)
         -> decltype(Traits::EmptyBox())
@@ -103,10 +107,10 @@ namespace Geometry::Detail
         }
         else
         {
-            const double leftDistance = Traits::DistanceSquared(entries[index].box.Center(), node->left->bounds);
-            const double rightDistance = Traits::DistanceSquared(entries[index].box.Center(), node->right->bounds);
+            const auto center = entries[index].box.Center();
+            const int order = CompareBoxTreeDistances<Traits>(center, node->left->bounds, node->right->bounds);
             insertedDepth = InsertBoxTreeIndex<Node, Entry, Traits>(
-                leftDistance <= rightDistance ? node->left : node->right, entries, index, depth + 1);
+                order <= 0 ? node->left : node->right, entries, index, depth + 1);
         }
         RefreshBoxTreeBounds<Node, Entry, Traits>(*node, entries);
         return insertedDepth;
@@ -256,11 +260,24 @@ namespace Geometry::Detail
         QueryPointTree<Node, Entry, Point, Traits>(node->right.get(), entries, point, epsilon, result);
     }
 
-    template <typename Hit>
-    [[nodiscard]] bool CompareBoxTreeHits(const Hit& lhs, const Hit& rhs)
+    template <typename Traits, typename Point, typename Box>
+    [[nodiscard]] int CompareBoxTreeDistances(const Point& point, const Box& lhs, const Box& rhs)
     {
-        return lhs.distanceSquared == rhs.distanceSquared ? lhs.id < rhs.id
-                                                          : lhs.distanceSquared < rhs.distanceSquared;
+        double firstDistance = Traits::Distance(point, lhs);
+        double secondDistance = Traits::Distance(point, rhs);
+        if (std::isinf(firstDistance) && std::isinf(secondDistance))
+        {
+            firstDistance = Traits::QuarterDistance(point, lhs);
+            secondDistance = Traits::QuarterDistance(point, rhs);
+        }
+        return firstDistance < secondDistance ? -1 : (firstDistance > secondDistance ? 1 : 0);
+    }
+
+    template <typename Hit, typename Point, typename Traits>
+    [[nodiscard]] bool CompareBoxTreeHits(const Hit& lhs, const Hit& rhs, const Point& point)
+    {
+        const int order = CompareBoxTreeDistances<Traits>(point, lhs.box, rhs.box);
+        return order == 0 ? lhs.id < rhs.id : order < 0;
     }
 
     template <typename Node, typename Entry, typename Point, typename Hit, typename Traits>
@@ -278,13 +295,21 @@ namespace Geometry::Detail
         if (hits.size() >= k)
         {
             const double factor = 1.0 + std::max(0.0, epsilon);
-            const double lowerBound = Traits::DistanceSquared(point, node->bounds);
-            if (lowerBound != hits.front().distanceSquared &&
-                lowerBound * factor * factor > hits.front().distanceSquared)
+            double lowerBound = Traits::Distance(point, node->bounds);
+            double worstDistance = Traits::Distance(point, hits.front().box);
+            if (std::isinf(lowerBound) && std::isinf(worstDistance))
+            {
+                lowerBound = Traits::QuarterDistance(point, node->bounds);
+                worstDistance = Traits::QuarterDistance(point, hits.front().box);
+            }
+            if (lowerBound != worstDistance && lowerBound > worstDistance / factor)
             {
                 return;
             }
         }
+        const auto closer = [&point](const Hit& lhs, const Hit& rhs) {
+            return CompareBoxTreeHits<Hit, Point, Traits>(lhs, rhs, point);
+        };
         if (node->IsLeaf())
         {
             for (std::size_t index : node->leafIndices)
@@ -294,13 +319,13 @@ namespace Geometry::Detail
                 if (hits.size() < k)
                 {
                     hits.push_back(hit);
-                    std::push_heap(hits.begin(), hits.end(), CompareBoxTreeHits<Hit>);
+                    std::push_heap(hits.begin(), hits.end(), closer);
                 }
-                else if (CompareBoxTreeHits(hit, hits.front()))
+                else if (closer(hit, hits.front()))
                 {
-                    std::pop_heap(hits.begin(), hits.end(), CompareBoxTreeHits<Hit>);
+                    std::pop_heap(hits.begin(), hits.end(), closer);
                     hits.back() = hit;
-                    std::push_heap(hits.begin(), hits.end(), CompareBoxTreeHits<Hit>);
+                    std::push_heap(hits.begin(), hits.end(), closer);
                 }
             }
             return;
@@ -308,7 +333,7 @@ namespace Geometry::Detail
 
         const Node* first = node->left.get();
         const Node* second = node->right.get();
-        if (Traits::DistanceSquared(point, second->bounds) < Traits::DistanceSquared(point, first->bounds))
+        if (CompareBoxTreeDistances<Traits>(point, second->bounds, first->bounds) < 0)
         {
             std::swap(first, second);
         }

@@ -1,13 +1,14 @@
 #pragma once
 #include <cmath>
+#include <cstddef>
 #include <optional>
 #include <vector>
-#include "Core/GeometryTypes.h"
 #include "Export/GeometryExport.h"
 #include "Geometry2d/SCPolygon2d.h"
 #include "Geometry2d/SCLineSegment2d.h"
 #include "Geometry2d/SCMultiPolygon2d.h"
 #include "Geometry2d/SCMultiPolyline2d.h"
+#include "Types/Geometry2d/SCPoint2.h"
 #include "Support/Epsilon.h"
 
 namespace Geometry

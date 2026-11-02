@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <cstddef>
 #include <memory>
 #include <optional>
@@ -32,7 +33,7 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid() const
         {
-            return point.IsValid() && distanceSquared >= 0.0;
+            return point.IsValid() && std::isfinite(distanceSquared) && distanceSquared >= 0.0;
         }
     };
 

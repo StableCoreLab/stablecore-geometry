@@ -59,11 +59,10 @@ TEST(BrepTopologyValidityTest, ValidationCountsTopologicalEdgeIdentities)
     EXPECT_TRUE(Validate(pairedBody).valid);
 }
 
-TEST(GeometryTest, CoversPolyhedronAndBrepCapabilities)
+TEST(GeometryTest, CoversPolyhedronCapabilities)
 {
     const SCPlane supportPlane = Geometry::Test::BuildSupportPlaneAtZ5();
     const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
-    const SCNurbsSurface nurbsSurface = Geometry::Test::BuildUnitNurbsSurface();
     const PolyhedronLoop3d outerLoop({
         SCPoint3d{0.0, 0.0, 0.0},
         SCPoint3d{2.0, 0.0, 0.0},
@@ -184,6 +183,10 @@ TEST(GeometryTest, CoversPolyhedronAndBrepCapabilities)
     ASSERT_TRUE(holedFaceMesh.mesh.IsValid());
     EXPECT_NEAR(holedFaceMesh.mesh.SurfaceArea(), projectedFace.polygon.Area(), 1e-12);
 
+}
+
+TEST(GeometryTest, CoversBrepVertexCapabilities)
+{
     const std::vector<SCBrepVertex> brepVertices = Geometry::Test::BuildPlanarBrepVerticesAtZ5();
     const auto brepVertexProjection = ProjectPointToBrepVertex(SCPoint3d{1.0, 1.0, 6.0}, brepVertices[0]);
     ASSERT_TRUE(brepVertexProjection.success);
@@ -205,6 +208,12 @@ TEST(GeometryTest, CoversPolyhedronAndBrepCapabilities)
     ASSERT_TRUE(brepVertexPlaneIntersection.intersects);
     ASSERT_TRUE(brepVertexPlaneIntersection.IsValid());
     ASSERT_TRUE(brepVertexPlaneIntersection.point.AlmostEquals(SCPoint3d{0.0, 0.0, 5.0}, 1e-12));
+}
+
+TEST(GeometryTest, CoversPlanarBrepCapabilities)
+{
+    const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
+    const std::vector<SCBrepVertex> brepVertices = Geometry::Test::BuildPlanarBrepVerticesAtZ5();
     const std::vector<SCBrepEdge> brepEdges = Geometry::Test::BuildPlanarBrepEdgesAtZ5();
     const SCBrepLoop brepOuterLoop = Geometry::Test::BuildPlanarBrepOuterLoop();
     ASSERT_TRUE(brepOuterLoop.IsValid());
@@ -393,6 +402,11 @@ TEST(GeometryTest, CoversPolyhedronAndBrepCapabilities)
     ASSERT_TRUE(healedTrimmedMesh.success);
     ASSERT_TRUE(healedTrimmedMesh.mesh.IsValid());
 
+}
+
+TEST(GeometryTest, CoversNurbsBrepFaceCapabilities)
+{
+    const SCNurbsSurface nurbsSurface = Geometry::Test::BuildUnitNurbsSurface();
     const SCBrepFace nurbsBrepFace(
         std::shared_ptr<ISCSurface>(nurbsSurface.Clone().release()),
         SCBrepLoop({SCBrepCoedge(0, false), SCBrepCoedge(1, false), SCBrepCoedge(2, false), SCBrepCoedge(3, false)}),

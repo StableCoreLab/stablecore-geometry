@@ -37,6 +37,16 @@ TEST(TopologyIndexingTest, KdTreeQueriesAndFindsNearestPoint)
     ASSERT_EQ(kdTree.Nearest(SCPoint2d{2.9, 3.1})->id, 8);
 }
 
+TEST(TopologyIndexingTest, KdTreeHitRejectsNonFiniteSquaredDistance)
+{
+    Geometry::SCKDTreeHit2d hit{7, {1.0, 2.0}, 4.0};
+    ASSERT_TRUE(hit.IsValid());
+    hit.distanceSquared = std::numeric_limits<double>::infinity();
+    EXPECT_FALSE(hit.IsValid());
+    hit.distanceSquared = std::numeric_limits<double>::quiet_NaN();
+    EXPECT_FALSE(hit.IsValid());
+}
+
 TEST(TopologyIndexingTest, SegmentSearchQueriesAndFindsNearestSegment)
 {
     SCSegmentSearch2d search;

@@ -113,6 +113,14 @@ TEST(GeometryTest, LineCurveEvaluationBoundsAndClone)
     ASSERT_TRUE(lineClone->PointAt(-2.0).AlmostEquals(SCPoint3d{-3.0, 2.0, 3.0}, 1e-12));
 }
 
+TEST(GeometryTest, LineValidityRejectsOverflowingDirectionLength)
+{
+    const SCLine3d line = SCLine3d::FromOriginAndDirection(
+        {0.0, 0.0, 0.0}, {1.5e308, 1.5e308, 0.0});
+    ASSERT_TRUE(line.direction.IsValid());
+    EXPECT_FALSE(line.IsValid());
+}
+
 TEST(GeometryTest, PlaneSurfaceEvaluationBoundsAndClone)
 {
     const SCPlane supportPlane = Geometry::Test::BuildSupportPlaneAtZ5();

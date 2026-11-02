@@ -1,14 +1,18 @@
 #include <algorithm>
+#include <atomic>
 #include <limits>
 #include <random>
+#include <thread>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
 
+#include "Core/Metrics.h"
 #include "Geometry2d/SCBoxTree2d.h"
 #include "Geometry2d/SCKDTree2d.h"
+#include "Geometry3d/SCBoxTree3d.h"
 #include "Types/Geometry2d/SCBox2.h"
 
 namespace
@@ -51,6 +55,44 @@ TEST(SpatialIndexOracleTest, KdTreeQueriesMatchBruteForceForDeterministicRandomD
     }
 }
 
+TEST(SpatialIndexOracleTest, KdTreeDistanceQueriesPreserveOrderOutsideSquaredRange)
+{
+    Geometry::SCKDTree2d tree;
+    tree.Add(2, {2e200, 0.0});
+    tree.Add(1, {1e200, 0.0});
+    ASSERT_TRUE(tree.Nearest({0.0, 0.0}).has_value());
+    EXPECT_EQ(tree.Nearest({0.0, 0.0})->id, 1U);
+    EXPECT_EQ(Sorted(tree.QueryWithinDistance({0.0, 0.0}, 1.5e200)),
+              std::vector<std::size_t>{1});
+
+    tree.Clear();
+    tree.Add(2, {2e-200, 0.0});
+    tree.Add(1, {1e-200, 0.0});
+    ASSERT_TRUE(tree.Nearest({0.0, 0.0}).has_value());
+    EXPECT_EQ(tree.Nearest({0.0, 0.0})->id, 1U);
+    EXPECT_EQ(Sorted(tree.QueryWithinDistance({0.0, 0.0}, 1.5e-200)),
+              std::vector<std::size_t>{1});
+    EXPECT_TRUE(tree.QueryWithinDistance({0.0, 0.0}, -1.5e-200).empty());
+}
+
+TEST(SpatialIndexOracleTest, KdTreeNearestOrdersOverflowingCoordinateDifferences)
+{
+    Geometry::SCKDTree2d tree;
+    tree.Add(2, {-1e308, 0.0});
+    tree.Add(1, {-8e307, 0.0});
+    const auto nearest = tree.Nearest({1e308, 0.0});
+    ASSERT_TRUE(nearest.has_value());
+    EXPECT_EQ(nearest->id, 1U);
+
+    tree.Clear();
+    tree.Add(2, {-9e307, 1e308});
+    tree.Add(3, {-8e307, 1e308});
+    tree.Add(1, {-1e308, 0.0});
+    const auto acrossSplit = tree.Nearest({1e308, 0.0});
+    ASSERT_TRUE(acrossSplit.has_value());
+    EXPECT_EQ(acrossSplit->id, 1U);
+}
+
 TEST(SpatialIndexOracleTest, BoxTreeKNearestMatchesBruteForceAndMutationsAreImmediatelyVisible)
 {
     Geometry::SCBoxTree2d tree;
@@ -72,10 +114,117 @@ TEST(SpatialIndexOracleTest, BoxTreeKNearestMatchesBruteForceAndMutationsAreImme
     EXPECT_EQ(tree.QueryKNearest({0.0, 0.0}, 1)[0].id, 1U);
 }
 
+TEST(SpatialIndexOracleTest, BoxTreeKNearestOrdersDistancesOutsideSquaredRange)
+{
+    Geometry::SCBoxTree2d boxes2d;
+    boxes2d.Add(1, Geometry::SCBox2d::FromMinMax({2e200, 0.0}, {2e200, 1.0}));
+    boxes2d.Add(9, Geometry::SCBox2d::FromMinMax({1e200, 0.0}, {1e200, 1.0}));
+    ASSERT_EQ(boxes2d.QueryKNearest({0.0, 0.0}, 2).size(), 2U);
+    EXPECT_EQ(boxes2d.QueryKNearest({0.0, 0.0}, 2)[0].id, 9U);
+    EXPECT_EQ(boxes2d.QueryKNearest({0.0, 0.0}, 1)[0].id, 9U);
+
+    Geometry::SCBoxTree3d boxes3d;
+    boxes3d.Add(1, Geometry::SCBox3d::FromMinMax({2e-200, 0.0, 0.0}, {2e-200, 1.0, 1.0}));
+    boxes3d.Add(9, Geometry::SCBox3d::FromMinMax({1e-200, 0.0, 0.0}, {1e-200, 1.0, 1.0}));
+    ASSERT_EQ(boxes3d.QueryKNearest({0.0, 0.0, 0.0}, 2).size(), 2U);
+    EXPECT_EQ(boxes3d.QueryKNearest({0.0, 0.0, 0.0}, 2)[0].id, 9U);
+    EXPECT_EQ(boxes3d.QueryKNearest({0.0, 0.0, 0.0}, 1)[0].id, 9U);
+
+    Geometry::SCBoxTree2d branched2d;
+    Geometry::SCBoxTree3d branched3d;
+    for (std::size_t id = 1; id <= 6; ++id)
+    {
+        const double rank = static_cast<double>(7 - id);
+        branched2d.Add(id, Geometry::SCBox2d::FromMinMax({rank * 1e200, 0.0}, {rank * 1e200, 1.0}));
+        branched3d.Add(id, Geometry::SCBox3d::FromMinMax({rank * 1e-200, 0.0, 0.0},
+                                                       {rank * 1e-200, 1.0, 1.0}));
+    }
+    const auto nearest2d = branched2d.QueryKNearest({0.0, 0.0}, 3, 0.0);
+    const auto nearest3d = branched3d.QueryKNearest({0.0, 0.0, 0.0}, 3, 0.0);
+    ASSERT_EQ(nearest2d.size(), 3U);
+    ASSERT_EQ(nearest3d.size(), 3U);
+    for (std::size_t index = 0; index < 3; ++index)
+    {
+        EXPECT_EQ(nearest2d[index].id, 6U - index);
+        EXPECT_EQ(nearest3d[index].id, 6U - index);
+    }
+}
+
+TEST(SpatialIndexOracleTest, BoxTreeKNearestOrdersOverflowingEuclideanDistances)
+{
+    Geometry::SCBoxTree2d boxes2d;
+    Geometry::SCBoxTree3d boxes3d;
+    for (std::size_t id = 1; id <= 6; ++id)
+    {
+        const double x2d = -(1e308 - static_cast<double>(id - 1) * 4e306);
+        const double x3d = 1.7e308 - static_cast<double>(id - 1) * 4e306;
+        boxes2d.Add(id, Geometry::SCBox2d::FromMinMax({x2d, 0.0}, {x2d, 1.0}));
+        boxes3d.Add(id, Geometry::SCBox3d::FromMinMax({x3d, 1e308, 0.0},
+                                                      {x3d, 1e308, 1.0}));
+    }
+    const auto nearest2d = boxes2d.QueryKNearest({1e308, 0.0}, 3);
+    const auto nearest3d = boxes3d.QueryKNearest({0.0, 0.0, 0.0}, 3);
+    ASSERT_EQ(nearest2d.size(), 3U);
+    ASSERT_EQ(nearest3d.size(), 3U);
+    for (std::size_t index = 0; index < 3; ++index)
+    {
+        EXPECT_EQ(nearest2d[index].id, 6U - index);
+        EXPECT_EQ(nearest3d[index].id, 6U - index);
+    }
+}
+
+TEST(SpatialIndexOracleTest, ConcurrentReadQueriesKeepIndexResultsStable)
+{
+    Geometry::SCBoxTree2d boxes2d;
+    Geometry::SCBoxTree3d boxes3d;
+    Geometry::SCKDTree2d points2d;
+    for (std::size_t id = 0; id < 16; ++id)
+    {
+        const double x = static_cast<double>(id) * 2.0;
+        boxes2d.Add(id, Geometry::SCBox2d::FromMinMax({x, 0.0}, {x + 1.0, 1.0}));
+        boxes3d.Add(id, Geometry::SCBox3d::FromMinMax({x, 0.0, 0.0}, {x + 1.0, 1.0, 1.0}));
+        points2d.Add(id, {x, 0.0});
+    }
+
+    const auto& read2d = boxes2d;
+    const auto& read3d = boxes3d;
+    const auto& readPoints = points2d;
+    std::atomic<bool> consistent{true};
+    auto reader = [&]() {
+        for (int iteration = 0; iteration < 200; ++iteration)
+        {
+            const auto nearest2d = read2d.QueryKNearest({0.0, 0.0}, 3, 0.0);
+            const auto nearest3d = read3d.QueryKNearest({0.0, 0.0, 0.0}, 3, 0.0);
+            const auto nearestPoint = readPoints.Nearest({1.9, 0.0});
+            if (nearest2d.size() != 3 || nearest3d.size() != 3 || !nearestPoint ||
+                nearest2d[0].id != 0 || nearest2d[1].id != 1 || nearest2d[2].id != 2 ||
+                nearest3d[0].id != 0 || nearest3d[1].id != 1 || nearest3d[2].id != 2 ||
+                nearestPoint->id != 1 ||
+                read2d.QueryContaining({0.5, 0.5}) != std::vector<std::size_t>{0} ||
+                read3d.QueryContaining({0.5, 0.5, 0.5}) != std::vector<std::size_t>{0} ||
+                readPoints.QueryWithinDistance({1.9, 0.0}, 0.2) != std::vector<std::size_t>{1})
+            {
+                consistent.store(false, std::memory_order_relaxed);
+                return;
+            }
+        }
+    };
+    std::vector<std::thread> readers;
+    for (int index = 0; index < 4; ++index)
+    {
+        readers.emplace_back(reader);
+    }
+    for (auto& thread : readers)
+    {
+        thread.join();
+    }
+    EXPECT_TRUE(consistent.load(std::memory_order_relaxed));
+}
+
 TEST(SpatialIndexOracleTest, IncrementalBoxTreesKeepQueriesConsistentAfterRemovalAndMove)
 {
     static_assert(std::is_const_v<std::remove_reference_t<decltype(std::declval<Geometry::SCBoxTree2d&>().Entries())>>);
-    static_assert(std::is_const_v<std::remove_reference_t<decltype(std::declval<Geometry::SCBoxTree2d&>().Entries())>>);
+    static_assert(std::is_const_v<std::remove_reference_t<decltype(std::declval<Geometry::SCBoxTree3d&>().Entries())>>);
 
     Geometry::SCBoxTree2d tree;
     for (std::size_t id = 0; id < 12; ++id)
@@ -180,6 +329,56 @@ TEST(SpatialIndexOracleTest, InvalidEntriesRemainInspectableWithoutEnteringTheTr
     points.Update(1, {1.0, 1.0});
     EXPECT_TRUE(points.IsValid());
     EXPECT_EQ(Sorted(points.Query({1.0, 1.0}, 0.0)), (std::vector<std::size_t>{1, 2}));
+}
+
+TEST(SpatialIndexOracleTest, InvalidQueryPointsReturnNoHits)
+{
+    const double nan = std::numeric_limits<double>::quiet_NaN();
+    const double infinity = std::numeric_limits<double>::infinity();
+
+    Geometry::SCKDTree2d points;
+    points.Add(1, {0.0, 0.0});
+    EXPECT_TRUE(points.Query({nan, 0.0}, 0.0).empty());
+    EXPECT_TRUE(points.QueryWithinDistance({infinity, 0.0}, infinity).empty());
+    EXPECT_FALSE(points.Nearest({nan, 0.0}).has_value());
+
+    Geometry::SCBoxTree2d boxes2d;
+    boxes2d.Add(1, Geometry::SCBox2d::FromMinMax({0.0, 0.0}, {1.0, 1.0}));
+    EXPECT_TRUE(boxes2d.QueryContaining({nan, 0.0}).empty());
+    EXPECT_TRUE(boxes2d.QueryKNearest({infinity, 0.0}, 1).empty());
+
+    Geometry::SCBoxTree3d boxes3d;
+    boxes3d.Add(1, Geometry::SCBox3d::FromMinMax({0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}));
+    EXPECT_TRUE(boxes3d.QueryContaining({nan, 0.0, 0.0}).empty());
+    EXPECT_TRUE(boxes3d.QueryKNearest({infinity, 0.0, 0.0}, 1).empty());
+}
+
+TEST(SpatialIndexOracleTest, BoxRelationsRejectInvalidTolerance)
+{
+    const double nan = std::numeric_limits<double>::quiet_NaN();
+    const double infinity = std::numeric_limits<double>::infinity();
+    const auto near2d = Geometry::SCBox2d::FromMinMax({0.0, 0.0}, {1.0, 1.0});
+    const auto far2d = Geometry::SCBox2d::FromMinMax({3.0, 3.0}, {4.0, 4.0});
+    const auto near3d = Geometry::SCBox3d::FromMinMax({0.0, 0.0, 0.0}, {1.0, 1.0, 1.0});
+    const auto far3d = Geometry::SCBox3d::FromMinMax({3.0, 3.0, 3.0}, {4.0, 4.0, 4.0});
+
+    EXPECT_FALSE(Geometry::Intersects(near2d, far2d, nan));
+    EXPECT_FALSE(Geometry::Intersects(near3d, far3d, nan));
+    EXPECT_FALSE(Geometry::Intersects(near2d, near2d, -1.0));
+    EXPECT_FALSE(Geometry::Intersects(near3d, near3d, infinity));
+    EXPECT_FALSE(Geometry::Contains(near2d, Geometry::SCPoint2d{0.5, 0.5}, nan));
+    EXPECT_FALSE(Geometry::Contains(near3d, Geometry::SCPoint3d{0.5, 0.5, 0.5}, infinity));
+    EXPECT_FALSE(Geometry::Contains(near2d, Geometry::SCPoint2d{infinity, 0.0}, 0.0));
+    EXPECT_FALSE(Geometry::Contains(near3d, Geometry::SCPoint3d{nan, 0.0, 0.0}, 0.0));
+    EXPECT_TRUE(Geometry::Intersects(near2d, near2d, 0.0));
+    EXPECT_TRUE(Geometry::Contains(near3d, Geometry::SCPoint3d{0.5, 0.5, 0.5}, 0.0));
+
+    Geometry::SCBoxTree2d boxes2d;
+    boxes2d.Add(1, near2d);
+    EXPECT_TRUE(boxes2d.Query(far2d, nan).empty());
+    Geometry::SCBoxTree3d boxes3d;
+    boxes3d.Add(1, near3d);
+    EXPECT_TRUE(boxes3d.Query(far3d, nan).empty());
 }
 
 TEST(SpatialIndexOracleTest, AddAcceptsGeometryReferencedFromExistingEntry)

@@ -14,7 +14,6 @@
 #include "Geometry3d/SCNurbsCurve3d.h"
 #include "Geometry3d/Detail/SurfaceNumerics.h"
 #include "Detail/CurveOnSurfaceNumerics.h"
-#include "../Detail/NurbsRootLimits.h"
 
 namespace Geometry
 {
@@ -40,6 +39,7 @@ namespace Geometry
             double end{0.0};
             std::vector<PlaneCurveControl> controls{};
             int depth{0};
+            bool coplanarControlHull{false};
         };
 
         [[nodiscard]] bool BuildPlaneCurveBezierSpans(const SCNurbsCurve3d& curve,
@@ -48,18 +48,28 @@ namespace Geometry
                                                        std::vector<PlaneCurveSpan>& spans)
         {
             const int degree = curve.Degree();
-            if (degree < 1 || degree > Detail::kMaxNurbsRootDegree) return false;
+            if (degree < 1) return false;
             std::vector<double> knots = curve.Knots();
             std::vector<PlaneCurveControl> controls;
             controls.reserve(curve.ControlPoints().size());
-            for (std::size_t i = 0; i < curve.ControlPoints().size(); ++i)
-            {
-                const double signedDistance = plane.SignedDistanceTo(curve.ControlPoints()[i], eps);
-                const double weight = curve.Weights()[i];
-                if (!std::isfinite(signedDistance) || !std::isfinite(weight) || !(weight > 0.0))
-                    return false;
-                controls.push_back({signedDistance * weight, weight});
-            }
+            const double weightScale = *std::max_element(curve.Weights().begin(), curve.Weights().end());
+            if (!(weightScale > 0.0) || !std::isfinite(weightScale)) return false;
+            const auto buildControls = [&](double scale) {
+                controls.clear();
+                for (std::size_t i = 0; i < curve.ControlPoints().size(); ++i)
+                {
+                    const double signedDistance = plane.SignedDistanceTo(curve.ControlPoints()[i], eps);
+                    const double weight = curve.Weights()[i] / scale;
+                    const double numerator = signedDistance * weight;
+                    if (!std::isfinite(signedDistance) || !std::isfinite(weight) || !(weight > 0.0) ||
+                        !std::isfinite(numerator) || (signedDistance != 0.0 && numerator == 0.0))
+                        return false;
+                    controls.push_back({numerator, weight});
+                }
+                return true;
+            };
+            if (!buildControls(weightScale) && !buildControls(1.0)) return false;
+            const auto originalControls = controls;
             const auto range = curve.ParameterRange();
             const auto multiplicity = [&](double knot) {
                 return static_cast<int>(std::count(knots.begin(), knots.end(), knot));
@@ -67,18 +77,22 @@ namespace Geometry
             if (multiplicity(range.min) < degree + 1 || multiplicity(range.max) < degree + 1)
                 return false;
 
-            std::vector<double> internalKnots;
+            std::vector<std::pair<double, int>> internalKnots;
             for (const double knot : knots)
-                if (knot > range.min && knot < range.max &&
-                    (internalKnots.empty() || internalKnots.back() != knot))
-                    internalKnots.push_back(knot);
-            for (const double knot : internalKnots)
             {
-                while (multiplicity(knot) < degree)
+                if (!(knot > range.min && knot < range.max)) continue;
+                if (internalKnots.empty() || internalKnots.back().first != knot)
+                    internalKnots.emplace_back(knot, 1);
+                else
+                    ++internalKnots.back().second;
+            }
+            for (const auto& [knot, initialMultiplicity] : internalKnots)
+            {
+                int count = initialMultiplicity;
+                while (count < degree)
                 {
                     const std::size_t span = static_cast<std::size_t>(
                         std::upper_bound(knots.begin(), knots.end(), knot) - knots.begin() - 1);
-                    const int count = multiplicity(knot);
                     std::vector<PlaneCurveControl> refined(controls.size() + 1);
                     for (std::size_t i = 0; i <= span - static_cast<std::size_t>(degree); ++i)
                         refined[i] = controls[i];
@@ -95,6 +109,7 @@ namespace Geometry
                     }
                     knots.insert(knots.begin() + static_cast<std::ptrdiff_t>(span + 1), knot);
                     controls = std::move(refined);
+                    ++count;
                 }
             }
 
@@ -107,6 +122,13 @@ namespace Geometry
                 cell.end = knots[span + 1];
                 cell.controls.assign(controls.begin() + static_cast<std::ptrdiff_t>(span - degree),
                                      controls.begin() + static_cast<std::ptrdiff_t>(span + 1));
+                const std::size_t originalSpan = static_cast<std::size_t>(
+                    std::upper_bound(curve.Knots().begin(), curve.Knots().end(), cell.start) -
+                    curve.Knots().begin() - 1);
+                cell.coplanarControlHull = std::all_of(
+                    originalControls.begin() + static_cast<std::ptrdiff_t>(originalSpan - degree),
+                    originalControls.begin() + static_cast<std::ptrdiff_t>(originalSpan + 1),
+                    [](const auto& control) { return control.numerator == 0.0; });
                 spans.push_back(std::move(cell));
             }
             return !spans.empty();
@@ -121,6 +143,7 @@ namespace Geometry
             right.start = left.end;
             right.end = cell.end;
             left.depth = right.depth = cell.depth + 1;
+            left.coplanarControlHull = right.coplanarControlHull = cell.coplanarControlHull;
             const std::size_t count = cell.controls.size();
             left.controls.resize(count);
             right.controls.resize(count);
@@ -289,7 +312,7 @@ namespace Geometry
             return result;
         }
 
-        if (nurbs->Degree() < 1 || nurbs->Degree() > Detail::kMaxNurbsRootDegree ||
+        if (nurbs->Degree() < 1 ||
             std::count(nurbs->Knots().begin(), nurbs->Knots().end(), range.min) < nurbs->Degree() + 1 ||
             std::count(nurbs->Knots().begin(), nurbs->Knots().end(), range.max) < nurbs->Degree() + 1)
         {
@@ -393,6 +416,13 @@ namespace Geometry
             if (invalidControl) continue;
             if (identicallyZero)
             {
+                if (!cell.coplanarControlHull)
+                {
+                    // knot 插入或细分后的全零可能来自下溢，不能替代原控制包的共面证明。
+                    complete = false;
+                    (void)addHit(std::midpoint(cell.start, cell.end), cell.start, cell.end);
+                    continue;
+                }
                 result.state = SCGeometryOperationState::NonUnique;
                 result.hits.clear();
                 result.evidence.hit = SCGeometryEvidenceState::Verified;
@@ -717,7 +747,8 @@ namespace Geometry
                     firstSpans[span].end != secondSpans[span].end ||
                     firstSpans[span].controls.size() != secondSpans[span].controls.size())
                     continue;
-                bool coincident = true;
+                bool coincident = firstSpans[span].coplanarControlHull &&
+                                  secondSpans[span].coplanarControlHull;
                 for (std::size_t control = 0; control < firstSpans[span].controls.size(); ++control)
                     coincident &= firstSpans[span].controls[control].numerator == 0.0 &&
                                   secondSpans[span].controls[control].numerator == 0.0;

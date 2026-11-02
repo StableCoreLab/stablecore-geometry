@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Export/GeometryExport.h"
-#include "Core/GeometryTypes.h"
-#include "Core/Section.h"
+#include <cstddef>
+#include "Types/Geometry3d/SCGeometryTypes3d.h"
 #include "Geometry2d/SCPolygon2d.h"
 #include "Geometry2d/SCPolyline2d.h"
 #include "Support/Epsilon.h"
@@ -12,6 +12,7 @@ namespace Geometry
     class SCBrepBody;
     class PolyhedronBody;
     class TriangleMesh;
+    struct SCPolyhedronSection3d;
 
     enum class SCPolygonValidationIssue2d
     {

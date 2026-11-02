@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
+#include <algorithm>
 #include <cmath>
+#include <limits>
 #include <vector>
 
 #include "Geometry.h"

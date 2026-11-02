@@ -6,6 +6,7 @@
 #include <memory>
 
 #include "Geometry3d/ISCSurface.h"
+#include "Geometry3d/ISCCurve3d.h"
 #include "Support/StableNumerics.h"
 #include "Geometry3d/Detail/SurfaceNumerics.h"
 

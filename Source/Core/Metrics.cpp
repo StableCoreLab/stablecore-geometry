@@ -18,12 +18,12 @@ namespace Geometry
 
     double Distance(const SCPoint2d& lhs, const SCPoint2d& rhs)
     {
-        return std::sqrt(DistanceSquared(lhs, rhs));
+        return std::hypot(rhs.x - lhs.x, rhs.y - lhs.y);
     }
 
     bool Contains(const SCBox2d& box, const SCPoint2d& point, double eps)
     {
-        if (!box.IsValid())
+        if (!box.IsValid() || !point.IsValid() || !std::isfinite(eps) || eps < 0.0)
         {
             return false;
         }
@@ -34,7 +34,7 @@ namespace Geometry
 
     bool Intersects(const SCBox2d& lhs, const SCBox2d& rhs, double eps)
     {
-        if (!lhs.IsValid() || !rhs.IsValid())
+        if (!lhs.IsValid() || !rhs.IsValid() || !std::isfinite(eps) || eps < 0.0)
         {
             return false;
         }
@@ -45,7 +45,7 @@ namespace Geometry
 
     bool Contains(const SCBox3d& box, const SCPoint3d& point, double eps)
     {
-        if (!box.IsValid())
+        if (!box.IsValid() || !point.IsValid() || !std::isfinite(eps) || eps < 0.0)
         {
             return false;
         }
@@ -57,7 +57,7 @@ namespace Geometry
 
     bool Intersects(const SCBox3d& lhs, const SCBox3d& rhs, double eps)
     {
-        if (!lhs.IsValid() || !rhs.IsValid())
+        if (!lhs.IsValid() || !rhs.IsValid() || !std::isfinite(eps) || eps < 0.0)
         {
             return false;
         }
@@ -122,19 +122,33 @@ namespace Geometry
         return ProjectPointToSegment(point, segment, true).distanceSquared;
     }
 
+    namespace
+    {
+        [[nodiscard]] double DistanceFromProjection(const SCPoint2d& point,
+                                                    const SCSegmentProjection2d& projection)
+        {
+            if (point.IsValid() && projection.point.IsValid() && std::isfinite(projection.parameter) &&
+                projection.distanceSquared >= 0.0)
+            {
+                return Distance(point, projection.point);
+            }
+            return std::sqrt(projection.distanceSquared);
+        }
+    }
+
     double Distance(const SCPoint2d& point, const SCLineSegment2d& segment)
     {
-        return std::sqrt(DistanceSquared(point, segment));
+        return DistanceFromProjection(point, ProjectPointToLineSegment(point, segment, true));
     }
 
     double Distance(const SCPoint2d& point, const SCArcSegment2d& segment)
     {
-        return std::sqrt(DistanceSquared(point, segment));
+        return DistanceFromProjection(point, ProjectPointToArcSegment(point, segment, true));
     }
 
     double Distance(const SCPoint2d& point, const ISCSegment2d& segment)
     {
-        return std::sqrt(DistanceSquared(point, segment));
+        return DistanceFromProjection(point, ProjectPointToSegment(point, segment, true));
     }
 
     SCBox2d Bounds(const SCPolyline2d& polyline)

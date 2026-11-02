@@ -40,7 +40,9 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry2d/TestRingTraversalRegression.cpp
     Capabilities/Geometry2d/TestSearchPoly.cpp
     Capabilities/Geometry2d/TestSearchPolyRepairRanking.cpp
+    Capabilities/Geometry2d/TestSearchPolyCandidateRanking.cpp
     Capabilities/Geometry2d/TestSearchPolyExplanations.cpp
+    Capabilities/Geometry2d/TestSegmentNumerics.cpp
     Capabilities/Geometry2d/TestSegment.cpp
     Capabilities/Geometry2d/TestShapesPathOps.cpp
     Capabilities/Geometry2d/TestShapesPathOpsPolygon.cpp
@@ -63,6 +65,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestHealing3dBoundaryArbitration.cpp
     Capabilities/Geometry3d/TestHealing3dPartialOverlapShells.cpp
     Capabilities/Geometry3d/TestHealing3dVertexTouchArbitration.cpp
+    Capabilities/Geometry3d/TestHealing3dVertexTouchCombinations.cpp
     Capabilities/Geometry3d/TestHealing3dShellCombinations.cpp
     Capabilities/Geometry3d/TestHealing3dMixedShellCombinations.cpp
     Capabilities/Geometry3d/TestHealing3dMultiFaceShellCombinations.cpp
@@ -98,6 +101,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestNurbsEvaluationNumerics.cpp
     Capabilities/Geometry3d/TestNurbsWeightExtremes.cpp
     Capabilities/Geometry3d/TestNurbsProjectionIntersection.cpp
+    Capabilities/Geometry3d/TestNurbsRootIsolationLimits.cpp
     Capabilities/Geometry3d/TestNurbsIntersectionIsolation.cpp
     Capabilities/Geometry3d/TestNurbsSurfaceSearch.cpp
     Capabilities/Geometry3d/TestNurbsSurfaceBudgets.cpp
@@ -140,27 +144,10 @@ foreach(SCGEOMETRY_STATUS_HEADER GeometryEvidence Projection Intersection Measur
     SCGeometryConfigureTarget(${SCGEOMETRY_STATUS_HEADER_TARGET})
 endforeach()
 
-# 聚合头和 NURBS 公开头分别独立编译，检查传递包含依赖。
-foreach(SCGEOMETRY_STANDALONE_HEADER IN ITEMS
-    Geometry.h
-    Core/GeometryApi.h
-    Core/Algorithms.h
-    Core/IntersectionResults3d.h
-    Core/GeometryTypes.h
-    Core/PolygonRelation2d.h
-    Core/BodyBoolean.h
-    Core/Healing.h
-    Core/MeshConversion.h
-    Core/MeshRepair.h
-    Brep/Topology.h
-    Brep/BodyBoolean.h
-    Brep/Healing.h
-    Brep/MeshConversion.h
-    Brep/MeshRepair.h
-    Geometry3d/SCCurveOnSurface.h
-    Geometry3d/SCNurbsCurve3d.h
-    Geometry3d/SCNurbsSurface.h
-    Geometry3d/SCOffsetSurface.h)
+# 复用库的公开头清单，逐头独立编译，避免测试清单遗漏新增安装接口。
+foreach(SCGEOMETRY_STANDALONE_HEADER_FILE IN LISTS SCGEOMETRY_HEADERS)
+    file(RELATIVE_PATH SCGEOMETRY_STANDALONE_HEADER
+        "${SCGEOMETRY_ROOT_DIR}/Include" "${SCGEOMETRY_STANDALONE_HEADER_FILE}")
     string(REPLACE "/" "_" SCGEOMETRY_STANDALONE_TARGET "${SCGEOMETRY_STANDALONE_HEADER}")
     string(REPLACE "." "_" SCGEOMETRY_STANDALONE_TARGET "${SCGEOMETRY_STANDALONE_TARGET}")
     add_library(SCGeometryStandalone${SCGEOMETRY_STANDALONE_TARGET}Compile OBJECT

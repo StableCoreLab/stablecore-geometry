@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <bit>
+#include <cmath>
 #include <memory>
 #include <sstream>
 #include <utility>
@@ -44,6 +45,23 @@ namespace Geometry
             static double DistanceSquared(const SCPoint3d& point, const SCBox3d& box)
             {
                 return Geometry::DistanceSquared(point, box);
+            }
+            static double Distance(const SCPoint3d& point, const SCBox3d& box)
+            {
+                const double dx = std::max({box.MinPoint().x - point.x, 0.0, point.x - box.MaxPoint().x});
+                const double dy = std::max({box.MinPoint().y - point.y, 0.0, point.y - box.MaxPoint().y});
+                const double dz = std::max({box.MinPoint().z - point.z, 0.0, point.z - box.MaxPoint().z});
+                return std::hypot(dx, dy, dz);
+            }
+            static double QuarterDistance(const SCPoint3d& point, const SCBox3d& box)
+            {
+                const double dx = std::max({box.MinPoint().x * 0.25 - point.x * 0.25,
+                                            0.0, point.x * 0.25 - box.MaxPoint().x * 0.25});
+                const double dy = std::max({box.MinPoint().y * 0.25 - point.y * 0.25,
+                                            0.0, point.y * 0.25 - box.MaxPoint().y * 0.25});
+                const double dz = std::max({box.MinPoint().z * 0.25 - point.z * 0.25,
+                                            0.0, point.z * 0.25 - box.MaxPoint().z * 0.25});
+                return std::hypot(dx, dy, dz);
             }
             static bool Intersects(const SCBox3d& lhs, const SCBox3d& rhs, double eps)
             {
@@ -274,6 +292,10 @@ namespace Geometry
     std::vector<std::size_t> SCBoxTree3d::QueryContaining(const SCPoint3d& point, double eps) const
     {
         std::vector<std::size_t> result;
+        if (!point.IsValid())
+        {
+            return result;
+        }
         Detail::QueryPointTree<Node, SCBoxTreeEntry3d, SCPoint3d, BoxTree3dTraits>(root_.get(), entries_, point, eps, result);
         return result;
     }
@@ -281,10 +303,16 @@ namespace Geometry
     std::vector<SCBoxTreeKnnHit3d> SCBoxTree3d::QueryKNearest(const SCPoint3d& point, std::size_t k, double eps) const
     {
         std::vector<SCBoxTreeKnnHit3d> hits;
+        if (!point.IsValid())
+        {
+            return hits;
+        }
         hits.reserve(std::min(k, entries_.size()));
         Detail::QueryBoxTreeKnn<Node, SCBoxTreeEntry3d, SCPoint3d, SCBoxTreeKnnHit3d, BoxTree3dTraits>(
             root_.get(), entries_, point, k, eps, hits);
-        std::sort(hits.begin(), hits.end(), Detail::CompareBoxTreeHits<SCBoxTreeKnnHit3d>);
+        std::sort(hits.begin(), hits.end(), [&point](const auto& lhs, const auto& rhs) {
+            return Detail::CompareBoxTreeHits<SCBoxTreeKnnHit3d, SCPoint3d, BoxTree3dTraits>(lhs, rhs, point);
+        });
         return hits;
     }
 

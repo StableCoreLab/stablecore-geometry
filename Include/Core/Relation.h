@@ -2,7 +2,11 @@
 
 #include "Core/GeometryEvidence.h"
 
-#include "Core/GeometryTypes.h"
+#include "Types/Geometry2d/SCPoint2.h"
+#include "Types/Geometry3d/SCGeometryTypes3d.h"
+#include "Types/Geometry3d/SCPlane.h"
+#include "Types/Geometry3d/SCPoint3.h"
+#include "Types/Geometry3d/SCVector3.h"
 #include "Export/GeometryExport.h"
 #include "Geometry2d/SCArcSegment2d.h"
 #include "Geometry2d/SCLineSegment2d.h"

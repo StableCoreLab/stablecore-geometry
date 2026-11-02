@@ -22,7 +22,9 @@ namespace Geometry
 
         [[nodiscard]] bool IsValid(double eps = kDefaultEpsilon) const
         {
-            return std::isfinite(eps) && eps >= 0.0 && origin.IsValid() && direction.IsValid() && direction.Length() > eps;
+            const double length = direction.Length();
+            return std::isfinite(eps) && eps >= 0.0 && origin.IsValid() && direction.IsValid()
+                && std::isfinite(length) && length > eps;
         }
 
         [[nodiscard]] SCPoint3d PointAt(double parameter) const

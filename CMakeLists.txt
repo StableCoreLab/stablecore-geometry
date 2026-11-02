@@ -259,7 +259,6 @@ set(SCGEOMETRY_INTERNAL_HEADERS
     Detail/DirectedEdgeFans2d.h
     Detail/GeometryContainerOps.h
     Detail/NurbsBasis.h
-    Detail/NurbsRootLimits.h
     Detail/PolylineRing2d.h
     Detail/RingIntegral2d.h
     Detail/RingVertices2d.h

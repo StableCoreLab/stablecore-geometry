@@ -3,12 +3,14 @@
 #include <string>
 #include <string_view>
 
-#include "Core/Algorithms.h"
-#include "Core/GeometryTypes.h"
+#include "Core/Geometry2dResults.h"
 #include "Export/GeometryExport.h"
 #include "Geometry2d/SCArcSegment2d.h"
 #include "Geometry2d/SCPolygon2d.h"
 #include "Geometry2d/SCPolyline2d.h"
+#include "Types/Geometry2d/SCBox2.h"
+#include "Types/Geometry2d/SCPoint2.h"
+#include "Types/Geometry2d/SCVector2.h"
 
 namespace Geometry::Serialize
 {

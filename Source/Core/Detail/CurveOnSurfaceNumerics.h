@@ -17,7 +17,6 @@
 #include "Geometry3d/SCPlaneSurface.h"
 #include "Types/Geometry3d/SCLine3d.h"
 #include "../../Detail/NurbsBasis.h"
-#include "../../Detail/NurbsRootLimits.h"
 
 namespace Geometry::Detail
 {
@@ -213,14 +212,32 @@ namespace Geometry::Detail
         return splitLeft(right, relative, false);
     }
 
-    [[nodiscard]] inline double BinomialCoefficient(int degree, int index)
+    [[nodiscard]] inline std::vector<double> BernsteinProductFactors(int degreeU, int degreeV, int index)
     {
-        double result = 1.0;
-        for (int i = 1; i <= index; ++i)
+        const int first = std::max(0, index - degreeV);
+        const int last = std::min(degreeU, index);
+        const auto ratio = [&](int u) {
+            return (static_cast<double>(degreeU - u) / (u + 1)) *
+                   (static_cast<double>(index - u) / (degreeV - index + u + 1));
+        };
+        int mode = first;
+        while (mode < last && ratio(mode) > 1.0)
+            ++mode;
+        std::vector<double> factors(static_cast<std::size_t>(last - first + 1));
+        factors[static_cast<std::size_t>(mode - first)] = 1.0;
+        for (int u = mode; u < last; ++u)
+            factors[static_cast<std::size_t>(u + 1 - first)] =
+                factors[static_cast<std::size_t>(u - first)] * ratio(u);
+        for (int u = mode; u > first; --u)
+            factors[static_cast<std::size_t>(u - 1 - first)] =
+                factors[static_cast<std::size_t>(u - first)] / ratio(u - 1);
+        // 从最大项向两侧递推，再用 Vandermonde 恒等式归一化，避免巨大二项式系数。
+        const double sum = std::accumulate(factors.begin(), factors.end(), 0.0);
+        for (double& factor : factors)
         {
-            result *= static_cast<double>(degree - index + i) / static_cast<double>(i);
+            factor /= sum;
         }
-        return result;
+        return factors;
     }
 
     [[nodiscard]] inline bool TryReduceBezierControlDegree(std::vector<HomogeneousSurfaceControl>& controls)
@@ -285,11 +302,13 @@ namespace Geometry::Detail
         }
         const int degreeU = surface->DegreeU();
         const int degreeV = surface->DegreeV();
+        if (!surface->IsValid(tolerance) || degreeU >= std::numeric_limits<int>::max() - degreeV)
+        {
+            return std::nullopt;
+        }
         const int degree = degreeU + degreeV;
-        if (degree > kMaxNurbsRootDegree ||
-            surface->ControlPointCountU() != static_cast<std::size_t>(degreeU + 1) ||
-            surface->ControlPointCountV() != static_cast<std::size_t>(degreeV + 1) ||
-            !surface->IsValid(tolerance))
+        if (surface->ControlPointCountU() != static_cast<std::size_t>(degreeU + 1) ||
+            surface->ControlPointCountV() != static_cast<std::size_t>(degreeV + 1))
         {
             return std::nullopt;
         }
@@ -297,7 +316,7 @@ namespace Geometry::Detail
         const auto& knotsU = surface->KnotsU();
         const auto& knotsV = surface->KnotsV();
         const auto clampedBezier = [](const std::vector<double>& knots, int axisDegree) {
-            return knots.size() == static_cast<std::size_t>(2 * (axisDegree + 1)) &&
+            return knots.size() == 2 * (static_cast<std::size_t>(axisDegree) + 1) &&
                    std::all_of(knots.begin(), knots.begin() + axisDegree + 1,
                                [&](double knot) { return knot == knots.front(); }) &&
                    std::all_of(knots.begin() + axisDegree + 1, knots.end(),
@@ -338,7 +357,8 @@ namespace Geometry::Detail
             row.reserve(degreeU + 1);
             for (int u = 0; u <= degreeU; ++u)
             {
-                const std::size_t index = static_cast<std::size_t>(v * (degreeU + 1) + u);
+                const std::size_t index = static_cast<std::size_t>(v) *
+                                          (static_cast<std::size_t>(degreeU) + 1) + static_cast<std::size_t>(u);
                 const double weight = surfaceWeights[index] / weightScale;
                 row.push_back({points[index].x * weight, points[index].y * weight,
                                points[index].z * weight, weight});
@@ -363,12 +383,12 @@ namespace Geometry::Detail
         for (int index = 0; index <= degree; ++index)
         {
             HomogeneousSurfaceControl control{};
-            const double denominator = BinomialCoefficient(degree, index);
-            for (int u = std::max(0, index - degreeV); u <= std::min(degreeU, index); ++u)
+            const auto factors = BernsteinProductFactors(degreeU, degreeV, index);
+            const int first = std::max(0, index - degreeV);
+            for (int u = first; u <= std::min(degreeU, index); ++u)
             {
                 const int v = index - u;
-                const double factor =
-                    BinomialCoefficient(degreeU, u) * BinomialCoefficient(degreeV, v) / denominator;
+                const double factor = factors[static_cast<std::size_t>(u - first)];
                 const auto& term = restricted[u][v];
                 control.x += factor * term.x;
                 control.y += factor * term.y;
@@ -403,7 +423,7 @@ namespace Geometry::Detail
             weights.push_back(control.w);
         }
 
-        std::vector<double> knots(static_cast<std::size_t>(2 * (restrictedDegree + 1)), 1.0);
+        std::vector<double> knots(2 * (static_cast<std::size_t>(restrictedDegree) + 1), 1.0);
         std::fill(knots.begin(), knots.begin() + restrictedDegree + 1, 0.0);
         SCNurbsCurve3d restrictedCurve(restrictedDegree, std::move(controls), std::move(knots), std::move(weights));
         if (!restrictedCurve.IsValid(tolerance))
@@ -605,8 +625,7 @@ namespace Geometry::Detail
 
         const auto* surface = dynamic_cast<const SCNurbsSurface*>(curve.SupportSurface());
         if (surface == nullptr || segmentIndex >= curve.UvCurve().SegmentCount() ||
-            !surface->IsValid(tolerance) ||
-            surface->DegreeU() + surface->DegreeV() > kMaxNurbsRootDegree)
+            !surface->IsValid(tolerance))
         {
             return {};
         }

@@ -21,6 +21,14 @@ using Geometry::kPi;
 
 using namespace Geometry;
 
+TEST(MetricsPointDistanceTest, PreservesDistancesOutsideSquaredRange)
+{
+    EXPECT_DOUBLE_EQ(Distance(SCPoint2d{0.0, 0.0}, SCPoint2d{1e200, 0.0}), 1e200);
+    EXPECT_DOUBLE_EQ(Distance(SCPoint2d{0.0, 0.0}, SCPoint2d{1e-200, 0.0}), 1e-200);
+    EXPECT_DOUBLE_EQ(Distance(SCPoint2d{0.0, 0.0}, SCPoint2d{1e200, 1e200}),
+                     std::hypot(1e200, 1e200));
+}
+
 namespace
 {
     [[nodiscard]] SCBox2d MakeBox(double minX, double minY, double maxX, double maxY)

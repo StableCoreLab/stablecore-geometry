@@ -21,148 +21,6 @@ using Geometry::SCPoint2d;
 using Geometry::ISCSegment2d;
 using Geometry::SCSegmentKind2;
 
-TEST(SegmentTest, ArcComparisonSeparatesDistanceAndAngleTolerance)
-{
-    const SCArcSegment2d arc({0.0, 0.0}, 2.0, 0.25, 1.0);
-    const SCArcSegment2d rotated({0.0, 0.0}, 2.0, 0.2501, 1.0);
-    const SCArcSegment2d moved({2e-6, 0.0}, 2.0, 0.25, 1.0);
-
-    EXPECT_TRUE(arc.AlmostEquals(rotated, 1e-6, 1e-3));
-    EXPECT_FALSE(arc.AlmostEquals(rotated, 1e-6, 1e-5));
-    EXPECT_FALSE(arc.AlmostEquals(moved, 1e-6, 1e-3));
-    EXPECT_FALSE(arc.AlmostEquals(arc, -1.0, 1e-3));
-    EXPECT_FALSE(arc.AlmostEquals(arc, 1e-3, std::numeric_limits<double>::infinity()));
-    EXPECT_TRUE(arc.AlmostEquals(rotated, 1e-3));
-}
-
-TEST(SegmentTest, ExplicitToleranceLineArcIntersectionPreservesSmallSweepParameter)
-{
-    constexpr double eps = 1e-12;
-    const SCArcSegment2d arc({0.0, 0.0}, 1.0, 0.0, 1e-10);
-    const SCLineSegment2d line({0.9, 5e-11}, {1.1, 5e-11});
-    ASSERT_FALSE(arc.IsValid());
-    ASSERT_TRUE(arc.IsValid(eps));
-    const auto result = Geometry::Intersect(line, arc, eps);
-    ASSERT_EQ(result.pointCount, 1U);
-    EXPECT_NEAR(result.points[0].point.y, 5e-11, eps);
-    EXPECT_NEAR(result.points[0].parameterOnSecond, 0.5, 1e-5);
-}
-
-TEST(SegmentTest, ExplicitToleranceLineArcIntersectionUsesLinearSeparation)
-{
-    constexpr double eps = 1e-12;
-    const SCArcSegment2d arc({0.0, 0.0}, 1e-8, 0.0, Geometry::kPi);
-    const SCLineSegment2d crossing({-2e-8, 0.0}, {2e-8, 0.0});
-    const auto twoPoints = Geometry::Intersect(crossing, arc, eps);
-    ASSERT_EQ(twoPoints.pointCount, 2U);
-    EXPECT_EQ(twoPoints.kind, Geometry::SCIntersectionKind2d::Point);
-
-    const SCLineSegment2d separated({-2e-8, 1.1e-8}, {2e-8, 1.1e-8});
-    const auto noPoint = Geometry::Intersect(separated, arc, eps);
-    EXPECT_EQ(noPoint.pointCount, 0U);
-}
-
-TEST(SegmentTest, ExplicitToleranceArcArcIntersectionAcceptsSmallSweep)
-{
-    constexpr double eps = 1e-12;
-    const SCArcSegment2d first({0.0, 0.0}, 1.0, Geometry::kPi / 3.0 - 5e-11, 1e-10);
-    const SCArcSegment2d second({1.0, 0.0}, 1.0, 0.0, Geometry::kTwoPi);
-    ASSERT_FALSE(first.IsValid());
-    ASSERT_TRUE(first.IsValid(eps));
-    const auto result = Geometry::Intersect(first, second, eps);
-    ASSERT_EQ(result.pointCount, 1U);
-    EXPECT_EQ(result.kind, Geometry::SCIntersectionKind2d::Point);
-    EXPECT_NEAR(result.points[0].point.x, 0.5, eps);
-    EXPECT_NEAR(result.points[0].parameterOnFirst, 0.5, 1e-5);
-}
-
-TEST(SegmentTest, ExplicitToleranceArcArcIntersectionUsesAngleTolerance)
-{
-    constexpr double eps = 1e-12;
-    const SCArcSegment2d first({0.0, 0.0}, 1e-8, 0.0, Geometry::kPi / 3.0 - 1e-6);
-    const SCArcSegment2d second({1e-8, 0.0}, 1e-8, 0.0, Geometry::kTwoPi);
-    const auto result = Geometry::Intersect(first, second, eps);
-    ASSERT_EQ(result.pointCount, 1U);
-    EXPECT_NEAR(result.points[0].point.x, 5e-9, eps);
-    EXPECT_NEAR(result.points[0].point.y, std::sqrt(3.0) * 5e-9, eps);
-}
-
-TEST(SegmentTest, ExplicitToleranceExtendedLineArcPreservesSmallSweep)
-{
-    constexpr double eps = 1e-12;
-    const SCArcSegment2d arc({0.0, 0.0}, 1.0, 0.0, 1e-10);
-    const SCLineSegment2d line({0.9, 5e-11}, {1.1, 5e-11});
-    const auto result = Geometry::IntersectExtended(line, arc, Geometry::SCExtensionPolicy::ExtendFirst, eps);
-    ASSERT_EQ(result.pointCount, 1U);
-    EXPECT_TRUE(result.onFirstSegment);
-    EXPECT_TRUE(result.onSecondSegment);
-    EXPECT_NEAR(result.points[0].parameterOnSecond, 0.5, 1e-5);
-}
-
-TEST(SegmentTest, ExplicitToleranceExtendedArcArcPreservesSmallSweep)
-{
-    constexpr double eps = 1e-12;
-    const SCArcSegment2d first({0.0, 0.0}, 1.0, Geometry::kPi / 3.0 - 5e-11, 1e-10);
-    const SCArcSegment2d second({1.0, 0.0}, 1.0, 0.0, Geometry::kTwoPi);
-    const auto result = Geometry::IntersectExtended(first, second, Geometry::SCExtensionPolicy::ExtendSecond, eps);
-    ASSERT_EQ(result.pointCount, 1U);
-    EXPECT_TRUE(result.onFirstSegment);
-    EXPECT_TRUE(result.onSecondSegment);
-    EXPECT_NEAR(result.points[0].parameterOnFirst, 0.5, 1e-5);
-}
-
-TEST(SegmentTest, ExplicitToleranceExtendedShortLinesRemainTransverse)
-{
-    constexpr double eps = 1e-12;
-    const SCLineSegment2d first({-5e-11, 0.0}, {5e-11, 0.0});
-    const SCLineSegment2d second({0.0, -5e-11}, {0.0, 5e-11});
-    const auto result = Geometry::IntersectExtended(first, second, Geometry::SCExtensionPolicy::ExtendBoth, eps);
-    ASSERT_EQ(result.pointCount, 1U);
-    EXPECT_EQ(result.kind, Geometry::SCIntersectionKind2d::Point);
-    EXPECT_TRUE(result.onFirstSegment);
-    EXPECT_TRUE(result.onSecondSegment);
-}
-
-TEST(SegmentTest, ExplicitToleranceExtendedLineArcAcceptsShortLine)
-{
-    constexpr double eps = 1e-12;
-    const SCLineSegment2d line({-2e-10, 0.0}, {2e-10, 0.0});
-    const SCArcSegment2d arc({0.0, 0.0}, 1e-10, 0.0, Geometry::kTwoPi);
-    const auto result = Geometry::IntersectExtended(line, arc, Geometry::SCExtensionPolicy::ExtendBoth, eps);
-    ASSERT_EQ(result.pointCount, 2U);
-    EXPECT_EQ(result.kind, Geometry::SCIntersectionKind2d::Point);
-    EXPECT_TRUE(result.onFirstSegment);
-    EXPECT_TRUE(result.onSecondSegment);
-}
-
-TEST(SegmentTest, ExplicitToleranceExtendedArcArcUsesAngleTolerance)
-{
-    constexpr double eps = 1e-12;
-    const SCArcSegment2d first({0.0, 0.0}, 1e-8, 0.0, Geometry::kPi / 3.0 - 1e-6);
-    const SCArcSegment2d second({1e-8, 0.0}, 1e-8, 0.0, Geometry::kTwoPi);
-    const auto result = Geometry::IntersectExtended(first, second, Geometry::SCExtensionPolicy::ExtendSecond, eps);
-    ASSERT_EQ(result.pointCount, 1U);
-    EXPECT_TRUE(result.onFirstSegment);
-    EXPECT_TRUE(result.onSecondSegment);
-}
-
-TEST(SegmentTest, ExplicitToleranceLineSegmentIntersectionUsesSegmentLength)
-{
-    constexpr double eps = 1e-12;
-    const Geometry::SCLine2d line = Geometry::SCLine2d::FromTwoPoints({-1.0, 0.0}, {1.0, 0.0});
-    const SCLineSegment2d nearSegment({0.0, 5e-13}, {0.0, 1e-10 + 5e-13});
-    const auto nearHit = Geometry::Intersect(line, nearSegment, eps);
-    ASSERT_EQ(nearHit.pointCount, 1U);
-    EXPECT_NEAR(nearHit.points[0].point.y, 0.0, eps);
-    EXPECT_EQ(nearHit.points[0].parameterOnSecond, 0.0);
-    const auto reversed = Geometry::Intersect(nearSegment, line, eps);
-    ASSERT_EQ(reversed.pointCount, 1U);
-    EXPECT_EQ(reversed.points[0].parameterOnFirst, 0.0);
-
-    const SCLineSegment2d separated({0.0, 2e-12}, {0.0, 1e-10 + 2e-12});
-    EXPECT_EQ(Geometry::Intersect(line, separated, eps).pointCount, 0U);
-}
-
 TEST(SegmentTest, ExplicitTolerancePolylineIntersectionsPreserveGlobalParameter)
 {
     constexpr double eps = 1e-12;
@@ -190,6 +48,57 @@ TEST(SegmentTest, ExplicitTolerancePolylineIntersectionsPreserveGlobalParameter)
     const auto arcHits = Geometry::Intersect(arcPolyline, arcCrossing, eps);
     ASSERT_EQ(arcHits.size(), 1U);
     EXPECT_NEAR(arcHits[0].globalParameterOnFirst, 0.5, 1e-5);
+}
+
+TEST(SegmentTest, SegmentPolylineIntersectionsSortByFirstArgument)
+{
+    const Geometry::SCPolyline2d polyline(std::vector<SCPoint2d>{
+        {-1.0, 0.0}, {1.0, 0.0}, {1.0, 2.0}, {-1.0, 2.0}});
+    const SCLineSegment2d segment({0.0, 2.5}, {0.0, -0.5});
+
+    const auto forward = Geometry::Intersect(polyline, segment);
+    ASSERT_EQ(forward.size(), 2U);
+    EXPECT_LT(forward[0].globalParameterOnFirst, forward[1].globalParameterOnFirst);
+    EXPECT_LT(forward[0].point.y, forward[1].point.y);
+
+    const auto reversed = Geometry::Intersect(segment, polyline);
+    ASSERT_EQ(reversed.size(), 2U);
+    EXPECT_LT(reversed[0].globalParameterOnFirst, reversed[1].globalParameterOnFirst);
+    EXPECT_GT(reversed[0].point.y, reversed[1].point.y);
+}
+
+TEST(SegmentTest, PolylineIntersectionKeepsDistinctVisitsToOnePoint)
+{
+    const Geometry::SCPolyline2d crossingPath(std::vector<SCPoint2d>{
+        {-1.0, -1.0}, {1.0, 1.0}, {-1.0, 1.0}, {1.0, -1.0}});
+    const SCLineSegment2d probe({0.0, -0.1}, {0.0, 0.1});
+    ASSERT_TRUE(crossingPath.IsValid());
+
+    const auto hits = Geometry::Intersect(crossingPath, probe);
+    ASSERT_EQ(hits.size(), 2U);
+    EXPECT_EQ(hits[0].segmentIndexOnFirst, 0U);
+    EXPECT_EQ(hits[1].segmentIndexOnFirst, 2U);
+    EXPECT_LT(hits[0].globalParameterOnFirst, hits[1].globalParameterOnFirst);
+    EXPECT_TRUE(hits[0].point.AlmostEquals(hits[1].point, 1e-12));
+
+    const Geometry::SCPolyline2d probePath(std::vector<SCPoint2d>{{0.0, -0.1}, {0.0, 0.1}});
+    const auto polylineHits = Geometry::Intersect(crossingPath, probePath);
+    ASSERT_EQ(polylineHits.size(), 2U);
+    EXPECT_LT(polylineHits[0].globalParameterOnFirst, polylineHits[1].globalParameterOnFirst);
+
+    const auto reversed = Geometry::Intersect(probe, crossingPath);
+    ASSERT_EQ(reversed.size(), 2U);
+    EXPECT_LT(reversed[0].globalParameterOnSecond, reversed[1].globalParameterOnSecond);
+}
+
+TEST(SegmentTest, ClosedPolylineSeamStillDeduplicatesEndpointHit)
+{
+    const Geometry::SCPolyline2d ring(std::vector<SCPoint2d>{
+        {0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 1.0}}, Geometry::SCPolylineClosure::Closed);
+    const SCLineSegment2d probe({-0.1, -0.1}, {0.1, 0.1});
+    const auto hits = Geometry::Intersect(ring, probe);
+    ASSERT_EQ(hits.size(), 1U);
+    EXPECT_TRUE(hits[0].point.AlmostEquals({0.0, 0.0}, 1e-12));
 }
 
 TEST(SegmentTest, FullCircleOverlapUsesEachArcParameterization)

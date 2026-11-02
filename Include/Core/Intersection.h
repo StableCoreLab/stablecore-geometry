@@ -1,9 +1,11 @@
 #pragma once
 
 #include "Core/GeometryEvidence.h"
-#include "Core/GeometryTypes.h"
+#include "Core/GeometryTypesPrimitives.h"
+#include "Core/IntersectionResults3d.h"
 
 #include "Types/Geometry2d/SCLine2d.h"
+#include "Types/Geometry3d/SCPlane.h"
 #include "Core/Results.h"
 #include "Export/GeometryExport.h"
 #include "Geometry2d/SCArcSegment2d.h"
@@ -250,6 +252,7 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API SCSegmentIntersection2d Intersect(const ISCSegment2d& first,
                                                                const ISCSegment2d& second,
                                                                double eps = Geometry::kDefaultEpsilon);
+    // 按第一入参的路径顺序返回；同一空间点的不同参数位置分别保留，闭合折线的周期端点去重。
     [[nodiscard]] GEOMETRY_API std::vector<SCPolylineIntersectionPoint2d> Intersect(const SCPolyline2d& first,
                                                                                    const SCPolyline2d& second,
                                                                                    double eps = Geometry::kDefaultEpsilon);

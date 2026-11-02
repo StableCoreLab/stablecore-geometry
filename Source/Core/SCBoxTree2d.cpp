@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <bit>
+#include <cmath>
 #include <memory>
 #include <sstream>
 #include <utility>
@@ -40,6 +41,20 @@ namespace Geometry
             static double DistanceSquared(const SCPoint2d& point, const SCBox2d& box)
             {
                 return Geometry::DistanceSquared(point, box);
+            }
+            static double Distance(const SCPoint2d& point, const SCBox2d& box)
+            {
+                const double dx = std::max({box.MinPoint().x - point.x, 0.0, point.x - box.MaxPoint().x});
+                const double dy = std::max({box.MinPoint().y - point.y, 0.0, point.y - box.MaxPoint().y});
+                return std::hypot(dx, dy);
+            }
+            static double QuarterDistance(const SCPoint2d& point, const SCBox2d& box)
+            {
+                const double dx = std::max({box.MinPoint().x * 0.25 - point.x * 0.25,
+                                            0.0, point.x * 0.25 - box.MaxPoint().x * 0.25});
+                const double dy = std::max({box.MinPoint().y * 0.25 - point.y * 0.25,
+                                            0.0, point.y * 0.25 - box.MaxPoint().y * 0.25});
+                return std::hypot(dx, dy);
             }
             static bool Intersects(const SCBox2d& lhs, const SCBox2d& rhs, double eps)
             {
@@ -270,6 +285,10 @@ namespace Geometry
     std::vector<std::size_t> SCBoxTree2d::QueryContaining(const SCPoint2d& point, double eps) const
     {
         std::vector<std::size_t> result;
+        if (!point.IsValid())
+        {
+            return result;
+        }
         Detail::QueryPointTree<Node, SCBoxTreeEntry2d, SCPoint2d, BoxTree2dTraits>(root_.get(), entries_, point, eps, result);
         return result;
     }
@@ -277,10 +296,16 @@ namespace Geometry
     std::vector<SCBoxTreeKnnHit2d> SCBoxTree2d::QueryKNearest(const SCPoint2d& point, std::size_t k, double eps) const
     {
         std::vector<SCBoxTreeKnnHit2d> hits;
+        if (!point.IsValid())
+        {
+            return hits;
+        }
         hits.reserve(std::min(k, entries_.size()));
         Detail::QueryBoxTreeKnn<Node, SCBoxTreeEntry2d, SCPoint2d, SCBoxTreeKnnHit2d, BoxTree2dTraits>(
             root_.get(), entries_, point, k, eps, hits);
-        std::sort(hits.begin(), hits.end(), Detail::CompareBoxTreeHits<SCBoxTreeKnnHit2d>);
+        std::sort(hits.begin(), hits.end(), [&point](const auto& lhs, const auto& rhs) {
+            return Detail::CompareBoxTreeHits<SCBoxTreeKnnHit2d, SCPoint2d, BoxTree2dTraits>(lhs, rhs, point);
+        });
         return hits;
     }
 

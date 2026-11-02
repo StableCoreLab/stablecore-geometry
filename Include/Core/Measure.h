@@ -3,7 +3,13 @@
 #include <cstddef>
 
 #include "Core/GeometryEvidence.h"
-#include "Core/GeometryTypes.h"
+#include "Types/Geometry3d/SCBox3.h"
+#include "Types/Geometry3d/SCGeometryTypes3d.h"
+#include "Types/Geometry3d/SCLine3d.h"
+#include "Types/Geometry3d/SCLineSegment3d.h"
+#include "Types/Geometry3d/SCPlane.h"
+#include "Types/Geometry3d/SCPoint3.h"
+#include "Types/Geometry3d/SCTriangle3d.h"
 #include "Export/GeometryExport.h"
 #include "Geometry3d/SCCurveOnSurface.h"
 #include "Support/Epsilon.h"
