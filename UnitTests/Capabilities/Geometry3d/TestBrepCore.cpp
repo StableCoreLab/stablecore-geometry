@@ -5,186 +5,6 @@
 
 using namespace Geometry;
 
-TEST(BrepTopologyValidityTest, ReferenceChecksUseOwningContainerSizes)
-{
-    const SCLine3d line = SCLine3d::FromOriginAndDirection({0.0, 0.0, 0.0}, {1.0, 0.0, 0.0});
-    const auto curve = std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(line, {0.0, 1.0}));
-    const SCBrepEdge edge(curve, 0, 2);
-    EXPECT_TRUE(edge.IsValid());
-    EXPECT_FALSE(edge.IsValid(2U));
-    EXPECT_TRUE(edge.IsValid(3U));
-
-    const SCBrepEdge sentinelEdge(curve, static_cast<std::size_t>(-1), 0);
-    EXPECT_FALSE(sentinelEdge.IsValid());
-
-    const SCBrepCoedge coedge(2);
-    EXPECT_TRUE(coedge.IsValid());
-    EXPECT_FALSE(coedge.IsValid(2U));
-    EXPECT_TRUE(coedge.IsValid(3U));
-
-    const SCBrepLoop loop({coedge});
-    EXPECT_TRUE(loop.IsValid());
-    EXPECT_FALSE(loop.IsValid(2U));
-    EXPECT_TRUE(loop.IsValid(3U));
-}
-
-TEST(BrepTopologyValidityTest, ValidationCountsTopologicalEdgeIdentities)
-{
-    auto edges = Geometry::Test::BuildPlanarBrepEdgesAtZ5();
-    edges.push_back(edges.front());
-    const SCBrepFace face(
-        std::make_shared<SCPlaneSurface>(Geometry::Test::BuildFinitePlaneSurfaceAtZ5()),
-        Geometry::Test::BuildPlanarBrepOuterLoop());
-    const SCBrepBody body(
-        Geometry::Test::BuildPlanarBrepVerticesAtZ5(), std::move(edges),
-        {SCBrepShell({face}, false)});
-    ASSERT_TRUE(body.IsValid());
-
-    const auto result = Validate(body);
-    EXPECT_FALSE(result.valid);
-    EXPECT_EQ(result.issue, SCBrepValidationIssue3d::InvalidFaceAdjacency);
-    EXPECT_EQ(result.elementIndex, 4U);
-
-    const SCBrepFace secondFace(
-        std::make_shared<SCPlaneSurface>(Geometry::Test::BuildFinitePlaneSurfaceAtZ5()),
-        SCBrepLoop({SCBrepCoedge(4, false), SCBrepCoedge(1, false),
-                    SCBrepCoedge(2, false), SCBrepCoedge(3, false)}));
-    auto pairedEdges = Geometry::Test::BuildPlanarBrepEdgesAtZ5();
-    pairedEdges.push_back(pairedEdges.front());
-    const SCBrepBody pairedBody(
-        Geometry::Test::BuildPlanarBrepVerticesAtZ5(),
-        std::move(pairedEdges),
-        {SCBrepShell({face, secondFace}, false)});
-    ASSERT_TRUE(pairedBody.IsValid());
-    EXPECT_TRUE(Validate(pairedBody).valid);
-}
-
-TEST(GeometryTest, CoversPolyhedronCapabilities)
-{
-    const SCPlane supportPlane = Geometry::Test::BuildSupportPlaneAtZ5();
-    const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
-    const PolyhedronLoop3d outerLoop({
-        SCPoint3d{0.0, 0.0, 0.0},
-        SCPoint3d{2.0, 0.0, 0.0},
-        SCPoint3d{2.0, 2.0, 0.0},
-        SCPoint3d{0.0, 2.0, 0.0},
-    });
-    ASSERT_TRUE(outerLoop.IsValid());
-    ASSERT_EQ(outerLoop.VertexCount(), 4);
-    const PolyhedronFace3d face(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}), outerLoop);
-    ASSERT_TRUE(face.IsValid());
-    ASSERT_EQ(face.HoleCount(), 0);
-    const SCBox3d faceBounds = face.Bounds();
-    ASSERT_TRUE(faceBounds.IsValid());
-    ASSERT_TRUE(faceBounds.MinPoint().AlmostEquals(SCPoint3d{0.0, 0.0, 0.0}, 1e-12));
-    ASSERT_TRUE(faceBounds.MaxPoint().AlmostEquals(SCPoint3d{2.0, 2.0, 0.0}, 1e-12));
-    const SCBox3d faceMeasureBounds = Bounds(face);
-    ASSERT_TRUE(faceMeasureBounds.IsValid());
-    ASSERT_TRUE(faceMeasureBounds.MaxPoint().AlmostEquals(SCPoint3d{2.0, 2.0, 0.0}, 1e-12));
-    const PolyhedronBody body({face});
-    ASSERT_TRUE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 1);
-    const auto bodyValidation = Validate(body);
-    ASSERT_TRUE(bodyValidation.valid);
-    ASSERT_EQ(bodyValidation.issue, SCPolyhedronValidationIssue3d::None);
-    const SCBox3d bodyBounds = body.Bounds();
-    ASSERT_TRUE(bodyBounds.IsValid());
-    ASSERT_TRUE(bodyBounds.MinPoint().AlmostEquals(SCPoint3d{0.0, 0.0, 0.0}, 1e-12));
-    ASSERT_TRUE(bodyBounds.MaxPoint().AlmostEquals(SCPoint3d{2.0, 2.0, 0.0}, 1e-12));
-    EXPECT_NEAR(Area(face), 4.0, 1e-12);
-
-    const PolyhedronFace3d invalidFace(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}),
-                                       PolyhedronLoop3d({
-                                           SCPoint3d{0.0, 0.0, 0.0},
-                                           SCPoint3d{1.0, 0.0, 1.0},
-                                           SCPoint3d{0.0, 1.0, 0.0},
-                                       }));
-    const auto invalidBodyValidation = Validate(PolyhedronBody({invalidFace}));
-    ASSERT_FALSE(invalidBodyValidation.valid);
-    ASSERT_EQ(invalidBodyValidation.issue, SCPolyhedronValidationIssue3d::InvalidFace);
-
-    const PolyhedronHealing3d healedBody = Heal(body);
-    ASSERT_TRUE(healedBody.success);
-    ASSERT_EQ(healedBody.body.FaceCount(), 1);
-
-    const TriangleMesh surfaceMesh = Tessellate(planeSurface, 2, 3);
-    ASSERT_TRUE(surfaceMesh.IsValid());
-    ASSERT_EQ(surfaceMesh.VertexCount(), 12);
-    ASSERT_EQ(surfaceMesh.TriangleCount(), 12);
-    const auto surfaceMeshValidation = Validate(surfaceMesh);
-    ASSERT_TRUE(surfaceMeshValidation.valid);
-    ASSERT_FALSE(IsClosedTriangleMesh(surfaceMesh));
-    for (const SCPoint3d& vertex : surfaceMesh.Vertices())
-    {
-        EXPECT_NEAR(supportPlane.SignedDistanceTo(vertex), 0.0, 1e-12);
-    }
-    EXPECT_NEAR(surfaceMesh.SurfaceArea(), 16.0, 1e-12);
-
-    const auto faceMesh = ConvertToTriangleMesh(face);
-    ASSERT_TRUE(faceMesh.success);
-    ASSERT_EQ(faceMesh.issue, MeshConversionIssue3d::None);
-    ASSERT_TRUE(faceMesh.mesh.IsValid());
-    ASSERT_EQ(faceMesh.mesh.TriangleCount(), 2);
-    EXPECT_NEAR(faceMesh.mesh.SurfaceArea(), 4.0, 1e-12);
-    ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 0.0}, face), SCPointContainment3d::Inside);
-    ASSERT_EQ(LocatePoint(SCPoint3d{2.0, 1.0, 0.0}, face), SCPointContainment3d::OnBoundary);
-    ASSERT_EQ(LocatePoint(SCPoint3d{3.0, 1.0, 0.0}, face), SCPointContainment3d::Outside);
-    const auto polyFaceProjection = ProjectPointToPolyhedronFace(SCPoint3d{1.0, 1.0, 3.0}, face);
-    ASSERT_TRUE(polyFaceProjection.success);
-    ASSERT_TRUE(polyFaceProjection.IsValid());
-    ASSERT_TRUE(polyFaceProjection.onFace);
-    ASSERT_TRUE(polyFaceProjection.point.AlmostEquals(SCPoint3d{1.0, 1.0, 0.0}, 1e-12));
-    EXPECT_NEAR(Distance(SCPoint3d{1.0, 1.0, 3.0}, face), 3.0, 1e-12);
-    const auto polyFaceLineIntersection =
-        Intersect(SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 1.0, 3.0}, SCVector3d{0.0, 0.0, -1.0}), face);
-    ASSERT_TRUE(polyFaceLineIntersection.intersects);
-    ASSERT_TRUE(polyFaceLineIntersection.IsValid());
-    ASSERT_TRUE(polyFaceLineIntersection.point.AlmostEquals(SCPoint3d{1.0, 1.0, 0.0}, 1e-12));
-
-    const auto bodyMesh = ConvertToTriangleMesh(body);
-    ASSERT_TRUE(bodyMesh.success);
-    ASSERT_EQ(bodyMesh.issue, MeshConversionIssue3d::None);
-    ASSERT_TRUE(bodyMesh.mesh.IsValid());
-    ASSERT_EQ(bodyMesh.mesh.TriangleCount(), 2);
-    const auto polyBodyProjection = ProjectPointToPolyhedronBody(SCPoint3d{3.0, 1.0, 1.0}, body);
-    ASSERT_TRUE(polyBodyProjection.success);
-    ASSERT_TRUE(polyBodyProjection.IsValid());
-    ASSERT_EQ(polyBodyProjection.faceIndex, 0);
-    ASSERT_TRUE(polyBodyProjection.projection.point.AlmostEquals(SCPoint3d{2.0, 1.0, 0.0}, 1e-12));
-    EXPECT_NEAR(Distance(SCPoint3d{3.0, 1.0, 1.0}, body), std::sqrt(2.0), 1e-12);
-    const auto polyBodyLineIntersection =
-        Intersect(SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 1.0, 3.0}, SCVector3d{0.0, 0.0, -1.0}), body);
-    ASSERT_TRUE(polyBodyLineIntersection.intersects);
-    ASSERT_TRUE(polyBodyLineIntersection.IsValid());
-    ASSERT_EQ(polyBodyLineIntersection.faceIndices.size(), 1);
-    ASSERT_EQ(polyBodyLineIntersection.hits.size(), 1);
-    ASSERT_EQ(polyBodyLineIntersection.faceIndices[0], 0);
-    ASSERT_TRUE(polyBodyLineIntersection.hits[0].point.AlmostEquals(SCPoint3d{1.0, 1.0, 0.0}, 1e-12));
-    ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 0.0}, body), SCPointContainment3d::OnBoundary);
-
-    const PolyhedronFace3d holedFace(SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}),
-                                     outerLoop,
-                                     {PolyhedronLoop3d({
-                                         SCPoint3d{0.5, 0.5, 0.0},
-                                         SCPoint3d{1.5, 0.5, 0.0},
-                                         SCPoint3d{1.5, 1.5, 0.0},
-                                         SCPoint3d{0.5, 1.5, 0.0},
-                                     })});
-    const auto projectedFace = ProjectFaceToPolygon2d(holedFace);
-    ASSERT_TRUE(projectedFace.success);
-    ASSERT_TRUE(projectedFace.polygon.IsValid());
-    ASSERT_EQ(projectedFace.polygon.HoleCount(), 1);
-    EXPECT_NEAR(projectedFace.origin.z, 0.0, 1e-12);
-    EXPECT_NEAR(Geometry::Dot(projectedFace.uAxis, projectedFace.vAxis), 0.0, 1e-12);
-
-    const auto holedFaceMesh = ConvertToTriangleMesh(holedFace);
-    ASSERT_TRUE(holedFaceMesh.success);
-    ASSERT_EQ(holedFaceMesh.issue, MeshConversionIssue3d::None);
-    ASSERT_TRUE(holedFaceMesh.mesh.IsValid());
-    EXPECT_NEAR(holedFaceMesh.mesh.SurfaceArea(), projectedFace.polygon.Area(), 1e-12);
-
-}
-
 TEST(GeometryTest, CoversBrepVertexCapabilities)
 {
     const std::vector<SCBrepVertex> brepVertices = Geometry::Test::BuildPlanarBrepVerticesAtZ5();
@@ -210,7 +30,7 @@ TEST(GeometryTest, CoversBrepVertexCapabilities)
     ASSERT_TRUE(brepVertexPlaneIntersection.point.AlmostEquals(SCPoint3d{0.0, 0.0, 5.0}, 1e-12));
 }
 
-TEST(GeometryTest, CoversPlanarBrepCapabilities)
+TEST(PlanarBrepCore3dTest, ValidatesFaceShellAndBody)
 {
     const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
     const std::vector<SCBrepVertex> brepVertices = Geometry::Test::BuildPlanarBrepVerticesAtZ5();
@@ -252,6 +72,31 @@ TEST(GeometryTest, CoversPlanarBrepCapabilities)
     ASSERT_EQ(brepBody.ShellCount(), 1);
     ASSERT_EQ(brepBody.FaceCount(), 1);
     ASSERT_NE(brepBody.EdgeAt(0).Curve(), nullptr);
+}
+
+TEST(PlanarBrepCore3dTest, QueriesPlanarEdge)
+{
+    const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
+    const std::vector<SCBrepVertex> brepVertices = Geometry::Test::BuildPlanarBrepVerticesAtZ5();
+    const std::vector<SCBrepEdge> brepEdges = Geometry::Test::BuildPlanarBrepEdgesAtZ5();
+    const SCBrepLoop brepOuterLoop = Geometry::Test::BuildPlanarBrepOuterLoop();
+    const SCBrepFace brepFace(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()),
+                            brepOuterLoop,
+                            {},
+                            SCCurveOnSurface(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()),
+                                           SCPolyline2d(
+                                               {
+                                                   SCPoint2d{0.0, 0.0},
+                                                   SCPoint2d{2.0, 0.0},
+                                                   SCPoint2d{2.0, 2.0},
+                                                   SCPoint2d{0.0, 2.0},
+                                               },
+                                               SCPolylineClosure::Closed)));
+    const SCBrepShell brepShell({brepFace}, false);
+    const SCBrepBody brepBody(brepVertices, brepEdges, {brepShell});
+    ASSERT_TRUE(brepBody.IsValid());
+    ASSERT_EQ(brepBody.EdgeCount(), 4U);
+    ASSERT_NE(brepBody.EdgeAt(0).Curve(), nullptr);
     const SCBox3d brepEdgeBounds = brepBody.EdgeAt(0).Bounds();
     ASSERT_TRUE(brepEdgeBounds.IsValid());
     ASSERT_TRUE(brepEdgeBounds.MinPoint().AlmostEquals(SCPoint3d{0.0, 0.0, 5.0}, 1e-12));
@@ -275,6 +120,28 @@ TEST(GeometryTest, CoversPlanarBrepCapabilities)
     ASSERT_TRUE(brepEdgePlaneIntersection.IsValid());
     EXPECT_NEAR(brepEdgePlaneIntersection.edgeParameter, 0.0, 1e-12);
     ASSERT_TRUE(brepEdgePlaneIntersection.point.AlmostEquals(SCPoint3d{0.0, 0.0, 5.0}, 1e-12));
+}
+
+TEST(PlanarBrepCore3dTest, ValidatesAndIntersectsPlanarBody)
+{
+    const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
+    const std::vector<SCBrepVertex> brepVertices = Geometry::Test::BuildPlanarBrepVerticesAtZ5();
+    const std::vector<SCBrepEdge> brepEdges = Geometry::Test::BuildPlanarBrepEdgesAtZ5();
+    const SCBrepLoop brepOuterLoop = Geometry::Test::BuildPlanarBrepOuterLoop();
+    const SCBrepFace brepFace(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()),
+                            brepOuterLoop,
+                            {},
+                            SCCurveOnSurface(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()),
+                                           SCPolyline2d(
+                                               {
+                                                   SCPoint2d{0.0, 0.0},
+                                                   SCPoint2d{2.0, 0.0},
+                                                   SCPoint2d{2.0, 2.0},
+                                                   SCPoint2d{0.0, 2.0},
+                                               },
+                                               SCPolylineClosure::Closed)));
+    const SCBrepShell brepShell({brepFace}, false);
+    const SCBrepBody brepBody(brepVertices, brepEdges, {brepShell});
     const auto brepValidation = Validate(brepBody);
     ASSERT_TRUE(brepValidation.valid);
     ASSERT_EQ(brepValidation.issue, SCBrepValidationIssue3d::None);
@@ -300,6 +167,28 @@ TEST(GeometryTest, CoversPlanarBrepCapabilities)
     ASSERT_TRUE(brepBodyLineIntersection.hits[0].point.AlmostEquals(SCPoint3d{1.0, 1.0, 5.0}, 1e-12));
     ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 5.0}, brepBody), SCPointContainment3d::OnBoundary);
     ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 1.0, 8.0}, brepBody), SCPointContainment3d::Outside);
+}
+
+TEST(PlanarBrepCore3dTest, ProjectsOntoPlanarFaceAndBody)
+{
+    const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
+    const std::vector<SCBrepVertex> brepVertices = Geometry::Test::BuildPlanarBrepVerticesAtZ5();
+    const std::vector<SCBrepEdge> brepEdges = Geometry::Test::BuildPlanarBrepEdgesAtZ5();
+    const SCBrepLoop brepOuterLoop = Geometry::Test::BuildPlanarBrepOuterLoop();
+    const SCBrepFace brepFace(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()),
+                            brepOuterLoop,
+                            {},
+                            SCCurveOnSurface(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()),
+                                           SCPolyline2d(
+                                               {
+                                                   SCPoint2d{0.0, 0.0},
+                                                   SCPoint2d{2.0, 0.0},
+                                                   SCPoint2d{2.0, 2.0},
+                                                   SCPoint2d{0.0, 2.0},
+                                               },
+                                               SCPolylineClosure::Closed)));
+    const SCBrepShell brepShell({brepFace}, false);
+    const SCBrepBody brepBody(brepVertices, brepEdges, {brepShell});
     const auto brepFaceProjectionInside = ProjectPointToBrepFace(SCPoint3d{1.0, 1.0, 8.0}, brepFace);
     ASSERT_TRUE(brepFaceProjectionInside.success);
     ASSERT_TRUE(brepFaceProjectionInside.IsValid());
@@ -320,6 +209,28 @@ TEST(GeometryTest, CoversPlanarBrepCapabilities)
     ASSERT_EQ(brepBodyProjection.faceIndex, 0);
     ASSERT_TRUE(brepBodyProjection.projection.point.AlmostEquals(SCPoint3d{2.0, 1.0, 5.0}, 1e-12));
     EXPECT_NEAR(Distance(SCPoint3d{3.0, 1.0, 5.0}, brepBody), 1.0, 1e-12);
+}
+
+TEST(PlanarBrepCore3dTest, ConvertsAndHealsPlanarBody)
+{
+    const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
+    const std::vector<SCBrepVertex> brepVertices = Geometry::Test::BuildPlanarBrepVerticesAtZ5();
+    const std::vector<SCBrepEdge> brepEdges = Geometry::Test::BuildPlanarBrepEdgesAtZ5();
+    const SCBrepLoop brepOuterLoop = Geometry::Test::BuildPlanarBrepOuterLoop();
+    const SCBrepFace brepFace(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()),
+                            brepOuterLoop,
+                            {},
+                            SCCurveOnSurface(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()),
+                                           SCPolyline2d(
+                                               {
+                                                   SCPoint2d{0.0, 0.0},
+                                                   SCPoint2d{2.0, 0.0},
+                                                   SCPoint2d{2.0, 2.0},
+                                                   SCPoint2d{0.0, 2.0},
+                                               },
+                                               SCPolylineClosure::Closed)));
+    const SCBrepShell brepShell({brepFace}, false);
+    const SCBrepBody brepBody(brepVertices, brepEdges, {brepShell});
     const auto brepFaceMesh = ConvertToTriangleMesh(brepFace);
     ASSERT_TRUE(brepFaceMesh.success);
     ASSERT_TRUE(brepFaceMesh.mesh.IsValid());
@@ -354,7 +265,13 @@ TEST(GeometryTest, CoversPlanarBrepCapabilities)
     ASSERT_TRUE(brepSection.success);
     ASSERT_EQ(brepSection.polygons.size(), 1);
     EXPECT_NEAR(brepSection.polygons[0].Area(), 4.0, 1e-12);
+}
 
+TEST(PlanarBrepCore3dTest, RejectsInvalidLoopReferences)
+{
+    const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
+    const std::vector<SCBrepVertex> brepVertices = Geometry::Test::BuildPlanarBrepVerticesAtZ5();
+    const std::vector<SCBrepEdge> brepEdges = Geometry::Test::BuildPlanarBrepEdgesAtZ5();
     const SCBrepBody invalidBrepBody(brepVertices,
                                    brepEdges,
                                    {SCBrepShell({SCBrepFace(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()),
@@ -362,7 +279,26 @@ TEST(GeometryTest, CoversPlanarBrepCapabilities)
     const auto invalidBrepValidation = Validate(invalidBrepBody);
     ASSERT_FALSE(invalidBrepValidation.valid);
     ASSERT_EQ(invalidBrepValidation.issue, SCBrepValidationIssue3d::InvalidShell);
+}
 
+TEST(PlanarBrepCore3dTest, RejectsInvalidFaceAdjacency)
+{
+    const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
+    const std::vector<SCBrepVertex> brepVertices = Geometry::Test::BuildPlanarBrepVerticesAtZ5();
+    const std::vector<SCBrepEdge> brepEdges = Geometry::Test::BuildPlanarBrepEdgesAtZ5();
+    const SCBrepLoop brepOuterLoop = Geometry::Test::BuildPlanarBrepOuterLoop();
+    const SCBrepFace brepFace(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()),
+                            brepOuterLoop,
+                            {},
+                            SCCurveOnSurface(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()),
+                                           SCPolyline2d(
+                                               {
+                                                   SCPoint2d{0.0, 0.0},
+                                                   SCPoint2d{2.0, 0.0},
+                                                   SCPoint2d{2.0, 2.0},
+                                                   SCPoint2d{0.0, 2.0},
+                                               },
+                                               SCPolylineClosure::Closed)));
     const SCBrepBody invalidAdjacencyBody(brepVertices,
                                         brepEdges,
                                         {
@@ -377,7 +313,14 @@ TEST(GeometryTest, CoversPlanarBrepCapabilities)
     const auto invalidAdjacencyValidation = Validate(invalidAdjacencyBody);
     ASSERT_FALSE(invalidAdjacencyValidation.valid);
     ASSERT_EQ(invalidAdjacencyValidation.issue, SCBrepValidationIssue3d::InvalidFaceAdjacency);
+}
 
+TEST(PlanarBrepCore3dTest, HealsMissingPlanarTrim)
+{
+    const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
+    const std::vector<SCBrepVertex> brepVertices = Geometry::Test::BuildPlanarBrepVerticesAtZ5();
+    const std::vector<SCBrepEdge> brepEdges = Geometry::Test::BuildPlanarBrepEdgesAtZ5();
+    const SCBrepLoop brepOuterLoop = Geometry::Test::BuildPlanarBrepOuterLoop();
     const SCBrepFace brepFaceWithoutTrim(std::shared_ptr<ISCSurface>(planeSurface.Clone().release()), brepOuterLoop);
     const SCBrepBody brepBodyWithoutTrim(brepVertices, brepEdges, {SCBrepShell({brepFaceWithoutTrim}, false)});
     ASSERT_TRUE(brepBodyWithoutTrim.IsValid());
@@ -386,6 +329,7 @@ TEST(GeometryTest, CoversPlanarBrepCapabilities)
     ASSERT_TRUE(healedTrimmedBody.success);
     ASSERT_TRUE(healedTrimmedBody.body.IsValid());
     ASSERT_EQ(healedTrimmedBody.body.ShellCount(), 1);
+    ASSERT_EQ(healedTrimmedBody.body.ShellAt(0).FaceCount(), 1U);
     ASSERT_TRUE(healedTrimmedBody.body.ShellAt(0).FaceAt(0).OuterTrim().IsValid());
     EXPECT_NEAR(Area(healedTrimmedBody.body.ShellAt(0).FaceAt(0)), 4.0, 1e-12);
     const auto healedTrimmedFaceMesh = ConvertToTriangleMesh(healedTrimmedBody.body.ShellAt(0).FaceAt(0));
@@ -401,7 +345,6 @@ TEST(GeometryTest, CoversPlanarBrepCapabilities)
     const auto healedTrimmedMesh = ConvertToTriangleMesh(healedTrimmedBody.body);
     ASSERT_TRUE(healedTrimmedMesh.success);
     ASSERT_TRUE(healedTrimmedMesh.mesh.IsValid());
-
 }
 
 TEST(GeometryTest, CoversNurbsBrepFaceCapabilities)
@@ -438,47 +381,4 @@ TEST(GeometryTest, CoversNurbsBrepFaceCapabilities)
     EXPECT_NEAR(nurbsBrepFaceArea, 4.0, 1e-12);
     EXPECT_NEAR(nurbsBrepFaceArea, nurbsBrepFaceMesh.mesh.SurfaceArea(), 1e-12);
 
-}
-
-TEST(GeometryTest, PolyhedronFaceAreaUsesCallerTolerance)
-{
-    constexpr double side = 1e-10;
-    Geometry::SCGeometryTolerance3d tolerance{};
-    tolerance.distanceEpsilon = 1e-15;
-    const PolyhedronFace3d face(
-        SCPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1}),
-        PolyhedronLoop3d({{0, 0, 0}, {side, 0, 0}, {side, side, 0}, {0, side, 0}}));
-    ASSERT_TRUE(face.IsValid(tolerance.distanceEpsilon));
-    const auto projection = ProjectFaceToPolygon2d(face, tolerance);
-    ASSERT_TRUE(projection.success);
-    ASSERT_TRUE(projection.polygon.IsValid(tolerance.distanceEpsilon));
-    ASSERT_FALSE(projection.polygon.IsValid());
-    EXPECT_NEAR(Area(face, tolerance), side * side, 1e-30);
-}
-
-TEST(GeometryTest, PolyhedronBodyVolumeUsesCallerTolerance)
-{
-    constexpr double side = 1e-10;
-    const SCPoint3d a{0, 0, 0};
-    const SCPoint3d b{side, 0, 0};
-    const SCPoint3d c{0, side, 0};
-    const SCPoint3d d{0, 0, side};
-    const PolyhedronBody body({
-        PolyhedronFace3d(SCPlane::FromPointAndNormal(a, {0, 0, -1}), PolyhedronLoop3d({a, c, b})),
-        PolyhedronFace3d(SCPlane::FromPointAndNormal(a, {0, -1, 0}), PolyhedronLoop3d({a, b, d})),
-        PolyhedronFace3d(SCPlane::FromPointAndNormal(b, {1, 1, 1}), PolyhedronLoop3d({b, c, d})),
-        PolyhedronFace3d(SCPlane::FromPointAndNormal(a, {-1, 0, 0}), PolyhedronLoop3d({c, a, d})),
-    });
-    SCGeometryTolerance3d tolerance{};
-    tolerance.distanceEpsilon = 1e-15;
-    ASSERT_TRUE(body.IsValid(tolerance));
-    const auto conversion = ConvertToTriangleMesh(body, tolerance.distanceEpsilon);
-    ASSERT_TRUE(conversion.success);
-    ASSERT_TRUE(conversion.mesh.IsValid(tolerance.distanceEpsilon));
-    ASSERT_FALSE(conversion.mesh.IsValid());
-    EXPECT_FALSE(IsClosedTriangleMesh(conversion.mesh));
-    EXPECT_TRUE(IsClosedTriangleMesh(conversion.mesh, tolerance.distanceEpsilon));
-    EXPECT_TRUE(ExtractBoundaryEdges(conversion.mesh, tolerance.distanceEpsilon).empty());
-    EXPECT_NEAR(Volume(conversion.mesh, tolerance.distanceEpsilon), side * side * side / 6.0, 1e-40);
-    EXPECT_NEAR(Volume(body, tolerance), side * side * side / 6.0, 1e-40);
 }

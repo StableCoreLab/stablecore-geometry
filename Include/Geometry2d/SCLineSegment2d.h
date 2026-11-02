@@ -20,7 +20,7 @@ namespace Geometry
 
         [[nodiscard]] static SCLineSegment2d FromEndpoints(const SCPoint2d& startPoint, const SCPoint2d& endPoint);
 
-        [[nodiscard]] SCSegmentKind2 Kind() const override;
+        [[nodiscard]] SCSegmentKind2d Kind() const override;
         [[nodiscard]] bool IsValid() const override;
         [[nodiscard]] bool IsValid(double eps) const;
         [[nodiscard]] SCPoint2d StartPoint() const override;

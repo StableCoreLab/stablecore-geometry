@@ -69,7 +69,7 @@ TEST(GeometryTest, LineSegmentFactoryAndSampling)
     EXPECT_TRUE(line.PointAt(0.5).AlmostEquals(lineMidpoint, 1e-12));
     EXPECT_TRUE(line.Bounds().AlmostEquals(SCBox2d::FromMinMax(SCPoint2d{0.0, 0.0}, SCPoint2d{3.0, 4.0}), 1e-12));
     ASSERT_EQ(line.DebugString().find("SCLineSegment2d{start="), 0);
-    ASSERT_EQ(line.Kind(), SCSegmentKind2::Line);
+    ASSERT_EQ(line.Kind(), SCSegmentKind2d::Line);
 }
 
 TEST(GeometryTest, ArcSegmentFactoryAndBounds)
@@ -77,7 +77,7 @@ TEST(GeometryTest, ArcSegmentFactoryAndBounds)
     const SCArcSegment2d arc =
         SCArcSegment2d::FromCenterRadiusStartSweep(SCPoint2d{0.0, 0.0}, 1.0, 0.0, Geometry::kPi * 0.5);
     ASSERT_TRUE(arc.IsValid());
-    ASSERT_EQ(arc.Direction(), SCArcDirection::CounterClockwise);
+    ASSERT_EQ(arc.Direction(), SCArcDirection2d::CounterClockwise);
     EXPECT_NEAR(arc.Length(), Geometry::kPi * 0.5, 1e-12);
     const SCPoint2d arcStart{1.0, 0.0};
     const SCPoint2d arcEnd{0.0, 1.0};
@@ -85,7 +85,7 @@ TEST(GeometryTest, ArcSegmentFactoryAndBounds)
     EXPECT_TRUE(arc.EndPoint().AlmostEquals(arcEnd, 1e-12));
     EXPECT_TRUE(arc.Bounds().AlmostEquals(SCBox2d::FromMinMax(SCPoint2d{0.0, 0.0}, SCPoint2d{1.0, 1.0}), 1e-12));
     ASSERT_EQ(arc.DebugString().find("SCArcSegment2d{center="), 0);
-    ASSERT_EQ(arc.Kind(), SCSegmentKind2::Arc);
+    ASSERT_EQ(arc.Kind(), SCSegmentKind2d::Arc);
 }
 
 TEST(GeometryTest, SegmentClonesPreserveGeometry)
@@ -98,8 +98,8 @@ TEST(GeometryTest, SegmentClonesPreserveGeometry)
     const SCPoint2d arcEnd{0.0, 1.0};
     std::unique_ptr<ISCSegment2d> lineSegment = line.Clone();
     std::unique_ptr<ISCSegment2d> arcSegment = arc.Clone();
-    ASSERT_EQ(lineSegment->Kind(), SCSegmentKind2::Line);
-    ASSERT_EQ(arcSegment->Kind(), SCSegmentKind2::Arc);
+    ASSERT_EQ(lineSegment->Kind(), SCSegmentKind2d::Line);
+    ASSERT_EQ(arcSegment->Kind(), SCSegmentKind2d::Arc);
     EXPECT_NEAR(lineSegment->Length(), 5.0, 1e-12);
     EXPECT_NEAR(arcSegment->Length(), Geometry::kPi * 0.5, 1e-12);
     EXPECT_TRUE(lineSegment->StartPoint().AlmostEquals(a, 1e-12));

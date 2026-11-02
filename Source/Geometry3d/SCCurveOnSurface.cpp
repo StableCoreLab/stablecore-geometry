@@ -19,7 +19,7 @@ namespace Geometry
             for (std::size_t index = 0; index < uvCurve.SegmentCount(); ++index)
             {
                 const auto segment = uvCurve.SegmentAt(index);
-                if (segment == nullptr || segment->Kind() != SCSegmentKind2::Line)
+                if (segment == nullptr || segment->Kind() != SCSegmentKind2d::Line)
                 {
                     return false;
                 }

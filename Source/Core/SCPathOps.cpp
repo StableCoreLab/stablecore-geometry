@@ -129,7 +129,7 @@ namespace Geometry
                 }
                 const double startRatio = localStart / segLen;
                 const double endRatio = localEnd / segLen;
-                if (segment->Kind() == SCSegmentKind2::Line)
+                if (segment->Kind() == SCSegmentKind2d::Line)
                 {
                     const auto* line = dynamic_cast<const SCLineSegment2d*>(segment.get());
                     if (line == nullptr)
@@ -143,7 +143,7 @@ namespace Geometry
                     clippedSegments.push_back(std::make_shared<SCLineSegment2d>(
                         pointAtRatio(startRatio), pointAtRatio(endRatio)));
                 }
-                else if (segment->Kind() == SCSegmentKind2::Arc)
+                else if (segment->Kind() == SCSegmentKind2d::Arc)
                 {
                     const auto* arc = dynamic_cast<const SCArcSegment2d*>(segment.get());
                     if (arc == nullptr)

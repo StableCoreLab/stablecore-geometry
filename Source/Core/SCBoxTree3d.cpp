@@ -31,6 +31,17 @@ namespace Geometry
         struct BoxTree3dTraits
         {
             static constexpr int AxisCount = 3;
+            static double DistanceNorm(double dx, double dy, double dz)
+            {
+                const double maximum = std::max({dx, dy, dz});
+                if (maximum == 0.0 || !std::isfinite(maximum)) return maximum;
+                // 用二进制幂缩放后求平方和，避免范围溢出，且精确相同的平方和采用同一舍入路径。
+                const int exponent = std::ilogb(maximum);
+                dx = std::scalbn(dx, -exponent);
+                dy = std::scalbn(dy, -exponent);
+                dz = std::scalbn(dz, -exponent);
+                return std::scalbn(std::sqrt(dx * dx + dy * dy + dz * dz), exponent);
+            }
             static SCBox3d EmptyBox() { return {}; }
             static void ExpandBounds(SCBox3d& bounds, const SCBox3d& box)
             {
@@ -51,7 +62,7 @@ namespace Geometry
                 const double dx = std::max({box.MinPoint().x - point.x, 0.0, point.x - box.MaxPoint().x});
                 const double dy = std::max({box.MinPoint().y - point.y, 0.0, point.y - box.MaxPoint().y});
                 const double dz = std::max({box.MinPoint().z - point.z, 0.0, point.z - box.MaxPoint().z});
-                return std::hypot(dx, dy, dz);
+                return DistanceNorm(dx, dy, dz);
             }
             static double QuarterDistance(const SCPoint3d& point, const SCBox3d& box)
             {
@@ -61,7 +72,7 @@ namespace Geometry
                                             0.0, point.y * 0.25 - box.MaxPoint().y * 0.25});
                 const double dz = std::max({box.MinPoint().z * 0.25 - point.z * 0.25,
                                             0.0, point.z * 0.25 - box.MaxPoint().z * 0.25});
-                return std::hypot(dx, dy, dz);
+                return DistanceNorm(dx, dy, dz);
             }
             static bool Intersects(const SCBox3d& lhs, const SCBox3d& rhs, double eps)
             {

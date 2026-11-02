@@ -168,6 +168,7 @@ TEST(Section3dCapabilityTest, SlantedCubeSectionBuildsSingleAreaComponent)
 
     const auto topology = BuildSectionTopology(section);
     ASSERT_TRUE(topology.IsValid());
+    // 该处保留 Count 兼容覆盖；其余截面拓扑用例使用 Size。
     ASSERT_EQ(topology.Count(), 1);
     ASSERT_EQ(topology.Roots().size(), 1);
 

@@ -34,12 +34,12 @@ TEST(OffsetTest, ExplicitTolerancePreservesTinyPolygonOffsets)
     EXPECT_NEAR(inward.Area(eps), 0.25 * width * width, width * width * 1e-5);
 
     const SCMultiPolygon2d multiOutward = OffsetToMultiPolygon(source, width / 4.0, options, eps);
-    ASSERT_EQ(multiOutward.Count(), 1U);
+    ASSERT_EQ(multiOutward.Size(), 1U);
     EXPECT_TRUE(multiOutward.IsValid(eps));
     EXPECT_NEAR(multiOutward[0].Area(eps), outward.Area(eps), width * width * 1e-5);
 
     const SCMultiPolygon2d collectionOutward = Offset(SCMultiPolygon2d{source}, width / 4.0, options, eps);
-    ASSERT_EQ(collectionOutward.Count(), 1U);
+    ASSERT_EQ(collectionOutward.Size(), 1U);
     EXPECT_TRUE(collectionOutward.IsValid(eps));
     EXPECT_NEAR(collectionOutward[0].Area(eps), outward.Area(eps), width * width * 1e-5);
 }
@@ -89,7 +89,7 @@ TEST(OffsetTest, ExplicitToleranceKeepsSmallArcAfterInwardOffset)
     ASSERT_EQ(offset.SegmentCount(), 1U);
     const auto segment = offset.SegmentAt(0);
     ASSERT_NE(segment, nullptr);
-    ASSERT_EQ(segment->Kind(), Geometry::SCSegmentKind2::Arc);
+    ASSERT_EQ(segment->Kind(), Geometry::SCSegmentKind2d::Arc);
     EXPECT_NEAR(static_cast<const SCArcSegment2d&>(*segment).radius, remainingRadius, 1e-20);
 }
 
@@ -174,6 +174,6 @@ TEST(OffsetTest, ExplicitToleranceOffsetsShortSweepArcInsidePolyline)
     const SCPolyline2d shifted = Offset(source, 100.0, Geometry::SCOffsetOptions2d{}, epsilon);
     ASSERT_TRUE(shifted.IsValid(epsilon));
     ASSERT_EQ(shifted.SegmentCount(), 1U);
-    EXPECT_EQ(shifted.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2::Arc);
+    EXPECT_EQ(shifted.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2d::Arc);
     EXPECT_NEAR(shifted.Length(epsilon), (1e6 - 100.0) * 1e-10, 1e-9);
 }

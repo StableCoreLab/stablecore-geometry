@@ -402,7 +402,7 @@ namespace Geometry
                     return SampleRingFailure::TessellationFailure;
                 }
                 std::size_t partCount = 1;
-                if (segment->Kind() == SCSegmentKind2::Arc)
+                if (segment->Kind() == SCSegmentKind2d::Arc)
                 {
                     const auto* arc = dynamic_cast<const SCArcSegment2d*>(segment.get());
                     if (arc == nullptr || !ArcPartCount(*arc, tolerance, partCount))

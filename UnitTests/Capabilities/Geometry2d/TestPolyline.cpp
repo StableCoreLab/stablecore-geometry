@@ -9,7 +9,7 @@
 #include "Geometry2d/SCPolyline2d.h"
 #include "Support/Epsilon.h"
 
-using Geometry::SCArcDirection;
+using Geometry::SCArcDirection2d;
 using Geometry::SCArcSegment2d;
 using Geometry::SCBox2d;
 using Geometry::SCLineSegment2d;
@@ -82,7 +82,7 @@ TEST(PolylineTest, RejectsDisconnectedPathAndSupportsClosedPaths)
 TEST(PolylineTest, MixedLineArcSupportsBoundsAndReverse)
 {
     auto line = std::make_shared<SCLineSegment2d>(SCPoint2d(0.0, 0.0), SCPoint2d(1.0, 0.0));
-    auto arc = std::make_shared<SCArcSegment2d>(SCPoint2d(1.0, 1.0), 1.0, -Geometry::kPi / 2.0, 0.0, SCArcDirection::CounterClockwise);
+    auto arc = std::make_shared<SCArcSegment2d>(SCPoint2d(1.0, 1.0), 1.0, -Geometry::kPi / 2.0, 0.0, SCArcDirection2d::CounterClockwise);
     SCPolyline2d mixedPath({line, arc}, SCPolylineClosure::Open);
 
     ASSERT_TRUE(mixedPath.IsValid());
@@ -95,8 +95,8 @@ TEST(PolylineTest, MixedLineArcSupportsBoundsAndReverse)
     const SCPolyline2d reversedMixedPath = Reverse(mixedPath);
     ASSERT_TRUE(reversedMixedPath.IsValid());
     ASSERT_EQ(reversedMixedPath.SegmentCount(), 2);
-    ASSERT_EQ(reversedMixedPath.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2::Arc);
-    ASSERT_EQ(reversedMixedPath.SegmentAt(1)->Kind(), Geometry::SCSegmentKind2::Line);
+    ASSERT_EQ(reversedMixedPath.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2d::Arc);
+    ASSERT_EQ(reversedMixedPath.SegmentAt(1)->Kind(), Geometry::SCSegmentKind2d::Line);
     EXPECT_TRUE(reversedMixedPath.StartPoint().AlmostEquals(SCPoint2d(2.0, 1.0), 1e-12));
     EXPECT_TRUE(reversedMixedPath.EndPoint().AlmostEquals(SCPoint2d(0.0, 0.0), 1e-12));
 }

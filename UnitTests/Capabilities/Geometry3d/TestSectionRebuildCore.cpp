@@ -5,13 +5,18 @@
 
 using namespace Geometry;
 
-TEST(GeometryTest, CoversSectionRebuildCapabilities)
+TEST(SectionRebuild3dTest, LocatesCubePoints)
 {
     const PolyhedronBody cubeBody = Geometry::Test::BuildUnitCubeBody();
     ASSERT_TRUE(cubeBody.IsValid());
     ASSERT_EQ(LocatePoint(SCPoint3d{0.5, 0.5, 0.5}, cubeBody), SCPointContainment3d::Inside);
     ASSERT_EQ(LocatePoint(SCPoint3d{1.5, 0.5, 0.5}, cubeBody), SCPointContainment3d::Outside);
     ASSERT_EQ(LocatePoint(SCPoint3d{1.0, 0.5, 0.5}, cubeBody), SCPointContainment3d::OnBoundary);
+}
+
+TEST(SectionRebuild3dTest, RebuildsMiddleCubeSection)
+{
+    const PolyhedronBody cubeBody = Geometry::Test::BuildUnitCubeBody();
     const SCPolyhedronSection3d middleSection =
         Section(cubeBody, SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.5}, SCVector3d{0.0, 0.0, 1.0}));
     ASSERT_TRUE(middleSection.success);
@@ -22,7 +27,7 @@ TEST(GeometryTest, CoversSectionRebuildCapabilities)
     ASSERT_EQ(middleSectionValidation.issue, SCSectionValidationIssue3d::None);
     const SCSectionTopology3d middleSectionTopology = BuildSectionTopology(middleSection);
     ASSERT_TRUE(middleSectionTopology.IsValid());
-    ASSERT_EQ(middleSectionTopology.Count(), 1);
+    ASSERT_EQ(middleSectionTopology.Size(), 1);
     ASSERT_EQ(middleSectionTopology.Roots().size(), 1);
     ASSERT_EQ(middleSectionTopology.Node(0).depth, 0);
     const SCSectionComponents3d middleSectionComponents = BuildSectionComponents(middleSection);
@@ -82,7 +87,11 @@ TEST(GeometryTest, CoversSectionRebuildCapabilities)
     ASSERT_EQ(middleSectionMeshes.meshes.size(), 1);
     ASSERT_EQ(middleSectionMeshes.rootPolygonIndices.size(), 1);
     ASSERT_EQ(middleSectionMeshes.rootPolygonIndices[0], 0);
+}
 
+TEST(SectionRebuild3dTest, AcceptsEmptySection)
+{
+    const PolyhedronBody cubeBody = Geometry::Test::BuildUnitCubeBody();
     const SCPolyhedronSection3d disjointSection =
         Section(cubeBody, SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 2.0}, SCVector3d{0.0, 0.0, 1.0}));
     ASSERT_TRUE(disjointSection.success);
@@ -91,7 +100,11 @@ TEST(GeometryTest, CoversSectionRebuildCapabilities)
     ASSERT_TRUE(disjointSection.contours.empty());
     ASSERT_TRUE(disjointSection.polygons.empty());
     ASSERT_EQ(ClassifySectionContent(disjointSection), SCSectionContentKind3d::Empty);
+}
 
+TEST(SectionRebuild3dTest, RebuildsCoplanarSection)
+{
+    const PolyhedronBody cubeBody = Geometry::Test::BuildUnitCubeBody();
     const SCPolyhedronSection3d coplanarSection =
         Section(cubeBody, SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{0.0, 0.0, 1.0}));
     ASSERT_TRUE(coplanarSection.success);
@@ -103,7 +116,11 @@ TEST(GeometryTest, CoversSectionRebuildCapabilities)
     const SCSectionFaceRebuildResult3d rebuiltCoplanarFaces = RebuildSectionFaces(coplanarSection);
     ASSERT_TRUE(rebuiltCoplanarFaces.success);
     ASSERT_EQ(rebuiltCoplanarFaces.faces.size(), 1);
+}
 
+TEST(SectionRebuild3dTest, PreservesEdgeOnlySection)
+{
+    const PolyhedronBody cubeBody = Geometry::Test::BuildUnitCubeBody();
     const SCPolyhedronSection3d edgeOnlySection =
         Section(cubeBody, SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{1.0, 1.0, 0.0}));
     ASSERT_TRUE(edgeOnlySection.success);
@@ -145,7 +162,10 @@ TEST(GeometryTest, CoversSectionRebuildCapabilities)
     const SCSectionMeshSetConversionResult3d edgeOnlySectionMeshes = ConvertSectionToTriangleMeshes(edgeOnlySection);
     ASSERT_TRUE(edgeOnlySectionMeshes.success);
     ASSERT_TRUE(edgeOnlySectionMeshes.meshes.empty());
+}
 
+TEST(SectionRebuild3dTest, RebuildsNestedAreaWithHole)
+{
     SCPolyhedronSection3d nestedSection{};
     nestedSection.success = true;
     nestedSection.origin = SCPoint3d{0.0, 0.0, 0.5};
@@ -178,7 +198,7 @@ TEST(GeometryTest, CoversSectionRebuildCapabilities)
     ASSERT_EQ(rebuiltMergedFaces.faces[0].HoleCount(), 1);
     const SCSectionTopology3d nestedTopology = BuildSectionTopology(nestedSection);
     ASSERT_TRUE(nestedTopology.IsValid());
-    ASSERT_EQ(nestedTopology.Count(), 2);
+    ASSERT_EQ(nestedTopology.Size(), 2);
     ASSERT_EQ(nestedTopology.Roots().size(), 1);
     ASSERT_EQ(nestedTopology.ParentOf(1), 0);
     ASSERT_EQ(nestedTopology.Node(0).depth, 0);
@@ -219,7 +239,10 @@ TEST(GeometryTest, CoversSectionRebuildCapabilities)
     ASSERT_EQ(rebuiltMergedSectionMeshes.rootPolygonIndices.size(), 1);
     ASSERT_EQ(rebuiltMergedSectionMeshes.rootPolygonIndices[0], 0);
     ASSERT_EQ(ClassifySectionContent(nestedSection), SCSectionContentKind3d::Area);
+}
 
+TEST(SectionRebuild3dTest, RebuildsDisjointAreaComponents)
+{
     SCPolyhedronSection3d disjointAreaSection{};
     disjointAreaSection.success = true;
     disjointAreaSection.origin = SCPoint3d{0.0, 0.0, 0.5};
@@ -271,11 +294,30 @@ TEST(GeometryTest, CoversSectionRebuildCapabilities)
     ASSERT_EQ(rebuiltDisjointMeshes.rootPolygonIndices.size(), 2);
     ASSERT_EQ(rebuiltDisjointMeshes.rootPolygonIndices[0], 0);
     ASSERT_EQ(rebuiltDisjointMeshes.rootPolygonIndices[1], 1);
+}
 
+TEST(SectionRebuild3dTest, ClassifiesMixedContent)
+{
+    const PolyhedronBody cubeBody = Geometry::Test::BuildUnitCubeBody();
+    const SCPolyhedronSection3d middleSection =
+        Section(cubeBody, SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.5}, SCVector3d{0.0, 0.0, 1.0}));
+    const SCPolyhedronSection3d edgeOnlySection =
+        Section(cubeBody, SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{1.0, 1.0, 0.0}));
+    ASSERT_TRUE(middleSection.success);
+    ASSERT_EQ(middleSection.polygons.size(), 1U);
+    ASSERT_TRUE(edgeOnlySection.success);
     SCPolyhedronSection3d mixedSection = edgeOnlySection;
     mixedSection.polygons.push_back(middleSection.polygons[0]);
     ASSERT_EQ(ClassifySectionContent(mixedSection), SCSectionContentKind3d::Mixed);
+}
 
+TEST(SectionRebuild3dTest, RejectsInvalidBasis)
+{
+    const PolyhedronBody cubeBody = Geometry::Test::BuildUnitCubeBody();
+    const SCPolyhedronSection3d middleSection =
+        Section(cubeBody, SCPlane::FromPointAndNormal(SCPoint3d{0.0, 0.0, 0.5}, SCVector3d{0.0, 0.0, 1.0}));
+    ASSERT_TRUE(middleSection.success);
+    ASSERT_TRUE(middleSection.IsValid());
     SCPolyhedronSection3d invalidSection = middleSection;
     invalidSection.uAxis = SCVector3d{0.0, 0.0, 0.0};
     const SCSectionValidation3d invalidSectionValidation = Validate(invalidSection);

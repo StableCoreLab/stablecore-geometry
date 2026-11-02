@@ -80,10 +80,10 @@ namespace Geometry::Detail
 
             switch (segment->Kind())
             {
-                case SCSegmentKind2::Line:
+                case SCSegmentKind2d::Line:
                     AccumulateLineSegmentMoment(segment->StartPoint(), segment->EndPoint(), total);
                     break;
-                case SCSegmentKind2::Arc:
+                case SCSegmentKind2d::Arc:
                     AccumulateArcSegmentMoment(static_cast<const SCArcSegment2d&>(*segment), total);
                     break;
                 default:

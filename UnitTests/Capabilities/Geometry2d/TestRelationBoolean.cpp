@@ -89,7 +89,7 @@ TEST(RelationBooleanTest, SmallCallerTolerancePreservesBoxIntersectionBoundary)
 
     for (const auto& intersection : {Intersect(subject, clipper, eps), Intersect(clipper, subject, eps)})
     {
-        ASSERT_EQ(intersection.Count(), 1U);
+        ASSERT_EQ(intersection.Size(), 1U);
         for (std::size_t i = 0; i < intersection[0].OuterRing().PointCount(); ++i)
         {
             EXPECT_GE(intersection[0].OuterRing().VertexAt(i).x, -eps);
@@ -116,7 +116,7 @@ TEST(RelationBooleanTest, SmallCallerTolerancePreservesNonAxisAlignedTriangleInt
               SCPointContainment2d::OnBoundary);
 
     const auto intersection = Intersect(first, second, eps);
-    ASSERT_EQ(intersection.Count(), 1U);
+    ASSERT_EQ(intersection.Size(), 1U);
     EXPECT_TRUE(intersection[0].IsValid(eps));
     EXPECT_NEAR(intersection[0].Area(eps), 4.5 * scale * scale, 1e-23);
 }
@@ -140,7 +140,7 @@ TEST(RelationBooleanTest, SmallCallerTolerancePreservesTinyBoxIntersection)
 
     for (const auto& intersection : {Intersect(first, second, eps), Intersect(second, first, eps)})
     {
-        ASSERT_EQ(intersection.Count(), 1U);
+        ASSERT_EQ(intersection.Size(), 1U);
         EXPECT_NEAR(TotalArea(intersection), 5e-15, 1e-17);
         for (std::size_t i = 0; i < intersection[0].OuterRing().PointCount(); ++i)
         {
@@ -167,7 +167,7 @@ TEST(RelationBooleanTest, SmallCallerTolerancePreservesTinyBoxDifference)
     ASSERT_TRUE(second.IsValid(eps));
 
     const auto difference = Difference(first, second, eps);
-    ASSERT_EQ(difference.Count(), 1U);
+    ASSERT_EQ(difference.Size(), 1U);
     EXPECT_TRUE(difference.IsValid(eps));
     EXPECT_NEAR(difference[0].Area(eps), width * width / 2.0, 1e-17);
     EXPECT_NEAR(difference[0].Bounds(eps).MinPoint().x, width / 2.0, eps);
@@ -190,19 +190,19 @@ TEST(RelationBooleanTest, SmallCallerTolerancePreservesRepairedTinyBoxBoolean)
         ASSERT_FALSE(second.IsValid(eps));
 
         const auto difference = Difference(first, second, eps);
-        ASSERT_EQ(difference.Count(), 1U);
+        ASSERT_EQ(difference.Size(), 1U);
         EXPECT_TRUE(difference.IsValid(eps));
         EXPECT_NEAR(difference[0].Area(eps), width * width / 2.0, width * width * 1e-5);
 
         const auto intersection = Intersect(first, second, eps);
-        ASSERT_EQ(intersection.Count(), 1U);
+        ASSERT_EQ(intersection.Size(), 1U);
         EXPECT_TRUE(intersection.IsValid(eps));
         EXPECT_NEAR(intersection[0].Area(eps), width * width / 2.0, width * width * 1e-5);
 
         const auto united = Union(first, second, eps);
         ASSERT_FALSE(united.IsEmpty());
         EXPECT_TRUE(united.IsValid(eps));
-        EXPECT_EQ(united.Count(), 1U);
+        EXPECT_EQ(united.Size(), 1U);
         EXPECT_NEAR(TotalArea(united), width * width, width * width * 1e-5);
     }
 }
@@ -224,17 +224,17 @@ TEST(RelationBooleanTest, RepairedSubDefaultScaleBoxRespectsCallerTolerance)
     for (const SCPolygon2d& damaged : {second, SCPolygon2d(Reverse(second.OuterRing()))})
     {
         const auto intersection = Intersect(first, damaged, eps);
-        ASSERT_EQ(intersection.Count(), 1U);
+        ASSERT_EQ(intersection.Size(), 1U);
         ASSERT_TRUE(intersection.IsValid(eps));
         EXPECT_NEAR(intersection[0].Area(eps), width * width / 2.0, width * width * 1e-5);
 
         const auto difference = Difference(first, damaged, eps);
-        ASSERT_EQ(difference.Count(), 1U);
+        ASSERT_EQ(difference.Size(), 1U);
         ASSERT_TRUE(difference.IsValid(eps));
         EXPECT_NEAR(difference[0].Area(eps), width * width / 2.0, width * width * 1e-5);
 
         const auto united = Union(first, damaged, eps);
-        ASSERT_EQ(united.Count(), 1U);
+        ASSERT_EQ(united.Size(), 1U);
         ASSERT_TRUE(united.IsValid(eps));
         EXPECT_NEAR(united[0].Area(eps), width * width, width * width * 1e-5);
     }
@@ -254,7 +254,7 @@ TEST(RelationBooleanTest, SmallCallerToleranceMergesVerticallyRepairedBoxUnion)
     ASSERT_FALSE(second.IsValid(eps));
 
     const auto united = Union(first, second, eps);
-    ASSERT_EQ(united.Count(), 1U);
+    ASSERT_EQ(united.Size(), 1U);
     EXPECT_TRUE(united.IsValid(eps));
     EXPECT_NEAR(united[0].Area(eps), width * width, width * width * 1e-5);
 }

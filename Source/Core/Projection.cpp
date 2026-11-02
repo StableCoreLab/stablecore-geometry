@@ -250,7 +250,7 @@ namespace Geometry
 
     SCSegmentProjection2d ProjectPointToSegment(const SCPoint2d& point, const ISCSegment2d& segment, bool clampToSegment)
     {
-        if (segment.Kind() == SCSegmentKind2::Line)
+        if (segment.Kind() == SCSegmentKind2d::Line)
         {
             return ProjectPointToLineSegment(point, static_cast<const SCLineSegment2d&>(segment), clampToSegment);
         }
@@ -263,12 +263,12 @@ namespace Geometry
                                               bool clampToSegment,
                                               double epsilon)
     {
-        if (segment.Kind() == SCSegmentKind2::Line)
+        if (segment.Kind() == SCSegmentKind2d::Line)
         {
             return ProjectPointToLineSegment(point, static_cast<const SCLineSegment2d&>(segment),
                                              clampToSegment, epsilon);
         }
-        if (segment.Kind() == SCSegmentKind2::Arc)
+        if (segment.Kind() == SCSegmentKind2d::Arc)
         {
             return ProjectPointToArcSegment(point, static_cast<const SCArcSegment2d&>(segment),
                                             clampToSegment, epsilon);
@@ -355,13 +355,13 @@ namespace Geometry
             return SCVector2d{};
         }
         radial = radial / radialLength;
-        return segment.Direction() == SCArcDirection::CounterClockwise ? SCVector2d{-radial.y, radial.x}
+        return segment.Direction() == SCArcDirection2d::CounterClockwise ? SCVector2d{-radial.y, radial.x}
                                                                      : SCVector2d{radial.y, -radial.x};
     }
 
     SCVector2d TangentAt(const ISCSegment2d& segment, double parameter)
     {
-        if (segment.Kind() == SCSegmentKind2::Line)
+        if (segment.Kind() == SCSegmentKind2d::Line)
         {
             return TangentAt(static_cast<const SCLineSegment2d&>(segment), parameter);
         }
@@ -408,18 +408,18 @@ namespace Geometry
         {
             return {};
         }
-        return segment.Direction() == SCArcDirection::CounterClockwise
+        return segment.Direction() == SCArcDirection2d::CounterClockwise
                    ? SCVector2d{-unitRadial.y, unitRadial.x}
                    : SCVector2d{unitRadial.y, -unitRadial.x};
     }
 
     SCVector2d TangentAt(const ISCSegment2d& segment, double parameter, double epsilon)
     {
-        if (segment.Kind() == SCSegmentKind2::Line)
+        if (segment.Kind() == SCSegmentKind2d::Line)
         {
             return TangentAt(static_cast<const SCLineSegment2d&>(segment), parameter, epsilon);
         }
-        if (segment.Kind() == SCSegmentKind2::Arc)
+        if (segment.Kind() == SCSegmentKind2d::Arc)
         {
             return TangentAt(static_cast<const SCArcSegment2d&>(segment), parameter, epsilon);
         }

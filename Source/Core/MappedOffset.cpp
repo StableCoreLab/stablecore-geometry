@@ -24,7 +24,7 @@ namespace Geometry
 
         [[nodiscard]] double SegmentLength(const ISCSegment2d& segment)
         {
-            if (segment.Kind() == SCSegmentKind2::Line)
+            if (segment.Kind() == SCSegmentKind2d::Line)
             {
                 const auto& line = static_cast<const SCLineSegment2d&>(segment);
                 return Distance2(line.startPoint, line.endPoint);
@@ -35,12 +35,12 @@ namespace Geometry
 
         [[nodiscard]] bool FiniteSegment(const ISCSegment2d& segment)
         {
-            if (segment.Kind() == SCSegmentKind2::Line)
+            if (segment.Kind() == SCSegmentKind2d::Line)
             {
                 const auto* line = dynamic_cast<const SCLineSegment2d*>(&segment);
                 return line && line->startPoint.IsValid() && line->endPoint.IsValid();
             }
-            if (segment.Kind() == SCSegmentKind2::Arc)
+            if (segment.Kind() == SCSegmentKind2d::Arc)
             {
                 const auto* arc = dynamic_cast<const SCArcSegment2d*>(&segment);
                 return arc && arc->center.IsValid() && std::isfinite(arc->radius) &&
@@ -52,13 +52,13 @@ namespace Geometry
         [[nodiscard]] SCPathGeometryFailure GeometricValidity(
             const ISCSegment2d& segment, const SCPathGeometryTolerance& tolerance)
         {
-            if (segment.Kind() == SCSegmentKind2::Line)
+            if (segment.Kind() == SCSegmentKind2d::Line)
             {
                 const auto& line = static_cast<const SCLineSegment2d&>(segment);
                 return Distance2(line.startPoint, line.endPoint) > tolerance.distanceTolerance
                     ? SCPathGeometryFailure::None : SCPathGeometryFailure::DegenerateDirection;
             }
-            if (segment.Kind() == SCSegmentKind2::Arc)
+            if (segment.Kind() == SCSegmentKind2d::Arc)
             {
                 const auto& arc = static_cast<const SCArcSegment2d&>(segment);
                 return arc.radius > tolerance.distanceTolerance &&
@@ -240,13 +240,13 @@ namespace Geometry
         [[nodiscard]] PairHits SegmentHits(const ISCSegment2d& first,
                                            const ISCSegment2d& second, double tolerance)
         {
-            if (first.Kind() == SCSegmentKind2::Line && second.Kind() == SCSegmentKind2::Line)
+            if (first.Kind() == SCSegmentKind2d::Line && second.Kind() == SCSegmentKind2d::Line)
             { return LineLineHits(static_cast<const SCLineSegment2d&>(first),
                                   static_cast<const SCLineSegment2d&>(second), tolerance); }
-            if (first.Kind() == SCSegmentKind2::Line)
+            if (first.Kind() == SCSegmentKind2d::Line)
             { return LineArcHits(static_cast<const SCLineSegment2d&>(first),
                                  static_cast<const SCArcSegment2d&>(second), tolerance); }
-            if (second.Kind() == SCSegmentKind2::Line)
+            if (second.Kind() == SCSegmentKind2d::Line)
             { return LineArcHits(static_cast<const SCLineSegment2d&>(second),
                                  static_cast<const SCArcSegment2d&>(first), tolerance); }
             return ArcArcHits(static_cast<const SCArcSegment2d&>(first),
@@ -257,7 +257,7 @@ namespace Geometry
                                            const ISCSegment2d& second, double tolerance)
         {
             PairHits hits;
-            if (first.Kind() == SCSegmentKind2::Line && second.Kind() == SCSegmentKind2::Line)
+            if (first.Kind() == SCSegmentKind2d::Line && second.Kind() == SCSegmentKind2d::Line)
             {
                 const auto& a = static_cast<const SCLineSegment2d&>(first);
                 const auto& b = static_cast<const SCLineSegment2d&>(second);
@@ -274,12 +274,12 @@ namespace Geometry
                 hits.Add(a.startPoint + au * (Cross2(delta, bu) / divisor));
                 return hits;
             }
-            if (first.Kind() == SCSegmentKind2::Line || second.Kind() == SCSegmentKind2::Line)
+            if (first.Kind() == SCSegmentKind2d::Line || second.Kind() == SCSegmentKind2d::Line)
             {
                 const auto& line = static_cast<const SCLineSegment2d&>(
-                    first.Kind() == SCSegmentKind2::Line ? first : second);
+                    first.Kind() == SCSegmentKind2d::Line ? first : second);
                 const auto& arc = static_cast<const SCArcSegment2d&>(
-                    first.Kind() == SCSegmentKind2::Arc ? first : second);
+                    first.Kind() == SCSegmentKind2d::Arc ? first : second);
                 const SCVector2d u = (line.endPoint - line.startPoint) /
                                       PathDetail::Norm(line.endPoint - line.startPoint);
                 const SCVector2d delta = arc.center - line.startPoint;
@@ -385,7 +385,7 @@ namespace Geometry
                                                        const SCPoint2d& point, double reference,
                                                        bool beforeJoin)
         {
-            if (support.Kind() == SCSegmentKind2::Line)
+            if (support.Kind() == SCSegmentKind2d::Line)
             {
                 const auto& line = static_cast<const SCLineSegment2d&>(support);
                 const SCVector2d direction = line.endPoint - line.startPoint;
@@ -426,7 +426,7 @@ namespace Geometry
         [[nodiscard]] std::shared_ptr<ISCSegment2d> TrimSupport(
             const ISCSegment2d& support, double start, double end)
         {
-            if (support.Kind() == SCSegmentKind2::Line)
+            if (support.Kind() == SCSegmentKind2d::Line)
             {
                 const auto& line = static_cast<const SCLineSegment2d&>(support);
                 const SCVector2d direction = line.endPoint - line.startPoint;
@@ -483,11 +483,11 @@ namespace Geometry
                 { return {SCPathGeometryFailure::NonFiniteResult}; }
                 if (beforeParameter <= 0.0 || afterParameter >= 1.0)
                 { continue; }
-                if (before.Kind() == SCSegmentKind2::Arc &&
+                if (before.Kind() == SCSegmentKind2d::Arc &&
                     beforeParameter * std::abs(static_cast<const SCArcSegment2d&>(before).sweepAngle) >
                         2.0 * std::numbers::pi_v<double>)
                 { continue; }
-                if (after.Kind() == SCSegmentKind2::Arc &&
+                if (after.Kind() == SCSegmentKind2d::Arc &&
                     (1.0 - afterParameter) *
                         std::abs(static_cast<const SCArcSegment2d&>(after).sweepAngle) >
                         2.0 * std::numbers::pi_v<double>)
@@ -533,14 +533,14 @@ namespace Geometry
         {
             std::unique_ptr<ISCSegment2d> segment = polyline.SegmentAt(i);
             if (!segment) { return fail(SCPathGeometryFailure::UnsupportedSegment, i); }
-            if ((segment->Kind() == SCSegmentKind2::Line &&
+            if ((segment->Kind() == SCSegmentKind2d::Line &&
                  !dynamic_cast<const SCLineSegment2d*>(segment.get())) ||
-                (segment->Kind() == SCSegmentKind2::Arc &&
+                (segment->Kind() == SCSegmentKind2d::Arc &&
                  !dynamic_cast<const SCArcSegment2d*>(segment.get())))
             { return fail(SCPathGeometryFailure::UnsupportedSegment, i); }
             if (!FiniteSegment(*segment))
-            { return fail(segment->Kind() == SCSegmentKind2::Line ||
-                          segment->Kind() == SCSegmentKind2::Arc
+            { return fail(segment->Kind() == SCSegmentKind2d::Line ||
+                          segment->Kind() == SCSegmentKind2d::Arc
                               ? SCPathGeometryFailure::NonFiniteInput
                               : SCPathGeometryFailure::UnsupportedSegment, i); }
             sources.emplace_back(std::move(segment));
@@ -595,7 +595,7 @@ namespace Geometry
         {
             if (signedDistance == 0.0)
             { supports.emplace_back(sources[i]->Clone()); continue; }
-            if (sources[i]->Kind() == SCSegmentKind2::Line)
+            if (sources[i]->Kind() == SCSegmentKind2d::Line)
             {
                 const auto& line = static_cast<const SCLineSegment2d&>(*sources[i]);
                 const SCVector2d direction = line.endPoint - line.startPoint;
@@ -649,7 +649,7 @@ namespace Geometry
         for (std::size_t i = 0; i < count; ++i)
         {
             if (ends[i] <= starts[i] ||
-                (supports[i]->Kind() == SCSegmentKind2::Arc &&
+                (supports[i]->Kind() == SCSegmentKind2d::Arc &&
                  (ends[i] - starts[i]) *
                      std::abs(static_cast<const SCArcSegment2d&>(*supports[i]).sweepAngle) >
                      2.0 * std::numbers::pi_v<double>))

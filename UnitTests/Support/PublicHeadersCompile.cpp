@@ -33,6 +33,9 @@ namespace Geometry { struct SCSearchPolyDiagnostics2d; }
 #include <type_traits>
 #include <cstddef>
 
+static_assert(std::is_same_v<Geometry::SCSegmentKind2d, Geometry::SCSegmentKind2>);
+static_assert(std::is_same_v<Geometry::SCArcDirection2d, Geometry::SCArcDirection>);
+
 template <typename T>
 constexpr bool HasGeometryResultContract =
     std::is_same_v<decltype(T::state), Geometry::SCGeometryOperationState> &&

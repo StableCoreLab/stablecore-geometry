@@ -24,7 +24,7 @@ TEST(SearchPolyCapabilityTest, InvalidInputContractRejectsEmptyLineCollection)
 
     EXPECT_EQ(result.issue, SearchPolyIssue2d::InvalidInput);
     EXPECT_FALSE(result.IsSuccess());
-    EXPECT_EQ(result.polygons.Count(), 0U);
+    EXPECT_EQ(result.polygons.Size(), 0U);
     EXPECT_TRUE(result.candidates.empty());
     EXPECT_EQ(result.diagnostics.inputPolylineCount, 0U);
     EXPECT_EQ(result.diagnostics.inputSegmentCount, 0U);
@@ -69,7 +69,7 @@ TEST(SearchPolyCapabilityTest, NoClosedPolygonFoundKeepsDiagnosticsAndCandidateS
 
     EXPECT_EQ(result.issue, SearchPolyIssue2d::NoClosedPolygonFound);
     EXPECT_FALSE(result.IsSuccess());
-    EXPECT_EQ(result.polygons.Count(), 0U);
+    EXPECT_EQ(result.polygons.Size(), 0U);
     EXPECT_TRUE(result.candidates.empty());
     EXPECT_EQ(result.diagnostics.inputPolylineCount, 2U);
     EXPECT_EQ(result.diagnostics.inputSegmentCount, 2U);
@@ -117,7 +117,7 @@ TEST(SearchPolyCapabilityTest, SearchPolygonsBuildsRepresentativeClosedCandidate
 
     ASSERT_EQ(result.issue, SearchPolyIssue2d::None);
     ASSERT_TRUE(result.IsSuccess());
-    ASSERT_EQ(result.polygons.Count(), 1U);
+    ASSERT_EQ(result.polygons.Size(), 1U);
     ASSERT_EQ(result.candidates.size(), 1U);
     EXPECT_EQ(result.diagnostics.inputPolylineCount, 4U);
     EXPECT_EQ(result.diagnostics.inputSegmentCount, 4U);

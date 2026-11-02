@@ -32,8 +32,8 @@ namespace
     std::vector<PolygonSignature> MakeSignature(const SCMultiPolygon2d& polygons)
     {
         std::vector<PolygonSignature> signature;
-        signature.reserve(polygons.Count());
-        for (std::size_t index = 0; index < polygons.Count(); ++index)
+        signature.reserve(polygons.Size());
+        for (std::size_t index = 0; index < polygons.Size(); ++index)
         {
             signature.emplace_back(polygons[index].Area(), polygons[index].HoleCount());
         }
@@ -87,7 +87,7 @@ namespace
 
         const SCMultiPolygon2d orderedRebuild = BuildMultiPolygonByLines(orderedEdges);
         const SCMultiPolygon2d shuffledRebuild = BuildMultiPolygonByLines(shuffledEdges);
-        ASSERT_EQ(orderedRebuild.Count(), 1U);
+        ASSERT_EQ(orderedRebuild.Size(), 1U);
         ASSERT_EQ(orderedRebuild[0].HoleCount(), 1U);
         EXPECT_NEAR(orderedRebuild[0].Area(), 48.0, 1e-9);
         ExpectEquivalentPolygons(shuffledRebuild, orderedRebuild);
@@ -111,7 +111,7 @@ namespace
         const SCMultiPolygon2d difference = Difference(outer, inner);
         const SCMultiPolygon2d rebuilt = BuildMultiPolygonByLines(BuildNestedSquareEdges(true));
 
-        ASSERT_EQ(difference.Count(), 1U);
+        ASSERT_EQ(difference.Size(), 1U);
         ASSERT_EQ(difference[0].HoleCount(), 1U);
         EXPECT_NEAR(difference[0].Area(), 48.0, 1e-9);
         ExpectEquivalentPolygons(difference, rebuilt);
@@ -129,7 +129,7 @@ namespace
         };
 
         const SCMultiPolygon2d rebuilt = BuildMultiPolygonByLines(crossedEdges);
-        ASSERT_EQ(rebuilt.Count(), 4U);
+        ASSERT_EQ(rebuilt.Size(), 4U);
         EXPECT_NEAR(TotalArea(rebuilt), 64.0, 1e-9);
         ExpectSearchPolyMatchesRebuild(crossedEdges);
     }
@@ -145,7 +145,7 @@ namespace
         };
 
         const SCMultiPolygon2d rebuilt = BuildMultiPolygonByLines(collinearEdges);
-        ASSERT_EQ(rebuilt.Count(), 1U);
+        ASSERT_EQ(rebuilt.Size(), 1U);
         EXPECT_NEAR(TotalArea(rebuilt), 64.0, 1e-9);
         ExpectSearchPolyMatchesRebuild(collinearEdges);
     }
@@ -165,7 +165,7 @@ namespace
         const SCMultiPolygon2d difference = Difference(outer, narrowInner);
         const SCMultiPolygon2d rebuilt = BuildMultiPolygonByLines(boundaries);
 
-        ASSERT_EQ(difference.Count(), 1U);
+        ASSERT_EQ(difference.Size(), 1U);
         ASSERT_EQ(difference[0].HoleCount(), 1U);
         EXPECT_NEAR(difference[0].Area(), 32.16, 1e-9);
         ExpectEquivalentPolygons(difference, rebuilt);

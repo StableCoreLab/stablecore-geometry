@@ -49,7 +49,7 @@ TEST(TriangleMeshToleranceTest, VolumeIsStableForSeparatedClosedComponents)
     EXPECT_NEAR(Volume(mesh), 1.0 / 3.0, 1e-12);
 }
 
-TEST(GeometryTest, CoversTriangleMeshCapabilities)
+TEST(TriangleMeshCore3dTest, QueriesOpenMeshGeometry)
 {
     const TriangleMesh mesh(
         {
@@ -90,6 +90,21 @@ TEST(GeometryTest, CoversTriangleMeshCapabilities)
     ASSERT_TRUE(meshLineIntersection.IsValid());
     ASSERT_TRUE(meshLineIntersection.triangleIndices.empty());
     ASSERT_TRUE(meshLineIntersection.points.empty());
+}
+
+TEST(TriangleMeshCore3dTest, ComputesOpenMeshNormals)
+{
+    const TriangleMesh mesh(
+        {
+            SCPoint3d{0.0, 0.0, 0.0},
+            SCPoint3d{1.0, 0.0, 0.0},
+            SCPoint3d{0.0, 1.0, 0.0},
+            SCPoint3d{0.0, 0.0, 1.0},
+        },
+        {
+            TriangleMesh::TriangleIndices{0, 1, 2},
+            TriangleMesh::TriangleIndices{0, 1, 3},
+        });
     const SCVector3d firstTriangleNormal = TriangleNormal(mesh, 0);
     ASSERT_TRUE(firstTriangleNormal.AlmostEquals(SCVector3d{0.0, 0.0, 1.0}, 1e-12));
     const auto triangleNormals = ComputeTriangleNormals(mesh);
@@ -103,6 +118,21 @@ TEST(GeometryTest, CoversTriangleMeshCapabilities)
     const auto vertexNormals = ComputeVertexNormals(mesh);
     ASSERT_EQ(vertexNormals.size(), mesh.VertexCount());
     ASSERT_TRUE(vertexNormals[2].AlmostEquals(SCVector3d{0.0, 0.0, 1.0}, 1e-12));
+}
+
+TEST(TriangleMeshCore3dTest, QueriesAndRepairsOpenMeshTopology)
+{
+    const TriangleMesh mesh(
+        {
+            SCPoint3d{0.0, 0.0, 0.0},
+            SCPoint3d{1.0, 0.0, 0.0},
+            SCPoint3d{0.0, 1.0, 0.0},
+            SCPoint3d{0.0, 0.0, 1.0},
+        },
+        {
+            TriangleMesh::TriangleIndices{0, 1, 2},
+            TriangleMesh::TriangleIndices{0, 1, 3},
+        });
     const MeshTriangleAdjacency3d firstAdjacency = TriangleAdjacency(mesh, 0);
     ASSERT_TRUE(firstAdjacency.HasNeighbor(0));
     ASSERT_EQ(firstAdjacency.adjacentTriangles[0], 1);
@@ -145,6 +175,10 @@ TEST(GeometryTest, CoversTriangleMeshCapabilities)
     ASSERT_FALSE(openShells[0].closed);
     ASSERT_TRUE(openShells[0].manifold);
     ASSERT_FALSE(openShells[0].consistentlyOriented);
+}
+
+TEST(TriangleMeshCore3dTest, QueriesClosedTetrahedron)
+{
     const TriangleMesh tetraMesh(
         {
             SCPoint3d{0.0, 0.0, 0.0},
@@ -178,6 +212,10 @@ TEST(GeometryTest, CoversTriangleMeshCapabilities)
     ASSERT_TRUE(tetraShells[0].closed);
     ASSERT_TRUE(tetraShells[0].manifold);
     ASSERT_TRUE(tetraShells[0].consistentlyOriented);
+}
+
+TEST(TriangleMeshCore3dTest, ClosesAndHealsOpenTetrahedron)
+{
     const TriangleMesh openTetraMesh(
         {
             SCPoint3d{0.0, 0.0, 0.0},
@@ -204,6 +242,10 @@ TEST(GeometryTest, CoversTriangleMeshCapabilities)
     ASSERT_EQ(healedOpenTetra.issue, HealingIssue3d::None);
     ASSERT_TRUE(healedOpenTetra.mesh.IsValid());
     ASSERT_TRUE(IsClosedTriangleMesh(healedOpenTetra.mesh));
+}
+
+TEST(TriangleMeshCore3dTest, ClosesDisconnectedComponents)
+{
     const TriangleMesh disconnectedMesh(
         {
             SCPoint3d{0.0, 0.0, 0.0},
@@ -237,6 +279,10 @@ TEST(GeometryTest, CoversTriangleMeshCapabilities)
     ASSERT_EQ(disconnectedShells.size(), 2);
     ASSERT_FALSE(disconnectedShells[0].closed);
     ASSERT_FALSE(disconnectedShells[1].closed);
+}
+
+TEST(TriangleMeshCore3dTest, RejectsNonManifoldRepair)
+{
     const TriangleMesh nonManifoldMesh(
         {
             SCPoint3d{0.0, 0.0, 0.0},
@@ -268,12 +314,30 @@ TEST(GeometryTest, CoversTriangleMeshCapabilities)
     ASSERT_FALSE(nonManifoldShells[0].closed);
     ASSERT_FALSE(nonManifoldShells[0].manifold);
     ASSERT_FALSE(nonManifoldShells[0].consistentlyOriented);
+}
+
+TEST(TriangleMeshCore3dTest, TransformsMesh)
+{
+    const TriangleMesh mesh(
+        {
+            SCPoint3d{0.0, 0.0, 0.0},
+            SCPoint3d{1.0, 0.0, 0.0},
+            SCPoint3d{0.0, 1.0, 0.0},
+            SCPoint3d{0.0, 0.0, 1.0},
+        },
+        {
+            TriangleMesh::TriangleIndices{0, 1, 2},
+            TriangleMesh::TriangleIndices{0, 1, 3},
+        });
     const TriangleMesh movedMesh = mesh.Transformed(SCTransform3d::Translation(SCVector3d{2.0, -1.0, 3.0}));
     ASSERT_TRUE(movedMesh.IsValid());
     ASSERT_TRUE(movedMesh.VertexAt(0).AlmostEquals(SCPoint3d{2.0, -1.0, 3.0}, 1e-12));
     ASSERT_TRUE(movedMesh.VertexAt(3).AlmostEquals(SCPoint3d{2.0, -1.0, 4.0}, 1e-12));
     EXPECT_NEAR(movedMesh.SurfaceArea(), mesh.SurfaceArea(), 1e-12);
+}
 
+TEST(TriangleMeshCore3dTest, RejectsDegenerateMesh)
+{
     const TriangleMesh invalidMesh(
         {
             SCPoint3d{0.0, 0.0, 0.0},
@@ -286,7 +350,6 @@ TEST(GeometryTest, CoversTriangleMeshCapabilities)
     const auto invalidMeshValidation = Validate(invalidMesh);
     ASSERT_FALSE(invalidMeshValidation.valid);
     ASSERT_EQ(invalidMeshValidation.issue, SCMeshValidationIssue3d::DegenerateTriangle);
-
 }
 
 TEST(TriangleMeshToleranceTest, SmallOpenTriangleBoundaryUsesCallerTolerance)

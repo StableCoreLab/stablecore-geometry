@@ -233,9 +233,13 @@ namespace Geometry
         return true;
     }
 
-    std::size_t PolygonTopology2d::Count() const
+    std::size_t PolygonTopology2d::Size() const
     {
         return polygons_.Size();
+    }
+    std::size_t PolygonTopology2d::Count() const
+    {
+        return Size();
     }
     bool PolygonTopology2d::IsEmpty() const
     {
@@ -269,7 +273,7 @@ namespace Geometry
     std::string PolygonTopology2d::DebugString() const
     {
         std::ostringstream stream;
-        stream << "PolygonTopology2d{polygonCount=" << Count() << ", rootCount=" << roots_.size() << "}";
+        stream << "PolygonTopology2d{polygonCount=" << Size() << ", rootCount=" << roots_.size() << "}";
         return stream.str();
     }
 

@@ -69,8 +69,8 @@ namespace Geometry::Detail
 
     bool IsKernelSegment(const ISCSegment2d& segment)
     {
-        return (segment.Kind() == SCSegmentKind2::Line && dynamic_cast<const SCLineSegment2d*>(&segment) != nullptr) ||
-               (segment.Kind() == SCSegmentKind2::Arc && dynamic_cast<const SCArcSegment2d*>(&segment) != nullptr);
+        return (segment.Kind() == SCSegmentKind2d::Line && dynamic_cast<const SCLineSegment2d*>(&segment) != nullptr) ||
+               (segment.Kind() == SCSegmentKind2d::Arc && dynamic_cast<const SCArcSegment2d*>(&segment) != nullptr);
     }
 
     std::unique_ptr<ISCSegment2d> ReverseKernelSegment(const ISCSegment2d& segment)

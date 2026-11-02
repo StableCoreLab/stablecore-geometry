@@ -34,7 +34,7 @@ TEST(Section3dCapabilityTest, UnitCubeMidPlaneSectionYieldsFourSegmentClosedCont
 
     const auto topology = BuildSectionTopology(section);
     ASSERT_TRUE(topology.IsValid());
-    ASSERT_EQ(topology.Count(), 1);
+    ASSERT_EQ(topology.Size(), 1);
     ASSERT_EQ(topology.Roots().size(), 1);
 
     const auto components = BuildSectionComponents(section);
@@ -70,7 +70,7 @@ TEST(Section3dCapabilityTest, BrepUnitCubeMidPlaneSectionYieldsFourSegmentClosed
 
     const auto topology = BuildSectionTopology(section);
     ASSERT_TRUE(topology.IsValid());
-    ASSERT_EQ(topology.Count(), 1);
+    ASSERT_EQ(topology.Size(), 1);
     ASSERT_EQ(topology.Roots().size(), 1);
 
     const auto components2 = BuildSectionComponents(section);

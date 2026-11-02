@@ -310,9 +310,14 @@ namespace Geometry
             return valid_;
         }
 
-        [[nodiscard]] std::size_t Count() const
+        [[nodiscard]] std::size_t Size() const
         {
             return nodes_.size();
+        }
+
+        [[deprecated("Use Size() instead")]] [[nodiscard]] std::size_t Count() const
+        {
+            return Size();
         }
 
         [[nodiscard]] bool IsEmpty() const

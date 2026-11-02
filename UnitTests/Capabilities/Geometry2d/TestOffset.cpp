@@ -113,7 +113,7 @@ TEST(OffsetTest, OffsetsPolygonAndMultiPolygonShapes)
         SCPolygon2d(SCPolyline2d({SCPoint2d{4.0, 0.0}, SCPoint2d{6.0, 0.0}, SCPoint2d{6.0, 2.0}, SCPoint2d{4.0, 2.0}},
                              SCPolylineClosure::Closed))};
     const SCMultiPolygon2d expandedDisjoint = Offset(disjoint, 0.5);
-    ASSERT_EQ(expandedDisjoint.Count(), 2);
+    ASSERT_EQ(expandedDisjoint.Size(), 2);
 
     const SCPolygon2d clockwiseOuter(SCPolyline2d(
         {SCPoint2d{0.0, 0.0}, SCPoint2d{0.0, 4.0}, SCPoint2d{4.0, 4.0}, SCPoint2d{4.0, 0.0}}, SCPolylineClosure::Closed));
@@ -141,7 +141,7 @@ TEST(OffsetTest, OffsetsPolygonAndMultiPolygonShapes)
                              SCPolylineClosure::Closed))};
     const SCMultiPolygon2d inwardMultiRecovered = Offset(multiWithHole, -0.8);
     ASSERT_FALSE(inwardMultiRecovered.IsEmpty());
-    for (std::size_t polygonIndex = 0; polygonIndex < inwardMultiRecovered.Count(); ++polygonIndex)
+    for (std::size_t polygonIndex = 0; polygonIndex < inwardMultiRecovered.Size(); ++polygonIndex)
     {
         const SCPolygon2d& recovered = inwardMultiRecovered[polygonIndex];
         for (std::size_t pointIndex = 0; pointIndex < recovered.OuterRing().PointCount(); ++pointIndex)
@@ -248,8 +248,8 @@ TEST(OffsetTest, SupportsNarrowBridgeSplitViaMultiPolygonOffsetApi)
 
     const SCMultiPolygon2d split = OffsetToMultiPolygon(source, -0.35);
     ASSERT_FALSE(split.IsEmpty());
-    ASSERT_GE(split.Count(), 2);
-    for (std::size_t polygonIndex = 0; polygonIndex < split.Count(); ++polygonIndex)
+    ASSERT_GE(split.Size(), 2);
+    for (std::size_t polygonIndex = 0; polygonIndex < split.Size(); ++polygonIndex)
     {
         const SCPolygon2d& piece = split[polygonIndex];
         ASSERT_TRUE(piece.IsValid());

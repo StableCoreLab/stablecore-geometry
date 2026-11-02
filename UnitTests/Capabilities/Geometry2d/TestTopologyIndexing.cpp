@@ -209,7 +209,7 @@ TEST(TopologyIndexingTest, TopologyBuildRejectsInvalidToleranceAndClearsPrevious
                        std::numeric_limits<double>::quiet_NaN()})
     {
         ASSERT_TRUE(topology.Build(SCMultiPolygon2d{square}));
-        ASSERT_EQ(topology.Count(), 1U);
+        ASSERT_EQ(topology.Size(), 1U);
         EXPECT_FALSE(topology.Build(SCMultiPolygon2d{square}, eps));
         EXPECT_TRUE(topology.IsEmpty());
         EXPECT_TRUE(topology.Roots().empty());

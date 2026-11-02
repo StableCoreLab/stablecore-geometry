@@ -31,7 +31,8 @@ namespace Geometry
         PolygonTopology2d() = default;
         explicit PolygonTopology2d(const SCMultiPolygon2d& polygons, double eps = Geometry::kDefaultEpsilon);
         bool Build(const SCMultiPolygon2d& polygons, double eps = Geometry::kDefaultEpsilon);
-        [[nodiscard]] std::size_t Count() const;
+        [[nodiscard]] std::size_t Size() const;
+        [[deprecated("Use Size() instead")]] [[nodiscard]] std::size_t Count() const;
         [[nodiscard]] bool IsEmpty() const;
         [[nodiscard]] bool IsValid() const;
         [[nodiscard]] const SCMultiPolygon2d& Polygons() const;

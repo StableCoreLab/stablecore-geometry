@@ -85,7 +85,7 @@ namespace Geometry
             for (std::size_t i = 0; i < ring.VertexCount(); ++i)
             {
                 const auto segment = ring.SegmentAt(i);
-                if (!segment || segment->Kind() != SCSegmentKind2::Line) return false;
+                if (!segment || segment->Kind() != SCSegmentKind2d::Line) return false;
                 const SCPoint2d a = segment->StartPoint();
                 const auto next = ring.SegmentAt((i + 1) % ring.VertexCount());
                 if (!next) return false;

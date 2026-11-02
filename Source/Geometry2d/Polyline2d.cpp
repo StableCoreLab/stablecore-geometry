@@ -210,7 +210,7 @@ namespace Geometry
     {
         for (const auto& segment : impl_->segments)
         {
-            if (segment == nullptr || segment->Kind() != SCSegmentKind2::Line)
+            if (segment == nullptr || segment->Kind() != SCSegmentKind2d::Line)
             {
                 return true;
             }
@@ -487,7 +487,7 @@ namespace Geometry
         SCBox2d box;
         for (const auto& segment : impl_->segments)
         {
-            if (segment->Kind() == SCSegmentKind2::Line)
+            if (segment->Kind() == SCSegmentKind2d::Line)
             {
                 box.ExpandToInclude(segment->StartPoint());
                 box.ExpandToInclude(segment->EndPoint());

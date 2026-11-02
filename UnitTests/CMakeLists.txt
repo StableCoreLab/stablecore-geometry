@@ -5,6 +5,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Core/TestCoreMultigeometry.cpp
     Capabilities/Core/TestDllExport.cpp
     Capabilities/Core/TestFailureSentinels.cpp
+    Capabilities/Core/TestIndexHitContracts.cpp
     Capabilities/Core/TestGeometryTestSupport.cpp
     Capabilities/Core/TestMetricsPolylineBox.cpp
     Capabilities/Core/TestAlgorithmCapabilities.cpp
@@ -47,6 +48,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry2d/TestShapesPathOps.cpp
     Capabilities/Geometry2d/TestShapesPathOpsPolygon.cpp
     Capabilities/Geometry2d/TestSpatialIndexOracle.cpp
+    Capabilities/Geometry2d/TestSpatialIndexMutations.cpp
     Capabilities/Geometry2d/TestTopologyIndexing.cpp
     Capabilities/Geometry2d/TestTransformSampling.cpp
     Capabilities/Geometry3d/TestBodyBoolean3d.cpp
@@ -85,7 +87,10 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestSection3dRebarAxisCuts.cpp
     Capabilities/Geometry3d/TestValueTypes3d.cpp
     Capabilities/Geometry3d/TestResultTolerance3d.cpp
+    Capabilities/Geometry3d/TestBrepTopologyValidity3d.cpp
+    Capabilities/Geometry3d/TestPolyhedronCore3d.cpp
     Capabilities/Geometry3d/TestBrepCore.cpp
+    Capabilities/Geometry3d/TestPolyhedronMeasure3d.cpp
     Capabilities/Geometry3d/TestBrepFaceRegion.cpp
     Capabilities/Geometry3d/TestBrepLoopGeometry.cpp
     Capabilities/Geometry3d/TestBrepMeshConversion3d.cpp

@@ -16,10 +16,10 @@ namespace Geometry
     }
 
     SCArcSegment2d::SCArcSegment2d(
-        const SCPoint2d& center, double radius, double startAngle, double endAngle, SCArcDirection direction)
+        const SCPoint2d& center, double radius, double startAngle, double endAngle, SCArcDirection2d direction)
         : center(center), radius(radius), startAngle(startAngle), sweepAngle(endAngle - startAngle)
     {
-        if (direction == SCArcDirection::CounterClockwise)
+        if (direction == SCArcDirection2d::CounterClockwise)
         {
             while (sweepAngle < 0.0)
             {
@@ -42,9 +42,9 @@ namespace Geometry
         return SCArcSegment2d(center, radius, startAngle, sweepAngle);
     }
 
-    SCSegmentKind2 SCArcSegment2d::Kind() const
+    SCSegmentKind2d SCArcSegment2d::Kind() const
     {
-        return SCSegmentKind2::Arc;
+        return SCSegmentKind2d::Arc;
     }
 
     bool SCArcSegment2d::IsValid() const
@@ -85,9 +85,9 @@ namespace Geometry
         return true;
     }
 
-    SCArcDirection SCArcSegment2d::Direction() const
+    SCArcDirection2d SCArcSegment2d::Direction() const
     {
-        return sweepAngle >= 0.0 ? SCArcDirection::CounterClockwise : SCArcDirection::Clockwise;
+        return sweepAngle >= 0.0 ? SCArcDirection2d::CounterClockwise : SCArcDirection2d::Clockwise;
     }
 
     double SCArcSegment2d::EndAngle() const

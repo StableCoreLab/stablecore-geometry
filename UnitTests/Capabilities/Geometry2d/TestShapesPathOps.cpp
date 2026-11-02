@@ -123,7 +123,7 @@ TEST(ShapesPathopsTest, SubPolylineRetainsArcLengthAndGeometry)
     const SCPolyline2d sub = SubPolyline(path, 0.25 * path.Length(), 0.75 * path.Length(), 1e-12);
     ASSERT_TRUE(sub.IsValid(1e-12));
     ASSERT_EQ(sub.SegmentCount(), 1U);
-    EXPECT_EQ(sub.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2::Arc);
+    EXPECT_EQ(sub.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2d::Arc);
     EXPECT_NEAR(sub.Length(), std::numbers::pi_v<double>, 1e-12);
     EXPECT_TRUE(sub.StartPoint().AlmostEquals({std::sqrt(2.0), std::sqrt(2.0)}, 1e-12));
     EXPECT_TRUE(sub.EndPoint().AlmostEquals({-std::sqrt(2.0), std::sqrt(2.0)}, 1e-12));
@@ -158,7 +158,7 @@ TEST(ShapesPathopsTest, SubPolylineSkipsSubToleranceArcBeforeSelectedLine)
     const SCPolyline2d sub = SubPolyline(path, arc->Length() + 0.5, arc->Length() + 1.5, eps);
     ASSERT_TRUE(sub.IsValid(eps));
     ASSERT_EQ(sub.SegmentCount(), 1U);
-    EXPECT_EQ(sub.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2::Line);
+    EXPECT_EQ(sub.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2d::Line);
     EXPECT_NEAR(sub.StartPoint().x, 0.5, eps);
     EXPECT_NEAR(sub.EndPoint().x, 1.5, eps);
 }
@@ -180,7 +180,7 @@ TEST(ShapesPathopsTest, SubPolylineClipsShortSweepArcWithExplicitTolerance)
     const SCPolyline2d clipped = SubPolyline(path, start, end, eps);
     ASSERT_TRUE(clipped.IsValid(eps));
     ASSERT_EQ(clipped.SegmentCount(), 1U);
-    EXPECT_EQ(clipped.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2::Arc);
+    EXPECT_EQ(clipped.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2d::Arc);
     EXPECT_NEAR(clipped.StartPoint().y, 2e-5, 1e-9);
     EXPECT_NEAR(clipped.EndPoint().y, 8e-5, 1e-9);
 }

@@ -1719,7 +1719,7 @@ namespace Geometry
             return MakeExtendedIntersectionFromIntersection(Intersect(first, second, eps));
         }
 
-        if (first.Kind() == SCSegmentKind2::Line && second.Kind() == SCSegmentKind2::Line)
+        if (first.Kind() == SCSegmentKind2d::Line && second.Kind() == SCSegmentKind2d::Line)
         {
             const SCLineSegment2d& firstLine = static_cast<const SCLineSegment2d&>(first);
             const SCLineSegment2d& secondLine = static_cast<const SCLineSegment2d&>(second);
@@ -1790,7 +1790,7 @@ namespace Geometry
             return result;
         }
 
-        if (first.Kind() == SCSegmentKind2::Line && second.Kind() == SCSegmentKind2::Arc)
+        if (first.Kind() == SCSegmentKind2d::Line && second.Kind() == SCSegmentKind2d::Arc)
         {
             const SCLineSegment2d& lineSegment = static_cast<const SCLineSegment2d&>(first);
             const SCArcSegment2d& arc = static_cast<const SCArcSegment2d&>(second);
@@ -1829,7 +1829,7 @@ namespace Geometry
             return result;
         }
 
-        if (first.Kind() == SCSegmentKind2::Arc && second.Kind() == SCSegmentKind2::Line)
+        if (first.Kind() == SCSegmentKind2d::Arc && second.Kind() == SCSegmentKind2d::Line)
         {
             const SCExtendedIntersection2d swapped = IntersectExtended(second, first, SwapExtendedIntersectionPolicy(policy), eps);
             SCExtendedIntersection2d result = swapped;
@@ -1841,7 +1841,7 @@ namespace Geometry
             return result;
         }
 
-        if (first.Kind() == SCSegmentKind2::Arc && second.Kind() == SCSegmentKind2::Arc)
+        if (first.Kind() == SCSegmentKind2d::Arc && second.Kind() == SCSegmentKind2d::Arc)
         {
             const SCArcSegment2d& firstArc = static_cast<const SCArcSegment2d&>(first);
             const SCArcSegment2d& secondArc = static_cast<const SCArcSegment2d&>(second);

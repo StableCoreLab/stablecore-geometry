@@ -154,7 +154,7 @@ namespace Geometry
     SCAxisSample2d SampleAxis(const ISCSegment2d& segment, double parameter)
     {
         const SCPoint2d point = segment.PointAt(parameter);
-        const SCVector2d tangent = segment.Kind() == SCSegmentKind2::Line
+        const SCVector2d tangent = segment.Kind() == SCSegmentKind2d::Line
                                      ? UnitTangentAt(static_cast<const SCLineSegment2d&>(segment))
                                      : UnitTangentAt(static_cast<const SCArcSegment2d&>(segment), parameter);
         const SCVector2d normal = LeftNormal(tangent);
@@ -168,11 +168,11 @@ namespace Geometry
             return {};
         }
         SCPoint2d point;
-        if (segment.Kind() == SCSegmentKind2::Line)
+        if (segment.Kind() == SCSegmentKind2d::Line)
         {
             point = static_cast<const SCLineSegment2d&>(segment).PointAt(parameter, epsilon);
         }
-        else if (segment.Kind() == SCSegmentKind2::Arc)
+        else if (segment.Kind() == SCSegmentKind2d::Arc)
         {
             point = static_cast<const SCArcSegment2d&>(segment).PointAt(parameter, epsilon);
         }
@@ -212,7 +212,7 @@ namespace Geometry
             return {};
         }
         double totalLength = 0.0;
-        if (segment.Kind() == SCSegmentKind2::Line)
+        if (segment.Kind() == SCSegmentKind2d::Line)
         {
             const auto& line = static_cast<const SCLineSegment2d&>(segment);
             if (!line.IsValid(epsilon))
@@ -221,7 +221,7 @@ namespace Geometry
             }
             totalLength = line.Length();
         }
-        else if (segment.Kind() == SCSegmentKind2::Arc)
+        else if (segment.Kind() == SCSegmentKind2d::Arc)
         {
             const auto& arc = static_cast<const SCArcSegment2d&>(segment);
             if (!arc.IsValid(epsilon))
@@ -247,7 +247,7 @@ namespace Geometry
 
     SCAxisProjection2d ProjectPointToAxis(const SCPoint2d& point, const ISCSegment2d& segment)
     {
-        if (segment.Kind() == SCSegmentKind2::Line)
+        if (segment.Kind() == SCSegmentKind2d::Line)
         {
             const SCLineSegment2d& line = static_cast<const SCLineSegment2d&>(segment);
             const SCSegmentProjection2d projection = ProjectPointToLineSegmentImpl(point, line, true);
@@ -275,7 +275,7 @@ namespace Geometry
 
     std::unique_ptr<ISCSegment2d> Reverse(const ISCSegment2d& segment)
     {
-        if (segment.Kind() == SCSegmentKind2::Line)
+        if (segment.Kind() == SCSegmentKind2d::Line)
         {
             const SCLineSegment2d& line = static_cast<const SCLineSegment2d&>(segment);
             return std::make_unique<SCLineSegment2d>(line.endPoint, line.startPoint);
@@ -293,7 +293,7 @@ namespace Geometry
             return result;
         }
 
-        if (segment.Kind() == SCSegmentKind2::Line)
+        if (segment.Kind() == SCSegmentKind2d::Line)
         {
             const SCLineSegment2d& line = static_cast<const SCLineSegment2d&>(segment);
             const SCPoint2d splitPoint = line.PointAt(parameter);
@@ -333,7 +333,7 @@ namespace Geometry
             return result;
         }
 
-        if (segment.Kind() == SCSegmentKind2::Line)
+        if (segment.Kind() == SCSegmentKind2d::Line)
         {
             const SCLineSegment2d& line = static_cast<const SCLineSegment2d&>(segment);
             result.segment = std::make_unique<SCLineSegment2d>(line.PointAt(startParameter), line.PointAt(endParameter));

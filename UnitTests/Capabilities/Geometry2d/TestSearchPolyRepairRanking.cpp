@@ -138,7 +138,7 @@ TEST(SearchPolyCapabilityTest, SearchAndPathOpsShareRepairPolicyAndInputDiagnost
     const auto built = Geometry::BuildMultiPolygonByLinesWithDiagnostics(lines);
     const auto searched = SearchPolygons(lines);
     ASSERT_TRUE(searched.IsSuccess());
-    EXPECT_EQ(built.polygons.Count(), searched.polygons.Count());
+    EXPECT_EQ(built.polygons.Size(), searched.polygons.Size());
     EXPECT_EQ(built.diagnostics.danglingEndpointCount, searched.diagnostics.danglingEndpointCount);
     EXPECT_EQ(built.diagnostics.branchVertexCount, searched.diagnostics.branchVertexCount);
     EXPECT_EQ(built.usedAutoClose, searched.usedAutoClose);

@@ -11,7 +11,7 @@
 #include "Geometry2d/SCLineSegment2d.h"
 #include "Geometry2d/SCPolygon2d.h"
 
-using Geometry::SCArcDirection;
+using Geometry::SCArcDirection2d;
 using Geometry::SCArcSegment2d;
 using Geometry::SCBox2d;
 using Geometry::IsEqual;
@@ -169,7 +169,7 @@ TEST(PolygonTest, SupportsCurvedBoundaryPolygons)
     std::vector<std::shared_ptr<Geometry::ISCSegment2d>> arcSegments;
     arcSegments.push_back(std::make_shared<SCLineSegment2d>(SCPoint2d(0.0, 0.0), SCPoint2d(1.0, 0.0)));
     arcSegments.push_back(std::make_shared<SCArcSegment2d>(
-        SCPoint2d(0.0, 0.0), 1.0, 0.0, Geometry::kPi * 0.5, SCArcDirection::CounterClockwise));
+        SCPoint2d(0.0, 0.0), 1.0, 0.0, Geometry::kPi * 0.5, SCArcDirection2d::CounterClockwise));
     arcSegments.push_back(std::make_shared<SCLineSegment2d>(SCPoint2d(0.0, 1.0), SCPoint2d(0.0, 0.0)));
 
     SCPolygon2d quarterDisk(SCPolyline2d(std::move(arcSegments), SCPolylineClosure::Closed));

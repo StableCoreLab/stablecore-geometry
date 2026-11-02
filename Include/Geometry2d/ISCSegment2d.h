@@ -15,7 +15,7 @@ namespace Geometry
     public:
         virtual ~ISCSegment2d() = default;
 
-        [[nodiscard]] virtual SCSegmentKind2 Kind() const = 0;
+        [[nodiscard]] virtual SCSegmentKind2d Kind() const = 0;
         [[nodiscard]] virtual bool IsValid() const = 0;
         [[nodiscard]] virtual SCPoint2d StartPoint() const = 0;
         [[nodiscard]] virtual SCPoint2d EndPoint() const = 0;

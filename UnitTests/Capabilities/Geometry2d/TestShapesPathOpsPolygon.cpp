@@ -24,8 +24,8 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
                                       SCPolylineClosure::Closed));
     const auto cut = CutPolygonParts(square, SCLineSegment2d(SCPoint2d{2.0, -1.0}, SCPoint2d{2.0, 5.0}));
     ASSERT_TRUE(cut.has_value());
-    ASSERT_EQ(cut->left.Count(), 1);
-    ASSERT_EQ(cut->right.Count(), 1);
+    ASSERT_EQ(cut->left.Size(), 1);
+    ASSERT_EQ(cut->right.Size(), 1);
     EXPECT_NEAR(cut->left[0].Area(), 8.0, 1e-9);
     EXPECT_NEAR(cut->right[0].Area(), 8.0, 1e-9);
 
@@ -37,11 +37,11 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
     ASSERT_TRUE(donutCut.has_value());
     double leftArea = 0.0;
     double rightArea = 0.0;
-    for (std::size_t i = 0; i < donutCut->left.Count(); ++i)
+    for (std::size_t i = 0; i < donutCut->left.Size(); ++i)
     {
         leftArea += donutCut->left[i].Area();
     }
-    for (std::size_t i = 0; i < donutCut->right.Count(); ++i)
+    for (std::size_t i = 0; i < donutCut->right.Size(); ++i)
     {
         rightArea += donutCut->right[i].Area();
     }
@@ -54,14 +54,14 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
         SCPolyline2d({SCPoint2d{5.0, 5.0}, SCPoint2d{6.0, 5.0}, SCPoint2d{6.0, 6.0}, SCPoint2d{5.0, 6.0}},
                    SCPolylineClosure::Closed)};
     const auto closedMulti = BuildMultiPolygonByLines(closedLines);
-    ASSERT_EQ(closedMulti.Count(), 2);
+    ASSERT_EQ(closedMulti.Size(), 2);
 
     const SCMultiPolyline2d openSquareLines{SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}}, SCPolylineClosure::Open),
                                           SCPolyline2d({SCPoint2d{4.0, 0.0}, SCPoint2d{4.0, 4.0}}, SCPolylineClosure::Open),
                                           SCPolyline2d({SCPoint2d{4.0, 4.0}, SCPoint2d{0.0, 4.0}}, SCPolylineClosure::Open),
                                           SCPolyline2d({SCPoint2d{0.0, 4.0}, SCPoint2d{0.0, 0.0}}, SCPolylineClosure::Open)};
     const auto openSquare = BuildMultiPolygonByLines(openSquareLines);
-    ASSERT_EQ(openSquare.Count(), 1);
+    ASSERT_EQ(openSquare.Size(), 1);
     ASSERT_EQ(openSquare[0].HoleCount(), 0);
     EXPECT_NEAR(openSquare[0].Area(), 16.0, 1e-9);
 
@@ -74,7 +74,7 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
                                           SCPolyline2d({SCPoint2d{4.0, 4.0}, SCPoint2d{2.0, 4.0}}, SCPolylineClosure::Open),
                                           SCPolyline2d({SCPoint2d{2.0, 4.0}, SCPoint2d{2.0, 2.0}}, SCPolylineClosure::Open)};
     const auto nested = BuildMultiPolygonByLines(nestedOpenLines);
-    ASSERT_EQ(nested.Count(), 1);
+    ASSERT_EQ(nested.Size(), 1);
     ASSERT_EQ(nested[0].HoleCount(), 1);
     EXPECT_NEAR(nested[0].Area(), 32.0, 1e-9);
 
@@ -84,7 +84,7 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
                                         SCPolyline2d({SCPoint2d{0.0, 4.0}, SCPoint2d{0.0, 0.0}}, SCPolylineClosure::Open),
                                         SCPolyline2d({SCPoint2d{2.0, -1.0}, SCPoint2d{2.0, 2.0}}, SCPolylineClosure::Open)};
     const auto branched = BuildMultiPolygonByLines(branchedLines);
-    ASSERT_EQ(branched.Count(), 1);
+    ASSERT_EQ(branched.Size(), 1);
     EXPECT_NEAR(branched[0].Area(), 16.0, 1e-9);
 
     const SCMultiPolyline2d dirtyNearClosedLines{
@@ -95,7 +95,7 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
         SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}}, SCPolylineClosure::Open),
         SCPolyline2d({SCPoint2d{2.0, 4.0}, SCPoint2d{2.0, 5.0}}, SCPolylineClosure::Open)};
     const auto dirtyNearClosed = BuildMultiPolygonByLines(dirtyNearClosedLines);
-    ASSERT_EQ(dirtyNearClosed.Count(), 1);
+    ASSERT_EQ(dirtyNearClosed.Size(), 1);
     EXPECT_NEAR(dirtyNearClosed[0].Area(), 16.0, 1e-6);
 
     const SCMultiPolyline2d autoExtendLines{
@@ -105,7 +105,7 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
         SCPolyline2d({SCPoint2d{0.0, 4.0}, SCPoint2d{0.0, 1.0}}, SCPolylineClosure::Open),
         SCPolyline2d({SCPoint2d{-0.15, 1.0}, SCPoint2d{-0.15, 0.25}}, SCPolylineClosure::Open)};
     const auto autoExtended = BuildMultiPolygonByLines(autoExtendLines);
-    ASSERT_EQ(autoExtended.Count(), 1);
+    ASSERT_EQ(autoExtended.Size(), 1);
     ASSERT_GE(autoExtended[0].Area(), 15.5);
     ASSERT_LE(autoExtended[0].Area(), 16.5);
 
@@ -117,7 +117,7 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
         SCPolyline2d({SCPoint2d{-0.15, 0.25}, SCPoint2d{-0.15, 0.0}}, SCPolylineClosure::Open),
         SCPolyline2d({SCPoint2d{-0.15, 0.0}, SCPoint2d{0.15, 0.0}}, SCPolylineClosure::Open)};
     const auto ambiguousFake = BuildMultiPolygonByLines(ambiguousFakeLines);
-    ASSERT_EQ(ambiguousFake.Count(), 1);
+    ASSERT_EQ(ambiguousFake.Size(), 1);
     ASSERT_EQ(ambiguousFake[0].HoleCount(), 0);
     ASSERT_GE(ambiguousFake[0].Area(), 15.5);
     ASSERT_LE(ambiguousFake[0].Area(), 16.5);
@@ -132,7 +132,7 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
         SCPolyline2d({SCPoint2d{3.0, 6.0}, SCPoint2d{3.0, 7.0}}, SCPolylineClosure::Open),
         SCPolyline2d({SCPoint2d{0.0, 3.0}, SCPoint2d{-1.0, 3.0}}, SCPolylineClosure::Open)};
     const auto branchHeavyAmbiguous = BuildMultiPolygonByLines(branchHeavyAmbiguousLines);
-    ASSERT_EQ(branchHeavyAmbiguous.Count(), 1);
+    ASSERT_EQ(branchHeavyAmbiguous.Size(), 1);
     ASSERT_EQ(branchHeavyAmbiguous[0].HoleCount(), 0);
     ASSERT_GE(branchHeavyAmbiguous[0].Area(), 35.0);
     ASSERT_LE(branchHeavyAmbiguous[0].Area(), 37.0);
@@ -146,7 +146,7 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
         SCPolyline2d({SCPoint2d{-0.2, -0.2}, SCPoint2d{1.0, -0.2}}, SCPolylineClosure::Open),
         SCPolyline2d({SCPoint2d{2.0, -1.0}, SCPoint2d{2.0, 2.0}}, SCPolylineClosure::Open)};
     const auto branchScoredAmbiguous = BuildMultiPolygonByLines(branchScoredAmbiguousLines);
-    ASSERT_EQ(branchScoredAmbiguous.Count(), 1);
+    ASSERT_EQ(branchScoredAmbiguous.Size(), 1);
     ASSERT_EQ(branchScoredAmbiguous[0].HoleCount(), 0);
     EXPECT_NEAR(branchScoredAmbiguous[0].Area(), 16.0, 1e-6);
 
@@ -177,7 +177,7 @@ TEST(ShapesPathopsTest, SmallCallerToleranceKeepsNearEndpointLineCrossing)
     Geometry::SCPolygonBuildOptions2d options;
     options.allowFakeEdges = false;
     const auto rebuilt = Geometry::BuildMultiPolygonByLinesWithDiagnostics(boundaries, eps, options);
-    ASSERT_EQ(rebuilt.polygons.Count(), 1U);
+    ASSERT_EQ(rebuilt.polygons.Size(), 1U);
     const auto& polygon = rebuilt.polygons[0];
     EXPECT_NEAR(polygon.Area(), 1.0 - crossingX, 1e-14);
     for (std::size_t i = 0; i < polygon.OuterRing().PointCount(); ++i)
@@ -213,7 +213,7 @@ TEST(ShapesPathopsTest, NormalizesSubDefaultSquareWithCallerTolerance)
     EXPECT_EQ(rebuilt.diagnostics.inputSegmentCount, 4U);
     EXPECT_EQ(rebuilt.diagnostics.uniqueVertexCount, 4U);
     EXPECT_EQ(rebuilt.diagnostics.danglingEndpointCount, 0U);
-    ASSERT_EQ(rebuilt.polygons.Count(), 1U);
+    ASSERT_EQ(rebuilt.polygons.Size(), 1U);
 
     const SCPolygon2d normalized = NormalizePolygonByLines(square, eps);
     ASSERT_TRUE(normalized.IsValid(eps));
@@ -236,7 +236,7 @@ TEST(ShapesPathopsTest, SmallNestedRingsRetainInteriorHole)
         SCPolylineClosure::Closed));
 
     const auto rebuilt = Geometry::BuildMultiPolygonByLines(boundaries, eps);
-    ASSERT_EQ(rebuilt.Count(), 1U);
+    ASSERT_EQ(rebuilt.Size(), 1U);
     ASSERT_EQ(rebuilt[0].HoleCount(), 1U);
     EXPECT_NEAR(rebuilt[0].Area(eps), width * width - (width - 2.0 * margin) * (width - 2.0 * margin),
                 1e-17);
@@ -266,10 +266,10 @@ TEST(ShapesPathopsTest, RepairedLoopDoesNotEraseSeparateThinOriginalLoop)
 
     const auto rebuilt = Geometry::BuildMultiPolygonByLinesWithDiagnostics(boundaries, eps);
     ASSERT_TRUE(rebuilt.usedAutoClose);
-    EXPECT_EQ(rebuilt.polygons.Count(), 2U);
+    EXPECT_EQ(rebuilt.polygons.Size(), 2U);
     bool foundThin = false;
     bool foundRepaired = false;
-    for (std::size_t i = 0; i < rebuilt.polygons.Count(); ++i)
+    for (std::size_t i = 0; i < rebuilt.polygons.Size(); ++i)
     {
         foundThin |= std::abs(rebuilt.polygons[i].Area() - 2.5e-10) < 1e-12;
         foundRepaired |= std::abs(rebuilt.polygons[i].Area() - 1.0) < 1e-9;
@@ -294,8 +294,8 @@ TEST(ShapesPathopsTest, CutPolygonUsesCallerToleranceForBothBoundaryPaths)
         const auto smallCutter = Geometry::CutPolygonParts(*polygon,
             SCLineSegment2d({2.0, -1e-10}, {2.0, 1e-10}), 1e-12);
         ASSERT_TRUE(smallCutter.has_value());
-        ASSERT_EQ(smallCutter->left.Count(), 1U);
-        ASSERT_EQ(smallCutter->right.Count(), 1U);
+        ASSERT_EQ(smallCutter->left.Size(), 1U);
+        ASSERT_EQ(smallCutter->right.Size(), 1U);
         const double expectedArea = polygon == &square ? 8.0 : 6.0;
         EXPECT_NEAR(smallCutter->left[0].Area(), expectedArea, 1e-8);
         EXPECT_NEAR(smallCutter->right[0].Area(), expectedArea, 1e-8);
@@ -312,10 +312,10 @@ TEST(ShapesPathopsTest, CutConcavePolygonKeepsDisconnectedPartsWithDistantCutter
     const auto parts = Geometry::CutPolygonParts(
         concave, SCLineSegment2d({2.0, -1000000.0}, {2.0, -999999.0}));
     ASSERT_TRUE(parts.has_value());
-    ASSERT_EQ(parts->left.Count(), 1U);
-    ASSERT_EQ(parts->right.Count(), 2U);
+    ASSERT_EQ(parts->left.Size(), 1U);
+    ASSERT_EQ(parts->right.Size(), 2U);
     double rightArea = 0.0;
-    for (std::size_t i = 0; i < parts->right.Count(); ++i) rightArea += parts->right[i].Area();
+    for (std::size_t i = 0; i < parts->right.Size(); ++i) rightArea += parts->right[i].Area();
     EXPECT_NEAR(parts->left[0].Area(), 6.0, 1e-8);
     EXPECT_NEAR(rightArea, 4.0, 1e-8);
 }
@@ -328,8 +328,8 @@ TEST(ShapesPathopsTest, CutPolygonAcceptsFiniteLongCutter)
     const auto parts = Geometry::CutPolygonParts(
         square, SCLineSegment2d({2.0, -1e160}, {2.0, 1e160}));
     ASSERT_TRUE(parts.has_value());
-    ASSERT_EQ(parts->left.Count(), 1U);
-    ASSERT_EQ(parts->right.Count(), 1U);
+    ASSERT_EQ(parts->left.Size(), 1U);
+    ASSERT_EQ(parts->right.Size(), 1U);
     EXPECT_NEAR(parts->left[0].Area(), 8.0, 1e-9);
     EXPECT_NEAR(parts->right[0].Area(), 8.0, 1e-9);
 }

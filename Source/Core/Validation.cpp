@@ -48,8 +48,8 @@ namespace Geometry
 
                 if (j == (i + 1) % n || (i == 0 && j + 1 == n))
                 {
-                    if (segments[i]->Kind() == SCSegmentKind2::Line &&
-                        segments[j]->Kind() == SCSegmentKind2::Line)
+                    if (segments[i]->Kind() == SCSegmentKind2d::Line &&
+                        segments[j]->Kind() == SCSegmentKind2d::Line)
                     {
                         const bool wraps = i == 0 && j + 1 == n;
                         const SCPoint2d start = wraps ? segments[j]->StartPoint() : segments[i]->StartPoint();

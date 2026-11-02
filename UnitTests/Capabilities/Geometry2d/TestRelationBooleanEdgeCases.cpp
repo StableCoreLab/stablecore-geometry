@@ -65,11 +65,11 @@ TEST(RelationBooleanTest, TinyOffsetBoxUnionPreservesConnectedMissingCorners)
         {{width / 2.0, width / 2.0}, {1.5 * width, width / 2.0},
          {1.5 * width, 1.5 * width}, {width / 2.0, 1.5 * width}}, SCPolylineClosure::Closed));
     const auto validUnion = Union(first, repairedSecond, eps);
-    ASSERT_EQ(validUnion.Count(), 1U);
+    ASSERT_EQ(validUnion.Size(), 1U);
     EXPECT_NEAR(TotalArea(validUnion), 1.75 * width * width, width * width * 1e-5);
 
     const auto united = Union(first, second, eps);
-    ASSERT_EQ(united.Count(), 1U);
+    ASSERT_EQ(united.Size(), 1U);
     EXPECT_TRUE(united.IsValid(eps));
     EXPECT_NEAR(TotalArea(united), 1.75 * width * width, width * width * 1e-5);
     EXPECT_EQ(LocatePoint({width / 4.0, 1.25 * width}, united[0], eps), SCPointContainment2d::Outside);
@@ -121,7 +121,7 @@ TEST(RelationBooleanTest, TinyOverlappingBoxesFormSinglePolygonAcrossAxisLayouts
                                      {&second, &first}})
         {
             const auto united = Union(*operands.first, *operands.second, eps);
-            ASSERT_EQ(united.Count(), 1U);
+            ASSERT_EQ(united.Size(), 1U);
             EXPECT_TRUE(united.IsValid(eps));
             EXPECT_NEAR(TotalArea(united), expectedArea, width * width * 1e-5);
         }
@@ -144,7 +144,7 @@ TEST(RelationBooleanTest, TinyBoxesMeetingAtOnlyOnePointRemainSeparate)
     for (const SCPolygon2d* second : {&cornerTouch, &disjoint})
     {
         const auto united = Union(first, *second, eps);
-        EXPECT_EQ(united.Count(), 2U);
+        EXPECT_EQ(united.Size(), 2U);
         EXPECT_NEAR(TotalArea(united), 2.0 * width * width, width * width * 1e-5);
     }
 }
@@ -171,7 +171,7 @@ TEST(RelationBooleanTest, SmallCallerTolerancePreservesNarrowInset)
     Geometry::SCMultiPolyline2d boundaries;
     boundaries.Add(inset.OuterRing());
     const auto direct = Geometry::BuildMultiPolygonByLines(boundaries, eps);
-    ASSERT_EQ(direct.Count(), 1U);
+    ASSERT_EQ(direct.Size(), 1U);
     EXPECT_NEAR(direct[0].Area(eps), 24.0 - 2.0 * gap, 1e-11);
 
     const SCPolygon2d normalized = Geometry::NormalizePolygonByLines(inset, eps);
@@ -179,7 +179,7 @@ TEST(RelationBooleanTest, SmallCallerTolerancePreservesNarrowInset)
     EXPECT_NEAR(normalized.Area(eps), 24.0 - 2.0 * gap, 1e-11);
 
     const auto intersection = Intersect(inset, clip, eps);
-    ASSERT_EQ(intersection.Count(), 1U);
+    ASSERT_EQ(intersection.Size(), 1U);
     EXPECT_FALSE(intersection.IsValid());
     EXPECT_TRUE(intersection.IsValid(eps));
     EXPECT_NEAR(intersection[0].Area(eps), 12.0 - 2.0 * gap, 1e-11);
@@ -233,11 +233,11 @@ TEST(RelationBooleanTest, HandlesCrossAndNestedBooleanOperations)
                                            SCPolylineClosure::Closed));
 
     const auto crossUnion = Union(horizontalBar, verticalBar);
-    ASSERT_GE(crossUnion.Count(), 1);
+    ASSERT_GE(crossUnion.Size(), 1);
     EXPECT_NEAR(TotalArea(crossUnion), 12.0, 1e-9);
 
     const auto crossDifference = Difference(horizontalBar, verticalBar);
-    ASSERT_GE(crossDifference.Count(), 1);
+    ASSERT_GE(crossDifference.Size(), 1);
     EXPECT_NEAR(TotalArea(crossDifference), 4.0, 1e-9);
 
     const SCPolygon2d outer(SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{6.0, 0.0}, SCPoint2d{6.0, 6.0}, SCPoint2d{0.0, 6.0}},
@@ -246,15 +246,15 @@ TEST(RelationBooleanTest, HandlesCrossAndNestedBooleanOperations)
                                       SCPolylineClosure::Closed));
 
     const auto containedUnion = Union(outer, nested);
-    ASSERT_GE(containedUnion.Count(), 1);
+    ASSERT_GE(containedUnion.Size(), 1);
     EXPECT_NEAR(TotalArea(containedUnion), 36.0, 1e-9);
 
     const auto containedIntersection = Intersect(outer, nested);
-    ASSERT_GE(containedIntersection.Count(), 1);
+    ASSERT_GE(containedIntersection.Size(), 1);
     EXPECT_NEAR(TotalArea(containedIntersection), 4.0, 1e-9);
 
     const auto containedDifference = Difference(outer, nested);
-    ASSERT_GE(containedDifference.Count(), 1);
+    ASSERT_GE(containedDifference.Size(), 1);
     EXPECT_NEAR(TotalArea(containedDifference), 32.0, 1e-9);
 
     const SCPolygon2d overlapStripA(SCPolyline2d(

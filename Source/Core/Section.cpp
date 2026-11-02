@@ -2767,9 +2767,9 @@ namespace Geometry
         }
 
         result.valid_ = true;
-        result.nodes_.resize(topology.Count());
+        result.nodes_.resize(topology.Size());
         result.roots_ = topology.Roots();
-        for (std::size_t i = 0; i < topology.Count(); ++i)
+        for (std::size_t i = 0; i < topology.Size(); ++i)
         {
             result.nodes_[i].polygonIndex = i;
             result.nodes_[i].parentIndex = topology.ParentOf(i);
@@ -2783,7 +2783,7 @@ namespace Geometry
     std::string SCSectionTopology3d::DebugString() const
     {
         std::ostringstream stream;
-        stream << "SCSectionTopology3d{polygonCount=" << Count() << ", rootCount=" << roots_.size()
+        stream << "SCSectionTopology3d{polygonCount=" << Size() << ", rootCount=" << roots_.size()
                << ", valid=" << (valid_ ? "true" : "false") << "}";
         return stream.str();
     }

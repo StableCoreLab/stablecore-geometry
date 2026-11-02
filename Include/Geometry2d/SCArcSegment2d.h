@@ -19,17 +19,17 @@ namespace Geometry
 
         SCArcSegment2d() = default;
         SCArcSegment2d(const SCPoint2d& center, double radius, double startAngle, double sweepAngle);
-        SCArcSegment2d(const SCPoint2d& center, double radius, double startAngle, double endAngle, SCArcDirection direction);
+        SCArcSegment2d(const SCPoint2d& center, double radius, double startAngle, double endAngle, SCArcDirection2d direction);
 
         [[nodiscard]] static SCArcSegment2d FromCenterRadiusStartSweep(const SCPoint2d& center,
                                                                      double radius,
                                                                      double startAngle,
                                                                      double sweepAngle);
 
-        [[nodiscard]] SCSegmentKind2 Kind() const override;
+        [[nodiscard]] SCSegmentKind2d Kind() const override;
         [[nodiscard]] bool IsValid() const override;
         [[nodiscard]] bool IsValid(double eps) const;
-        [[nodiscard]] SCArcDirection Direction() const;
+        [[nodiscard]] SCArcDirection2d Direction() const;
         [[nodiscard]] double EndAngle() const;
         [[nodiscard]] SCPoint2d StartPoint() const override;
         [[nodiscard]] SCPoint2d EndPoint() const override;

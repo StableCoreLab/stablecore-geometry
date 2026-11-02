@@ -30,6 +30,7 @@ TEST(CoreMultiGeometryTest, BuildsMultiGeometryContracts)
                                  SCPolylineClosure::Closed);
 
     SCMultiPolyline2d multiPolyline({outerRing, innerRing});
+    // 保留旧 Count 入口的兼容覆盖；其余能力用例使用 Size。
     ASSERT_EQ(multiPolyline.Count(), 2);
     ASSERT_TRUE(multiPolyline.IsValid());
     ASSERT_EQ(multiPolyline.PointCount(), outerRing.PointCount() + innerRing.PointCount());
@@ -64,6 +65,7 @@ TEST(CoreMultiGeometryTest, BuildsPolygonContainmentTopology)
     const SCPolygon2d siblingPolygon(siblingRing);
     const SCMultiPolygon2d multiPolygon({outerPolygon, innerPolygon, siblingPolygon});
     PolygonTopology2d topology = BuildPolygonTopology(multiPolygon);
+    // 保留已导出的旧计数符号，主计数入口由其余拓扑用例和包消费者验证。
     ASSERT_EQ(topology.Count(), 3);
     ASSERT_EQ(topology.Roots().size(), 2);
     ASSERT_EQ(topology.ParentOf(1), 0);

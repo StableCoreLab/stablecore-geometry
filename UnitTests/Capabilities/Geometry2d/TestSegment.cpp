@@ -13,13 +13,13 @@
 #include "Geometry2d/SCPolyline2d.h"
 #include "Support/Epsilon.h"
 
-using Geometry::SCArcDirection;
+using Geometry::SCArcDirection2d;
 using Geometry::SCArcSegment2d;
 using Geometry::SCBox2d;
 using Geometry::SCLineSegment2d;
 using Geometry::SCPoint2d;
 using Geometry::ISCSegment2d;
-using Geometry::SCSegmentKind2;
+using Geometry::SCSegmentKind2d;
 
 TEST(SegmentTest, ExplicitTolerancePolylineIntersectionsPreserveGlobalParameter)
 {
@@ -255,7 +255,7 @@ TEST(SegmentTest, LineSegmentSupportsSamplingAndBounds)
     const SCPoint2d end(4.0, 6.0);
     const SCLineSegment2d line(start, end);
 
-    ASSERT_EQ(line.Kind(), SCSegmentKind2::Line);
+    ASSERT_EQ(line.Kind(), SCSegmentKind2d::Line);
     ASSERT_TRUE(line.IsValid());
     EXPECT_TRUE(line.StartPoint().AlmostEquals(start, 1e-12));
     EXPECT_TRUE(line.EndPoint().AlmostEquals(end, 1e-12));
@@ -266,7 +266,7 @@ TEST(SegmentTest, LineSegmentSupportsSamplingAndBounds)
     EXPECT_TRUE(line.PointAtLength(-2.5, true).AlmostEquals(start, 1e-12));
 
     const ISCSegment2d& lineAsBase = line;
-    ASSERT_EQ(lineAsBase.Kind(), SCSegmentKind2::Line);
+    ASSERT_EQ(lineAsBase.Kind(), SCSegmentKind2d::Line);
     ASSERT_LT(std::abs(lineAsBase.Length() - 5.0), 1e-12);
     EXPECT_TRUE(lineAsBase.PointAt(0.5).AlmostEquals(SCPoint2d(2.5, 4.0), 1e-12));
 
@@ -281,9 +281,9 @@ TEST(SegmentTest, LineSegmentSupportsSamplingAndBounds)
 
 TEST(SegmentTest, CounterClockwiseArcSupportsSamplingAndBounds)
 {
-    const SCArcSegment2d quarterArc(SCPoint2d(0.0, 0.0), 1.0, 0.0, Geometry::kPi / 2.0, SCArcDirection::CounterClockwise);
+    const SCArcSegment2d quarterArc(SCPoint2d(0.0, 0.0), 1.0, 0.0, Geometry::kPi / 2.0, SCArcDirection2d::CounterClockwise);
 
-    ASSERT_EQ(quarterArc.Kind(), SCSegmentKind2::Arc);
+    ASSERT_EQ(quarterArc.Kind(), SCSegmentKind2d::Arc);
     ASSERT_TRUE(quarterArc.IsValid());
     ASSERT_LT(std::abs(quarterArc.Length() - (Geometry::kPi / 2.0)), 1e-12);
     EXPECT_TRUE(quarterArc.StartPoint().AlmostEquals(SCPoint2d(1.0, 0.0), 1e-12));
@@ -298,14 +298,14 @@ TEST(SegmentTest, CounterClockwiseArcSupportsSamplingAndBounds)
     EXPECT_TRUE(arcBox.MaxPoint().AlmostEquals(SCPoint2d(1.0, 1.0), 1e-12));
 
     const ISCSegment2d& arcAsBase = quarterArc;
-    ASSERT_EQ(arcAsBase.Kind(), SCSegmentKind2::Arc);
+    ASSERT_EQ(arcAsBase.Kind(), SCSegmentKind2d::Arc);
     EXPECT_TRUE(arcAsBase.PointAt(0.0).AlmostEquals(SCPoint2d(1.0, 0.0), 1e-12));
     EXPECT_TRUE(arcAsBase.PointAt(1.0).AlmostEquals(SCPoint2d(0.0, 1.0), 1e-12));
 }
 
 TEST(SegmentTest, ClockwiseArcAndZeroSweepValidity)
 {
-    const SCArcSegment2d clockwiseArc(SCPoint2d(0.0, 0.0), 1.0, Geometry::kPi / 2.0, 0.0, SCArcDirection::Clockwise);
+    const SCArcSegment2d clockwiseArc(SCPoint2d(0.0, 0.0), 1.0, Geometry::kPi / 2.0, 0.0, SCArcDirection2d::Clockwise);
 
     ASSERT_TRUE(clockwiseArc.IsValid());
     ASSERT_LT(std::abs(clockwiseArc.Length() - (Geometry::kPi / 2.0)), 1e-12);
@@ -313,7 +313,7 @@ TEST(SegmentTest, ClockwiseArcAndZeroSweepValidity)
     EXPECT_TRUE(clockwiseArc.EndPoint().AlmostEquals(SCPoint2d(1.0, 0.0), 1e-12));
     EXPECT_TRUE(clockwiseArc.PointAt(0.5).AlmostEquals(SCPoint2d(std::sqrt(2.0) / 2.0, std::sqrt(2.0) / 2.0), 1e-12));
 
-    const SCArcSegment2d invalidArc(SCPoint2d(0.0, 0.0), 1.0, 0.0, 0.0, SCArcDirection::CounterClockwise);
+    const SCArcSegment2d invalidArc(SCPoint2d(0.0, 0.0), 1.0, 0.0, 0.0, SCArcDirection2d::CounterClockwise);
 
     ASSERT_FALSE(invalidArc.IsValid());
 }
@@ -322,7 +322,7 @@ TEST(SegmentTest, LineSegmentBoundsAndBaseDispatch)
 {
     static_assert(std::is_abstract_v<ISCSegment2d>);
     const SCLineSegment2d line(SCPoint2d(1.0, 2.0), SCPoint2d(4.0, 6.0));
-    ASSERT_EQ(line.Kind(), SCSegmentKind2::Line);
+    ASSERT_EQ(line.Kind(), SCSegmentKind2d::Line);
     ASSERT_TRUE(line.IsValid());
     ASSERT_LT(std::abs(line.Length() - 5.0), 1e-12);
     EXPECT_TRUE(line.PointAt(0.5).AlmostEquals(SCPoint2d(2.5, 4.0), 1e-12));
@@ -335,14 +335,14 @@ TEST(SegmentTest, LineSegmentBoundsAndBaseDispatch)
     EXPECT_TRUE(lineBox.MaxPoint().AlmostEquals(SCPoint2d(4.0, 6.0), 1e-12));
 
     const ISCSegment2d& lineAsSegment = line;
-    ASSERT_EQ(lineAsSegment.Kind(), SCSegmentKind2::Line);
+    ASSERT_EQ(lineAsSegment.Kind(), SCSegmentKind2d::Line);
     EXPECT_TRUE(lineAsSegment.PointAt(0.5).AlmostEquals(SCPoint2d(2.5, 4.0), 1e-12));
 }
 
 TEST(SegmentTest, ArcSegmentSupportsSamplingAndBounds)
 {
-    const SCArcSegment2d arc(SCPoint2d(0.0, 0.0), 1.0, 0.0, Geometry::kPi / 2.0, SCArcDirection::CounterClockwise);
-    ASSERT_EQ(arc.Kind(), SCSegmentKind2::Arc);
+    const SCArcSegment2d arc(SCPoint2d(0.0, 0.0), 1.0, 0.0, Geometry::kPi / 2.0, SCArcDirection2d::CounterClockwise);
+    ASSERT_EQ(arc.Kind(), SCSegmentKind2d::Arc);
     ASSERT_TRUE(arc.IsValid());
     ASSERT_LT(std::abs(arc.Length() - (Geometry::kPi / 2.0)), 1e-12);
     EXPECT_TRUE(arc.StartPoint().AlmostEquals(SCPoint2d(1.0, 0.0), 1e-12));

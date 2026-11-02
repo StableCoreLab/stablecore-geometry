@@ -53,11 +53,11 @@ namespace Geometry
 
                 switch (segment->Kind())
                 {
-                    case SCSegmentKind2::Line:
+                    case SCSegmentKind2d::Line:
                         segments.push_back(std::make_shared<SCLineSegment2d>(
                             lineTransform(static_cast<const SCLineSegment2d&>(*segment))));
                         break;
-                    case SCSegmentKind2::Arc:
+                    case SCSegmentKind2d::Arc:
                         segments.push_back(
                             std::make_shared<SCArcSegment2d>(arcTransform(static_cast<const SCArcSegment2d&>(*segment))));
                         break;

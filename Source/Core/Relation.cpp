@@ -112,7 +112,7 @@ namespace Geometry
 
         [[nodiscard]] std::size_t CountSegmentRayCrossings(const ISCSegment2d& segment, const SCPoint2d& point, double eps)
         {
-            if (segment.Kind() == SCSegmentKind2::Line)
+            if (segment.Kind() == SCSegmentKind2d::Line)
             {
                 return CountLineSegmentRayCrossings(static_cast<const SCLineSegment2d&>(segment), point, eps);
             }
@@ -180,11 +180,11 @@ namespace Geometry
 
     SCPointContainment2d LocatePoint(const SCPoint2d& point, const ISCSegment2d& segment, double eps)
     {
-        if (segment.Kind() == Geometry::SCSegmentKind2::Line)
+        if (segment.Kind() == Geometry::SCSegmentKind2d::Line)
         {
             return LocatePoint(point, static_cast<const SCLineSegment2d&>(segment), eps);
         }
-        if (segment.Kind() == Geometry::SCSegmentKind2::Arc)
+        if (segment.Kind() == Geometry::SCSegmentKind2d::Arc)
         {
             return LocatePoint(point, static_cast<const SCArcSegment2d&>(segment), eps);
         }

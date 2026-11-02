@@ -838,7 +838,7 @@ namespace Geometry
         const std::array<const ISCSegment2d*, 2> segments{&incoming, &outgoing};
         for (std::size_t i = 0; i < segments.size(); ++i)
         {
-            if (segments[i]->Kind() == SCSegmentKind2::Line)
+            if (segments[i]->Kind() == SCSegmentKind2d::Line)
             {
                 const auto* line = dynamic_cast<const SCLineSegment2d*>(segments[i]);
                 if (!line)
@@ -846,7 +846,7 @@ namespace Geometry
                 if (!line->startPoint.IsValid() || !line->endPoint.IsValid())
                 { result.failure = SCPathGeometryFailure::NonFiniteInput; result.inputIndex = i; return result; }
             }
-            else if (segments[i]->Kind() == SCSegmentKind2::Arc)
+            else if (segments[i]->Kind() == SCSegmentKind2d::Arc)
             {
                 const auto* arc = dynamic_cast<const SCArcSegment2d*>(segments[i]);
                 if (!arc)
@@ -867,7 +867,7 @@ namespace Geometry
         for (std::size_t i = 0; i < segments.size(); ++i)
         {
             const auto* segment = segments[i];
-            if (segment->Kind() == SCSegmentKind2::Line)
+            if (segment->Kind() == SCSegmentKind2d::Line)
             {
                 const auto* line = dynamic_cast<const SCLineSegment2d*>(segment);
                 if (!line) { result.failure = SCPathGeometryFailure::UnsupportedSegment; result.inputIndex = i; return result; }
@@ -883,7 +883,7 @@ namespace Geometry
                 { result.failure = SCPathGeometryFailure::Unrepresentable2d; result.inputIndex = i; return result; }
                 tangents[i] = delta / length;
             }
-            else if (segment->Kind() == SCSegmentKind2::Arc)
+            else if (segment->Kind() == SCSegmentKind2d::Arc)
             {
                 const auto* arc = dynamic_cast<const SCArcSegment2d*>(segment);
                 if (!arc) { result.failure = SCPathGeometryFailure::UnsupportedSegment; result.inputIndex = i; return result; }

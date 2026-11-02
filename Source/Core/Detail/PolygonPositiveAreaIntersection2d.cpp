@@ -284,7 +284,7 @@ namespace Geometry::Detail
                     return result;
                 }
 
-                if (segment->Kind() == SCSegmentKind2::Line)
+                if (segment->Kind() == SCSegmentKind2d::Line)
                 {
                     const auto& line = static_cast<const SCLineSegment2d&>(*segment);
                     const double dy = line.endPoint.y - line.startPoint.y;
@@ -307,7 +307,7 @@ namespace Geometry::Detail
                     continue;
                 }
 
-                if (segment->Kind() != SCSegmentKind2::Arc)
+                if (segment->Kind() != SCSegmentKind2d::Arc)
                 {
                     result.status = SCCheckedGeometryStatus2d::InvalidInput;
                     return result;

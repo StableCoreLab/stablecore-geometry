@@ -6,7 +6,7 @@
 
 #include "Geometry.h"
 
-using Geometry::SCArcDirection;
+using Geometry::SCArcDirection2d;
 using Geometry::SCArcSegment2d;
 using Geometry::SCAxisProjection2d;
 using Geometry::SCAxisSample2d;
@@ -21,7 +21,7 @@ using Geometry::SCPolylineClosure;
 using Geometry::SCRingOrientation2d;
 using Geometry::ISCSegment2d;
 using Geometry::SCSegmentIntersection2d;
-using Geometry::SCSegmentKind2;
+using Geometry::SCSegmentKind2d;
 using Geometry::SCSegmentProjection2d;
 using Geometry::SCSegmentSplit2d;
 using Geometry::SCSegmentTrim2d;
@@ -284,13 +284,13 @@ TEST(CoreAlgorithmsTest, ReversesSegmentsAndClosesPaths)
     const SCPolyline2d openArcPath(
         {std::make_shared<SCLineSegment2d>(SCPoint2d{0.0, 0.0}, SCPoint2d{1.0, 0.0}),
          std::make_shared<SCArcSegment2d>(
-             SCPoint2d{1.0, 1.0}, 1.0, -Geometry::kPi * 0.5, 0.0, SCArcDirection::CounterClockwise)},
+             SCPoint2d{1.0, 1.0}, 1.0, -Geometry::kPi * 0.5, 0.0, SCArcDirection2d::CounterClockwise)},
         SCPolylineClosure::Open);
     const SCPolyline2d closedArcPath = Close(openArcPath);
     ASSERT_TRUE(closedArcPath.IsClosed());
-    ASSERT_EQ(closedArcPath.SegmentAt(0)->Kind(), SCSegmentKind2::Line);
-    ASSERT_EQ(closedArcPath.SegmentAt(1)->Kind(), SCSegmentKind2::Arc);
-    ASSERT_EQ(closedArcPath.SegmentAt(2)->Kind(), SCSegmentKind2::Line);
+    ASSERT_EQ(closedArcPath.SegmentAt(0)->Kind(), SCSegmentKind2d::Line);
+    ASSERT_EQ(closedArcPath.SegmentAt(1)->Kind(), SCSegmentKind2d::Arc);
+    ASSERT_EQ(closedArcPath.SegmentAt(2)->Kind(), SCSegmentKind2d::Line);
 }
 
 TEST(CoreAlgorithmsTest, SamplesAxisAndEditsSegments)
@@ -306,12 +306,12 @@ TEST(CoreAlgorithmsTest, SamplesAxisAndEditsSegments)
 
     const SCSegmentSplit2d split = SplitSegment(line, 0.5);
     ASSERT_TRUE(split.success);
-    ASSERT_EQ(split.first->Kind(), SCSegmentKind2::Line);
-    ASSERT_EQ(split.second->Kind(), SCSegmentKind2::Line);
+    ASSERT_EQ(split.first->Kind(), SCSegmentKind2d::Line);
+    ASSERT_EQ(split.second->Kind(), SCSegmentKind2d::Line);
 
     const SCSegmentTrim2d trim = TrimSegment(arc, 0.25, 0.75);
     ASSERT_TRUE(trim.success);
-    ASSERT_EQ(trim.segment->Kind(), SCSegmentKind2::Arc);
+    ASSERT_EQ(trim.segment->Kind(), SCSegmentKind2d::Arc);
 }
 
 TEST(CoreAlgorithmsTest, SnapsToBasicSegments)

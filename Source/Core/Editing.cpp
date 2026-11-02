@@ -65,7 +65,7 @@ namespace Geometry
             {
                 return {};
             }
-            if (segment->Kind() == SCSegmentKind2::Line &&
+            if (segment->Kind() == SCSegmentKind2d::Line &&
                 segment->StartPoint().AlmostEquals(segment->EndPoint(), eps))
             {
                 continue;
@@ -113,14 +113,14 @@ namespace Geometry
                 if (!inserted && !point.AlmostEquals(segment->StartPoint(), eps) &&
                     !point.AlmostEquals(segment->EndPoint(), eps))
                 {
-                    if (segment->Kind() == SCSegmentKind2::Line &&
+                    if (segment->Kind() == SCSegmentKind2d::Line &&
                         LocatePoint(point, *segment, eps) == SCPointContainment2d::OnBoundary)
                     {
                         segments.push_back(std::make_shared<SCLineSegment2d>(segment->StartPoint(), point));
                         segments.push_back(std::make_shared<SCLineSegment2d>(point, segment->EndPoint()));
                         inserted = true;
                         splitThisSegment = true;
-                    } else if (segment->Kind() == SCSegmentKind2::Arc)
+                    } else if (segment->Kind() == SCSegmentKind2d::Arc)
                     {
                         const auto& arc = static_cast<const SCArcSegment2d&>(*segment);
                         const SCSegmentProjection2d projection =

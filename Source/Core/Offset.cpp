@@ -30,7 +30,7 @@ namespace Geometry
             for (std::size_t i = 0; i < polyline.SegmentCount(); ++i)
             {
                 std::unique_ptr<ISCSegment2d> segment = polyline.SegmentAt(i);
-                if (segment != nullptr && segment->Kind() == SCSegmentKind2::Arc)
+                if (segment != nullptr && segment->Kind() == SCSegmentKind2d::Arc)
                 {
                     return true;
                 }
@@ -61,7 +61,7 @@ namespace Geometry
                 std::shared_ptr<ISCSegment2d> offsetSegment;
                 switch (source->Kind())
                 {
-                    case SCSegmentKind2::Line: {
+                    case SCSegmentKind2d::Line: {
                         const SCLineSegment2d segment = Offset(static_cast<const SCLineSegment2d&>(*source), distance, eps);
                         if (!segment.IsValid(eps))
                         {
@@ -70,7 +70,7 @@ namespace Geometry
                         offsetSegment = std::make_shared<SCLineSegment2d>(segment);
                         break;
                     }
-                    case SCSegmentKind2::Arc: {
+                    case SCSegmentKind2d::Arc: {
                         const auto& sourceArc = static_cast<const SCArcSegment2d&>(*source);
                         const SCArcSegment2d segment = Offset(sourceArc, distance, eps);
                         if (!segment.IsValid(eps))
@@ -755,7 +755,7 @@ namespace Geometry
             return segment;
         }
 
-        const double adjustedRadius = segment.Direction() == SCArcDirection::CounterClockwise ? segment.radius - distance
+        const double adjustedRadius = segment.Direction() == SCArcDirection2d::CounterClockwise ? segment.radius - distance
                                                                                             : segment.radius + distance;
         if (!(adjustedRadius > Geometry::kDefaultEpsilon))
         {
@@ -772,7 +772,7 @@ namespace Geometry
             return {};
         }
 
-        const double adjustedRadius = segment.Direction() == SCArcDirection::CounterClockwise
+        const double adjustedRadius = segment.Direction() == SCArcDirection2d::CounterClockwise
                                           ? segment.radius - distance
                                           : segment.radius + distance;
         if (!(adjustedRadius > epsilon) || !std::isfinite(adjustedRadius))

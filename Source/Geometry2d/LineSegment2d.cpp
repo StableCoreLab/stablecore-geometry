@@ -19,9 +19,9 @@ namespace Geometry
         return SCLineSegment2d(startPoint, endPoint);
     }
 
-    SCSegmentKind2 SCLineSegment2d::Kind() const
+    SCSegmentKind2d SCLineSegment2d::Kind() const
     {
-        return SCSegmentKind2::Line;
+        return SCSegmentKind2d::Line;
     }
 
     bool SCLineSegment2d::IsValid() const

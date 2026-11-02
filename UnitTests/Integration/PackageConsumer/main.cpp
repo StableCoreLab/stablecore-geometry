@@ -20,6 +20,9 @@ int main()
     const SCPolygon2d polygon(SCPolyline2d(
         {{0.0, 0.0}, {10.0, 0.0}, {10.0, 10.0}, {0.0, 10.0}}, SCPolylineClosure::Closed));
     const SCMultiPolygon2d polygonSet({polygon});
+    const auto polygonTopology = BuildPolygonTopology(polygonSet);
+    const bool topologySizeAvailable = polygonTopology.IsValid() && polygonTopology.Size() == 1 &&
+        SCSectionTopology3d{}.Size() == 0;
     const bool polygonToleranceAvailable = polygon.IsValid(1e-12) && polygon.Area(1e-12) == 100.0 &&
         polygon.Perimeter(1e-12) == 40.0 && polygon.Centroid(1e-12).IsValid() &&
         polygon.Bounds(1e-12).IsValid() && polygonSet.IsValid(1e-12) && polygonSet.Bounds(1e-12).IsValid();
@@ -47,6 +50,11 @@ int main()
     const auto corner = EvaluateCornerGeometry(first, cornerExit, pathTolerance);
     const auto legacyOffset = Offset(first, 1.0);
     const SCArcSegment2d planarArc({0.0, 0.0}, 1.0, 0.0, std::numbers::pi_v<double> / 2.0);
+    const SCArcSegment2d directionalArc({0.0, 0.0}, 1.0, 0.0, std::numbers::pi_v<double> / 2.0,
+                                       SCArcDirection2d::CounterClockwise);
+    const ISCSegment2d& directionalSegment = directionalArc;
+    const bool dimensionedEnumsAvailable = directionalSegment.Kind() == SCSegmentKind2d::Arc &&
+        directionalArc.Direction() == SCArcDirection2d::CounterClockwise;
     const bool segmentParameterAvailable =
         ParameterAtLength(static_cast<const ISCSegment2d&>(first), 5.0, true) == 0.5 &&
         ParameterAtLength(static_cast<const ISCSegment2d&>(planarArc), planarArc.Length() * 0.5) == 0.5 &&
@@ -148,14 +156,14 @@ int main()
                    searchCandidateToleranceAvailable && polygonOffsetToleranceAvailable &&
                    primitiveOffsetToleranceAvailable && segmentParameterAvailable && shortProjectionAvailable &&
                    arcProjectionAvailable && shortSweepArcToleranceAvailable &&
-                   segmentSamplingAvailable && segmentDirectionsAvailable &&
+                   segmentSamplingAvailable && segmentDirectionsAvailable && dimensionedEnumsAvailable &&
                    tinySegmentSamplingAvailable &&
                    subPolylineToleranceAvailable && polylineSamplingToleranceAvailable && area.success &&
                    area.hasPositiveAreaIntersection && fittedPlane.success && arc.success &&
                    projectedArc.success && mappedOffset.success && corner.success &&
                    legacyOffset.IsValid() && planarArc.AlmostEquals(planarArc, kDefaultEpsilon, kDefaultAngleEpsilon) &&
                    normalized.IsValid() && nurbsAvailable && genericCurveAvailable && curveSnapAvailable &&
-                   topologyReferencesAvailable && tinyVolumeAvailable && tinyBoundaryAvailable &&
+                   topologyReferencesAvailable && topologySizeAvailable && tinyVolumeAvailable && tinyBoundaryAvailable &&
                    offsetAvailable
                ? 0
                : 1;
