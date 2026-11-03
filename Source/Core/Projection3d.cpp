@@ -432,7 +432,7 @@ namespace Geometry
             for (std::size_t i = 0; i < segmentCount; ++i)
             {
                 const Detail::CurveOnSurfaceProjectionCandidate projected =
-                    Detail::ProjectPointToCurveOnSurfaceSegment(point, trim, i);
+                    Detail::ProjectPointToCurveOnSurfaceSegment(point, trim, i, tolerance);
                 if (analyticComplete != nullptr && !projected.analyticComplete)
                     *analyticComplete = false;
                 if (projected.valid && (!best.success || projected.distance < CandidateDistance(point,best.point)))
@@ -881,7 +881,7 @@ namespace Geometry
         for (std::size_t i = 0; i < segmentCount; ++i)
         {
             const Detail::CurveOnSurfaceProjectionCandidate projected =
-                Detail::ProjectPointToCurveOnSurfaceSegment(point, curveOnSurface, i);
+                Detail::ProjectPointToCurveOnSurfaceSegment(point, curveOnSurface, i, tolerance);
             allAnalytic = allAnalytic && projected.analyticComplete;
             if (projected.valid && (!best.success || projected.distance < CandidateDistance(point,best.point)))
             {

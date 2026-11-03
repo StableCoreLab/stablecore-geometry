@@ -161,6 +161,42 @@ namespace Geometry
                 right.controls[count - level - 1] = work[count - level - 1];
             }
         }
+        [[nodiscard]] bool SurfaceControlHullSeparatedFromPlane(
+            const SCNurbsSurface& surface, const SCPlane& plane, double eps)
+        {
+            // 调用方已校验正权重 NURBS；其参数域内曲面包含于原控制点凸包。
+            int side = 0;
+            if (surface.ControlPoints().empty()) return false;
+            for (const auto& control : surface.ControlPoints())
+            {
+                const double distance = plane.SignedDistanceTo(control, eps);
+                if (!std::isfinite(distance) || std::abs(distance) <= eps) return false;
+                const int controlSide = distance > 0.0 ? 1 : -1;
+                if (side != 0 && side != controlSide) return false;
+                side = controlSide;
+            }
+            return true;
+        }
+        [[nodiscard]] bool SurfaceControlHullSeparatedFromLine(
+            const SCNurbsSurface& surface, const SCLine3d& line, double eps)
+        {
+            const double components[] = {std::abs(line.direction.x), std::abs(line.direction.y),
+                                         std::abs(line.direction.z)};
+            std::size_t dominant = 0;
+            for (std::size_t axis = 1; axis < 3; ++axis)
+                if (components[axis] > components[dominant]) dominant = axis;
+            // 先尝试法向较稳定的两个平面，再检查其余坐标轴对应的分离平面。
+            const std::size_t axes[] = {(dominant + 1) % 3, (dominant + 2) % 3, dominant};
+            for (const std::size_t axis : axes)
+            {
+                const SCVector3d basis{axis == 0 ? 1.0 : 0.0, axis == 1 ? 1.0 : 0.0,
+                                       axis == 2 ? 1.0 : 0.0};
+                // 用原方向与坐标轴叉乘，避免平方中间量；平面经过整条目标直线。
+                const SCPlane plane = SCPlane::FromPointAndNormal(line.origin, Cross(line.direction, basis));
+                if (plane.IsValid(eps) && SurfaceControlHullSeparatedFromPlane(surface, plane, eps)) return true;
+            }
+            return false;
+        }
     }  // namespace
 
     SCPlaneCurveIntersections3dWithStatus IntersectAllPlaneCurveWithStatus(
@@ -216,6 +252,15 @@ namespace Geometry
 
         if (const auto* surfaceCurve = dynamic_cast<const SCCurveOnSurface*>(&curve))
         {
+            if (const auto* surface = dynamic_cast<const SCNurbsSurface*>(surfaceCurve->SupportSurface());
+                surface != nullptr && SurfaceControlHullSeparatedFromPlane(*surface, plane, tolerance.distanceEpsilon))
+            {
+                result.state = SCGeometryOperationState::NoResult;
+                result.evidence.hit = SCGeometryEvidenceState::NotApplicable;
+                result.evidence.negativeCompleteness = SCGeometryEvidenceState::Verified;
+                result.evidence.reasons = SCGeometryFailureReason::None;
+                return result;
+            }
             const bool planar = dynamic_cast<const SCPlaneSurface*>(surfaceCurve->SupportSurface()) != nullptr;
             bool complete = planar;
             const std::size_t segmentCount = surfaceCurve->UvCurve().SegmentCount();
@@ -622,6 +667,15 @@ namespace Geometry
             }
             if (const auto* surfaceCurve = dynamic_cast<const SCCurveOnSurface*>(&curve))
             {
+                if (const auto* surface = dynamic_cast<const SCNurbsSurface*>(surfaceCurve->SupportSurface());
+                    surface != nullptr && SurfaceControlHullSeparatedFromLine(*surface, line, tolerance.distanceEpsilon))
+                {
+                    result.state = SCGeometryOperationState::NoResult;
+                    result.evidence.hit = SCGeometryEvidenceState::NotApplicable;
+                    result.evidence.negativeCompleteness = SCGeometryEvidenceState::Verified;
+                    result.evidence.reasons = SCGeometryFailureReason::None;
+                    return result;
+                }
                 const bool planar = dynamic_cast<const SCPlaneSurface*>(surfaceCurve->SupportSurface()) != nullptr;
                 bool complete = planar;
                 const std::size_t segmentCount = surfaceCurve->UvCurve().SegmentCount();

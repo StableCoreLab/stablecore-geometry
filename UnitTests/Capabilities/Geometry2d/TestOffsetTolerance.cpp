@@ -1,3 +1,4 @@
+#include <cmath>
 #include <gtest/gtest.h>
 #include <limits>
 #include <memory>
@@ -176,4 +177,32 @@ TEST(OffsetTest, ExplicitToleranceOffsetsShortSweepArcInsidePolyline)
     ASSERT_EQ(shifted.SegmentCount(), 1U);
     EXPECT_EQ(shifted.SegmentAt(0)->Kind(), Geometry::SCSegmentKind2d::Arc);
     EXPECT_NEAR(shifted.Length(epsilon), (1e6 - 100.0) * 1e-10, 1e-9);
+}
+
+TEST(OffsetTest, LimitedMiterNormalBlendPreservesUniformScale)
+{
+    Geometry::SCOffsetOptions2d options;
+    options.miterLimit = 1.0;
+    const double diagonal = std::sqrt(0.5);
+    for (const double scale : {1.0, 1e3, 1e6})
+    {
+        SCOPED_TRACE(scale);
+        const double eps = 0.01 * scale;
+        for (const auto closure : {SCPolylineClosure::Open, SCPolylineClosure::Closed})
+        {
+            const SCPolyline2d source = closure == SCPolylineClosure::Open
+                ? SCPolyline2d({{0, 0}, {10 * scale, 0}, {10 * scale, 10 * scale}}, closure)
+                : SCPolyline2d({{0, 0}, {10 * scale, 0}, {10 * scale, 10 * scale}, {0, 10 * scale}}, closure);
+            ASSERT_TRUE(source.IsValid(eps));
+            for (const double sign : {-1.0, 1.0})
+            {
+                SCOPED_TRACE(sign);
+                const SCPolyline2d shifted = Offset(source, sign * scale, options, eps);
+                ASSERT_TRUE(shifted.IsValid(eps));
+                ASSERT_EQ(shifted.PointCount(), source.PointCount());
+                EXPECT_NEAR(shifted.VertexAt(1).x / scale, 10.0 - sign * diagonal, 1e-10);
+                EXPECT_NEAR(shifted.VertexAt(1).y / scale, sign * diagonal, 1e-10);
+            }
+        }
+    }
 }

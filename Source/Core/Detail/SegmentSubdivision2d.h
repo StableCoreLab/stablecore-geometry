@@ -25,6 +25,12 @@ namespace Geometry::Detail
         const double intersectionEpsilon,
         const TParameterTolerance& parameterTolerance)
     {
+        std::vector<double> parameterTolerances;
+        parameterTolerances.reserve(segments.size());
+        for (const auto& segment : segments)
+        {
+            parameterTolerances.push_back(parameterTolerance(segment));
+        }
         std::vector<std::vector<double>> parameters(segments.size(), std::vector<double>{0.0, 1.0});
         for (std::size_t i = 0; i < segments.size(); ++i)
         {
@@ -38,8 +44,8 @@ namespace Geometry::Detail
 
                 for (std::size_t k = 0; k < intersection.pointCount; ++k)
                 {
-                    AddClampedParameter(parameters[i], intersection.points[k].parameterOnFirst, intersectionEpsilon);
-                    AddClampedParameter(parameters[j], intersection.points[k].parameterOnSecond, intersectionEpsilon);
+                    AddClampedParameter(parameters[i], intersection.points[k].parameterOnFirst, parameterTolerances[i]);
+                    AddClampedParameter(parameters[j], intersection.points[k].parameterOnSecond, parameterTolerances[j]);
                 }
             }
         }
@@ -48,7 +54,7 @@ namespace Geometry::Detail
         for (std::size_t i = 0; i < segments.size(); ++i)
         {
             const SCLineSegment2d& segment = segments[i];
-            const double parameterTol = parameterTolerance(segment);
+            const double parameterTol = parameterTolerances[i];
             const std::vector<double> compacted = CompactSortedParameters(parameters[i], parameterTol);
             const auto pointAtParameter = [&](double parameter) {
                 return SCPoint2d{std::lerp(segment.startPoint.x, segment.endPoint.x, parameter),

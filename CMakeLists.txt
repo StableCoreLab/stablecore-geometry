@@ -257,12 +257,14 @@ set(SCGEOMETRY_INTERNAL_HEADERS
     Detail/ArrangementVertices2d.h
     Detail/BoxTreeCore.h
     Detail/DirectedEdgeFans2d.h
+    Detail/ClosedShapeSampling2d.h
     Detail/GeometryContainerOps.h
     Detail/NurbsBasis.h
     Detail/PolylineRing2d.h
     Detail/RingIntegral2d.h
     Detail/RingVertices2d.h
     Detail/TolerancePolicy2d.h
+    Detail/TriangleEdges3d.h
     Detail/SegmentParameters2d.h
     SCGeometryPch.h
 )

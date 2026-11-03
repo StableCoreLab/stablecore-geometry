@@ -3,9 +3,8 @@
 #include <cmath>
 #include <numbers>
 #include <sstream>
-#include <vector>
 
-#include "Geometry2d/SCPolyline2d.h"
+#include "../Detail/ClosedShapeSampling2d.h"
 
 namespace Geometry
 {
@@ -64,19 +63,7 @@ namespace Geometry
 
     SCPolygon2d SCEllipse2d::ToPolygon(std::size_t segmentCount) const
     {
-        if (!IsValid() || segmentCount < 8)
-        {
-            return {};
-        }
-        std::vector<SCPoint2d> points;
-        points.reserve(segmentCount);
-        for (std::size_t i = 0; i < segmentCount; ++i)
-        {
-            const double t =
-                2.0 * std::numbers::pi_v<double> * static_cast<double>(i) / static_cast<double>(segmentCount);
-            points.push_back(PointAtAngle(t));
-        }
-        return SCPolygon2d(SCPolyline2d(std::move(points), SCPolylineClosure::Closed));
+        return Detail::SampleClosedShapePolygon2d(*this, segmentCount, 8);
     }
 
     std::string SCEllipse2d::DebugString() const

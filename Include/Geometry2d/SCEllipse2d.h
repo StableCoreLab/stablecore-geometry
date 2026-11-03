@@ -1,5 +1,6 @@
 #pragma once
 #include <cmath>
+#include <cstddef>
 #include <string>
 #include "Export/GeometryExport.h"
 #include "Geometry2d/SCPolygon2d.h"
@@ -23,6 +24,7 @@ namespace Geometry
         [[nodiscard]] double Perimeter() const;
         [[nodiscard]] SCPoint2d PointAtAngle(double angleRadians) const;
         [[nodiscard]] SCBox2d Bounds(std::size_t segmentCount = 128) const;
+        // 等参数角采样；至少 8 段，默认 128 段，不提供弦误差保证。
         [[nodiscard]] SCPolygon2d ToPolygon(std::size_t segmentCount = 128) const;
         [[nodiscard]] bool AlmostEquals(const SCEllipse2d& other,
                                         double distanceEps = Geometry::kDefaultEpsilon,

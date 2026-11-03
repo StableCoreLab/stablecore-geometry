@@ -1,6 +1,10 @@
 #include <gtest/gtest.h>
 #include <limits>
 #include <memory>
+#include <stdexcept>
+#include <utility>
+
+#include "Geometry2d/SCMultiPolygon2d.h"
 
 #include "Core/PolygonRelation2d.h"
 #include "Geometry2d/SCBoxTree2d.h"
@@ -214,4 +218,45 @@ TEST(TopologyIndexingTest, TopologyBuildRejectsInvalidToleranceAndClearsPrevious
         EXPECT_TRUE(topology.IsEmpty());
         EXPECT_TRUE(topology.Roots().empty());
     }
+}
+
+TEST(CheckedIndexAccessTest, PolylineVertexAtChecksEmptyAndUpperBounds)
+{
+    const SCPolyline2d path({{0, 0}, {1, 0}, {1, 1}}, SCPolylineClosure::Open);
+    EXPECT_EQ(path.VertexAt(0), (SCPoint2d{0, 0}));
+    EXPECT_EQ(path.VertexAt(path.PointCount() - 1), (SCPoint2d{1, 1}));
+    EXPECT_THROW((void)path.VertexAt(path.PointCount()), std::out_of_range);
+    EXPECT_THROW((void)path.VertexAt((std::numeric_limits<std::size_t>::max)()), std::out_of_range);
+    EXPECT_THROW((void)SCPolyline2d{}.VertexAt(0), std::out_of_range);
+}
+
+TEST(CheckedIndexAccessTest, PolygonHoleAtChecksEmptyAndUpperBounds)
+{
+    const SCPolyline2d outer({{0, 0}, {4, 0}, {4, 4}, {0, 4}}, SCPolylineClosure::Closed);
+    const SCPolyline2d hole({{1, 1}, {1, 2}, {2, 2}, {2, 1}}, SCPolylineClosure::Closed);
+    const SCPolygon2d polygon(outer, {hole});
+    ASSERT_TRUE(polygon.IsValid());
+    EXPECT_EQ(polygon.HoleAt(0).PointCount(), hole.PointCount());
+    EXPECT_EQ(polygon.HoleAt(0).VertexAt(0), hole.VertexAt(0));
+    EXPECT_THROW((void)polygon.HoleAt(polygon.HoleCount()), std::out_of_range);
+    EXPECT_THROW((void)polygon.HoleAt((std::numeric_limits<std::size_t>::max)()), std::out_of_range);
+    EXPECT_THROW((void)SCPolygon2d(outer).HoleAt(0), std::out_of_range);
+    EXPECT_THROW((void)SCPolygon2d{}.HoleAt(0), std::out_of_range);
+}
+
+TEST(CheckedIndexAccessTest, MultiPolygonAtChecksBothConstAndMutableBounds)
+{
+    const SCPolygon2d polygon(SCPolyline2d({{0, 0}, {2, 0}, {2, 2}, {0, 2}}, SCPolylineClosure::Closed));
+    SCMultiPolygon2d polygons{polygon};
+    ASSERT_TRUE(polygons.IsValid());
+    EXPECT_EQ(&polygons.PolygonAt(0), &std::as_const(polygons).PolygonAt(0));
+    EXPECT_EQ(polygons.PolygonAt(0).OuterRing().VertexAt(0), (SCPoint2d{0, 0}));
+    for (const std::size_t index : {polygons.Size(), (std::numeric_limits<std::size_t>::max)()})
+    {
+        EXPECT_THROW((void)polygons.PolygonAt(index), std::out_of_range);
+        EXPECT_THROW((void)std::as_const(polygons).PolygonAt(index), std::out_of_range);
+    }
+    SCMultiPolygon2d empty;
+    EXPECT_THROW((void)empty.PolygonAt(0), std::out_of_range);
+    EXPECT_THROW((void)std::as_const(empty).PolygonAt(0), std::out_of_range);
 }

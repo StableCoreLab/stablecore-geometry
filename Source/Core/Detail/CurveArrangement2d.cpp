@@ -107,16 +107,9 @@ namespace Geometry::Detail
         {
             for (std::size_t second = first + 1; second < sources.size(); ++second)
             {
-                const SCSegmentIntersection2d hit = IntersectKernelSegments(*sources[first].segment,
-                                                                               *sources[second].segment,
-                                                                               tolerance);
-                if (hit.kind == SCIntersectionKind2d::Overlap)
+                for (const auto& hit : IntersectAll(*sources[first].segment, *sources[second].segment, tolerance))
                 {
-                    result.hasOverlap = true;
-                    if (hit.pointCount != 2)
-                    {
-                        continue;
-                    }
+                    result.hasOverlap = result.hasOverlap || hit.kind == SCIntersectionKind2d::Overlap;
                     for (std::size_t pointIndex = 0; pointIndex < hit.pointCount; ++pointIndex)
                     {
                         const auto& point = hit.points[pointIndex];
@@ -125,19 +118,6 @@ namespace Geometry::Detail
                         AddParameter(sources[first], point.parameterOnFirst);
                         AddParameter(sources[second], point.parameterOnSecond);
                     }
-                    continue;
-                }
-                if (!hit.HasIntersection())
-                {
-                    continue;
-                }
-                for (std::size_t pointIndex = 0; pointIndex < hit.pointCount; ++pointIndex)
-                {
-                    const auto& point = hit.points[pointIndex];
-                    events.push_back({first, point.point, point.parameterOnFirst});
-                    events.push_back({second, point.point, point.parameterOnSecond});
-                    AddParameter(sources[first], point.parameterOnFirst);
-                    AddParameter(sources[second], point.parameterOnSecond);
                 }
             }
         }
@@ -196,9 +176,9 @@ namespace Geometry::Detail
                 {
                     continue;
                 }
-                const SCSegmentIntersection2d hit =
-                    IntersectKernelSegments(*candidate.segment, *existing.segment, tolerance);
-                if (hit.kind == SCIntersectionKind2d::Overlap)
+                const auto hits = IntersectAll(*candidate.segment, *existing.segment, tolerance);
+                if (std::any_of(hits.begin(), hits.end(),
+                                [](const auto& hit) { return hit.kind == SCIntersectionKind2d::Overlap; }))
                 {
                     duplicate = true;
                     break;

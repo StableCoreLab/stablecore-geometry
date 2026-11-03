@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "Geometry.h"
-#include "Support/ConversionFixtures3d.h"
+#include "Support/ConversionFixturesBasic3d.h"
 #include "Support/Fixtures3d.h"
 
 using Geometry::SCBrepBody;
@@ -34,59 +34,23 @@ using Geometry::SCVector3d;
 
 using namespace Geometry::Test::ConversionFixtures;
 
-// Demonstrates the conversion can repair face support-plane mismatch and still
-// produce a valid SCBrepBody for a recoverable polyhedron input.
-TEST(Conversion3dCapabilityTest, SupportPlaneMismatchedCubeCanBeRepairedToBrepBody)
-{
-    const PolyhedronBody mismatchedBody = BuildSupportPlaneMismatchedCubeBody();
-    ASSERT_FALSE(mismatchedBody.IsValid());
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(mismatchedBody);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 6);
-    ASSERT_EQ(result.body.VertexCount(), 8);
-    ASSERT_EQ(result.body.EdgeCount(), 12);
-    ASSERT_EQ(result.body.ShellCount(), 1);
-    ASSERT_TRUE(result.body.ShellAt(0).IsClosed());
-}
-
-// Demonstrates conversion can repair mildly non-planar face loops by
-// projecting vertices onto a refit support plane.
-TEST(Conversion3dCapabilityTest, MildlyNonPlanarCubeFaceCanBeRepairedToBrepBody)
-{
-    const PolyhedronBody nonPlanarBody = BuildMildlyNonPlanarCubeFaceBody();
-    ASSERT_FALSE(nonPlanarBody.IsValid());
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(nonPlanarBody);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 6);
-    ASSERT_EQ(result.body.VertexCount(), 8);
-    ASSERT_EQ(result.body.EdgeCount(), 12);
-    ASSERT_EQ(result.body.ShellCount(), 1);
-    ASSERT_TRUE(result.body.ShellAt(0).IsClosed());
-}
-
-// Non-planar cube repair variants with displaced vertices and duplicate loops.
-struct DeformedCubeRepairCase
+// 立方体支撑面不匹配、非平面面环及顶点位移的修复共享同一封闭拓扑契约。
+struct CubeRepairCase
 {
     const char* name;
     PolyhedronBody (*build)();
 };
 
-void PrintTo(const DeformedCubeRepairCase& scenario, std::ostream* stream)
+void PrintTo(const CubeRepairCase& scenario, std::ostream* stream)
 {
     *stream << scenario.name;
 }
 
-class DeformedCubeRepairTest : public ::testing::TestWithParam<DeformedCubeRepairCase>
+class CubeRepairTest : public ::testing::TestWithParam<CubeRepairCase>
 {
 };
 
-TEST_P(DeformedCubeRepairTest, ConvertsToClosedSharedTopologyBrepBody)
+TEST_P(CubeRepairTest, ConvertsToClosedSharedTopologyBrepBody)
 {
     const PolyhedronBody deformedBody = GetParam().build();
     ASSERT_FALSE(deformedBody.IsValid());
@@ -103,15 +67,17 @@ TEST_P(DeformedCubeRepairTest, ConvertsToClosedSharedTopologyBrepBody)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Conversion3d, DeformedCubeRepairTest,
+    Conversion3d, CubeRepairTest,
     ::testing::Values(
-        DeformedCubeRepairCase{"DisplacedVertex", &BuildDeformedUnitCubeBody},
-        DeformedCubeRepairCase{"DisplacedVertexDuplicateLoop", &BuildDeformedUnitCubeWithDuplicateLoopBody},
-        DeformedCubeRepairCase{"DisplacedVertexDualDuplicateLoop", &BuildDeformedUnitCubeWithDualDuplicateLoopBody},
-        DeformedCubeRepairCase{"DualDisplacedVertices", &BuildDualDeformedUnitCubeBody},
-        DeformedCubeRepairCase{"DualDisplacedVerticesDuplicateLoop", &BuildDualDeformedUnitCubeWithDuplicateLoopBody},
-        DeformedCubeRepairCase{"DualDisplacedVerticesDualDuplicateLoop", &BuildDualDeformedUnitCubeWithDualDuplicateLoopBody}),
-    [](const ::testing::TestParamInfo<DeformedCubeRepairCase>& info) {
+        CubeRepairCase{"SupportPlaneMismatch", &BuildSupportPlaneMismatchedCubeBody},
+        CubeRepairCase{"MildlyNonPlanarFace", &BuildMildlyNonPlanarCubeFaceBody},
+        CubeRepairCase{"DisplacedVertex", &BuildDeformedUnitCubeBody},
+        CubeRepairCase{"DisplacedVertexDuplicateLoop", &BuildDeformedUnitCubeWithDuplicateLoopBody},
+        CubeRepairCase{"DisplacedVertexDualDuplicateLoop", &BuildDeformedUnitCubeWithDualDuplicateLoopBody},
+        CubeRepairCase{"DualDisplacedVertices", &BuildDualDeformedUnitCubeBody},
+        CubeRepairCase{"DualDisplacedVerticesDuplicateLoop", &BuildDualDeformedUnitCubeWithDuplicateLoopBody},
+        CubeRepairCase{"DualDisplacedVerticesDualDuplicateLoop", &BuildDualDeformedUnitCubeWithDualDuplicateLoopBody}),
+    [](const ::testing::TestParamInfo<CubeRepairCase>& info) {
         return std::string(info.param.name);
     });
 
@@ -209,15 +175,31 @@ TEST(Conversion3dCapabilityTest, SharedChainHoleDominatedMixedContentRepairsToPl
     }
 }
 
-// Demonstrates all-loop support-plane scoring also composes with
-// representative-average placement on a minimal three-face shared chain: the
-// middle holed face picks the lower-error plane dictated by its hole loop
-// while near-equal shared-edge vertices still converge to deterministic
-// averaged targets across both adjacent plain faces.
-TEST(Conversion3dCapabilityTest,
-     SupportMismatchNearEqualSharedChainHoleDominatedMixedContentRepairsWithRepresentativeAverageTarget)
+// 孔主导的共享链在基础、重复孔及共线首点组合下均保留代表点平均位置。
+namespace
 {
-    const PolyhedronBody body = BuildSupportMismatchNearEqualSharedChainHoleDominatedMixedContentBody();
+    struct HoleDominatedSharedChainCase
+    {
+        const char* name;
+        PolyhedronBody (*build)();
+        std::size_t vertexCount;
+        std::size_t edgeCount;
+    };
+
+    void PrintTo(const HoleDominatedSharedChainCase& scenario, std::ostream* stream)
+    {
+        *stream << scenario.name;
+    }
+
+    class HoleDominatedSharedChainTest : public ::testing::TestWithParam<HoleDominatedSharedChainCase>
+    {
+    };
+}  // namespace
+
+TEST_P(HoleDominatedSharedChainTest, PreservesRepresentativeAverageTargets)
+{
+    const auto& scenario = GetParam();
+    const PolyhedronBody body = scenario.build();
     ASSERT_FALSE(body.IsValid());
     ASSERT_EQ(body.FaceCount(), 3);
 
@@ -226,8 +208,8 @@ TEST(Conversion3dCapabilityTest,
     ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
     ASSERT_TRUE(result.body.IsValid());
     ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.VertexCount(), 12);
-    ASSERT_EQ(result.body.EdgeCount(), 14);
+    ASSERT_EQ(result.body.VertexCount(), scenario.vertexCount);
+    ASSERT_EQ(result.body.EdgeCount(), scenario.edgeCount);
     ASSERT_EQ(result.body.ShellCount(), 1);
     ASSERT_FALSE(result.body.ShellAt(0).IsClosed());
 
@@ -257,101 +239,18 @@ TEST(Conversion3dCapabilityTest,
     ASSERT_EQ(rightCount, 2);
 }
 
-// Demonstrates duplicate-hole normalization composes with the
-// hole-dominated shared-chain representative-average path: the middle holed
-// face still picks the lower-error plane while near-equal shared-edge
-// vertices converge to deterministic average targets.
-TEST(
-    Conversion3dCapabilityTest,
-    SupportMismatchNearEqualSharedChainHoleDominatedMixedContentWithDuplicateHoleRepairsWithRepresentativeAverageTarget)
-{
-    const PolyhedronBody body =
-        BuildSupportMismatchNearEqualSharedChainHoleDominatedMixedContentWithDuplicateHoleBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 3);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.VertexCount(), 12);
-    ASSERT_EQ(result.body.EdgeCount(), 14);
-    ASSERT_EQ(result.body.ShellCount(), 1);
-    ASSERT_FALSE(result.body.ShellAt(0).IsClosed());
-
-    const double expectedLeftX = 2.0 + 0.5 * 2.0e-7;
-    const double expectedRightX = 6.0 + 0.5 * 2.0e-7;
-    std::size_t leftCount = 0;
-    std::size_t rightCount = 0;
-    for (std::size_t i = 0; i < result.body.VertexCount(); ++i)
-    {
-        const SCPoint3d point = result.body.VertexAt(i).Point();
-        ASSERT_LT(std::abs(point.z), 1e-10);
-
-        if (std::abs(point.y) < 1e-12 || std::abs(point.y - 2.0) < 1e-12)
-        {
-            if (std::abs(point.x - expectedLeftX) < 1e-10)
-            {
-                ++leftCount;
-            }
-            if (std::abs(point.x - expectedRightX) < 1e-10)
-            {
-                ++rightCount;
-            }
-        }
-    }
-
-    ASSERT_EQ(leftCount, 2);
-    ASSERT_EQ(rightCount, 2);
-}
-
-// Demonstrates collinear-leading fallback also composes with the
-// hole-dominated shared-chain representative-average path after duplicate-hole
-// normalization: the middle holed face still picks the lower-error plane while
-// shared-edge targets remain deterministic.
-TEST(Conversion3dCapabilityTest,
-     SupportMismatchNearEqualSharedChainHoleDominatedFullCompositionRepairsWithRepresentativeAverageTarget)
-{
-    const PolyhedronBody body = BuildSupportMismatchNearEqualSharedChainHoleDominatedFullCompositionBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 3);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.VertexCount(), 13);
-    ASSERT_EQ(result.body.EdgeCount(), 15);
-    ASSERT_EQ(result.body.ShellCount(), 1);
-    ASSERT_FALSE(result.body.ShellAt(0).IsClosed());
-
-    const double expectedLeftX = 2.0 + 0.5 * 2.0e-7;
-    const double expectedRightX = 6.0 + 0.5 * 2.0e-7;
-    std::size_t leftCount = 0;
-    std::size_t rightCount = 0;
-    for (std::size_t i = 0; i < result.body.VertexCount(); ++i)
-    {
-        const SCPoint3d point = result.body.VertexAt(i).Point();
-        ASSERT_LT(std::abs(point.z), 1e-10);
-
-        if (std::abs(point.y) < 1e-12 || std::abs(point.y - 2.0) < 1e-12)
-        {
-            if (std::abs(point.x - expectedLeftX) < 1e-10)
-            {
-                ++leftCount;
-            }
-            if (std::abs(point.x - expectedRightX) < 1e-10)
-            {
-                ++rightCount;
-            }
-        }
-    }
-
-    ASSERT_EQ(leftCount, 2);
-    ASSERT_EQ(rightCount, 2);
-}
+INSTANTIATE_TEST_SUITE_P(
+    Conversion3d, HoleDominatedSharedChainTest,
+    ::testing::Values(
+        HoleDominatedSharedChainCase{
+            "Base", &BuildSupportMismatchNearEqualSharedChainHoleDominatedMixedContentBody, 12, 14},
+        HoleDominatedSharedChainCase{
+            "DuplicateHole", &BuildSupportMismatchNearEqualSharedChainHoleDominatedMixedContentWithDuplicateHoleBody, 12, 14},
+        HoleDominatedSharedChainCase{
+            "FullComposition", &BuildSupportMismatchNearEqualSharedChainHoleDominatedFullCompositionBody, 13, 15}),
+    [](const ::testing::TestParamInfo<HoleDominatedSharedChainCase>& info) {
+        return std::string(info.param.name);
+    });
 
 // Demonstrates refit-plane repair remains robust when leading loop vertices
 // are collinear and cannot directly define a support normal.

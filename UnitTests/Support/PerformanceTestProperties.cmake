@@ -15,3 +15,10 @@ if("NurbsNumericsTest.MultiCellWorkloadPerformanceMatrix" IN_LIST SCGeometryCapa
     set_tests_properties(NurbsNumericsTest.MultiCellWorkloadPerformanceMatrix
         PROPERTIES RUN_SERIAL TRUE)
 endif()
+
+# 索引性能记录独占 CTest 运行，不与其他测试争用 CPU；不设置速度阈值。
+foreach(index_test IN LISTS SCGeometryCapabilitiesTests_TESTS)
+    if(index_test MATCHES "^SpatialIndexPerformanceTest\\.")
+        set_tests_properties("${index_test}" PROPERTIES RUN_SERIAL TRUE LABELS "performance")
+    endif()
+endforeach()

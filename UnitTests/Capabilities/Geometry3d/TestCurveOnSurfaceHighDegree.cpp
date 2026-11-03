@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "Core/Intersection.h"
+#include "Core/Projection.h"
 #include "Geometry3d/SCCurveOnSurface.h"
 #include "Geometry3d/SCNurbsSurface.h"
 #include "../../../Source/Core/Detail/CurveOnSurfaceNumerics.h"
@@ -185,5 +186,62 @@ namespace
         EXPECT_TRUE(planeHits.hits.empty());
         EXPECT_EQ(lineHits.state, Geometry::SCGeometryOperationState::NonUnique);
         EXPECT_TRUE(lineHits.hits.empty());
+    }
+}
+
+TEST(CurveOnSurfaceInterfaceTest, NurbsRestrictionProjectionFindsNarrowCompetingMinima)
+{
+    for (const double firstRoot : {0.201, 0.301, 0.401, 0.501, 0.601, 0.701})
+    {
+        SCOPED_TRACE(firstRoot);
+        const double secondRoot = firstRoot + 1e-4;
+        const double z[] = {firstRoot * secondRoot,
+            firstRoot * secondRoot - (firstRoot + secondRoot) / 2.0,
+            (1.0 - firstRoot) * (1.0 - secondRoot)};
+        std::vector<Geometry::SCPoint3d> controls;
+        for (int v = 0; v < 2; ++v)
+            for (int u = 0; u < 3; ++u)
+                controls.push_back({u / 2.0, static_cast<double>(v), 1e6 * z[u]});
+        auto surface = std::make_shared<Geometry::SCNurbsSurface>(2, 1, 3, 2, controls,
+            std::vector<double>{0, 0, 0, 1, 1, 1}, std::vector<double>{0, 0, 1, 1});
+        for (const bool axial : {false, true})
+        {
+            for (const bool reversed : {false, true})
+            {
+                SCOPED_TRACE(axial);
+                SCOPED_TRACE(reversed);
+                const Geometry::SCPoint2d first{0.1, axial ? 0.0 : 0.1};
+                const Geometry::SCPoint2d last{0.9, axial ? 0.0 : 0.9};
+                const Geometry::SCCurveOnSurface diagonal(surface, Geometry::SCPolyline2d(
+                    reversed ? std::vector<Geometry::SCPoint2d>{last, first} :
+                               std::vector<Geometry::SCPoint2d>{first, last}));
+                ASSERT_TRUE(diagonal.IsValid());
+                const double parameter = reversed ? (0.9 - secondRoot) / 0.8 : (secondRoot - 0.1) / 0.8;
+                const auto target = diagonal.PointAt(parameter);
+                const auto projection = Geometry::ProjectPointToCurveOnSurface(target, diagonal);
+                ASSERT_TRUE(projection.success);
+                EXPECT_LT(std::sqrt(projection.distanceSquared), 1e-7);
+                EXPECT_NEAR(projection.segmentParameter, parameter, 1e-7);
+            }
+        }
+    }
+}
+
+TEST(CurveOnSurfaceInterfaceTest, LinearRationalRestrictionProjectionRestoresReverseParameter)
+{
+    auto surface = std::make_shared<Geometry::SCNurbsSurface>(1, 1, 2, 2,
+        std::vector<Geometry::SCPoint3d>{{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0}},
+        std::vector<double>{0, 0, 1, 1}, std::vector<double>{0, 0, 1, 1},
+        std::vector<double>{1, 4, 1, 4});
+    const Geometry::SCCurveOnSurface curve(surface, Geometry::SCPolyline2d({{1, 0.4}, {0, 0.4}}));
+    ASSERT_TRUE(curve.IsValid());
+    for (const double parameter : {0.0, 0.2, 0.6, 1.0})
+    {
+        const auto target = curve.PointAt(parameter);
+        const auto result = Geometry::ProjectPointToCurveOnSurfaceWithStatus(target, curve);
+        ASSERT_TRUE(result.payloadValid);
+        EXPECT_NEAR(result.payload.segmentParameter, parameter, 1e-8);
+        EXPECT_LT(std::sqrt(result.payload.distanceSquared), 1e-8);
+        EXPECT_EQ(result.evidence.optimality, Geometry::SCGeometryEvidenceState::Unknown);
     }
 }

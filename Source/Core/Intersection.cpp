@@ -535,6 +535,74 @@ namespace Geometry
             return first.center.AlmostEquals(second.center, eps) && std::abs(first.radius - second.radius) <= eps;
         }
 
+        [[nodiscard]] std::vector<SCSegmentIntersection2d> IntersectAllArcsSameCircle(
+            const SCArcSegment2d& first, const SCArcSegment2d& second, double eps)
+        {
+            // 将第二弧在第一弧方向的展开角区间平移整周期，再逐个与 [0, firstLength] 相交。
+            // 不跨第二弧参数接缝合并区间，避免端点参数线性插值穿过错误的半圆。
+            const double direction = first.sweepAngle > 0.0 ? 1.0 : -1.0;
+            const double firstLength = std::abs(first.sweepAngle);
+            const double secondSweep = direction * second.sweepAngle;
+            const double secondStart = NormalizeAngle(direction *
+                (NormalizeAngle(second.startAngle) - NormalizeAngle(first.startAngle)));
+            const double angleEps = std::min(eps / first.radius, eps / second.radius);
+            const double parameterEps = angleEps / firstLength;
+            std::vector<SCSegmentIntersection2d> candidates;
+            for (int period = -2; period <= 2; ++period)
+            {
+                const double start = secondStart + period * kTwoPi;
+                const double end = start + secondSweep;
+                const double low = std::max(0.0, std::min(start, end));
+                const double high = std::min(firstLength, std::max(start, end));
+                if (low - high > angleEps)
+                {
+                    continue;
+                }
+                const auto pointAt = [&](double angle) {
+                    const double firstParameter = Clamp(angle / firstLength, 0.0, 1.0);
+                    const double secondParameter = Clamp((angle - start) / secondSweep, 0.0, 1.0);
+                    return SCIntersectionPoint2d{
+                        first.PointAt(firstParameter, eps), firstParameter, secondParameter};
+                };
+                if (high - low <= angleEps)
+                {
+                    const auto point = pointAt(0.5 * (low + high));
+                    candidates.push_back(MakePointIntersection(point.point, point.parameterOnFirst,
+                        point.parameterOnSecond, SCIntersectionKind2d::Point));
+                }
+                else
+                {
+                    candidates.push_back(MakeOverlapIntersection(pointAt(low), pointAt(high)));
+                }
+            }
+            std::sort(candidates.begin(), candidates.end(), [](const auto& lhs, const auto& rhs) {
+                return lhs.points[0].parameterOnFirst < rhs.points[0].parameterOnFirst;
+            });
+            std::vector<SCSegmentIntersection2d> result;
+            for (const auto& candidate : candidates)
+            {
+                if (candidate.kind == SCIntersectionKind2d::Point)
+                {
+                    const double parameter = candidate.points[0].parameterOnFirst;
+                    const bool covered = std::any_of(candidates.begin(), candidates.end(), [&](const auto& other) {
+                        return other.kind == SCIntersectionKind2d::Overlap &&
+                            parameter >= other.points[0].parameterOnFirst - parameterEps &&
+                            parameter <= other.points[1].parameterOnFirst + parameterEps;
+                    });
+                    const bool duplicate = std::any_of(result.begin(), result.end(), [&](const auto& other) {
+                        return other.kind == SCIntersectionKind2d::Point &&
+                            std::abs(parameter - other.points[0].parameterOnFirst) <= parameterEps;
+                    });
+                    if (covered || duplicate)
+                    {
+                        continue;
+                    }
+                }
+                result.push_back(candidate);
+            }
+            return result;
+        }
+
         [[nodiscard]] SCSegmentIntersection2d IntersectArcArcSameCircle(const SCArcSegment2d& first,
                                                                       const SCArcSegment2d& second,
                                                                       double eps)
@@ -1143,6 +1211,41 @@ namespace Geometry
         return Detail::IntersectKernelSegments(first, second, eps);
     }
 
+    std::vector<SCSegmentIntersection2d> IntersectAll(
+        const ISCSegment2d& first, const ISCSegment2d& second, double eps)
+    {
+        if (!SegmentValidAtTolerance(first, eps) || !SegmentValidAtTolerance(second, eps))
+        {
+            return {};
+        }
+        const auto* firstArc = dynamic_cast<const SCArcSegment2d*>(&first);
+        const auto* secondArc = dynamic_cast<const SCArcSegment2d*>(&second);
+        if (firstArc && secondArc && SameCircle(*firstArc, *secondArc, eps))
+        {
+            return IntersectAllArcsSameCircle(*firstArc, *secondArc, eps);
+        }
+        const auto intersection = Intersect(first, second, eps);
+        if (!intersection.HasIntersection())
+        {
+            return {};
+        }
+        if (intersection.kind == SCIntersectionKind2d::Overlap)
+        {
+            return {intersection};
+        }
+        std::vector<SCSegmentIntersection2d> result;
+        for (std::size_t i = 0; i < intersection.pointCount; ++i)
+        {
+            const auto& point = intersection.points[i];
+            result.push_back(MakePointIntersection(point.point, point.parameterOnFirst,
+                point.parameterOnSecond, intersection.kind));
+        }
+        std::sort(result.begin(), result.end(), [](const auto& lhs, const auto& rhs) {
+            return lhs.points[0].parameterOnFirst < rhs.points[0].parameterOnFirst;
+        });
+        return result;
+    }
+
     bool HasIntersection(const ISCSegment2d& first, const ISCSegment2d& second, double eps)
     {
         return Intersect(first, second, eps).HasIntersection();
@@ -1554,25 +1657,22 @@ namespace Geometry
                         continue;
                     }
 
-                    const SCSegmentIntersection2d intersection = Intersect(*firstSegment, *secondSegment, eps);
-                    if (!intersection.HasIntersection())
+                    for (const auto& intersection : IntersectAll(*firstSegment, *secondSegment, eps))
                     {
-                        continue;
-                    }
-
-                    for (std::size_t index = 0; index < intersection.pointCount; ++index)
-                    {
-                        const SCIntersectionPoint2d& point = intersection.points[index];
-                        const SCPolylineIntersectionPoint2d polyPoint{intersection.kind,
-                                                                       point.point,
-                                                                       i,
-                                                                       j,
-                                                                       point.parameterOnFirst,
-                                                                       point.parameterOnSecond,
-                                                                       PolylineSegmentGlobalParameter(first, i, point.parameterOnFirst, firstSegmentLengths, firstTotalLength),
-                                                                       PolylineSegmentGlobalParameter(second, j, point.parameterOnSecond, secondSegmentLengths, secondTotalLength)};
-                        AppendPolylineIntersection(result, polyPoint, eps, firstTotalLength, secondTotalLength,
-                                                   first.IsClosed(), second.IsClosed());
+                        for (std::size_t index = 0; index < intersection.pointCount; ++index)
+                        {
+                            const SCIntersectionPoint2d& point = intersection.points[index];
+                            const SCPolylineIntersectionPoint2d polyPoint{intersection.kind,
+                                                                           point.point,
+                                                                           i,
+                                                                           j,
+                                                                           point.parameterOnFirst,
+                                                                           point.parameterOnSecond,
+                                                                           PolylineSegmentGlobalParameter(first, i, point.parameterOnFirst, firstSegmentLengths, firstTotalLength),
+                                                                           PolylineSegmentGlobalParameter(second, j, point.parameterOnSecond, secondSegmentLengths, secondTotalLength)};
+                            AppendPolylineIntersection(result, polyPoint, eps, firstTotalLength, secondTotalLength,
+                                                       first.IsClosed(), second.IsClosed());
+                        }
                     }
                 }
             }
@@ -1643,25 +1743,22 @@ namespace Geometry
                 continue;
             }
 
-            const SCSegmentIntersection2d intersection = Intersect(*polySegment, segment, eps);
-            if (!intersection.HasIntersection())
+            for (const auto& intersection : IntersectAll(*polySegment, segment, eps))
             {
-                continue;
-            }
-
-            for (std::size_t index = 0; index < intersection.pointCount; ++index)
-            {
-                const SCIntersectionPoint2d& point = intersection.points[index];
-                const SCPolylineIntersectionPoint2d polyPoint{intersection.kind,
-                                                               point.point,
-                                                               i,
-                                                               0,
-                                                               point.parameterOnFirst,
-                                                               point.parameterOnSecond,
-                                                               PolylineSegmentGlobalParameter(polyline, i, point.parameterOnFirst, segmentLengths, totalLength),
-                                                               point.parameterOnSecond};
-                AppendPolylineIntersection(result, polyPoint, eps, totalLength, otherLength,
-                                           polyline.IsClosed(), false);
+                for (std::size_t index = 0; index < intersection.pointCount; ++index)
+                {
+                    const SCIntersectionPoint2d& point = intersection.points[index];
+                    const SCPolylineIntersectionPoint2d polyPoint{intersection.kind,
+                                                                   point.point,
+                                                                   i,
+                                                                   0,
+                                                                   point.parameterOnFirst,
+                                                                   point.parameterOnSecond,
+                                                                   PolylineSegmentGlobalParameter(polyline, i, point.parameterOnFirst, segmentLengths, totalLength),
+                                                                   point.parameterOnSecond};
+                    AppendPolylineIntersection(result, polyPoint, eps, totalLength, otherLength,
+                                               polyline.IsClosed(), false);
+                }
             }
         }
 

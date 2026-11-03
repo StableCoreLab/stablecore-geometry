@@ -17,10 +17,8 @@ using Geometry::Union;
 using Geometry::Validate;
 using Geometry::Test::TotalArea;
 
-TEST(RelationBooleanTest, HandlesDegenerateOverlapFamilies)
+TEST(RelationBooleanTest, HandlesSteppedOverlapFamily)
 {
-    const SCPolygon2d square(SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}, SCPoint2d{4.0, 4.0}, SCPoint2d{0.0, 4.0}},
-                                          SCPolylineClosure::Closed));
     const SCPolygon2d overlapFamilyA(SCPolyline2d({SCPoint2d{0.0, 0.0},
                                                SCPoint2d{8.0, 0.0},
                                                SCPoint2d{8.0, 2.0},
@@ -38,7 +36,10 @@ TEST(RelationBooleanTest, HandlesDegenerateOverlapFamilies)
     EXPECT_NEAR(TotalArea(Intersect(overlapFamilyA, overlapFamilyB)), 14.0, 1e-9);
     EXPECT_NEAR(TotalArea(Union(overlapFamilyA, overlapFamilyB)), 39.0, 1e-9);
     EXPECT_NEAR(TotalArea(Difference(overlapFamilyA, overlapFamilyB)), 12.0, 1e-9);
+}
 
+TEST(RelationBooleanTest, HandlesNearDegenerateOverlapFamily)
+{
     const SCPolygon2d nearDegenerateOverlapA(SCPolyline2d({SCPoint2d{0.0, 0.0},
                                                        SCPoint2d{8.0, 0.0},
                                                        SCPoint2d{8.0, 2.0},
@@ -56,7 +57,10 @@ TEST(RelationBooleanTest, HandlesDegenerateOverlapFamilies)
     EXPECT_NEAR(TotalArea(Intersect(nearDegenerateOverlapA, nearDegenerateOverlapB)), 10.000002, 1e-9);
     EXPECT_NEAR(TotalArea(Union(nearDegenerateOverlapA, nearDegenerateOverlapB)), 26.000007, 1e-9);
     EXPECT_NEAR(TotalArea(Difference(nearDegenerateOverlapA, nearDegenerateOverlapB)), 6.000003, 1e-9);
+}
 
+TEST(RelationBooleanTest, HandlesUltraThinOverlapFamily)
+{
     const SCPolygon2d ultraThinOverlapA(SCPolyline2d({SCPoint2d{0.0, 0.0},
                                                   SCPoint2d{8.0, 0.0},
                                                   SCPoint2d{8.0, 2.0},
@@ -74,26 +78,44 @@ TEST(RelationBooleanTest, HandlesDegenerateOverlapFamilies)
     EXPECT_NEAR(TotalArea(Intersect(ultraThinOverlapA, ultraThinOverlapB)), 10.00000002, 1e-9);
     EXPECT_NEAR(TotalArea(Union(ultraThinOverlapA, ultraThinOverlapB)), 26.00000007, 1e-9);
     EXPECT_NEAR(TotalArea(Difference(ultraThinOverlapA, ultraThinOverlapB)), 6.00000003, 1e-9);
+}
 
+TEST(RelationBooleanTest, HandlesEqualPolygonIntersectionAndDifference)
+{
+    const SCPolygon2d square(SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}, SCPoint2d{4.0, 4.0}, SCPoint2d{0.0, 4.0}},
+                                          SCPolylineClosure::Closed));
     const auto equalIntersection = Intersect(square, square);
     ASSERT_GE(equalIntersection.Size(), 1);
     EXPECT_NEAR(TotalArea(equalIntersection), 16.0, 1e-9);
 
     const auto equalDifference = Difference(square, square);
     ASSERT_EQ(equalDifference.Size(), 0);
+}
 
+TEST(RelationBooleanTest, UnitesDisjointPolygons)
+{
+    const SCPolygon2d square(SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}, SCPoint2d{4.0, 4.0}, SCPoint2d{0.0, 4.0}},
+                                          SCPolylineClosure::Closed));
     const SCPolygon2d disjointOther(SCPolyline2d(
         {SCPoint2d{10.0, 0.0}, SCPoint2d{12.0, 0.0}, SCPoint2d{12.0, 2.0}, SCPoint2d{10.0, 2.0}}, SCPolylineClosure::Closed));
     const auto disjointUnion = Union(square, disjointOther);
     ASSERT_GE(disjointUnion.Size(), 1);
     EXPECT_NEAR(TotalArea(disjointUnion), 20.0, 1e-9);
+}
 
+TEST(RelationBooleanTest, PreservesDifferenceAtTouchingEdge)
+{
+    const SCPolygon2d square(SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}, SCPoint2d{4.0, 4.0}, SCPoint2d{0.0, 4.0}},
+                                          SCPolylineClosure::Closed));
     const SCPolygon2d edgeTouch(SCPolyline2d({SCPoint2d{4.0, 1.0}, SCPoint2d{6.0, 1.0}, SCPoint2d{6.0, 3.0}, SCPoint2d{4.0, 3.0}},
                                          SCPolylineClosure::Closed));
     const auto touchingDifference = Difference(square, edgeTouch);
     ASSERT_GE(touchingDifference.Size(), 1);
     EXPECT_NEAR(TotalArea(touchingDifference), 16.0, 1e-9);
+}
 
+TEST(RelationBooleanTest, HandlesNearDuplicateEdgeFamily)
+{
     const SCPolygon2d duplicateEdgeFamilyA(SCPolyline2d({SCPoint2d{0.0, 0.0},
                                                      SCPoint2d{6.0, 0.0},
                                                      SCPoint2d{6.0, 1.0},
@@ -108,7 +130,10 @@ TEST(RelationBooleanTest, HandlesDegenerateOverlapFamilies)
     EXPECT_NEAR(TotalArea(Intersect(duplicateEdgeFamilyA, duplicateEdgeFamilyB)), 12.0, 1e-8);
     EXPECT_NEAR(TotalArea(Union(duplicateEdgeFamilyA, duplicateEdgeFamilyB)), 36.0, 1e-8);
     EXPECT_NEAR(TotalArea(Difference(duplicateEdgeFamilyA, duplicateEdgeFamilyB)), 12.0, 1e-8);
+}
 
+TEST(RelationBooleanTest, HandlesRepeatedCollinearChain)
+{
     const SCPolygon2d repeatedCollinearChainA(SCPolyline2d({SCPoint2d{0.0, 0.0},
                                                         SCPoint2d{2.0, 0.0},
                                                         SCPoint2d{4.0, 0.0},

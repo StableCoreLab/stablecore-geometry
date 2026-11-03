@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "Core/Intersection.h"
+#include "Core/Projection.h"
 #include "Geometry3d/SCNurbsCurve3d.h"
 #include "Geometry3d/SCCurveOnSurface.h"
 #include "Geometry3d/SCNurbsSurface.h"
@@ -140,6 +141,12 @@ namespace Geometry::Detail
         double end{0.0};
         double segmentStart{0.0};
         double segmentEnd{1.0};
+
+        // 保留有向区间；调用方仍负责各自的参数域检查及原曲面核验。
+        [[nodiscard]] double ToSegmentParameter(double parameter) const
+        {
+            return std::lerp(segmentStart, segmentEnd, (parameter - start) / (end - start));
+        }
     };
 
     [[nodiscard]] inline std::vector<double> NurbsSurfaceUvSegmentBreaks(
@@ -600,15 +607,20 @@ namespace Geometry::Detail
         }
     }
 
+    // 投影须严格限制到 UV 段；求交可在整域求根后过滤段外参数。
     [[nodiscard]] inline std::vector<RestrictedNurbsSurfaceCurve> RestrictNurbsSurfaceSegmentPieces(
-        const SCCurveOnSurface& curve, std::size_t segmentIndex, const SCGeometryTolerance3d& tolerance)
+        const SCCurveOnSurface& curve, std::size_t segmentIndex, const SCGeometryTolerance3d& tolerance,
+        bool requireSegmentDomain = false)
     {
         if (auto axis = RestrictAxisAlignedNurbsSurfaceSegment(curve, segmentIndex, tolerance))
         {
             const auto& knots = axis->curve.Knots();
             const auto range = axis->curve.ParameterRange();
             const int degree = axis->curve.Degree();
-            if (std::count(knots.begin(), knots.end(), range.min) >= degree + 1 &&
+            if ((!requireSegmentDomain ||
+                 (std::min(axis->start, axis->end) == range.min &&
+                  std::max(axis->start, axis->end) == range.max)) &&
+                std::count(knots.begin(), knots.end(), range.min) >= degree + 1 &&
                 std::count(knots.begin(), knots.end(), range.max) >= degree + 1)
             {
                 std::vector<RestrictedNurbsSurfaceCurve> result;
@@ -775,7 +787,8 @@ namespace Geometry::Detail
     };
 
     [[nodiscard]] inline CurveOnSurfaceProjectionCandidate ProjectPointToCurveOnSurfaceSegment(
-        const SCPoint3d& point, const SCCurveOnSurface& curve, std::size_t segmentIndex)
+        const SCPoint3d& point, const SCCurveOnSurface& curve, std::size_t segmentIndex,
+        const SCGeometryTolerance3d& tolerance)
     {
         CurveOnSurfaceProjectionCandidate best{};
         if (!point.IsValid())
@@ -827,6 +840,50 @@ namespace Geometry::Detail
                     best.analyticComplete = true;
                     return best;
                 }
+            }
+        }
+
+        for (const auto& restricted : RestrictNurbsSurfaceSegmentPieces(curve, segmentIndex, tolerance, true))
+        {
+            const auto considerRestricted = [&](double parameter) {
+                if (restricted.end == restricted.start) return;
+                const double local = (parameter - restricted.start) / (restricted.end - restricted.start);
+                if (std::isfinite(local) && local >= 0.0 && local <= 1.0)
+                    consider(restricted.ToSegmentParameter(parameter));
+            };
+            if (restricted.curve.Degree() == 1)
+            {
+                const auto& points = restricted.curve.ControlPoints();
+                const auto& weights = restricted.curve.Weights();
+                const auto& knots = restricted.curve.Knots();
+                double closestDistance = std::numeric_limits<double>::infinity();
+                double closestParameter = std::numeric_limits<double>::quiet_NaN();
+                for (std::size_t span = 1; span < points.size(); ++span)
+                {
+                    if (!(knots[span] < knots[span + 1])) continue;
+                    const auto projected = ProjectPointToLineSegment(point, points[span - 1], points[span], true, tolerance);
+                    if (!projected.IsValid()) continue;
+                    const double firstWeight = weights.empty() ? 1.0 : weights[span - 1];
+                    const double secondWeight = weights.empty() ? 1.0 : weights[span];
+                    const double scale = std::max(firstWeight, secondWeight);
+                    const double numerator = projected.parameter * (firstWeight / scale);
+                    const double denominator = (1.0 - projected.parameter) * (secondWeight / scale) + numerator;
+                    if (!(denominator > 0.0)) continue;
+                    const double parameter = std::lerp(knots[span], knots[span + 1], numerator / denominator);
+                    const double distance = std::hypot(point.x - projected.point.x,
+                        point.y - projected.point.y, point.z - projected.point.z);
+                    if (std::isfinite(parameter) && distance < closestDistance)
+                    {
+                        closestDistance = distance;
+                        closestParameter = parameter;
+                    }
+                }
+                considerRestricted(closestParameter);
+            }
+            else
+            {
+                const auto projection = ProjectPointToCurve(point, restricted.curve, tolerance);
+                if (projection.success && projection.IsValid()) considerRestricted(projection.parameter);
             }
         }
 
@@ -991,9 +1048,7 @@ namespace Geometry::Detail
             }
             for (const auto& hit : analytic.hits)
             {
-                const double parameter = std::lerp(
-                    restricted.segmentStart, restricted.segmentEnd,
-                    (hit.curveParameter - restricted.start) / (restricted.end - restricted.start));
+                const double parameter = restricted.ToSegmentParameter(hit.curveParameter);
                 if (!std::isfinite(parameter) || parameter < 0.0 || parameter > 1.0)
                 {
                     continue;
@@ -1075,9 +1130,7 @@ namespace Geometry::Detail
             }
             for (const auto& hit : analytic.hits)
             {
-                const double parameter = std::lerp(
-                    restricted.segmentStart, restricted.segmentEnd,
-                    (hit.curveParameter - restricted.start) / (restricted.end - restricted.start));
+                const double parameter = restricted.ToSegmentParameter(hit.curveParameter);
                 if (!std::isfinite(parameter) || parameter < 0.0 || parameter > 1.0)
                 {
                     continue;

@@ -7,6 +7,14 @@
 
 namespace
 {
+    Geometry::SCSegmentSearch2d UnderflowSegmentSearch()
+    {
+        Geometry::SCSegmentSearch2d search;
+        search.Add(Geometry::SCLineSegment2d({2e-200, -1}, {2e-200, 1}));
+        search.Add(Geometry::SCLineSegment2d({1e-200, -1}, {1e-200, 1}));
+        return search;
+    }
+
     template <typename Hit>
     void CheckSegmentSearchHitPayload()
     {
@@ -45,4 +53,39 @@ TEST(IndexHitContractTest, SegmentSearch2dRejectsNonFinitePayloads)
 TEST(IndexHitContractTest, SegmentSearch3dRejectsNonFinitePayloads)
 {
     CheckSegmentSearchHitPayload<Geometry::SCSegmentSearchHit3d>();
+}
+
+TEST(IndexHitContractTest, SegmentSearchRadiusUsesDistanceWhenSquaresUnderflow)
+{
+    const auto search = UnderflowSegmentSearch();
+    EXPECT_TRUE(search.QueryWithinDistance({0, 0}, 0.0).empty());
+    const auto hits = search.QueryWithinDistance({0, 0}, 1.5e-200);
+    ASSERT_EQ(hits.size(), 1U);
+    EXPECT_EQ(hits[0].id, 1U);
+    EXPECT_TRUE(hits[0].IsValid());
+}
+
+TEST(IndexHitContractTest, SegmentSearchNearestUsesDistanceWhenSquaresUnderflow)
+{
+    const auto search = UnderflowSegmentSearch();
+    const auto hit = search.Nearest({0, 0});
+    ASSERT_TRUE(hit.has_value());
+    EXPECT_EQ(hit->id, 1U);
+    EXPECT_TRUE(hit->IsValid());
+}
+
+TEST(IndexHitContractTest, SegmentSearchKnnUsesDistanceWhenSquaresUnderflow)
+{
+    const auto search = UnderflowSegmentSearch();
+    const auto hits = search.QueryKNearest({0, 0}, 2);
+    ASSERT_EQ(hits.size(), 2U);
+    EXPECT_EQ(hits[0].id, 1U);
+    EXPECT_EQ(hits[1].id, 0U);
+    const auto nearest = search.QueryKNearest({0, 0}, 1);
+    ASSERT_EQ(nearest.size(), 1U);
+    EXPECT_EQ(nearest[0].id, 1U);
+    const auto bounded = search.QueryKNearest({0, 0}, 2, 1.5e-200);
+    ASSERT_EQ(bounded.size(), 1U);
+    EXPECT_EQ(bounded[0].id, 1U);
+    EXPECT_TRUE(search.QueryKNearest({0, 0}, 0).empty());
 }

@@ -408,7 +408,7 @@ namespace Geometry
     std::vector<std::size_t> SCKDTree2d::Query(const SCPoint2d& point, double eps) const
     {
         std::vector<std::size_t> result;
-        if (!point.IsValid())
+        if (!point.IsValid() || !std::isfinite(eps) || eps < 0.0)
         {
             return result;
         }

@@ -68,7 +68,7 @@ namespace Geometry
                     continue;
                 }
 
-                if (Detail::IntersectKernelSegments(*segments[i], *segments[j], eps).HasIntersection())
+                if (!IntersectAll(*segments[i], *segments[j], eps).empty())
                 {
                     return true;
                 }

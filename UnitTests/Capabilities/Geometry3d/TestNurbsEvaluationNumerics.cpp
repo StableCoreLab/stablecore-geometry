@@ -346,3 +346,45 @@ namespace
     }
 
 }  // namespace
+
+TEST(NurbsNumericsTest, PeriodicDeclarationIsIndependentOfGeometricClosure)
+{
+    for (const bool declaredPeriodic : {false, true})
+    {
+        const SCNurbsCurve3d open(1, {{0, 0, 0}, {1, 0, 0}}, {0, 0, 1, 1}, declaredPeriodic);
+        const SCNurbsCurve3d closed(1, {{0, 0, 0}, {1, 0, 0}, {0, 0, 0}},
+            {0, 0, 0.5, 1, 1}, declaredPeriodic);
+        ASSERT_TRUE(open.IsValid());
+        ASSERT_TRUE(closed.IsValid());
+        EXPECT_FALSE(open.IsClosed());
+        EXPECT_TRUE(closed.IsClosed());
+        EXPECT_EQ(open.IsPeriodic(), declaredPeriodic);
+        EXPECT_EQ(closed.IsPeriodic(), declaredPeriodic);
+        const auto clone = closed.Clone();
+        ASSERT_NE(clone, nullptr);
+        EXPECT_EQ(clone->IsPeriodic(), declaredPeriodic);
+        EXPECT_TRUE(clone->IsClosed());
+    }
+}
+
+TEST(NurbsNumericsTest, NonClampedClosureUsesEvaluatedEndpoints)
+{
+    const SCNurbsCurve3d curve(2, {{-1, 0, 0}, {1, 0, 0}, {0, 1, 0}, {0, -1, 0}},
+        {0, 1, 2, 3, 4, 5, 6});
+    ASSERT_TRUE(curve.IsValid());
+    EXPECT_FALSE(curve.ControlPoints().front().AlmostEquals(curve.ControlPoints().back()));
+    EXPECT_TRUE(curve.PointAt(2.0).AlmostEquals({0, 0, 0}, 1e-12));
+    EXPECT_TRUE(curve.PointAt(4.0).AlmostEquals({0, 0, 0}, 1e-12));
+    EXPECT_TRUE(curve.IsClosed());
+    EXPECT_FALSE(curve.IsPeriodic());
+}
+
+TEST(NurbsNumericsTest, PeriodicDeclarationKeepsFiniteOutOfDomainEvaluationClamped)
+{
+    for (const bool declaredPeriodic : {false, true})
+    {
+        const SCNurbsCurve3d curve(1, {{0, 0, 0}, {1, 0, 0}}, {0, 0, 1, 1}, declaredPeriodic);
+        EXPECT_TRUE(curve.PointAt(-0.25).AlmostEquals({0, 0, 0}, 1e-12));
+        EXPECT_TRUE(curve.PointAt(1.25).AlmostEquals({1, 0, 0}, 1e-12));
+    }
+}

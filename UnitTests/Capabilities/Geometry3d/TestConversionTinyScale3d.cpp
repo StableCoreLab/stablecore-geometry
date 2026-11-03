@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "Geometry.h"
-#include "Support/ConversionFixtures3d.h"
+#include "Support/ConversionFixturesTinyScale3d.h"
 
 using Geometry::BrepConversionIssue3d;
 using Geometry::ConvertToBrepBody;

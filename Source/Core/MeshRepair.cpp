@@ -12,27 +12,20 @@
 #include "../Detail/PolylineRing2d.h"
 #include "Support/Geometry2d/Predicate2.h"
 
+#include "../Detail/TriangleEdges3d.h"
+
 namespace Geometry
 {
     namespace
     {
         constexpr std::size_t kNoTriangle = std::size_t(-1);
 
-        [[nodiscard]] std::array<std::array<std::size_t, 2>, 3> TriangleEdges(const TriangleMesh::TriangleIndices& tri)
-        {
-            return {{
-                {tri[0], tri[1]},
-                {tri[1], tri[2]},
-                {tri[2], tri[0]},
-            }};
-        }
-
         [[nodiscard]] bool HasSameSharedEdgeDirection(const TriangleMesh& mesh,
                                                       std::size_t firstTriangle,
                                                       std::size_t secondTriangle)
         {
-            const auto firstEdges = TriangleEdges(mesh.TriangleIndicesAt(firstTriangle));
-            const auto secondEdges = TriangleEdges(mesh.TriangleIndicesAt(secondTriangle));
+            const auto firstEdges = Detail::TriangleEdges3d(mesh.TriangleIndicesAt(firstTriangle));
+            const auto secondEdges = Detail::TriangleEdges3d(mesh.TriangleIndicesAt(secondTriangle));
             for (const auto& first : firstEdges)
             {
                 for (const auto& second : secondEdges)

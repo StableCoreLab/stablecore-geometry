@@ -403,8 +403,9 @@ namespace
             {2.0, 0.0, 0.0}, {1.0, 0.0, 0.0});
         const auto noPlaneHits = Geometry::IntersectAllPlaneCurveWithStatus(missPlane, curve);
         EXPECT_TRUE(noPlaneHits.hits.empty());
-        EXPECT_EQ(noPlaneHits.state, Geometry::SCGeometryOperationState::Unknown);
-        EXPECT_EQ(noPlaneHits.evidence.hit, Geometry::SCGeometryEvidenceState::Unknown);
-        EXPECT_EQ(noPlaneHits.evidence.negativeCompleteness, Geometry::SCGeometryEvidenceState::Unknown);
+        // 原控制凸包位于 x=2 平面的同一侧，可独立于限制构造证明分离。
+        EXPECT_EQ(noPlaneHits.state, Geometry::SCGeometryOperationState::NoResult);
+        EXPECT_EQ(noPlaneHits.evidence.hit, Geometry::SCGeometryEvidenceState::NotApplicable);
+        EXPECT_EQ(noPlaneHits.evidence.negativeCompleteness, Geometry::SCGeometryEvidenceState::Verified);
     }
 }

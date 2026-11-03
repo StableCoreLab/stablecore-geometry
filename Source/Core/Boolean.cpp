@@ -160,10 +160,13 @@ namespace Geometry
             {
                 return std::nullopt;
             }
-            constexpr double kMaxRepairFractionOfNarrowExtent = 0.05;
+            constexpr double kRepairFractionOfNarrowExtent = 0.05;
             const double smallerExtent = std::min(bounds.Width(), bounds.Height());
-            return std::max(eps, std::min(Geometry::Detail::kRebuildFallbackEpsilon2d,
-                                          kMaxRepairFractionOfNarrowExtent * smallerExtent));
+            if (!std::isfinite(smallerExtent))
+            {
+                return std::nullopt;
+            }
+            return std::max(eps, kRepairFractionOfNarrowExtent * smallerExtent);
         }
 
         [[nodiscard]] bool TryBuildRepairedAxisAlignedBox(const SCPolygon2d& source,

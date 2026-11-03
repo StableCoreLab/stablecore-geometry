@@ -294,14 +294,9 @@ namespace Geometry::Detail
                                           : CurveArrangementFailure2d::NumericalIndeterminate;
                     return result;
                 }
-                const SCSegmentIntersection2d& hit = checked.intersection;
-                if (hit.kind == SCIntersectionKind2d::Overlap)
+                for (const auto& hit : checked.intersections)
                 {
-                    result.hasOverlap = true;
-                    if (hit.pointCount != 2)
-                    {
-                        continue;
-                    }
+                    result.hasOverlap = result.hasOverlap || hit.kind == SCIntersectionKind2d::Overlap;
                     for (std::size_t pointIndex = 0; pointIndex < hit.pointCount; ++pointIndex)
                     {
                         const auto& point = hit.points[pointIndex];
@@ -313,23 +308,6 @@ namespace Geometry::Detail
                             result.failure = CurveArrangementFailure2d::EventInsertionFailure;
                             return result;
                         }
-                    }
-                    continue;
-                }
-                if (!hit.HasIntersection())
-                {
-                    continue;
-                }
-                for (std::size_t pointIndex = 0; pointIndex < hit.pointCount; ++pointIndex)
-                {
-                    const auto& point = hit.points[pointIndex];
-                    if (!AddEvent(events, sources, first,
-                                  SCIntersectionPoint2d{point.point, point.parameterOnFirst, point.parameterOnSecond}) ||
-                        !AddEvent(events, sources, second,
-                                  SCIntersectionPoint2d{point.point, point.parameterOnSecond, point.parameterOnFirst}))
-                    {
-                        result.failure = CurveArrangementFailure2d::EventInsertionFailure;
-                        return result;
                     }
                 }
             }
@@ -406,7 +384,8 @@ namespace Geometry::Detail
                                           : CurveArrangementFailure2d::NumericalIndeterminate;
                     return result;
                 }
-                if (checked.intersection.kind == SCIntersectionKind2d::Overlap)
+                if (std::any_of(checked.intersections.begin(), checked.intersections.end(),
+                                [](const auto& hit) { return hit.kind == SCIntersectionKind2d::Overlap; }))
                 {
                     duplicate = true;
                     break;

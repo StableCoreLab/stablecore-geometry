@@ -124,40 +124,42 @@ namespace Geometry
             {
                 for (std::size_t j = i + 1; j < count; ++j)
                 {
-                    const SCSegmentIntersection2d hit = Detail::IntersectKernelSegments(*segments[i], *segments[j], tolerance);
-                    const bool adjacent = j == i + 1 || (i == 0 && j + 1 == count);
-                    if (!adjacent)
+                    for (const auto& hit : IntersectAll(*segments[i], *segments[j], tolerance))
                     {
-                        if (hit.HasIntersection())
+                        const bool adjacent = j == i + 1 || (i == 0 && j + 1 == count);
+                        if (!adjacent)
                         {
-                            return {false, SCPolygonTopologyFailure::SelfIntersection, static_cast<std::uint32_t>(i), 0.0};
-                        }
-                    }
-                    else
-                    {
-                        const SCPoint2d shared = j == i + 1 ? segments[i]->EndPoint() : segments[i]->StartPoint();
-                        bool adjacentIntersectionAllowed = IsAllowedAdjacentIntersection(hit, shared, tolerance);
-                        if (!adjacentIntersectionAllowed && count == 2)
-                        {
-                            adjacentIntersectionAllowed = true;
-                            for (std::size_t pointIndex = 0; pointIndex < hit.pointCount; ++pointIndex)
+                            if (hit.HasIntersection())
                             {
-                                const SCPoint2d point = hit.points[pointIndex].point;
-                                const bool endpointOfFirst = point.AlmostEquals(segments[i]->StartPoint(), tolerance) ||
-                                                             point.AlmostEquals(segments[i]->EndPoint(), tolerance);
-                                const bool endpointOfSecond = point.AlmostEquals(segments[j]->StartPoint(), tolerance) ||
-                                                              point.AlmostEquals(segments[j]->EndPoint(), tolerance);
-                                adjacentIntersectionAllowed = adjacentIntersectionAllowed && endpointOfFirst && endpointOfSecond;
+                                return {false, SCPolygonTopologyFailure::SelfIntersection, static_cast<std::uint32_t>(i), 0.0};
                             }
                         }
-                        if (!adjacentIntersectionAllowed)
+                        else
                         {
-                            return {false,
-                                    hit.kind == SCIntersectionKind2d::Overlap
-                                        ? SCPolygonTopologyFailure::BoundaryOverlap
-                                        : SCPolygonTopologyFailure::SelfIntersection,
-                                    static_cast<std::uint32_t>(i),
-                                    0.0};
+                            const SCPoint2d shared = j == i + 1 ? segments[i]->EndPoint() : segments[i]->StartPoint();
+                            bool adjacentIntersectionAllowed = IsAllowedAdjacentIntersection(hit, shared, tolerance);
+                            if (!adjacentIntersectionAllowed && count == 2)
+                            {
+                                adjacentIntersectionAllowed = true;
+                                for (std::size_t pointIndex = 0; pointIndex < hit.pointCount; ++pointIndex)
+                                {
+                                    const SCPoint2d point = hit.points[pointIndex].point;
+                                    const bool endpointOfFirst = point.AlmostEquals(segments[i]->StartPoint(), tolerance) ||
+                                                                 point.AlmostEquals(segments[i]->EndPoint(), tolerance);
+                                    const bool endpointOfSecond = point.AlmostEquals(segments[j]->StartPoint(), tolerance) ||
+                                                                  point.AlmostEquals(segments[j]->EndPoint(), tolerance);
+                                    adjacentIntersectionAllowed = adjacentIntersectionAllowed && endpointOfFirst && endpointOfSecond;
+                                }
+                            }
+                            if (!adjacentIntersectionAllowed)
+                            {
+                                return {false,
+                                        hit.kind == SCIntersectionKind2d::Overlap
+                                            ? SCPolygonTopologyFailure::BoundaryOverlap
+                                            : SCPolygonTopologyFailure::SelfIntersection,
+                                        static_cast<std::uint32_t>(i),
+                                        0.0};
+                            }
                         }
                     }
                 }
@@ -183,13 +185,14 @@ namespace Geometry
                 for (std::size_t j = 0; j < second.SegmentCount(); ++j)
                 {
                     const std::unique_ptr<ISCSegment2d> rhs = second.SegmentAt(j);
-                    const SCSegmentIntersection2d hit = Detail::IntersectKernelSegments(*lhs, *rhs, tolerance);
-                    if (hit.kind == SCIntersectionKind2d::Overlap)
+                    const auto hits = IntersectAll(*lhs, *rhs, tolerance);
+                    if (std::any_of(hits.begin(), hits.end(),
+                                    [](const auto& hit) { return hit.kind == SCIntersectionKind2d::Overlap; }))
                     {
                         hasOverlap = true;
                         return true;
                     }
-                    if (hit.HasIntersection())
+                    if (!hits.empty())
                     {
                         return true;
                     }
@@ -226,48 +229,50 @@ namespace Geometry
                         for (std::size_t j = 0; j < secondRing.SegmentCount(); ++j)
                         {
                             const std::unique_ptr<ISCSegment2d> secondSegment = secondRing.SegmentAt(j);
-                            const SCSegmentIntersection2d hit = Detail::IntersectKernelSegments(*firstSegment, *secondSegment, tolerance);
-                            if (hit.kind == SCIntersectionKind2d::Overlap)
+                            for (const auto& hit : IntersectAll(*firstSegment, *secondSegment, tolerance))
                             {
-                                hasOverlap = true;
-                                continue;
-                            }
-                            if (!hit.HasIntersection())
-                            {
-                                continue;
-                            }
-                            hasTouch = true;
-                            for (std::size_t k = 0; k < hit.pointCount; ++k)
-                            {
-                                const double firstParameter = hit.points[k].parameterOnFirst;
-                                const double secondParameter = hit.points[k].parameterOnSecond;
-                                const double firstDelta = std::min(0.25, std::max(1e-7, tolerance));
-                                const double secondDelta = firstDelta;
-                                const double firstBefore = std::clamp(firstParameter - firstDelta, 0.0, 1.0);
-                                const double firstAfter = std::clamp(firstParameter + firstDelta, 0.0, 1.0);
-                                const double secondBefore = std::clamp(secondParameter - secondDelta, 0.0, 1.0);
-                                const double secondAfter = std::clamp(secondParameter + secondDelta, 0.0, 1.0);
-                                const SCPointContainment2d firstBeforeLocation =
-                                    LocatePoint(firstSegment->PointAt(firstBefore), second, tolerance);
-                                const SCPointContainment2d firstAfterLocation =
-                                    LocatePoint(firstSegment->PointAt(firstAfter), second, tolerance);
-                                const SCPointContainment2d secondBeforeLocation =
-                                    LocatePoint(secondSegment->PointAt(secondBefore), first, tolerance);
-                                const SCPointContainment2d secondAfterLocation =
-                                    LocatePoint(secondSegment->PointAt(secondAfter), first, tolerance);
-                                const bool firstChangesSide =
-                                    (firstBeforeLocation == SCPointContainment2d::Inside &&
-                                     firstAfterLocation == SCPointContainment2d::Outside) ||
-                                    (firstBeforeLocation == SCPointContainment2d::Outside &&
-                                     firstAfterLocation == SCPointContainment2d::Inside);
-                                const bool secondChangesSide =
-                                    (secondBeforeLocation == SCPointContainment2d::Inside &&
-                                     secondAfterLocation == SCPointContainment2d::Outside) ||
-                                    (secondBeforeLocation == SCPointContainment2d::Outside &&
-                                     secondAfterLocation == SCPointContainment2d::Inside);
-                                if (firstChangesSide || secondChangesSide)
+                                if (hit.kind == SCIntersectionKind2d::Overlap)
                                 {
-                                    return true;
+                                    hasOverlap = true;
+                                    continue;
+                                }
+                                if (!hit.HasIntersection())
+                                {
+                                    continue;
+                                }
+                                hasTouch = true;
+                                for (std::size_t k = 0; k < hit.pointCount; ++k)
+                                {
+                                    const double firstParameter = hit.points[k].parameterOnFirst;
+                                    const double secondParameter = hit.points[k].parameterOnSecond;
+                                    const double firstDelta = std::min(0.25, std::max(1e-7, tolerance));
+                                    const double secondDelta = firstDelta;
+                                    const double firstBefore = std::clamp(firstParameter - firstDelta, 0.0, 1.0);
+                                    const double firstAfter = std::clamp(firstParameter + firstDelta, 0.0, 1.0);
+                                    const double secondBefore = std::clamp(secondParameter - secondDelta, 0.0, 1.0);
+                                    const double secondAfter = std::clamp(secondParameter + secondDelta, 0.0, 1.0);
+                                    const SCPointContainment2d firstBeforeLocation =
+                                        LocatePoint(firstSegment->PointAt(firstBefore), second, tolerance);
+                                    const SCPointContainment2d firstAfterLocation =
+                                        LocatePoint(firstSegment->PointAt(firstAfter), second, tolerance);
+                                    const SCPointContainment2d secondBeforeLocation =
+                                        LocatePoint(secondSegment->PointAt(secondBefore), first, tolerance);
+                                    const SCPointContainment2d secondAfterLocation =
+                                        LocatePoint(secondSegment->PointAt(secondAfter), first, tolerance);
+                                    const bool firstChangesSide =
+                                        (firstBeforeLocation == SCPointContainment2d::Inside &&
+                                         firstAfterLocation == SCPointContainment2d::Outside) ||
+                                        (firstBeforeLocation == SCPointContainment2d::Outside &&
+                                         firstAfterLocation == SCPointContainment2d::Inside);
+                                    const bool secondChangesSide =
+                                        (secondBeforeLocation == SCPointContainment2d::Inside &&
+                                         secondAfterLocation == SCPointContainment2d::Outside) ||
+                                        (secondBeforeLocation == SCPointContainment2d::Outside &&
+                                         secondAfterLocation == SCPointContainment2d::Inside);
+                                    if (firstChangesSide || secondChangesSide)
+                                    {
+                                        return true;
+                                    }
                                 }
                             }
                         }

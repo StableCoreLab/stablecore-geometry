@@ -18,7 +18,7 @@ using Geometry::SCPolygon2d;
 using Geometry::SCPolyline2d;
 using Geometry::SCPolylineClosure;
 
-TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
+TEST(ShapesPathopsTest, CutsSquareIntoEqualParts)
 {
     const SCPolygon2d square(SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}, SCPoint2d{4.0, 4.0}, SCPoint2d{0.0, 4.0}},
                                       SCPolylineClosure::Closed));
@@ -28,7 +28,10 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
     ASSERT_EQ(cut->right.Size(), 1);
     EXPECT_NEAR(cut->left[0].Area(), 8.0, 1e-9);
     EXPECT_NEAR(cut->right[0].Area(), 8.0, 1e-9);
+}
 
+TEST(ShapesPathopsTest, CutsPolygonWithHole)
+{
     const SCPolygon2d donut(SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{8.0, 0.0}, SCPoint2d{8.0, 8.0}, SCPoint2d{0.0, 8.0}},
                                      SCPolylineClosure::Closed),
                           {SCPolyline2d({SCPoint2d{3.0, 3.0}, SCPoint2d{3.0, 5.0}, SCPoint2d{5.0, 5.0}, SCPoint2d{5.0, 3.0}},
@@ -47,7 +50,10 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
     }
     EXPECT_NEAR(leftArea, 30.0, 1e-6);
     EXPECT_NEAR(rightArea, 30.0, 1e-6);
+}
 
+TEST(ShapesPathopsTest, BuildsSeparatePolygonsFromClosedLines)
+{
     const SCMultiPolyline2d closedLines{
         SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{2.0, 0.0}, SCPoint2d{2.0, 2.0}, SCPoint2d{0.0, 2.0}},
                    SCPolylineClosure::Closed),
@@ -55,7 +61,10 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
                    SCPolylineClosure::Closed)};
     const auto closedMulti = BuildMultiPolygonByLines(closedLines);
     ASSERT_EQ(closedMulti.Size(), 2);
+}
 
+TEST(ShapesPathopsTest, BuildsSquareFromOpenBoundaryLines)
+{
     const SCMultiPolyline2d openSquareLines{SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}}, SCPolylineClosure::Open),
                                           SCPolyline2d({SCPoint2d{4.0, 0.0}, SCPoint2d{4.0, 4.0}}, SCPolylineClosure::Open),
                                           SCPolyline2d({SCPoint2d{4.0, 4.0}, SCPoint2d{0.0, 4.0}}, SCPolylineClosure::Open),
@@ -64,7 +73,10 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
     ASSERT_EQ(openSquare.Size(), 1);
     ASSERT_EQ(openSquare[0].HoleCount(), 0);
     EXPECT_NEAR(openSquare[0].Area(), 16.0, 1e-9);
+}
 
+TEST(ShapesPathopsTest, BuildsHoleFromNestedOpenLines)
+{
     const SCMultiPolyline2d nestedOpenLines{SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{6.0, 0.0}}, SCPolylineClosure::Open),
                                           SCPolyline2d({SCPoint2d{6.0, 0.0}, SCPoint2d{6.0, 6.0}}, SCPolylineClosure::Open),
                                           SCPolyline2d({SCPoint2d{6.0, 6.0}, SCPoint2d{0.0, 6.0}}, SCPolylineClosure::Open),
@@ -77,7 +89,10 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
     ASSERT_EQ(nested.Size(), 1);
     ASSERT_EQ(nested[0].HoleCount(), 1);
     EXPECT_NEAR(nested[0].Area(), 32.0, 1e-9);
+}
 
+TEST(ShapesPathopsTest, RebuildsBoundaryWithCrossingBranch)
+{
     const SCMultiPolyline2d branchedLines{SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}}, SCPolylineClosure::Open),
                                         SCPolyline2d({SCPoint2d{4.0, 0.0}, SCPoint2d{4.0, 4.0}}, SCPolylineClosure::Open),
                                         SCPolyline2d({SCPoint2d{4.0, 4.0}, SCPoint2d{0.0, 4.0}}, SCPolylineClosure::Open),
@@ -86,7 +101,10 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
     const auto branched = BuildMultiPolygonByLines(branchedLines);
     ASSERT_EQ(branched.Size(), 1);
     EXPECT_NEAR(branched[0].Area(), 16.0, 1e-9);
+}
 
+TEST(ShapesPathopsTest, RepairsNearClosedBoundaryWithDuplicateEdge)
+{
     const SCMultiPolyline2d dirtyNearClosedLines{
         SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}}, SCPolylineClosure::Open),
         SCPolyline2d({SCPoint2d{4.0, 0.0}, SCPoint2d{4.0, 4.0}}, SCPolylineClosure::Open),
@@ -97,7 +115,10 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
     const auto dirtyNearClosed = BuildMultiPolygonByLines(dirtyNearClosedLines);
     ASSERT_EQ(dirtyNearClosed.Size(), 1);
     EXPECT_NEAR(dirtyNearClosed[0].Area(), 16.0, 1e-6);
+}
 
+TEST(ShapesPathopsTest, ExtendsBoundaryToCloseGap)
+{
     const SCMultiPolyline2d autoExtendLines{
         SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}}, SCPolylineClosure::Open),
         SCPolyline2d({SCPoint2d{4.0, 0.0}, SCPoint2d{4.0, 4.0}}, SCPolylineClosure::Open),
@@ -108,7 +129,10 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
     ASSERT_EQ(autoExtended.Size(), 1);
     ASSERT_GE(autoExtended[0].Area(), 15.5);
     ASSERT_LE(autoExtended[0].Area(), 16.5);
+}
 
+TEST(ShapesPathopsTest, SelectsBoundaryAcrossAmbiguousSyntheticEdges)
+{
     const SCMultiPolyline2d ambiguousFakeLines{
         SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}}, SCPolylineClosure::Open),
         SCPolyline2d({SCPoint2d{4.0, 0.0}, SCPoint2d{4.0, 4.0}}, SCPolylineClosure::Open),
@@ -121,7 +145,10 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
     ASSERT_EQ(ambiguousFake[0].HoleCount(), 0);
     ASSERT_GE(ambiguousFake[0].Area(), 15.5);
     ASSERT_LE(ambiguousFake[0].Area(), 16.5);
+}
 
+TEST(ShapesPathopsTest, RebuildsBranchHeavyAmbiguousBoundary)
+{
     const SCMultiPolyline2d branchHeavyAmbiguousLines{
         SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{6.0, 0.0}}, SCPolylineClosure::Open),
         SCPolyline2d({SCPoint2d{6.0, 0.0}, SCPoint2d{6.0, 6.0}}, SCPolylineClosure::Open),
@@ -136,7 +163,10 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
     ASSERT_EQ(branchHeavyAmbiguous[0].HoleCount(), 0);
     ASSERT_GE(branchHeavyAmbiguous[0].Area(), 35.0);
     ASSERT_LE(branchHeavyAmbiguous[0].Area(), 37.0);
+}
 
+TEST(ShapesPathopsTest, ScoresAmbiguousBoundaryBranches)
+{
     const SCMultiPolyline2d branchScoredAmbiguousLines{
         SCPolyline2d({SCPoint2d{0.0, 0.0}, SCPoint2d{4.0, 0.0}}, SCPolylineClosure::Open),
         SCPolyline2d({SCPoint2d{4.0, 0.0}, SCPoint2d{4.0, 4.0}}, SCPolylineClosure::Open),
@@ -149,7 +179,10 @@ TEST(ShapesPathopsTest, CutsAndRebuildsPolygonBoundaries)
     ASSERT_EQ(branchScoredAmbiguous.Size(), 1);
     ASSERT_EQ(branchScoredAmbiguous[0].HoleCount(), 0);
     EXPECT_NEAR(branchScoredAmbiguous[0].Area(), 16.0, 1e-6);
+}
 
+TEST(ShapesPathopsTest, NormalizesNearDuplicateBoundaryVertices)
+{
     const SCPolygon2d noisyBoundary(SCPolyline2d({SCPoint2d{0.0, 0.0},
                                               SCPoint2d{4.0, 0.0},
                                               SCPoint2d{4.0, 2.0},
@@ -332,4 +365,46 @@ TEST(ShapesPathopsTest, CutPolygonAcceptsFiniteLongCutter)
     ASSERT_EQ(parts->right.Size(), 1U);
     EXPECT_NEAR(parts->left[0].Area(), 8.0, 1e-9);
     EXPECT_NEAR(parts->right[0].Area(), 8.0, 1e-9);
+}
+
+TEST(ShapesPathopsTest, NarrowNotchRepairPreservesCallerScale)
+{
+    for (const double scale : {1.0, 1e-4, 1e-8})
+    {
+        for (const double relativeEps : {1e-12, 1e-9})
+        {
+            SCOPED_TRACE(scale);
+            constexpr double notch = 1e-9;
+            SCOPED_TRACE(relativeEps);
+            const double eps = relativeEps * scale;
+            std::vector<SCPoint2d> points{{0, 0}, {6, 0}, {6, 1}, {4, 1},
+                {4, 1 + notch}, {6, 1 + notch}, {6, 4}, {0, 4}};
+            for (auto& point : points)
+            {
+                point.x *= scale;
+                point.y *= scale;
+            }
+            const SCPolygon2d polygon(SCPolyline2d(std::move(points), SCPolylineClosure::Closed));
+            if (relativeEps < notch)
+            {
+                ASSERT_TRUE(polygon.IsValid(eps));
+                const auto normalized = NormalizePolygonByLines(polygon, eps);
+                ASSERT_TRUE(normalized.IsValid(eps));
+                EXPECT_NEAR(normalized.Area(eps) / (scale * scale), 24.0 - 2.0 * notch, 1e-10);
+                EXPECT_EQ(normalized.HoleCount(), 0U);
+            }
+            else
+            {
+                const SCPolygon2d clip(SCPolyline2d({{2 * scale, -scale}, {8 * scale, -scale},
+                    {8 * scale, 3 * scale}, {2 * scale, 3 * scale}}, SCPolylineClosure::Closed));
+                const auto area = [&](const Geometry::SCMultiPolygon2d& polygons) {
+                    double sum = 0.0;
+                    for (std::size_t i = 0; i < polygons.Size(); ++i) sum += polygons[i].Area(eps);
+                    return sum / (scale * scale);
+                };
+                EXPECT_NEAR(area(Geometry::Union(polygon, clip, eps)), 36.0, 1e-7);
+                EXPECT_NEAR(area(Geometry::Difference(polygon, clip, eps)), 12.0, 1e-7);
+            }
+        }
+    }
 }

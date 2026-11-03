@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <cmath>
 #include <utility>
 #include <vector>
 
@@ -256,6 +257,97 @@ TEST(OffsetTest, SupportsNarrowBridgeSplitViaMultiPolygonOffsetApi)
         for (std::size_t pointIndex = 0; pointIndex < piece.OuterRing().PointCount(); ++pointIndex)
         {
             ASSERT_NE(LocatePoint(piece.OuterRing().VertexAt(pointIndex), source), SCPointContainment2d::Outside);
+        }
+    }
+}
+
+TEST(OffsetTest, MultiPolygonSourceRankingPreservesUniformScale)
+{
+    for (const double scale : {1.0, 1e3, 1e5})
+    {
+        SCOPED_TRACE(scale);
+        const double eps = 1e-9 * scale;
+        const auto square = [&](double origin, double side) {
+            return SCPolygon2d(SCPolyline2d({{origin * scale, 0}, {(origin + side) * scale, 0},
+                {(origin + side) * scale, side * scale}, {origin * scale, side * scale}},
+                SCPolylineClosure::Closed));
+        };
+        const SCMultiPolygon2d source{square(0.0, 100.0), square(1000.0, 103.0)};
+        const auto result = Offset(source, scale, Geometry::SCOffsetOptions2d{}, eps);
+        ASSERT_EQ(result.Size(), 2U);
+        double area = 0.0;
+        bool coversFirst = false;
+        bool coversSecond = false;
+        for (std::size_t i = 0; i < result.Size(); ++i)
+        {
+            ASSERT_TRUE(result[i].IsValid(eps));
+            area += result[i].Area(eps) / (scale * scale);
+            coversFirst = coversFirst || LocatePoint({50 * scale, 50 * scale}, result[i], eps) == SCPointContainment2d::Inside;
+            coversSecond = coversSecond || LocatePoint({1050 * scale, 50 * scale}, result[i], eps) == SCPointContainment2d::Inside;
+        }
+        EXPECT_TRUE(coversFirst);
+        EXPECT_TRUE(coversSecond);
+        EXPECT_NEAR(area, 102.0 * 102.0 + 105.0 * 105.0, 1e-4);
+    }
+}
+
+TEST(OffsetTest, InwardOffsetBeyondOuterBoundsDoesNotReappear)
+{
+    for (const double scale : {1.0, 1e-4, 1e4})
+    {
+        SCOPED_TRACE(scale);
+        const double eps = 1e-9 * scale;
+        const auto square = [&](double origin, double side) {
+            return SCPolygon2d(SCPolyline2d({{origin * scale, 0}, {(origin + side) * scale, 0},
+                {(origin + side) * scale, side * scale}, {origin * scale, side * scale}},
+                SCPolylineClosure::Closed));
+        };
+        const SCPolygon2d first = square(0.0, 10.0);
+        for (const double amount : {5.0, 6.0, 12.0})
+        {
+            SCOPED_TRACE(amount);
+            EXPECT_FALSE(Offset(first, -amount * scale, Geometry::SCOffsetOptions2d{}, eps).IsValid(eps));
+            EXPECT_TRUE(Geometry::OffsetToMultiPolygon(first, -amount * scale,
+                Geometry::SCOffsetOptions2d{}, eps).IsEmpty());
+            EXPECT_FALSE(Offset(first, -amount * scale).IsValid(eps));
+        }
+        const auto surviving = Offset(first, -4.0 * scale, Geometry::SCOffsetOptions2d{}, eps);
+        ASSERT_TRUE(surviving.IsValid(eps));
+        EXPECT_NEAR(surviving.Area(eps) / (scale * scale), 4.0, 1e-6);
+        const SCMultiPolygon2d mixed{first, square(30.0, 20.0)};
+        const auto result = Offset(mixed, -6.0 * scale, Geometry::SCOffsetOptions2d{}, eps);
+        ASSERT_EQ(result.Size(), 1U);
+        EXPECT_NEAR(result[0].Area(eps) / (scale * scale), 64.0, 1e-6);
+        EXPECT_EQ(LocatePoint({40 * scale, 10 * scale}, result[0], eps), SCPointContainment2d::Inside);
+    }
+}
+
+TEST(OffsetTest, RotatedInwardOffsetBeyondWidthDoesNotReappear)
+{
+    for (const double scale : {1.0, 1e-4, 1e4})
+    {
+        for (const double angle : {Geometry::kPi / 8.0, Geometry::kPi / 4.0, 3.0 * Geometry::kPi / 8.0})
+        {
+            SCOPED_TRACE(scale);
+            SCOPED_TRACE(angle);
+            const double eps = 1e-9 * scale;
+            std::vector<SCPoint2d> points{{0, 0}, {10, 0}, {10, 20}, {0, 20}};
+            for (auto& point : points)
+            {
+                const double x = point.x * scale;
+                const double y = point.y * scale;
+                point = {x * std::cos(angle) - y * std::sin(angle),
+                         x * std::sin(angle) + y * std::cos(angle)};
+            }
+            const SCPolygon2d source(SCPolyline2d(std::move(points), SCPolylineClosure::Closed));
+            ASSERT_TRUE(source.IsValid(eps));
+            EXPECT_FALSE(Offset(source, -6.0 * scale, Geometry::SCOffsetOptions2d{}, eps).IsValid(eps));
+            EXPECT_TRUE(Geometry::OffsetToMultiPolygon(source, -6.0 * scale,
+                Geometry::SCOffsetOptions2d{}, eps).IsEmpty());
+            EXPECT_FALSE(Offset(source, -6.0 * scale).IsValid(eps));
+            const auto survivor = Offset(source, -4.0 * scale, Geometry::SCOffsetOptions2d{}, eps);
+            ASSERT_TRUE(survivor.IsValid(eps));
+            EXPECT_NEAR(survivor.Area(eps) / (scale * scale), 24.0, 1e-5);
         }
     }
 }

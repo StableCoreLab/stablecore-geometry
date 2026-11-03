@@ -11,6 +11,8 @@
 int main()
 {
     using namespace Geometry;
+    const bool exportedDataAvailable = kPi > 3.0 && kPi < 4.0 && kTwoPi == 2.0 * kPi &&
+        kArcBoundsCriticalAngles == std::array<double, 4>{0.0, 0.5 * kPi, kPi, 1.5 * kPi};
     const SCLineSegment2d first{{0.0, 0.0}, {10.0, 0.0}};
     const SCLineSegment2d second{{2.0, 0.0}, {8.0, 0.0}};
     const auto projection = ClassifyParallelSegmentProjection(
@@ -55,6 +57,13 @@ int main()
     const ISCSegment2d& directionalSegment = directionalArc;
     const bool dimensionedEnumsAvailable = directionalSegment.Kind() == SCSegmentKind2d::Arc &&
         directionalArc.Direction() == SCArcDirection2d::CounterClockwise;
+    const SCArcSegment2d overlapFirst({0.0, 0.0}, 1.0, 0.0, 1.5 * std::numbers::pi_v<double>);
+    const SCArcSegment2d overlapSecond({0.0, 0.0}, 1.0, std::numbers::pi_v<double>,
+                                       1.5 * std::numbers::pi_v<double>);
+    const auto allOverlaps = IntersectAll(overlapFirst, overlapSecond);
+    const bool allOverlapsAvailable = allOverlaps.size() == 2 &&
+        allOverlaps[0].kind == SCIntersectionKind2d::Overlap &&
+        allOverlaps[1].kind == SCIntersectionKind2d::Overlap;
     const bool segmentParameterAvailable =
         ParameterAtLength(static_cast<const ISCSegment2d&>(first), 5.0, true) == 0.5 &&
         ParameterAtLength(static_cast<const ISCSegment2d&>(planarArc), planarArc.Length() * 0.5) == 0.5 &&
@@ -151,12 +160,12 @@ int main()
     const auto offsetEval = offsetSurface.Evaluate(0.0, 0.0, 1);
     const bool offsetAvailable = offsetEval.IsValid() &&
         offsetEval.point.AlmostEquals({0.0, 0.0, 0.2});
-    return projection == SCParallelSegmentProjectionRelation2d::PositiveLengthIntersection &&
+    return exportedDataAvailable && projection == SCParallelSegmentProjectionRelation2d::PositiveLengthIntersection &&
                    Contains(box, path) && Intersects(box, path) && polygonToleranceAvailable &&
                    searchCandidateToleranceAvailable && polygonOffsetToleranceAvailable &&
                    primitiveOffsetToleranceAvailable && segmentParameterAvailable && shortProjectionAvailable &&
                    arcProjectionAvailable && shortSweepArcToleranceAvailable &&
-                   segmentSamplingAvailable && segmentDirectionsAvailable && dimensionedEnumsAvailable &&
+                   segmentSamplingAvailable && segmentDirectionsAvailable && dimensionedEnumsAvailable && allOverlapsAvailable &&
                    tinySegmentSamplingAvailable &&
                    subPolylineToleranceAvailable && polylineSamplingToleranceAvailable && area.success &&
                    area.hasPositiveAreaIntersection && fittedPlane.success && arc.success &&

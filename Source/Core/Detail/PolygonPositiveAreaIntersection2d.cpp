@@ -406,40 +406,37 @@ namespace Geometry::Detail
             result.status = SCCheckedGeometryStatus2d::InvalidInput;
             return result;
         }
-        const SCSegmentIntersection2d hit = IntersectKernelSegments(first, second, tolerance);
-        if (hit.kind == SCIntersectionKind2d::None)
+        const auto hits = IntersectAll(first, second, tolerance);
+        if (hits.empty())
         {
-            if (hit.pointCount != 0)
-            {
-                result.status = SCCheckedGeometryStatus2d::NumericalIndeterminate;
-                return result;
-            }
             if (!CanProveNoIntersection(first, second, tolerance))
             {
                 result.status = SCCheckedGeometryStatus2d::NumericalIndeterminate;
                 return result;
             }
             result.status = SCCheckedGeometryStatus2d::NoIntersection;
-            result.intersection = hit;
             return result;
         }
-        // 验证交点参数有限；Overlap 必须给出恰好两个端点，否则视为不确定。
-        for (std::size_t i = 0; i < hit.pointCount; ++i)
+        for (const auto& hit : hits)
         {
-            if (!IsFinite(hit.points[i].parameterOnFirst) || !IsFinite(hit.points[i].parameterOnSecond) ||
-                !hit.points[i].point.IsValid())
+            // 验证交点参数有限；Overlap 必须给出恰好两个端点，否则视为不确定。
+            for (std::size_t i = 0; i < hit.pointCount; ++i)
+            {
+                if (!IsFinite(hit.points[i].parameterOnFirst) || !IsFinite(hit.points[i].parameterOnSecond) ||
+                    !hit.points[i].point.IsValid())
+                {
+                    result.status = SCCheckedGeometryStatus2d::NumericalIndeterminate;
+                    return result;
+                }
+            }
+            if (hit.kind == SCIntersectionKind2d::Overlap && hit.pointCount != 2)
             {
                 result.status = SCCheckedGeometryStatus2d::NumericalIndeterminate;
                 return result;
             }
         }
-        if (hit.kind == SCIntersectionKind2d::Overlap && hit.pointCount != 2)
-        {
-            result.status = SCCheckedGeometryStatus2d::NumericalIndeterminate;
-            return result;
-        }
         result.status = SCCheckedGeometryStatus2d::Success;
-        result.intersection = hit;
+        result.intersections = hits;
         return result;
     }
 

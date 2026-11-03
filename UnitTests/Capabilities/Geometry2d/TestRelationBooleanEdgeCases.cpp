@@ -266,3 +266,37 @@ TEST(RelationBooleanTest, HandlesCrossAndNestedBooleanOperations)
     EXPECT_NEAR(TotalArea(Difference(overlapStripA, overlapStripB)), 4.0, 1e-9);
 
 }
+
+TEST(RelationBooleanTest, RepairedBoxBooleanPreservesUniformScale)
+{
+    for (const double width : {1.0, 1e-4, 1e-8})
+    {
+        SCOPED_TRACE(width);
+        const double eps = 1e-7 * width;
+        const SCPolygon2d first(SCPolyline2d({{0, 0}, {width, 0}, {width, width}, {0, width}},
+            SCPolylineClosure::Closed));
+        const SCPolygon2d second(SCPolyline2d({{0.5 * width, 0.5 * width}, {1.5 * width, 0.5 * width},
+            {1.499 * width, 0.5 * width}, {1.5 * width, 1.5 * width}, {0.5 * width, 1.5 * width}},
+            SCPolylineClosure::Closed));
+        ASSERT_TRUE(first.IsValid(eps));
+        ASSERT_FALSE(second.IsValid(eps));
+        const auto area = [&](const SCMultiPolygon2d& polygons) {
+            double result = 0.0;
+            for (std::size_t i = 0; i < polygons.Size(); ++i) result += polygons[i].Area(eps);
+            return result / (width * width);
+        };
+        for (const bool reversed : {false, true})
+        {
+            const auto operand = reversed ? SCPolygon2d(Geometry::Reverse(second.OuterRing())) : second;
+            const auto united = Union(first, operand, eps);
+            ASSERT_EQ(united.Size(), 1U);
+            EXPECT_NEAR(area(united), 1.75, 1e-5);
+            const auto reverseUnion = Union(operand, first, eps);
+            ASSERT_EQ(reverseUnion.Size(), 1U);
+            EXPECT_NEAR(area(reverseUnion), 1.75, 1e-5);
+            EXPECT_NEAR(area(Intersect(first, operand, eps)), 0.25, 1e-5);
+            EXPECT_NEAR(area(Difference(first, operand, eps)), 0.75, 1e-5);
+            EXPECT_NEAR(area(Difference(operand, first, eps)), 0.75, 1e-5);
+        }
+    }
+}

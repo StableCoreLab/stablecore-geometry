@@ -7,6 +7,8 @@
 #include <functional>
 #include <unordered_map>
 
+#include "../Detail/TriangleEdges3d.h"
+
 namespace Geometry
 {
     namespace
@@ -43,23 +45,13 @@ namespace Geometry
             return EdgeKey{std::min(first, second), std::max(first, second)};
         }
 
-        [[nodiscard]] const std::array<std::array<std::size_t, 2>, 3> TriangleEdges(
-            const TriangleMesh::TriangleIndices& tri)
-        {
-            return {{
-                {tri[0], tri[1]},
-                {tri[1], tri[2]},
-                {tri[2], tri[0]},
-            }};
-        }
-
         [[nodiscard]] std::unordered_map<EdgeKey, EdgeRecord, EdgeKeyHash> BuildEdgeRecords(const TriangleMesh& mesh)
         {
             std::unordered_map<EdgeKey, EdgeRecord, EdgeKeyHash> edgeRecords;
             edgeRecords.reserve(mesh.TriangleCount() * 3);
             for (std::size_t triangleIndex = 0; triangleIndex < mesh.TriangleCount(); ++triangleIndex)
             {
-                const auto edges = TriangleEdges(mesh.TriangleIndicesAt(triangleIndex));
+                const auto edges = Detail::TriangleEdges3d(mesh.TriangleIndicesAt(triangleIndex));
                 for (std::size_t edgeIndex = 0; edgeIndex < edges.size(); ++edgeIndex)
                 {
                     const EdgeKey key = MakeUndirectedEdgeKey(edges[edgeIndex][0], edges[edgeIndex][1]);
@@ -225,7 +217,7 @@ namespace Geometry
 
             const std::size_t triangleIndex = record.triangleIndices[0];
             const std::size_t edgeIndex = record.edgeIndices[0];
-            const auto edges = TriangleEdges(mesh.TriangleIndicesAt(triangleIndex));
+            const auto edges = Detail::TriangleEdges3d(mesh.TriangleIndicesAt(triangleIndex));
             boundaryEdges.push_back(MeshBoundaryEdge3d{triangleIndex, edgeIndex, edges[edgeIndex]});
         }
 

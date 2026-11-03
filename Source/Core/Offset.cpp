@@ -125,6 +125,15 @@ namespace Geometry
             return vector.LengthSquared() <= eps * eps;
         }
 
+        [[nodiscard]] SCVector2d BlendedNormalDirection(const SCVector2d& first, const SCVector2d& second)
+        {
+            const SCVector2d blended = first + second;
+            SCVector2d direction;
+            // 单位法线近反向时按角度换算弦长阈值，不使用输入坐标的线性容差。
+            const double chordTolerance = 2.0 * std::sin(0.5 * Geometry::kDefaultAngleEpsilon);
+            return blended.TryNormalized(direction, chordTolerance) ? direction : second;
+        }
+
         [[nodiscard]] SCPoint2d IntersectLines(const SCPoint2d& firstPoint,
                                              const SCVector2d& firstDirection,
                                              const SCPoint2d& secondPoint,
@@ -198,9 +207,8 @@ namespace Geometry
                     const double maxJoinDistance = std::abs(distance) * std::max(1.0, options.miterLimit);
                     if (!success || Distance(joined, vertices[i]) > maxJoinDistance)
                     {
-                        const SCVector2d blended = normals[prev] + normals[next];
-                        const SCVector2d direction = IsZeroVector(blended, epsilon) ? normals[next] : blended / blended.Length();
-                        joined = vertices[i] + direction * std::min(std::abs(distance), maxJoinDistance);
+                        const SCVector2d direction = BlendedNormalDirection(normals[prev], normals[next]);
+                        joined = vertices[i] + direction * std::copysign(std::min(std::abs(distance), maxJoinDistance), distance);
                     }
                     result.push_back(joined);
                 }
@@ -220,9 +228,8 @@ namespace Geometry
                 const double maxJoinDistance = std::abs(distance) * std::max(1.0, options.miterLimit);
                 if (!success || Distance(joined, vertices[i]) > maxJoinDistance)
                 {
-                    const SCVector2d blended = normals[prev] + normals[next];
-                    const SCVector2d direction = IsZeroVector(blended, epsilon) ? normals[next] : blended / blended.Length();
-                    joined = vertices[i] + direction * std::min(std::abs(distance), maxJoinDistance);
+                    const SCVector2d direction = BlendedNormalDirection(normals[prev], normals[next]);
+                    joined = vertices[i] + direction * std::copysign(std::min(std::abs(distance), maxJoinDistance), distance);
                 }
                 result.push_back(joined);
             }
@@ -328,6 +335,73 @@ namespace Geometry
             return SCPolygon2d(outer, std::move(holes));
         }
 
+        [[nodiscard]] bool InsetExhaustsOuterBounds(const SCPolygon2d& polygon, double distance, double eps)
+        {
+            if (!(distance < 0.0))
+            {
+                return false;
+            }
+            const SCBox2d bounds = polygon.OuterRing().Bounds(eps);
+            if (!bounds.IsValid())
+            {
+                return false;
+            }
+            const auto halfExtent = [](double minimum, double maximum) {
+                const double extent = maximum - minimum;
+                return std::isfinite(extent) ? 0.5 * extent : 0.5 * maximum - 0.5 * minimum;
+            };
+            const double halfWidth = halfExtent(bounds.MinPoint().x, bounds.MaxPoint().x);
+            const double halfHeight = halfExtent(bounds.MinPoint().y, bounds.MaxPoint().y);
+            // 任何可容纳于外环的圆都受支撑宽度限制；等号仅剩零面积集合。
+            if (-distance >= std::min(halfWidth, halfHeight))
+            {
+                return true;
+            }
+            const SCPolyline2d& ring = polygon.OuterRing();
+            if (ring.HasNonLineSegments())
+            {
+                return false;
+            }
+            const SCPoint2d anchor = ring.VertexAt(0);
+            std::vector<SCPoint2d> halfPoints;
+            halfPoints.reserve(ring.PointCount());
+            for (std::size_t i = 0; i < ring.PointCount(); ++i)
+            {
+                const auto point = ring.VertexAt(i);
+                halfPoints.push_back({0.5 * point.x - 0.5 * anchor.x, 0.5 * point.y - 0.5 * anchor.y});
+            }
+            for (std::size_t i = 0; i < ring.PointCount(); ++i)
+            {
+                const auto edge = ring.VertexAt((i + 1) % ring.PointCount()) - ring.VertexAt(i);
+                const double length = std::hypot(edge.x, edge.y);
+                if (!(length > 0.0) || !std::isfinite(length))
+                {
+                    continue;
+                }
+                const SCVector2d normal{-edge.y / length, edge.x / length};
+                double minimum = std::numeric_limits<double>::infinity();
+                double maximum = -std::numeric_limits<double>::infinity();
+                bool finite = true;
+                for (const auto& point : halfPoints)
+                {
+                    const double projection = point.x * normal.x + point.y * normal.y;
+                    if (!std::isfinite(projection))
+                    {
+                        finite = false;
+                        break;
+                    }
+                    minimum = std::min(minimum, projection);
+                    maximum = std::max(maximum, projection);
+                }
+                const double halfSupportWidth = maximum - minimum;
+                if (finite && std::isfinite(halfSupportWidth) && -distance >= halfSupportWidth)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         [[nodiscard]] SCMultiPolygon2d BuildOffsetPolygons(const SCMultiPolyline2d& rings,
                                                             double eps,
                                                             bool allowLegacyRetry)
@@ -409,13 +483,20 @@ namespace Geometry
 
             const SCPoint2d reference = PrimaryReferencePoint(source, eps);
             const bool outward = distance >= 0.0;
-            std::size_t bestIndex = 0;
+            std::size_t bestIndex = static_cast<std::size_t>(-1);
             double bestScore = -std::numeric_limits<double>::infinity();
+            // 拓扑分数优先，面积只在语义同分时决定次序，避免模型尺度改变排序。
+            double bestArea = -std::numeric_limits<double>::infinity();
             for (std::size_t i = 0; i < polygons.Size(); ++i)
             {
                 const SCPolygon2d& candidate = polygons[i];
                 const double areaEpsilon = OffsetAreaTolerance(source, candidate, eps);
-                double score = candidate.Area(eps);
+                const double candidateArea = candidate.Area(eps);
+                if (!std::isfinite(candidateArea))
+                {
+                    continue;
+                }
+                double score = 0.0;
                 const SCPointContainment2d referenceContainment = LocatePoint(reference, candidate, eps);
                 const SCPointContainment2d candidateContainment = LocatePoint(candidate.Centroid(eps), source, eps);
                 const PolygonContainment2d relation = Relate(candidate, source, eps);
@@ -464,18 +545,21 @@ namespace Geometry
                     }
                 }
 
-                score -= static_cast<double>(
-                             std::abs(static_cast<int>(candidate.HoleCount()) - static_cast<int>(source.HoleCount()))) *
-                         1e4;
+                const std::size_t candidateHoles = candidate.HoleCount();
+                const std::size_t sourceHoles = source.HoleCount();
+                const std::size_t holeDifference = candidateHoles > sourceHoles
+                    ? candidateHoles - sourceHoles : sourceHoles - candidateHoles;
+                score -= static_cast<double>(holeDifference) * 1e4;
 
-                if (score > bestScore)
+                if (score > bestScore || (score == bestScore && candidateArea > bestArea))
                 {
                     bestScore = score;
+                    bestArea = candidateArea;
                     bestIndex = i;
                 }
             }
 
-            return polygons[bestIndex];
+            return bestIndex == static_cast<std::size_t>(-1) ? SCPolygon2d{} : polygons[bestIndex];
         }
 
         [[nodiscard]] SCPolygon2d SelectLargestPolygon(const SCMultiPolygon2d& polygons, double eps)
@@ -577,6 +661,7 @@ namespace Geometry
             const SCPoint2d candidateReference = PrimaryReferencePoint(candidate, eps);
             std::size_t bestIndex = static_cast<std::size_t>(-1);
             double bestScore = -std::numeric_limits<double>::infinity();
+            double bestAreaDifference = std::numeric_limits<double>::infinity();
             for (std::size_t i = 0; i < sources.Size(); ++i)
             {
                 const SCPolygon2d& source = sources[i];
@@ -585,7 +670,12 @@ namespace Geometry
                     continue;
                 }
 
-                double score = -std::abs(std::abs(candidate.Area(eps)) - std::abs(source.Area(eps)));
+                const double areaDifference = std::abs(std::abs(candidate.Area(eps)) - std::abs(source.Area(eps)));
+                if (!std::isfinite(areaDifference))
+                {
+                    continue;
+                }
+                double score = 0.0;
                 if (LocatePoint(candidateReference, source, eps) != SCPointContainment2d::Outside)
                 {
                     score += 1e9;
@@ -604,9 +694,10 @@ namespace Geometry
                     score += 1e6;
                 }
 
-                if (score > bestScore)
+                if (score > bestScore || (score == bestScore && areaDifference < bestAreaDifference))
                 {
                     bestScore = score;
+                    bestAreaDifference = areaDifference;
                     bestIndex = i;
                 }
             }
@@ -858,7 +949,7 @@ namespace Geometry
             }
         }
 
-        if (!source.IsValid(epsilon))
+        if (!source.IsValid(epsilon) || InsetExhaustsOuterBounds(source, distance, epsilon))
         {
             return SCPolygon2d();
         }
@@ -996,7 +1087,7 @@ namespace Geometry
                     source = NormalizePolygonOrientationForOffset(polygons[i]);
                 }
             }
-            if (!source.IsValid(epsilon))
+            if (!source.IsValid(epsilon) || InsetExhaustsOuterBounds(source, distance, epsilon))
             {
                 continue;
             }

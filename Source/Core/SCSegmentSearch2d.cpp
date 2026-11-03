@@ -132,12 +132,13 @@ namespace Geometry
         {
             return result;
         }
-        const double maxDistanceSquared = maxDistance * maxDistance;
         for (const auto& entry : entries_)
         {
             if (!entry.IsValid()) continue;
             const auto projection = ProjectPointToSegment(point, *entry.segment, true);
-            if (projection.IsValid() && projection.distanceSquared <= maxDistanceSquared)
+            if (!projection.IsValid()) continue;
+            const double distance = Distance(point, projection.point);
+            if (std::isfinite(distance) && distance <= maxDistance)
             {
                 result.push_back(SCSegmentSearchHit2d{entry.id,
                                                     projection.point,
@@ -152,12 +153,16 @@ namespace Geometry
     std::optional<SCSegmentSearchHit2d> SCSegmentSearch2d::Nearest(const SCPoint2d& point) const
     {
         std::optional<SCSegmentSearchHit2d> best;
+        double bestDistance = std::numeric_limits<double>::infinity();
         for (const auto& entry : entries_)
         {
             if (!entry.IsValid()) continue;
             const auto projection = ProjectPointToSegment(point, *entry.segment, true);
-            if (projection.IsValid() && (!best || projection.distanceSquared < best->distanceSquared))
+            if (!projection.IsValid()) continue;
+            const double distance = Distance(point, projection.point);
+            if (std::isfinite(distance) && (!best || distance < bestDistance))
             {
+                bestDistance = distance;
                 best = SCSegmentSearchHit2d{entry.id,
                                           projection.point,
                                           projection.distanceSquared,
@@ -178,16 +183,14 @@ namespace Geometry
             return hits;
         }
 
-        const double maxDistanceSquared = maxDistance * maxDistance;
         hits.reserve(entries_.size());
         for (const auto& entry : entries_)
         {
             if (!entry.IsValid()) continue;
             const auto projection = ProjectPointToSegment(point, *entry.segment, true);
-            if (!projection.IsValid() || projection.distanceSquared > maxDistanceSquared)
-            {
-                continue;
-            }
+            if (!projection.IsValid()) continue;
+            const double distance = Distance(point, projection.point);
+            if (!std::isfinite(distance) || distance > maxDistance) continue;
 
             hits.push_back(SCSegmentSearchHit2d{entry.id,
                                                 projection.point,
@@ -196,25 +199,21 @@ namespace Geometry
                                                 projection.isOnSegment});
         }
 
-        if (k < hits.size())
-        {
-            std::nth_element(hits.begin(), hits.begin() + static_cast<std::ptrdiff_t>(k), hits.end(), [](const auto& lhs, const auto& rhs) {
-                if (lhs.distanceSquared != rhs.distanceSquared)
-                {
-                    return lhs.distanceSquared < rhs.distanceSquared;
-                }
-                return lhs.id < rhs.id;
-            });
-            hits.resize(k);
-        }
-
-        std::sort(hits.begin(), hits.end(), [](const auto& lhs, const auto& rhs) {
-            if (lhs.distanceSquared != rhs.distanceSquared)
+        const auto nearer = [&point](const auto& lhs, const auto& rhs) {
+            const double lhsDistance = Distance(point, lhs.point);
+            const double rhsDistance = Distance(point, rhs.point);
+            if (lhsDistance != rhsDistance)
             {
-                return lhs.distanceSquared < rhs.distanceSquared;
+                return lhsDistance < rhsDistance;
             }
             return lhs.id < rhs.id;
-        });
+        };
+        if (k < hits.size())
+        {
+            std::nth_element(hits.begin(), hits.begin() + static_cast<std::ptrdiff_t>(k), hits.end(), nearer);
+            hits.resize(k);
+        }
+        std::sort(hits.begin(), hits.end(), nearer);
         return hits;
     }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "SegmentKernel2d.h"
 #include "Geometry2d/ISCSegment2d.h"
 
@@ -16,7 +18,7 @@ namespace Geometry::Detail
     struct SCCheckedIntersection2d
     {
         SCCheckedGeometryStatus2d status{SCCheckedGeometryStatus2d::InvalidInput};
-        SCSegmentIntersection2d intersection{};
+        std::vector<SCSegmentIntersection2d> intersections{};
     };
 
     [[nodiscard]] SCCheckedIntersection2d CheckedIntersectSegments(const ISCSegment2d& first,

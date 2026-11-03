@@ -211,3 +211,30 @@ TEST(ShapesPathopsTest, SubPolylineRejectsArcWithOverflowingInterior)
     const SCPolyline2d sub = SubPolyline(path, 0.0, path.Length(), 1e-12);
     EXPECT_FALSE(sub.IsValid(1e-12));
 }
+
+TEST(ShapesPathopsTest, ClosedShapePolygonSamplingPreservesPresetsAndEquivalentGeometry)
+{
+    const SCCircle2d circle({1, 2}, 3);
+    const SCEllipse2d ellipse({1, 2}, 3, 3);
+    EXPECT_EQ(circle.ToPolygon().OuterRing().PointCount(), 64U);
+    EXPECT_EQ(ellipse.ToPolygon().OuterRing().PointCount(), 128U);
+    EXPECT_FALSE(circle.ToPolygon(2).IsValid());
+    EXPECT_TRUE(circle.ToPolygon(3).IsValid());
+    EXPECT_FALSE(ellipse.ToPolygon(7).IsValid());
+    EXPECT_TRUE(ellipse.ToPolygon(8).IsValid());
+    EXPECT_FALSE(SCCircle2d{}.ToPolygon().IsValid());
+    EXPECT_FALSE(SCEllipse2d{}.ToPolygon().IsValid());
+    for (const std::size_t count : {8U, 17U, 64U, 128U})
+    {
+        const auto first = circle.ToPolygon(count);
+        const auto second = ellipse.ToPolygon(count);
+        ASSERT_TRUE(first.IsValid());
+        ASSERT_TRUE(second.IsValid());
+        ASSERT_EQ(first.OuterRing().PointCount(), count);
+        ASSERT_EQ(second.OuterRing().PointCount(), count);
+        EXPECT_TRUE(first.OuterRing().IsClosed());
+        EXPECT_TRUE(second.OuterRing().IsClosed());
+        for (std::size_t i = 0; i < count; ++i)
+            EXPECT_TRUE(first.OuterRing().VertexAt(i).AlmostEquals(second.OuterRing().VertexAt(i), 1e-12));
+    }
+}

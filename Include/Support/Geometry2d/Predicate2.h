@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <limits>
 #include <type_traits>
 
 #include "Support/Epsilon.h"
@@ -20,7 +21,9 @@ namespace Geometry
     {
         if constexpr (std::is_floating_point_v<T>)
         {
-            return AbsValue(value) <= static_cast<T>(eps);
+            // 有限范围比较保留 C++20 constexpr；容差不窄化到较小浮点类型。
+            return eps >= 0.0 && eps <= (std::numeric_limits<double>::max)() &&
+                AbsValue(value) <= (std::numeric_limits<T>::max)() && AbsValue(value) <= eps;
         } else
         {
             static_assert(std::is_integral_v<T>, "IsZero only supports arithmetic scalar types.");
@@ -47,7 +50,11 @@ namespace Geometry
     {
         if constexpr (std::is_floating_point_v<T>)
         {
-            return AbsValue(static_cast<T>(lhs - rhs)) <= static_cast<T>(eps);
+            using Difference = std::common_type_t<T, double>;
+            return eps >= 0.0 && eps <= (std::numeric_limits<double>::max)() &&
+                AbsValue(lhs) <= (std::numeric_limits<T>::max)() &&
+                AbsValue(rhs) <= (std::numeric_limits<T>::max)() &&
+                AbsValue(static_cast<Difference>(lhs) - static_cast<Difference>(rhs)) <= eps;
         } else
         {
             (void)eps;

@@ -295,24 +295,16 @@ namespace Geometry
             return best;
         }
 
-        [[nodiscard]] SCPolygon2d RebuildLargestPolygonWithCandidates(const SCMultiPolyline2d& boundaries,
-                                                                    const std::vector<double>& epsCandidates)
+        [[nodiscard]] SCPolygon2d RebuildLargestPolygon(const SCMultiPolyline2d& boundaries, double eps)
         {
-            for (double candidateEps : epsCandidates)
+            for (const double candidateEps : {eps, 8.0 * eps, 64.0 * eps})
             {
+                if (!std::isfinite(candidateEps)) continue;
                 const SCMultiPolygon2d rebuilt = BuildMultiPolygonByLines(boundaries, candidateEps);
-                if (rebuilt.Size() == 1 && rebuilt[0].IsValid(candidateEps))
-                {
-                    return rebuilt[0];
-                }
-
+                if (rebuilt.Size() == 1 && rebuilt[0].IsValid(candidateEps)) return rebuilt[0];
                 SCPolygon2d best = SelectLargestValidPolygon(rebuilt, candidateEps);
-                if (best.IsValid(candidateEps))
-                {
-                    return best;
-                }
+                if (best.IsValid(candidateEps)) return best;
             }
-
             return {};
         }
 
@@ -1156,25 +1148,20 @@ namespace Geometry
             return {};
         }
 
-        const std::vector<double> epsCandidates{eps,
-                                                std::max(eps, Geometry::Detail::kRebuildFallbackEpsilon2d),
-                                                std::max(eps, 1e-7)};
-
-        SCPolygon2d rebuilt = RebuildLargestPolygonWithCandidates(boundaries, epsCandidates);
+        SCPolygon2d rebuilt = RebuildLargestPolygon(boundaries, eps);
         if (rebuilt.IsValid(eps))
         {
             return rebuilt;
         }
 
-        const double simplifyEps =
-            std::max(Geometry::Detail::kAreaEpsilon2d, 8.0 * std::max(eps, Geometry::Detail::kComparisonEpsilon2d));
+        const double simplifyEps = 8.0 * eps;
         SCMultiPolyline2d simplifiedBoundaries = SimplifyBoundaryPolylines(boundaries, simplifyEps);
         if (simplifiedBoundaries.IsEmpty())
         {
             return {};
         }
 
-        rebuilt = RebuildLargestPolygonWithCandidates(simplifiedBoundaries, epsCandidates);
+        rebuilt = RebuildLargestPolygon(simplifiedBoundaries, eps);
         if (rebuilt.IsValid(eps))
         {
             return rebuilt;

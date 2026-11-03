@@ -75,6 +75,26 @@ TEST(SpatialIndexOracleTest, KdTreeDistanceQueriesPreserveOrderOutsideSquaredRan
     EXPECT_TRUE(tree.QueryWithinDistance({0.0, 0.0}, -1.5e-200).empty());
 }
 
+TEST(SpatialIndexOracleTest, KdTreeExactQueryRejectsInvalidTolerance)
+{
+    Geometry::SCKDTree2d tree;
+    tree.Add(1, {0.0, 0.0});
+    tree.Add(2, {1.0, 1.0});
+    tree.Add(3, {-1.0, -1.0});
+    for (const double eps : {-1.0, std::numeric_limits<double>::quiet_NaN(),
+                             std::numeric_limits<double>::infinity(),
+                             -std::numeric_limits<double>::infinity()})
+    {
+        SCOPED_TRACE(::testing::Message() << "eps " << eps);
+        EXPECT_TRUE(tree.Query({0.0, 0.0}, eps).empty());
+    }
+    EXPECT_EQ(tree.Query({0.0, 0.0}, 0.0), std::vector<std::size_t>{1});
+    EXPECT_EQ(Sorted(tree.Query({0.0, 0.0}, 1.0)), (std::vector<std::size_t>{1, 2, 3}));
+    ASSERT_TRUE(tree.Remove(1));
+    EXPECT_TRUE(tree.Query({0.0, 0.0}, 0.0).empty());
+    EXPECT_TRUE(tree.Query({0.0, 0.0}, std::numeric_limits<double>::infinity()).empty());
+}
+
 TEST(SpatialIndexOracleTest, KdTreeNearestOrdersOverflowingCoordinateDifferences)
 {
     Geometry::SCKDTree2d tree;

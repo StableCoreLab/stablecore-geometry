@@ -33,6 +33,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry2d/TestOffset.cpp
     Capabilities/Geometry2d/TestOffsetTolerance.cpp
     Capabilities/Geometry2d/TestPointVector.cpp
+    Capabilities/Geometry2d/TestPredicate2d.cpp
     Capabilities/Geometry2d/TestPolygon.cpp
     Capabilities/Geometry2d/TestPolyline.cpp
     Capabilities/Geometry2d/TestRelationBoolean.cpp
@@ -45,10 +46,14 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry2d/TestSearchPolyExplanations.cpp
     Capabilities/Geometry2d/TestSegmentNumerics.cpp
     Capabilities/Geometry2d/TestSegment.cpp
+    Capabilities/Geometry2d/TestSegmentIntersectionAll.cpp
+    Capabilities/Geometry2d/TestSegmentSubdivision2d.cpp
+    Capabilities/Geometry2d/TestCoincidentArcArrangement.cpp
     Capabilities/Geometry2d/TestShapesPathOps.cpp
     Capabilities/Geometry2d/TestShapesPathOpsPolygon.cpp
     Capabilities/Geometry2d/TestSpatialIndexOracle.cpp
     Capabilities/Geometry2d/TestSpatialIndexMutations.cpp
+    Capabilities/Geometry2d/TestSpatialIndexPerformance.cpp
     Capabilities/Geometry2d/TestTopologyIndexing.cpp
     Capabilities/Geometry2d/TestTransformSampling.cpp
     Capabilities/Geometry3d/TestBodyBoolean3d.cpp
@@ -98,6 +103,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestCurveOnSurfaceInterface.cpp
     Capabilities/Geometry3d/TestCurveOnSurfaceNumerics.cpp
     Capabilities/Geometry3d/TestCurveOnSurfaceHighDegree.cpp
+    Capabilities/Geometry3d/TestCurveOnSurfaceSeparation.cpp
     Capabilities/Geometry3d/TestGeometryEvidence.cpp
     Capabilities/Geometry3d/TestGeometryEvidenceIntersection.cpp
     Capabilities/Geometry3d/TestGeometryEvidenceTopology.cpp
@@ -166,6 +172,11 @@ endforeach()
 add_executable(${SCGEOMETRY_CAPABILITY_TESTS_TARGET}
     ${SCGEOMETRY_CAPABILITY_TEST_SOURCES}
     ${SCGEOMETRY_ROOT_DIR}/Source/Core/Detail/TriangulateContours2d.cpp
+    # 私有 arrangement 回归直接编译同一份实现，不增加 DLL 公共导出。
+    ${SCGEOMETRY_ROOT_DIR}/Source/Core/Detail/CurveArrangement2d.cpp
+    ${SCGEOMETRY_ROOT_DIR}/Source/Core/Detail/PositiveAreaArrangement2d.cpp
+    ${SCGEOMETRY_ROOT_DIR}/Source/Core/Detail/PolygonPositiveAreaIntersection2d.cpp
+    ${SCGEOMETRY_ROOT_DIR}/Source/Core/Detail/SegmentKernel2d.cpp
 )
 target_link_libraries(${SCGEOMETRY_CAPABILITY_TESTS_TARGET} PRIVATE ${SCGEOMETRY_TARGET} GTest::gtest GTest::gtest_main)
 if(BUILD_SHARED_LIBS)
@@ -210,3 +221,9 @@ add_test(
         "-DSCGEOMETRY_EXPECT_SHARED=${BUILD_SHARED_LIBS}"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/Integration/VerifyPackageConsumer.cmake"
 )
+
+# 校验低层源码的完整传递包含链，兼容转发头只豁免自身作为检查根的情形。
+add_test(NAME SCGeometry.ModuleDependencies
+    COMMAND ${CMAKE_COMMAND}
+        "-DSCGEOMETRY_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/Integration/VerifyModuleDependencies.cmake")

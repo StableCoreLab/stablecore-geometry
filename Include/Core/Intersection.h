@@ -252,6 +252,12 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API SCSegmentIntersection2d Intersect(const ISCSegment2d& first,
                                                                const ISCSegment2d& second,
                                                                double eps = Geometry::kDefaultEpsilon);
+    // 按第一段参数升序返回孤立交点和全部重合区间。每项 Point/Tangent 含一个点，Overlap
+    // 含两个端点。同圆重合区间在周期接缝处分段，使两段参数都在 [0, 1] 内且沿区间连续；
+    // 其他情形沿用 Intersect 的容差和参数规则。eps 必须有限且为正。
+    // 无效输入或无交集返回空列表。旧 Intersect 的双点载荷保持兼容，不承诺包含全部重合区间。
+    [[nodiscard]] GEOMETRY_API std::vector<SCSegmentIntersection2d> IntersectAll(
+        const ISCSegment2d& first, const ISCSegment2d& second, double eps = Geometry::kDefaultEpsilon);
     // 按第一入参的路径顺序返回；同一空间点的不同参数位置分别保留，闭合折线的周期端点去重。
     [[nodiscard]] GEOMETRY_API std::vector<SCPolylineIntersectionPoint2d> Intersect(const SCPolyline2d& first,
                                                                                    const SCPolyline2d& second,
