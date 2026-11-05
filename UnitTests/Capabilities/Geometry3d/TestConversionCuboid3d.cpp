@@ -26,11 +26,11 @@ void PrintTo(const ClosedCuboidRepresentativeCase& scenario, std::ostream* strea
     *stream << scenario.name;
 }
 
-class ClosedCuboidAllVerticesTest : public ::testing::TestWithParam<ClosedCuboidRepresentativeCase>
+class ClosedCuboidAllVertices3dTest : public ::testing::TestWithParam<ClosedCuboidRepresentativeCase>
 {
 };
 
-TEST_P(ClosedCuboidAllVerticesTest, PreservesRepresentativeAverageTarget)
+TEST_P(ClosedCuboidAllVertices3dTest, PreservesRepresentativeAverageTarget)
 {
     const PolyhedronBody body = GetParam().build();
     ASSERT_FALSE(body.IsValid());
@@ -49,7 +49,7 @@ TEST_P(ClosedCuboidAllVerticesTest, PreservesRepresentativeAverageTarget)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Conversion3d, ClosedCuboidAllVerticesTest,
+    Conversion3d, ClosedCuboidAllVertices3dTest,
     ::testing::Values(
         ClosedCuboidRepresentativeCase{"Base", &BuildSupportMismatchNearEqualClosedCuboidAllVerticesBody},
         ClosedCuboidRepresentativeCase{"DuplicateLoop", &BuildSupportMismatchNearEqualClosedCuboidAllVerticesWithDuplicateLoopBody},
@@ -58,11 +58,11 @@ INSTANTIATE_TEST_SUITE_P(
         return std::string(info.param.name);
     });
 
-class ClosedCuboidDualVerticesTest : public ::testing::TestWithParam<ClosedCuboidRepresentativeCase>
+class ClosedCuboidDualVertices3dTest : public ::testing::TestWithParam<ClosedCuboidRepresentativeCase>
 {
 };
 
-TEST_P(ClosedCuboidDualVerticesTest, PreservesRepresentativeAverageTarget)
+TEST_P(ClosedCuboidDualVertices3dTest, PreservesRepresentativeAverageTarget)
 {
     const PolyhedronBody body = GetParam().build();
     ASSERT_FALSE(body.IsValid());
@@ -103,7 +103,7 @@ TEST_P(ClosedCuboidDualVerticesTest, PreservesRepresentativeAverageTarget)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Conversion3d, ClosedCuboidDualVerticesTest,
+    Conversion3d, ClosedCuboidDualVertices3dTest,
     ::testing::Values(
         ClosedCuboidRepresentativeCase{"Base", &BuildSupportMismatchNearEqualClosedCuboidDualVerticesBody},
         ClosedCuboidRepresentativeCase{"DuplicateLoop", &BuildSupportMismatchNearEqualClosedCuboidDualVerticesWithDuplicateLoopBody},
@@ -112,11 +112,11 @@ INSTANTIATE_TEST_SUITE_P(
         return std::string(info.param.name);
     });
 
-class ClosedCuboidTripleVerticesTest : public ::testing::TestWithParam<ClosedCuboidRepresentativeCase>
+class ClosedCuboidTripleVertices3dTest : public ::testing::TestWithParam<ClosedCuboidRepresentativeCase>
 {
 };
 
-TEST_P(ClosedCuboidTripleVerticesTest, PreservesRepresentativeAverageTarget)
+TEST_P(ClosedCuboidTripleVertices3dTest, PreservesRepresentativeAverageTarget)
 {
     const PolyhedronBody body = GetParam().build();
     ASSERT_FALSE(body.IsValid());
@@ -165,7 +165,7 @@ TEST_P(ClosedCuboidTripleVerticesTest, PreservesRepresentativeAverageTarget)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Conversion3d, ClosedCuboidTripleVerticesTest,
+    Conversion3d, ClosedCuboidTripleVertices3dTest,
     ::testing::Values(
         ClosedCuboidRepresentativeCase{"Base", &BuildSupportMismatchNearEqualClosedCuboidTripleVerticesBody},
         ClosedCuboidRepresentativeCase{"DuplicateLoop", &BuildSupportMismatchNearEqualClosedCuboidTripleVerticesWithDuplicateLoopBody},

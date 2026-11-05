@@ -25,9 +25,3 @@
 #include "Types/Geometry3d/SCTransform3d.h"
 #include "Types/Geometry3d/SCTriangle3d.h"
 #include "Types/Geometry3d/SCVector3.h"
-
-namespace Geometry
-{
-    struct SCCurveEval3d;
-
-}  // namespace Geometry

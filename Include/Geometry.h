@@ -76,3 +76,5 @@
 #include "Support/Geometry2d/Normalize2.h"
 #include "Types/Geometry2d/SCLine2d.h"
 #include "Types/Geometry3d/SCGeometryTypes3d.h"
+
+#include "Geometry2d/SCPolylineCurve2d.h"

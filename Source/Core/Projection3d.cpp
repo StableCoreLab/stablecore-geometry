@@ -420,15 +420,14 @@ namespace Geometry
                                          const SCGeometryTolerance3d& tolerance,
                                          bool* analyticComplete = nullptr)
         {
-            if (!point.IsValid() || !trim.IsValid(tolerance) || trim.PointCount() < 2)
+            if (!point.IsValid() || !trim.IsValid(tolerance) || trim.UvPieceCount() == 0)
             {
                 if (analyticComplete != nullptr) *analyticComplete = false;
                 return false;
             }
 
             bool improved = false;
-            const std::size_t pointCount = trim.PointCount();
-            const std::size_t segmentCount = trim.UvCurve().IsClosed() ? pointCount : pointCount - 1;
+            const std::size_t segmentCount = trim.UvPieceCount();
             for (std::size_t i = 0; i < segmentCount; ++i)
             {
                 const Detail::CurveOnSurfaceProjectionCandidate projected =
@@ -713,7 +712,7 @@ namespace Geometry
                 Detail::SolveCurveOnSurfaceProjection(point, *surfaceCurve, tolerance, analyticComplete);
             return projected.success && projected.IsValid()
                 ? SCCurveProjection3d{true, projected.point,
-                                      static_cast<double>(projected.segmentIndex) + projected.segmentParameter,
+                                      surfaceCurve->UvParameterAt(projected.segmentIndex, projected.segmentParameter),
                                       projected.distanceSquared}
                 : SCCurveProjection3d{};
         }
@@ -870,13 +869,12 @@ namespace Geometry
     {
         SCCurveOnSurfaceProjection3d best{};
         if (analyticComplete != nullptr) *analyticComplete = false;
-        if (!point.IsValid() || !curveOnSurface.IsValid(tolerance) || curveOnSurface.PointCount() < 2)
+        if (!point.IsValid() || !curveOnSurface.IsValid(tolerance) || curveOnSurface.UvPieceCount() == 0)
         {
             return best;
         }
 
-        const std::size_t pointCount = curveOnSurface.PointCount();
-        const std::size_t segmentCount = curveOnSurface.UvCurve().IsClosed() ? pointCount : pointCount - 1;
+        const std::size_t segmentCount = curveOnSurface.UvPieceCount();
         bool allAnalytic = dynamic_cast<const SCPlaneSurface*>(curveOnSurface.SupportSurface()) != nullptr;
         for (std::size_t i = 0; i < segmentCount; ++i)
         {

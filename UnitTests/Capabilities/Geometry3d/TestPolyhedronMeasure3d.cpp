@@ -4,7 +4,7 @@
 
 using namespace Geometry;
 
-TEST(GeometryTest, PolyhedronFaceAreaUsesCallerTolerance)
+TEST(Geometry3dTest, PolyhedronFaceAreaUsesCallerTolerance)
 {
     constexpr double side = 1e-10;
     Geometry::SCGeometryTolerance3d tolerance{};
@@ -20,7 +20,7 @@ TEST(GeometryTest, PolyhedronFaceAreaUsesCallerTolerance)
     EXPECT_NEAR(Area(face, tolerance), side * side, 1e-30);
 }
 
-TEST(GeometryTest, PolyhedronBodyVolumeUsesCallerTolerance)
+TEST(Geometry3dTest, PolyhedronBodyVolumeUsesCallerTolerance)
 {
     constexpr double side = 1e-10;
     const SCPoint3d a{0, 0, 0};

@@ -27,10 +27,10 @@
 
 需要更细的包含粒度时，可直接使用下列模块：
 
-- `Core`：umbrella 类型与跨模块操作
+- `Core`：算法结果类型与跨模块操作，包括布尔、修复、转换和拓扑服务
 - `Geometry2d`：二维基本图元与路径工具
 - `Geometry3d`：曲线、曲面与三维求值辅助
-- `Brep`：BRep、polyhedron、mesh、healing、拓扑服务
+- `Brep`：BRep、polyhedron、mesh 实体与拓扑数据结构；旧高层服务头保留转发兼容，主入口归入 `Core`，详见 [模块依赖与头文件迁移](docs/设计/模块依赖与头文件迁移.md)
 
 更底层的公开面分得更细：
 

@@ -166,7 +166,7 @@ namespace Geometry
                                                std::vector<Detail::SCBoxSegmentRelation2d>& relations)
         {
             relations.clear();
-            if (!box.IsValid() || !polyline.IsValid() || !std::isfinite(eps) || eps <= 0.0)
+            if (!box.IsValid() || !polyline.IsValid(eps) || !std::isfinite(eps) || eps <= 0.0)
             {
                 return false;
             }
@@ -209,7 +209,7 @@ namespace Geometry
                     return false;
                 }
                 const Detail::SCBoxSegmentClassification2d classification =
-                    Detail::ClassifySegmentBox(*segment, expandedBox);
+                    Detail::ClassifySegmentBox(*segment, expandedBox, eps);
                 if (!classification.success)
                 {
                     // 不得跳过失败段、继续聚合其余段，或将失败段当作 Disjoint。

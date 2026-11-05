@@ -46,11 +46,11 @@ void PrintTo(const CubeRepairCase& scenario, std::ostream* stream)
     *stream << scenario.name;
 }
 
-class CubeRepairTest : public ::testing::TestWithParam<CubeRepairCase>
+class CubeRepair3dTest : public ::testing::TestWithParam<CubeRepairCase>
 {
 };
 
-TEST_P(CubeRepairTest, ConvertsToClosedSharedTopologyBrepBody)
+TEST_P(CubeRepair3dTest, ConvertsToClosedSharedTopologyBrepBody)
 {
     const PolyhedronBody deformedBody = GetParam().build();
     ASSERT_FALSE(deformedBody.IsValid());
@@ -67,7 +67,7 @@ TEST_P(CubeRepairTest, ConvertsToClosedSharedTopologyBrepBody)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Conversion3d, CubeRepairTest,
+    Conversion3d, CubeRepair3dTest,
     ::testing::Values(
         CubeRepairCase{"SupportPlaneMismatch", &BuildSupportPlaneMismatchedCubeBody},
         CubeRepairCase{"MildlyNonPlanarFace", &BuildMildlyNonPlanarCubeFaceBody},
@@ -191,12 +191,12 @@ namespace
         *stream << scenario.name;
     }
 
-    class HoleDominatedSharedChainTest : public ::testing::TestWithParam<HoleDominatedSharedChainCase>
+    class HoleDominatedSharedChain3dTest : public ::testing::TestWithParam<HoleDominatedSharedChainCase>
     {
     };
 }  // namespace
 
-TEST_P(HoleDominatedSharedChainTest, PreservesRepresentativeAverageTargets)
+TEST_P(HoleDominatedSharedChain3dTest, PreservesRepresentativeAverageTargets)
 {
     const auto& scenario = GetParam();
     const PolyhedronBody body = scenario.build();
@@ -240,7 +240,7 @@ TEST_P(HoleDominatedSharedChainTest, PreservesRepresentativeAverageTargets)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Conversion3d, HoleDominatedSharedChainTest,
+    Conversion3d, HoleDominatedSharedChain3dTest,
     ::testing::Values(
         HoleDominatedSharedChainCase{
             "Base", &BuildSupportMismatchNearEqualSharedChainHoleDominatedMixedContentBody, 12, 14},

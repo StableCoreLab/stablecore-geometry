@@ -475,6 +475,3 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API SCSectionComponents3d BuildSectionComponents(const SCPolyhedronSection3d& section,
                                                                           double eps = Geometry::kDefaultEpsilon);
 }  // namespace Geometry
-
-
-

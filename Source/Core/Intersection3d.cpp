@@ -476,7 +476,7 @@ namespace Geometry
             const SCLineCurveOnSurfaceIntersection3d hit = Intersect(line, *surfaceCurve, tolerance);
             return hit.intersects
                 ? SCLineCurveIntersection3d{true, hit.lineParameter,
-                                            static_cast<double>(hit.segmentIndex) + hit.segmentParameter,
+                                            surfaceCurve->UvParameterAt(hit.segmentIndex, hit.segmentParameter),
                                             hit.point}
                 : SCLineCurveIntersection3d{};
         }
@@ -550,13 +550,12 @@ namespace Geometry
                                                const SCGeometryTolerance3d& tolerance)
     {
         if (!line.IsValid(tolerance.distanceEpsilon) || !curveOnSurface.IsValid(tolerance) ||
-            curveOnSurface.PointCount() < 2)
+            curveOnSurface.UvPieceCount() == 0)
         {
             return {};
         }
 
-        const std::size_t pointCount = curveOnSurface.PointCount();
-        const std::size_t segmentCount = curveOnSurface.UvCurve().IsClosed() ? pointCount : pointCount - 1;
+        const std::size_t segmentCount = curveOnSurface.UvPieceCount();
         for (std::size_t i = 0; i < segmentCount; ++i)
         {
             const Detail::CurveOnSurfaceLineCandidate candidate =
@@ -1064,7 +1063,7 @@ namespace Geometry
             const SCPlaneCurveOnSurfaceIntersection3d hit = Intersect(plane, *surfaceCurve, tolerance);
             return hit.intersects
                 ? SCPlaneCurveIntersection3d{true,
-                                             static_cast<double>(hit.segmentIndex) + hit.segmentParameter,
+                                             surfaceCurve->UvParameterAt(hit.segmentIndex, hit.segmentParameter),
                                              hit.point}
                 : SCPlaneCurveIntersection3d{};
         }
@@ -1242,13 +1241,12 @@ namespace Geometry
                                                 const SCGeometryTolerance3d& tolerance)
     {
         if (!plane.IsValid(tolerance.distanceEpsilon) || !curveOnSurface.IsValid(tolerance) ||
-            curveOnSurface.PointCount() < 2)
+            curveOnSurface.UvPieceCount() == 0)
         {
             return {};
         }
 
-        const std::size_t pointCount = curveOnSurface.PointCount();
-        const std::size_t segmentCount = curveOnSurface.UvCurve().IsClosed() ? pointCount : pointCount - 1;
+        const std::size_t segmentCount = curveOnSurface.UvPieceCount();
         for (std::size_t i = 0; i < segmentCount; ++i)
         {
             const Detail::CurveOnSurfaceSample hit =

@@ -42,14 +42,9 @@ namespace Geometry
         {
             return false;
         }
-        for (const SCPolyline2d& polyline : polylines_)
-        {
-            if (!polyline.IsValid(eps))
-            {
-                return false;
-            }
-        }
-        return true;
+        return Detail::ContainerIsValid(polylines_, [eps](const SCPolyline2d& value) {
+            return value.IsValid(eps);
+        });
     }
 
     void SCMultiPolyline2d::Clear()
@@ -84,22 +79,16 @@ namespace Geometry
 
     std::size_t SCMultiPolyline2d::PointCount() const
     {
-        std::size_t count = 0;
-        for (const auto& polyline : polylines_)
-        {
-            count += polyline.PointCount();
-        }
-        return count;
+        return Detail::ContainerTotalCount(polylines_, [](const SCPolyline2d& value) {
+            return value.PointCount();
+        });
     }
 
     std::size_t SCMultiPolyline2d::SegmentCount() const
     {
-        std::size_t count = 0;
-        for (const auto& polyline : polylines_)
-        {
-            count += polyline.SegmentCount();
-        }
-        return count;
+        return Detail::ContainerTotalCount(polylines_, [](const SCPolyline2d& value) {
+            return value.SegmentCount();
+        });
     }
 
     SCBox2d SCMultiPolyline2d::Bounds() const

@@ -118,7 +118,7 @@ TEST(GeometryTest, EndpointSegmentProjectionContracts)
                                                        SCPoint2d{0.0, 0.0}, SCPoint2d{2.0, 0.0}, true);
     EXPECT_TRUE(clampedEndpoint.point.AlmostEquals(SCPoint2d{2.0, 0.0}));
     EXPECT_DOUBLE_EQ(clampedEndpoint.parameter, 1.0);
-    EXPECT_TRUE(clampedEndpoint.isOnSegment);
+    EXPECT_FALSE(clampedEndpoint.isOnSegment);
 
     const auto unboundedEndpoint = ProjectPointToSegment(SCPoint2d{5.0, 0.0},
                                                          SCPoint2d{0.0, 0.0}, SCPoint2d{2.0, 0.0}, false);

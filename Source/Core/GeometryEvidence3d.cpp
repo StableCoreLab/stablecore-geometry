@@ -365,7 +365,7 @@ namespace Geometry
             if (specialized.payloadValid) {
                 const auto& hit = specialized.payload;
                 result.payload = {true, hit.lineParameter,
-                                  static_cast<double>(hit.segmentIndex) + hit.segmentParameter,
+                                  surfaceCurve->UvParameterAt(hit.segmentIndex, hit.segmentParameter),
                                   hit.point};
                 result.payloadValid = result.payload.IsValid();
             }
@@ -436,7 +436,7 @@ namespace Geometry
             result.evidence = specialized.evidence;
             if (specialized.payloadValid) {
                 const auto& hit = specialized.payload;
-                result.payload = {true, static_cast<double>(hit.segmentIndex) + hit.segmentParameter,
+                result.payload = {true, surfaceCurve->UvParameterAt(hit.segmentIndex, hit.segmentParameter),
                                   hit.point};
                 result.payloadValid = result.payload.IsValid();
             }

@@ -175,6 +175,8 @@ set(SCGEOMETRY_HEADERS
     Core/Validation.h
     Export/GeometryExport.h
     Geometry.h
+    Geometry2d/ISCCurve2d.h
+    Geometry2d/SCPolylineCurve2d.h
     Geometry2d/ISCSegment2d.h
     Geometry2d/SCArcSegment2d.h
     Geometry2d/SCBoxTree2d.h
@@ -326,6 +328,7 @@ set(SCGEOMETRY_SOURCES
     Geometry2d/LineSegment2d.cpp
     Geometry2d/MultiPolygon2d.cpp
     Geometry2d/MultiPolyline2d.cpp
+    Geometry2d/SCPolylineCurve2d.cpp
     Geometry2d/Polyline2d.cpp
     Geometry2d/SCCircle2d.cpp
     Geometry2d/SCEllipse2d.cpp

@@ -61,7 +61,8 @@ namespace Geometry
                                                          SCPolygon2d& polygon,
                                                          const SCGeometryTolerance3d& tolerance)
         {
-            if (face.OuterTrim().SupportSurface() == nullptr || !face.OuterTrim().IsValid(tolerance))
+            if (face.OuterTrim().SupportSurface() == nullptr || !face.OuterTrim().IsValid(tolerance) ||
+                face.OuterTrim().TryUvCurve() == nullptr || face.OuterTrim().TryUvCurve()->HasNonLineSegments())
             {
                 return false;
             }
@@ -70,7 +71,8 @@ namespace Geometry
             holes.reserve(face.HoleTrims().size());
             for (const SCCurveOnSurface& trim : face.HoleTrims())
             {
-                if (!trim.IsValid(tolerance))
+                if (!trim.IsValid(tolerance) || trim.TryUvCurve() == nullptr ||
+                    trim.TryUvCurve()->HasNonLineSegments())
                 {
                     return false;
                 }

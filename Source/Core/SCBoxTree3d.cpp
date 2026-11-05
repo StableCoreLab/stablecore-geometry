@@ -16,6 +16,7 @@ namespace Geometry
     struct SCBoxTree3d::Node
     {
         SCBox3d bounds{};
+        std::size_t entryCount = 0;
         std::vector<std::size_t> leafIndices{};
         std::unique_ptr<Node> left{};
         std::unique_ptr<Node> right{};
@@ -95,10 +96,11 @@ namespace Geometry
         [[nodiscard]] int InsertIndex(std::unique_ptr<SCBoxTree3d::Node>& node,
                                       const std::vector<SCBoxTreeEntry3d>& entries,
                                       std::size_t index,
-                                      int depth)
+                                      int depth,
+                                      bool rebalance = false)
         {
             return Detail::InsertBoxTreeIndex<SCBoxTree3d::Node, SCBoxTreeEntry3d, BoxTree3dTraits>(
-                node, entries, index, depth);
+                node, entries, index, depth, rebalance);
         }
 
         [[nodiscard]] bool FindIndexPath(std::unique_ptr<SCBoxTree3d::Node>& node,
@@ -183,7 +185,7 @@ namespace Geometry
         int depth;
         try
         {
-            depth = InsertIndex(root_, entries_, entries_.size() - 1, 0);
+            depth = InsertIndex(root_, entries_, entries_.size() - 1, 0, true);
         }
         catch (...)
         {
@@ -198,27 +200,18 @@ namespace Geometry
 
     bool SCBoxTree3d::Remove(std::size_t id)
     {
-        std::vector<std::size_t> mapping(entries_.size());
-        std::size_t retained = 0;
-        for (std::size_t index = 0; index < entries_.size(); ++index)
-        {
-            mapping[index] = entries_[index].id == id ? entries_.size() : retained++;
-        }
-        if (retained == entries_.size())
+        const auto mapping = Detail::EraseEntriesByIdWithMapping(entries_, id);
+        if (!mapping)
         {
             return false;
         }
-        entries_.erase(std::remove_if(entries_.begin(), entries_.end(),
-                                      [id](const SCBoxTreeEntry3d& entry) { return entry.id == id; }),
-                       entries_.end());
-        RemapIndices(root_, entries_, mapping);
+        RemapIndices(root_, entries_, *mapping);
         return true;
     }
 
     void SCBoxTree3d::Update(std::size_t id, const SCBox3d& box)
     {
-        const auto it = std::find_if(
-            entries_.begin(), entries_.end(), [id](const SCBoxTreeEntry3d& entry) { return entry.id == id; });
+        const auto it = Detail::FindEntryIteratorById(entries_, id);
         if (it != entries_.end())
         {
             const std::size_t index = static_cast<std::size_t>(it - entries_.begin());
@@ -237,6 +230,7 @@ namespace Geometry
                 int depth;
                 try
                 {
+                    // Update 仍持有旧路径；剪枝完成前不能重建其祖先子树。
                     depth = InsertIndex(root_, entries_, index, 0);
                 }
                 catch (...)

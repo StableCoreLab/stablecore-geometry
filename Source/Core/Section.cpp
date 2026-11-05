@@ -2209,6 +2209,15 @@ namespace Geometry
                     continue;
                 }
 
+                if (face.OuterTrim().TryUvCurve() == nullptr ||
+                    face.OuterTrim().TryUvCurve()->HasNonLineSegments() ||
+                    std::any_of(face.HoleTrims().begin(), face.HoleTrims().end(), [](const SCCurveOnSurface& trim) {
+                        return trim.TryUvCurve() == nullptr || trim.TryUvCurve()->HasNonLineSegments();
+                    }))
+                {
+                    result.issue = SCSectionIssue3d::MeshConversionFailed;
+                    return result;
+                }
                 SCPlane facePlane;
                 if (!Detail::TryActualPlane(*planeSurface, tolerance, facePlane)) return {};
                 const SCVector3d faceNormal = facePlane.UnitNormal(tolerance.distanceEpsilon);

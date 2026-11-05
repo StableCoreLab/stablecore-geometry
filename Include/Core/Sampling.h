@@ -10,9 +10,11 @@
 
 namespace Geometry
 {
+    // partCount 为零时返回空；partCount+1 超出 vector 容量时抛出 std::length_error。
     [[nodiscard]] GEOMETRY_API std::vector<SCPoint2d> Sample(const SCLineSegment2d& segment, std::size_t partCount);
     [[nodiscard]] GEOMETRY_API std::vector<SCPoint2d> Sample(const SCArcSegment2d& segment, std::size_t partCount);
     [[nodiscard]] GEOMETRY_API std::vector<SCPoint2d> Sample(const ISCSegment2d& segment, std::size_t partCount);
+    // 非正或非有限最大角度返回两个端点；所需点数不可表示时抛出 std::length_error。
     [[nodiscard]] GEOMETRY_API std::vector<SCPoint2d> SampleByMaxAngle(const SCArcSegment2d& segment,
                                                                      double maxAngleRadians);
 }  // namespace Geometry

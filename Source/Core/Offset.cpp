@@ -2,9 +2,11 @@
 
 #include <algorithm>
 #include <numeric>
+#include <optional>
 #include <cmath>
 #include <cstddef>
 #include <limits>
+#include <iterator>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -335,13 +337,70 @@ namespace Geometry
             return SCPolygon2d(outer, std::move(holes));
         }
 
-        [[nodiscard]] bool InsetExhaustsOuterBounds(const SCPolygon2d& polygon, double distance, double eps)
+        // 对精确闭合的直线外环，用逐运算向外取整的区间包住真实面积。
+        // 忽略孔得到区域面积上界；不以含消减误差的净面积直接证明排空。
+        [[nodiscard]] std::optional<double> LinearOuterAreaUpperBound(const SCPolyline2d& ring)
+        {
+            if (!ring.IsClosed() || ring.HasNonLineSegments() || ring.SegmentCount() < 3) return std::nullopt;
+            struct Bounds { double lower, upper; };
+            const double infinity = std::numeric_limits<double>::infinity();
+            const auto enclose = [infinity](double lower, double upper) {
+                return Bounds{std::nextafter(lower, -infinity), std::nextafter(upper, infinity)};
+            };
+            const auto finite = [](Bounds value) {
+                return std::isfinite(value.lower) && std::isfinite(value.upper);
+            };
+            const auto subtract = [&](Bounds first, Bounds second) {
+                return enclose(first.lower - second.upper, first.upper - second.lower);
+            };
+            const auto multiply = [&](Bounds first, Bounds second) {
+                const double products[]{first.lower*second.lower, first.lower*second.upper,
+                                        first.upper*second.lower, first.upper*second.upper};
+                const auto extremes = std::minmax_element(std::begin(products), std::end(products));
+                return enclose(*extremes.first, *extremes.second);
+            };
+            const SCPoint2d anchor = ring.VertexAt(0);
+            SCPoint2d previousEnd = anchor;
+            Bounds twiceArea{0.0, 0.0};
+            for (std::size_t i = 0; i < ring.SegmentCount(); ++i)
+            {
+                const auto segment = ring.SegmentAt(i);
+                if (!segment || segment->Kind() != SCSegmentKind2d::Line) return std::nullopt;
+                const auto first = segment->StartPoint(), second = segment->EndPoint();
+                if (!first.IsValid() || !second.IsValid() || first != previousEnd) return std::nullopt;
+                const auto x0 = enclose(first.x - anchor.x, first.x - anchor.x);
+                const auto y0 = enclose(first.y - anchor.y, first.y - anchor.y);
+                const auto x1 = enclose(second.x - anchor.x, second.x - anchor.x);
+                const auto y1 = enclose(second.y - anchor.y, second.y - anchor.y);
+                if (!finite(x0) || !finite(y0) || !finite(x1) || !finite(y1)) return std::nullopt;
+                const auto xy = multiply(x0, y1), yx = multiply(y0, x1);
+                if (!finite(xy) || !finite(yx)) return std::nullopt;
+                const auto term = subtract(xy, yx);
+                twiceArea = enclose(twiceArea.lower + term.lower, twiceArea.upper + term.upper);
+                if (!finite(twiceArea)) return std::nullopt;
+                previousEnd = second;
+            }
+            if (previousEnd != anchor) return std::nullopt;
+            return std::nextafter(0.5*std::max(std::abs(twiceArea.lower), std::abs(twiceArea.upper)), infinity);
+        }
+
+        [[nodiscard]] bool InsetExhaustsOuterRegion(const SCPolygon2d& polygon, double distance, double eps)
         {
             if (!(distance < 0.0))
             {
                 return false;
             }
-            const SCBox2d bounds = polygon.OuterRing().Bounds(eps);
+            const SCPolyline2d& outer = polygon.OuterRing();
+            if (const auto areaUpper = LinearOuterAreaUpperBound(outer))
+            {
+                const double infinity = std::numeric_limits<double>::infinity();
+                const double piLower = std::nextafter(Geometry::kPi, 0.0);
+                const double squaredRadiusUpper = std::nextafter(*areaUpper/piLower, infinity);
+                const double radiusUpper = std::nextafter(std::sqrt(squaredRadiusUpper), infinity);
+                // 内缩非空必须容纳相同半径的圆；严格越过面积上界才能据此排空。
+                if (-distance > radiusUpper) return true;
+            }
+            const SCBox2d bounds = outer.Bounds(eps);
             if (!bounds.IsValid())
             {
                 return false;
@@ -949,7 +1008,7 @@ namespace Geometry
             }
         }
 
-        if (!source.IsValid(epsilon) || InsetExhaustsOuterBounds(source, distance, epsilon))
+        if (!source.IsValid(epsilon) || InsetExhaustsOuterRegion(source, distance, epsilon))
         {
             return SCPolygon2d();
         }
@@ -1087,7 +1146,7 @@ namespace Geometry
                     source = NormalizePolygonOrientationForOffset(polygons[i]);
                 }
             }
-            if (!source.IsValid(epsilon) || InsetExhaustsOuterBounds(source, distance, epsilon))
+            if (!source.IsValid(epsilon) || InsetExhaustsOuterRegion(source, distance, epsilon))
             {
                 continue;
             }

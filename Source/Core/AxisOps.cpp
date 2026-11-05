@@ -3,10 +3,9 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
-#include <numbers>
 #include <utility>
 
-#include "Core/Algorithms.h"
+#include "Core/Metrics.h"
 #include "Core/Projection.h"
 #include "Geometry2d/SCArcSegment2d.h"
 #include "Geometry2d/SCLineSegment2d.h"
@@ -17,132 +16,29 @@ namespace Geometry
 {
     namespace
     {
-        [[nodiscard]] double Clamp01(double value)
-        {
-            return std::clamp(value, 0.0, 1.0);
-        }
-
-        [[nodiscard]] double NormalizeAngle(double angle)
-        {
-            constexpr double kTwoPi = 2.0 * std::numbers::pi_v<double>;
-            angle = std::fmod(angle, kTwoPi);
-            if (angle < 0.0)
-            {
-                angle += kTwoPi;
-            }
-            return angle;
-        }
-
-        [[nodiscard]] SCPoint2d Interpolate(const SCPoint2d& startPoint, const SCPoint2d& endPoint, double parameter)
-        {
-            return SCPoint2d{startPoint.x + (endPoint.x - startPoint.x) * parameter,
-                           startPoint.y + (endPoint.y - startPoint.y) * parameter};
-        }
-
-        [[nodiscard]] SCSegmentProjection2d ProjectPointToLineSegmentImpl(const SCPoint2d& point,
-                                                                        const SCLineSegment2d& segment,
-                                                                        bool clampToSegment)
-        {
-            if (!segment.IsValid())
-            {
-                return SCSegmentProjection2d{segment.startPoint, 0.0, DistanceSquared(point, segment.startPoint), true};
-            }
-
-            const SCVector2d direction = segment.endPoint - segment.startPoint;
-            const double lengthSquared = direction.LengthSquared();
-            if (lengthSquared <= Geometry::kDefaultEpsilon * Geometry::kDefaultEpsilon)
-            {
-                return SCSegmentProjection2d{segment.startPoint, 0.0, DistanceSquared(point, segment.startPoint), true};
-            }
-
-            const double rawParameter = Dot(point - segment.startPoint, direction) / lengthSquared;
-            const double parameter = clampToSegment ? Clamp01(rawParameter) : rawParameter;
-            const SCPoint2d projectedPoint = Interpolate(segment.startPoint, segment.endPoint, parameter);
-            return SCSegmentProjection2d{projectedPoint,
-                                       parameter,
-                                       DistanceSquared(point, projectedPoint),
-                                       clampToSegment || (rawParameter >= -Geometry::kDefaultParameterEpsilon &&
-                                                          rawParameter <= 1.0 + Geometry::kDefaultParameterEpsilon)};
-        }
-
-        [[nodiscard]] double ParameterOnArc(const SCArcSegment2d& segment, double angle)
-        {
-            if (segment.sweepAngle >= 0.0)
-            {
-                return NormalizeAngle(angle - segment.startAngle) / segment.sweepAngle;
-            }
-
-            return NormalizeAngle(segment.startAngle - angle) / (-segment.sweepAngle);
-        }
-
-        [[nodiscard]] SCPoint2d PointAtAngle(const SCArcSegment2d& segment, double angle)
-        {
-            return SCPoint2d{segment.center.x + segment.radius * std::cos(angle),
-                           segment.center.y + segment.radius * std::sin(angle)};
-        }
-
-        [[nodiscard]] SCSegmentProjection2d ProjectPointToArcSegmentImpl(const SCPoint2d& point,
-                                                                       const SCArcSegment2d& segment,
-                                                                       bool clampToSegment)
+        [[nodiscard]] SCSegmentProjection2d ProjectArcToAxis(const SCPoint2d& point,
+                                                              const SCArcSegment2d& segment)
         {
             if (!segment.IsValid())
             {
                 return SCSegmentProjection2d{SCPoint2d{}, 0.0, -1.0, false};
             }
-
             const SCVector2d radial = point - segment.center;
-            const double radialLengthSquared = radial.LengthSquared();
-            if (radialLengthSquared <= Geometry::kDefaultEpsilon * Geometry::kDefaultEpsilon)
+            if (radial.LengthSquared() <= Geometry::kDefaultEpsilon * Geometry::kDefaultEpsilon)
             {
+                // 保留轴入口在圆心及其默认容差邻域选择起点的兼容策略。
                 const SCPoint2d startPoint = segment.StartPoint();
-                return SCSegmentProjection2d{startPoint, 0.0, DistanceSquared(point, startPoint), clampToSegment};
+                return {startPoint, 0.0, DistanceSquared(point, startPoint), true};
             }
-
-            const double angle = std::atan2(radial.y, radial.x);
-            const double rawParameter = ParameterOnArc(segment, angle);
-            const double parameter = clampToSegment ? Clamp01(rawParameter) : rawParameter;
-            const SCPoint2d projectedPoint = segment.PointAt(parameter);
-            return SCSegmentProjection2d{projectedPoint,
-                                       parameter,
-                                       DistanceSquared(point, projectedPoint),
-                                       clampToSegment || (rawParameter >= -Geometry::kDefaultParameterEpsilon &&
-                                                          rawParameter <= 1.0 + Geometry::kDefaultParameterEpsilon)};
+            SCSegmentProjection2d projection = ProjectPointToArcSegment(point, segment, true);
+            projection.isOnSegment = true;
+            return projection;
         }
 
-        [[nodiscard]] SCVector2d UnitTangentAt(const SCLineSegment2d& segment)
+        [[nodiscard]] SCVector2d AxisArcTangentAt(const SCArcSegment2d& segment, double parameter)
         {
-            const SCVector2d direction = segment.endPoint - segment.startPoint;
-            const double length = direction.Length();
-            if (length <= Geometry::kDefaultEpsilon)
-            {
-                return SCVector2d{};
-            }
-
-            return direction / length;
-        }
-
-        [[nodiscard]] SCVector2d UnitTangentAt(const SCArcSegment2d& segment, double parameter)
-        {
-            if (!segment.IsValid())
-            {
-                return SCVector2d{};
-            }
-
-            const SCPoint2d point = segment.PointAt(parameter);
-            SCVector2d radial = point - segment.center;
-            const double radialLength = radial.Length();
-            if (radialLength <= Geometry::kDefaultEpsilon)
-            {
-                return SCVector2d{};
-            }
-
-            radial = radial / radialLength;
-            if (segment.sweepAngle >= 0.0)
-            {
-                return SCVector2d{-radial.y, radial.x};
-            }
-
-            return SCVector2d{radial.y, -radial.x};
+            // 默认轴入口保留对无效圆弧返回零切向的规则。
+            return segment.IsValid() ? TangentAt(segment, parameter) : SCVector2d{};
         }
 
         [[nodiscard]] SCVector2d LeftNormal(const SCVector2d& tangent)
@@ -155,8 +51,8 @@ namespace Geometry
     {
         const SCPoint2d point = segment.PointAt(parameter);
         const SCVector2d tangent = segment.Kind() == SCSegmentKind2d::Line
-                                     ? UnitTangentAt(static_cast<const SCLineSegment2d&>(segment))
-                                     : UnitTangentAt(static_cast<const SCArcSegment2d&>(segment), parameter);
+                                     ? TangentAt(static_cast<const SCLineSegment2d&>(segment), parameter)
+                                     : AxisArcTangentAt(static_cast<const SCArcSegment2d&>(segment), parameter);
         const SCVector2d normal = LeftNormal(tangent);
         return SCAxisSample2d{point, tangent, normal, parameter};
     }
@@ -250,14 +146,15 @@ namespace Geometry
         if (segment.Kind() == SCSegmentKind2d::Line)
         {
             const SCLineSegment2d& line = static_cast<const SCLineSegment2d&>(segment);
-            const SCSegmentProjection2d projection = ProjectPointToLineSegmentImpl(point, line, true);
-            const SCVector2d tangent = UnitTangentAt(line);
+            SCSegmentProjection2d projection = ProjectPointToLineSegment(point, line, true);
+            projection.isOnSegment = true;
+            const SCVector2d tangent = TangentAt(line, projection.parameter);
             return SCAxisProjection2d{projection, tangent, LeftNormal(tangent)};
         }
 
         const SCArcSegment2d& arc = static_cast<const SCArcSegment2d&>(segment);
-        const SCSegmentProjection2d projection = ProjectPointToArcSegmentImpl(point, arc, true);
-        const SCVector2d tangent = UnitTangentAt(arc, projection.parameter);
+        const SCSegmentProjection2d projection = ProjectArcToAxis(point, arc);
+        const SCVector2d tangent = AxisArcTangentAt(arc, projection.parameter);
         return SCAxisProjection2d{projection, tangent, LeftNormal(tangent)};
     }
 

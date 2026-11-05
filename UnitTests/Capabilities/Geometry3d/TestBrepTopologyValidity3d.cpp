@@ -5,7 +5,7 @@
 
 using namespace Geometry;
 
-TEST(BrepTopologyValidityTest, ReferenceChecksUseOwningContainerSizes)
+TEST(BrepTopologyValidity3dTest, ReferenceChecksUseOwningContainerSizes)
 {
     const SCLine3d line = SCLine3d::FromOriginAndDirection({0.0, 0.0, 0.0}, {1.0, 0.0, 0.0});
     const auto curve = std::make_shared<SCLineCurve3d>(SCLineCurve3d::FromLine(line, {0.0, 1.0}));
@@ -28,7 +28,7 @@ TEST(BrepTopologyValidityTest, ReferenceChecksUseOwningContainerSizes)
     EXPECT_TRUE(loop.IsValid(3U));
 }
 
-TEST(BrepTopologyValidityTest, ValidationCountsTopologicalEdgeIdentities)
+TEST(BrepTopologyValidity3dTest, ValidationCountsTopologicalEdgeIdentities)
 {
     auto edges = Geometry::Test::BuildPlanarBrepEdgesAtZ5();
     edges.push_back(edges.front());

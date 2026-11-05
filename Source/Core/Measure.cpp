@@ -663,18 +663,69 @@ namespace Geometry
 
     double Length(const SCCurveOnSurface& curveOnSurface, const SCGeometryTolerance3d& tolerance)
     {
-        if (!curveOnSurface.IsValid(tolerance) || curveOnSurface.PointCount() < 2)
+        if (!curveOnSurface.IsValid(tolerance) || curveOnSurface.UvPieceCount() == 0)
         {
             return 0.0;
         }
 
         double total = 0.0;
-        const std::size_t segmentCount=curveOnSurface.UvCurve().IsClosed()?curveOnSurface.PointCount():curveOnSurface.PointCount()-1;
+        const std::size_t segmentCount=curveOnSurface.UvPieceCount();
         for (std::size_t segment=0;segment<segmentCount;++segment) {
+            if (!curveOnSurface.UvGeometry().IsLinearPiece(segment))
+            {
+                const auto range = curveOnSurface.UvGeometry().PieceRange(segment);
+                const double width = range.max - range.min;
+                const auto speed = [&](double local) {
+                    double parameter = curveOnSurface.UvParameterAt(segment, local);
+                    // 公开接缝取后继片；前一片的积分端值必须取入射侧导数。
+                    if (local == 1.0 && segment + 1 < segmentCount)
+                        parameter = std::nextafter(range.max, range.min);
+                    const auto sample = curveOnSurface.Evaluate(parameter, 1, tolerance);
+                    if (sample.derivativeOrder < 1 || !sample.firstDerivative.IsValid())
+                        return std::numeric_limits<double>::infinity();
+                    const double nativeSpeed = std::hypot(sample.firstDerivative.x, sample.firstDerivative.y,
+                                                          sample.firstDerivative.z);
+                    // 总宽度不可表示时先乘半宽；极端范数先缩放分量，避免丢失可表示速度。
+                    const bool finiteWidth = std::isfinite(width);
+                    const double factor = finiteWidth ? width : range.max/2 - range.min/2;
+                    const double multiplier = finiteWidth ? 1.0 : 2.0;
+                    if (!std::isfinite(nativeSpeed) ||
+                        (nativeSpeed < std::numeric_limits<double>::min() && factor > 1.0))
+                    {
+                        return std::hypot(sample.firstDerivative.x * factor,
+                                          sample.firstDerivative.y * factor,
+                                          sample.firstDerivative.z * factor) * multiplier;
+                    }
+                    return (nativeSpeed * factor) * multiplier;
+                };
+                const auto integrate = [&](auto&& self, double a, double b, double fa, double fm,
+                                           double fb, double estimate, double budget, int depth) -> double {
+                    const double m = std::lerp(a, b, 0.5);
+                    const double fl = speed(std::lerp(a, m, 0.5)), fr = speed(std::lerp(m, b, 0.5));
+                    const double left = (m-a)*(fa/6+(2.0/3)*fl+fm/6);
+                    const double right = (b-m)*(fm/6+(2.0/3)*fr+fb/6);
+                    const double refined = left + right;
+                    if (!std::isfinite(refined)) return std::numeric_limits<double>::infinity();
+                    const double error = refined - estimate;
+                    const double allowance = std::max(budget, 64*std::numeric_limits<double>::epsilon()*refined);
+                    if (depth == 16 || std::abs(error) <= 15*allowance || m == a || m == b)
+                        return refined + error/15;
+                    return self(self,a,m,fa,fl,fm,left,budget/2,depth+1) +
+                           self(self,m,b,fm,fr,fb,right,budget/2,depth+1);
+                };
+                const double first = speed(0), middle = speed(0.5), last = speed(1);
+                const double estimate = first/6 + (2.0/3)*middle + last/6;
+                if (!std::isfinite(estimate)) return std::numeric_limits<double>::infinity();
+                total += integrate(integrate,0,1,first,middle,last,estimate,
+                    tolerance.distanceEpsilon/static_cast<double>(segmentCount),0);
+                if (!std::isfinite(total)) return std::numeric_limits<double>::infinity();
+                continue;
+            }
             std::vector<double> breaks{0.0, 1.0};
-            if (const auto* surface = dynamic_cast<const SCNurbsSurface*>(curveOnSurface.SupportSurface())) {
-                const SCPoint2d start = curveOnSurface.UvPointAt(segment);
-                const SCPoint2d end = curveOnSurface.UvPointAt((segment+1)%curveOnSurface.PointCount());
+            if (const auto* surface = dynamic_cast<const SCNurbsSurface*>(curveOnSurface.SupportSurface());
+                surface && curveOnSurface.UvGeometry().IsLinearPiece(segment)) {
+                const SCPoint2d start = curveOnSurface.UvAt(curveOnSurface.UvParameterAt(segment, 0.0));
+                const SCPoint2d end = curveOnSurface.UvAt(curveOnSurface.UvParameterAt(segment, 1.0));
                 breaks = Detail::NurbsSurfaceUvSegmentBreaks(
                     surface->KnotsU(), surface->KnotsV(), start, end);
             }

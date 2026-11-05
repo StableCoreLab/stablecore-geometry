@@ -363,7 +363,8 @@ namespace Geometry
 
         [[nodiscard]] bool BuildLoopFromTrim(const SCCurveOnSurface& trim, std::vector<SCPoint3d>& vertices, double eps)
         {
-            if (!trim.IsValid() || trim.PointCount() < 3)
+            if (!trim.IsValid() || trim.TryUvCurve() == nullptr ||
+                trim.TryUvCurve()->HasNonLineSegments() || trim.PointCount() < 3)
             {
                 return false;
             }
@@ -809,7 +810,9 @@ namespace Geometry
             const std::vector<std::vector<std::size_t>>* sourceHoleRepresentativeIds,
             FaceLoopRepresentativeIds* repairedRepresentativeIds)
         {
-            const double supportEps = std::min(eps, Geometry::kBooleanComparisonEpsilon);
+            // 拟合内部阈值的既有上限；调用者更小的容差仍原样传递。
+            constexpr double kSupportRefitToleranceCeiling = 1e-12;
+            const double supportEps = std::min(eps, kSupportRefitToleranceCeiling);
             auto normalizeLoop =
                 [&](const PolyhedronLoop3d& loop, PolyhedronLoop3d& normalized, std::vector<std::size_t>* keptIndices) {
                     std::vector<SCPoint3d> vertices;

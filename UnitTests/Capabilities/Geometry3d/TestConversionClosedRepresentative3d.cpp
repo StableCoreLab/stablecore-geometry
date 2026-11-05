@@ -26,11 +26,11 @@ void PrintTo(const SupportMismatchRepresentativeCase& scenario, std::ostream* st
     *stream << scenario.name;
 }
 
-class ClosedTetrahedronDualVerticesTest : public ::testing::TestWithParam<SupportMismatchRepresentativeCase>
+class ClosedTetrahedronDualVertices3dTest : public ::testing::TestWithParam<SupportMismatchRepresentativeCase>
 {
 };
 
-TEST_P(ClosedTetrahedronDualVerticesTest, PreservesRepresentativeAverageTarget)
+TEST_P(ClosedTetrahedronDualVertices3dTest, PreservesRepresentativeAverageTarget)
 {
     const PolyhedronBody body = GetParam().build();
     ASSERT_FALSE(body.IsValid());
@@ -70,7 +70,7 @@ TEST_P(ClosedTetrahedronDualVerticesTest, PreservesRepresentativeAverageTarget)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Conversion3d, ClosedTetrahedronDualVerticesTest,
+    Conversion3d, ClosedTetrahedronDualVertices3dTest,
     ::testing::Values(
         SupportMismatchRepresentativeCase{"Base", &BuildSupportMismatchNearEqualClosedTetrahedronDualVerticesBody},
         SupportMismatchRepresentativeCase{"DuplicateLoop", &BuildSupportMismatchNearEqualClosedTetrahedronDualVerticesWithDuplicateLoopBody},
@@ -79,11 +79,11 @@ INSTANTIATE_TEST_SUITE_P(
         return std::string(info.param.name);
     });
 
-class ClosedTetrahedronAllVerticesTest : public ::testing::TestWithParam<SupportMismatchRepresentativeCase>
+class ClosedTetrahedronAllVertices3dTest : public ::testing::TestWithParam<SupportMismatchRepresentativeCase>
 {
 };
 
-TEST_P(ClosedTetrahedronAllVerticesTest, PreservesRepresentativeAverageTarget)
+TEST_P(ClosedTetrahedronAllVertices3dTest, PreservesRepresentativeAverageTarget)
 {
     const PolyhedronBody body = GetParam().build();
     ASSERT_FALSE(body.IsValid());
@@ -125,7 +125,7 @@ TEST_P(ClosedTetrahedronAllVerticesTest, PreservesRepresentativeAverageTarget)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Conversion3d, ClosedTetrahedronAllVerticesTest,
+    Conversion3d, ClosedTetrahedronAllVertices3dTest,
     ::testing::Values(
         SupportMismatchRepresentativeCase{"Base", &BuildSupportMismatchNearEqualClosedTetrahedronAllVerticesBody},
         SupportMismatchRepresentativeCase{"DuplicateLoop", &BuildSupportMismatchNearEqualClosedTetrahedronAllVerticesWithDuplicateLoopBody},
@@ -134,11 +134,11 @@ INSTANTIATE_TEST_SUITE_P(
         return std::string(info.param.name);
     });
 
-class ClosedPrismDualVerticesTest : public ::testing::TestWithParam<SupportMismatchRepresentativeCase>
+class ClosedPrismDualVertices3dTest : public ::testing::TestWithParam<SupportMismatchRepresentativeCase>
 {
 };
 
-TEST_P(ClosedPrismDualVerticesTest, PreservesRepresentativeAverageTarget)
+TEST_P(ClosedPrismDualVertices3dTest, PreservesRepresentativeAverageTarget)
 {
     const PolyhedronBody body = GetParam().build();
     ASSERT_FALSE(body.IsValid());
@@ -179,7 +179,7 @@ TEST_P(ClosedPrismDualVerticesTest, PreservesRepresentativeAverageTarget)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Conversion3d, ClosedPrismDualVerticesTest,
+    Conversion3d, ClosedPrismDualVertices3dTest,
     ::testing::Values(
         SupportMismatchRepresentativeCase{"Base", &BuildSupportMismatchNearEqualClosedPrismDualVerticesBody},
         SupportMismatchRepresentativeCase{"DuplicateLoop", &BuildSupportMismatchNearEqualClosedPrismDualVerticesWithDuplicateLoopBody},
@@ -188,11 +188,11 @@ INSTANTIATE_TEST_SUITE_P(
         return std::string(info.param.name);
     });
 
-class ClosedPrismAllVerticesTest : public ::testing::TestWithParam<SupportMismatchRepresentativeCase>
+class ClosedPrismAllVertices3dTest : public ::testing::TestWithParam<SupportMismatchRepresentativeCase>
 {
 };
 
-TEST_P(ClosedPrismAllVerticesTest, PreservesRepresentativeAverageTarget)
+TEST_P(ClosedPrismAllVertices3dTest, PreservesRepresentativeAverageTarget)
 {
     const PolyhedronBody body = GetParam().build();
     ASSERT_FALSE(body.IsValid());
@@ -235,7 +235,7 @@ TEST_P(ClosedPrismAllVerticesTest, PreservesRepresentativeAverageTarget)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Conversion3d, ClosedPrismAllVerticesTest,
+    Conversion3d, ClosedPrismAllVertices3dTest,
     ::testing::Values(
         SupportMismatchRepresentativeCase{"Base", &BuildSupportMismatchNearEqualClosedPrismAllVerticesBody},
         SupportMismatchRepresentativeCase{"DuplicateLoop", &BuildSupportMismatchNearEqualClosedPrismAllVerticesWithDuplicateLoopBody},

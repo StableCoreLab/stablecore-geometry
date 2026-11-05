@@ -4,7 +4,7 @@
 
 using namespace Geometry;
 
-TEST(BrepResultToleranceTest, InvalidToleranceIsRejectedForFailedAndEmptyResults)
+TEST(BrepResultTolerance3dTest, InvalidToleranceIsRejectedForFailedAndEmptyResults)
 {
     SCGeometryTolerance3d invalidTolerance{};
     invalidTolerance.parameterEpsilon = -1.0;

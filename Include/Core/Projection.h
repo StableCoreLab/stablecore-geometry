@@ -140,6 +140,8 @@ namespace Geometry
     [[nodiscard]] GEOMETRY_API SCTriangleMeshProjection3dWithStatus ProjectPointToTriangleMeshWithStatus(
         const SCPoint3d& point, const TriangleMesh& target, const SCGeometryTolerance3d& tolerance = {});
 
+    // 非退化二维具体段及 ISCSegment2d 入口的 isOnSegment 表示未夹取投影是否位于段参数域内
+    // （含对应容差）；clampToSegment 只夹取返回点与参数，不强制此标志为真。
     [[nodiscard]] GEOMETRY_API SCSegmentProjection2d ProjectPointToLineSegment(const SCPoint2d& point,
                                                                              const SCLineSegment2d& segment,
                                                                              bool clampToSegment = true);
@@ -164,6 +166,7 @@ namespace Geometry
                                                                          bool clampToSegment,
                                                                          double epsilon);
 
+    // 端点形式与具体线段／基类入口一致：夹取不改变未夹取投影的 isOnSegment。
     [[nodiscard]] GEOMETRY_API SCSegmentProjection2d ProjectPointToSegment(const SCPoint2d& point,
                                                                          const SCPoint2d& segmentStart,
                                                                          const SCPoint2d& segmentEnd,

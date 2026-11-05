@@ -788,9 +788,19 @@ namespace Geometry::Detail
         }
     }  // namespace
 
-    SCBoxSegmentClassification2d ClassifySegmentBox(const ISCSegment2d& segment, const SCBox2d& expandedBox)
+    SCBoxSegmentClassification2d ClassifySegmentBox(const ISCSegment2d& segment, const SCBox2d& expandedBox,
+                                                     double eps)
     {
-        if (!segment.IsValid() || !expandedBox.IsValid())
+        bool validSegment = false;
+        if (const auto* line = dynamic_cast<const SCLineSegment2d*>(&segment))
+        {
+            validSegment = line->IsValid(eps);
+        } else if (const auto* arc = dynamic_cast<const SCArcSegment2d*>(&segment))
+        {
+            // 与 SCPolyline2d::IsValid(eps) 的圆弧兼容规则一致。
+            validSegment = arc->IsValid() || arc->IsValid(eps);
+        }
+        if (!IsFinite(eps) || eps <= 0.0 || !validSegment || !expandedBox.IsValid())
         {
             return MakeFailure(SCBoxSegmentFailure2d::InvalidSegment);
         }

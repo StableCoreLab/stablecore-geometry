@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
+#include <stdexcept>
 
 namespace Geometry
 {
@@ -13,6 +15,10 @@ namespace Geometry
             if (partCount == 0)
             {
                 return points;
+            }
+            if (partCount >= points.max_size())
+            {
+                throw std::length_error("sample point count exceeds vector capacity");
             }
             points.reserve(partCount + 1);
             for (std::size_t i = 0; i <= partCount; ++i)
@@ -40,13 +46,18 @@ namespace Geometry
 
     std::vector<SCPoint2d> SampleByMaxAngle(const SCArcSegment2d& segment, double maxAngleRadians)
     {
-        if (maxAngleRadians <= 0.0)
+        if (!std::isfinite(maxAngleRadians) || maxAngleRadians <= 0.0)
         {
             return {segment.StartPoint(), segment.EndPoint()};
         }
 
-        const std::size_t parts = std::max<std::size_t>(
-            1, static_cast<std::size_t>(std::ceil(std::abs(segment.sweepAngle) / maxAngleRadians)));
+        const double requiredParts = std::ceil(std::abs(segment.sweepAngle) / maxAngleRadians);
+        if (!std::isfinite(requiredParts) ||
+            requiredParts >= static_cast<double>(std::numeric_limits<std::size_t>::max()))
+        {
+            throw std::length_error("angular sample count is not representable");
+        }
+        const std::size_t parts = std::max<std::size_t>(1, static_cast<std::size_t>(requiredParts));
         return Sample(segment, parts);
     }
 }  // namespace Geometry

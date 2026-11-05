@@ -2,6 +2,10 @@ include(GoogleTest)
 
 set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Core/TestCoreAlgorithms.cpp
+    Capabilities/Core/TestIntersection2d.cpp
+    Capabilities/Core/TestProjection2d.cpp
+    Capabilities/Core/TestAxisOps2d.cpp
+    Capabilities/Core/TestBoxTreeBalance.cpp
     Capabilities/Core/TestCoreMultigeometry.cpp
     Capabilities/Core/TestDllExport.cpp
     Capabilities/Core/TestFailureSentinels.cpp
@@ -36,6 +40,7 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry2d/TestPredicate2d.cpp
     Capabilities/Geometry2d/TestPolygon.cpp
     Capabilities/Geometry2d/TestPolyline.cpp
+    Capabilities/Geometry2d/TestPolylineCurve2d.cpp
     Capabilities/Geometry2d/TestRelationBoolean.cpp
     Capabilities/Geometry2d/TestRelationBooleanEdgeCases.cpp
     Capabilities/Geometry2d/TestRelationBooleanDegeneracies.cpp
@@ -68,57 +73,63 @@ set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Geometry3d/TestConversionRepresentative3d.cpp
     Capabilities/Geometry3d/TestConversionClosedRepresentative3d.cpp
     Capabilities/Geometry3d/TestHealing3d.cpp
-    Capabilities/Geometry3d/TestHealing3dBoundaryCaps.cpp
-    Capabilities/Geometry3d/TestHealing3dBoundaryArbitration.cpp
-    Capabilities/Geometry3d/TestHealing3dPartialOverlapShells.cpp
-    Capabilities/Geometry3d/TestHealing3dVertexTouchArbitration.cpp
-    Capabilities/Geometry3d/TestHealing3dVertexTouchCombinations.cpp
-    Capabilities/Geometry3d/TestHealing3dShellCombinations.cpp
-    Capabilities/Geometry3d/TestHealing3dMixedShellCombinations.cpp
-    Capabilities/Geometry3d/TestHealing3dMultiFaceShellCombinations.cpp
-    Capabilities/Geometry3d/TestHealing3dSupportMismatch.cpp
-    Capabilities/Geometry3d/TestHealing3dSupportMismatchBackfill.cpp
-    Capabilities/Geometry3d/TestHealing3dTrimPlanes.cpp
+    Capabilities/Geometry3d/TestHealingBoundaryCaps3d.cpp
+    Capabilities/Geometry3d/TestHealingBoundaryArbitration3d.cpp
+    Capabilities/Geometry3d/TestHealingPartialOverlapShells3d.cpp
+    Capabilities/Geometry3d/TestHealingVertexTouchArbitration3d.cpp
+    Capabilities/Geometry3d/TestHealingVertexTouchCombinations3d.cpp
+    Capabilities/Geometry3d/TestHealingFourShellArbitration3d.cpp
+    Capabilities/Geometry3d/TestHealingShellCombinations3d.cpp
+    Capabilities/Geometry3d/TestHealingMixedShellCombinations3d.cpp
+    Capabilities/Geometry3d/TestHealingMultiFaceShellCombinations3d.cpp
+    Capabilities/Geometry3d/TestHealingSupportMismatch3d.cpp
+    Capabilities/Geometry3d/TestHealingSupportMismatchBackfill3d.cpp
+    Capabilities/Geometry3d/TestHealingTrimPlanes3d.cpp
     Capabilities/Geometry3d/TestSection3d.cpp
-    Capabilities/Geometry3d/TestSection3dCoplanarMerges.cpp
-    Capabilities/Geometry3d/TestSection3dMixedOpenContours.cpp
-    Capabilities/Geometry3d/TestSection3dMixedAreas.cpp
-    Capabilities/Geometry3d/TestSection3dMixedStrip.cpp
-    Capabilities/Geometry3d/TestSection3dMixedContours.cpp
-    Capabilities/Geometry3d/TestSection3dMixedContourHoles.cpp
-    Capabilities/Geometry3d/TestSection3dMixedContourOrdering.cpp
-    Capabilities/Geometry3d/TestSection3dRebar.cpp
-    Capabilities/Geometry3d/TestSection3dRebarMidplane.cpp
-    Capabilities/Geometry3d/TestSection3dRebarAxisCuts.cpp
+    Capabilities/Geometry3d/TestSectionCoplanarMerges3d.cpp
+    Capabilities/Geometry3d/TestSectionMixedOpenContours3d.cpp
+    Capabilities/Geometry3d/TestSectionMixedAreas3d.cpp
+    Capabilities/Geometry3d/TestSectionMixedStrip3d.cpp
+    Capabilities/Geometry3d/TestSectionMixedContours3d.cpp
+    Capabilities/Geometry3d/TestSectionMixedContourHoles3d.cpp
+    Capabilities/Geometry3d/TestSectionMixedContourOrdering3d.cpp
+    Capabilities/Geometry3d/TestSectionRebar3d.cpp
+    Capabilities/Geometry3d/TestSectionRebarMidplane3d.cpp
+    Capabilities/Geometry3d/TestSectionRebarAxisCuts3d.cpp
     Capabilities/Geometry3d/TestValueTypes3d.cpp
     Capabilities/Geometry3d/TestResultTolerance3d.cpp
     Capabilities/Geometry3d/TestBrepTopologyValidity3d.cpp
     Capabilities/Geometry3d/TestPolyhedronCore3d.cpp
-    Capabilities/Geometry3d/TestBrepCore.cpp
+    Capabilities/Geometry3d/TestBrepCore3d.cpp
     Capabilities/Geometry3d/TestPolyhedronMeasure3d.cpp
-    Capabilities/Geometry3d/TestBrepFaceRegion.cpp
-    Capabilities/Geometry3d/TestBrepLoopGeometry.cpp
+    Capabilities/Geometry3d/TestBrepFaceRegion3d.cpp
+    Capabilities/Geometry3d/TestBrepLoopGeometry3d.cpp
     Capabilities/Geometry3d/TestBrepMeshConversion3d.cpp
     Capabilities/Geometry3d/TestCorePrimitives3d.cpp
-    Capabilities/Geometry3d/TestCurveOnSurfaceInterface.cpp
-    Capabilities/Geometry3d/TestCurveOnSurfaceNumerics.cpp
-    Capabilities/Geometry3d/TestCurveOnSurfaceHighDegree.cpp
-    Capabilities/Geometry3d/TestCurveOnSurfaceSeparation.cpp
-    Capabilities/Geometry3d/TestGeometryEvidence.cpp
-    Capabilities/Geometry3d/TestGeometryEvidenceIntersection.cpp
-    Capabilities/Geometry3d/TestGeometryEvidenceTopology.cpp
-    Capabilities/Geometry3d/TestMeshHealingContract.cpp
-    Capabilities/Geometry3d/TestNurbsNumerics.cpp
-    Capabilities/Geometry3d/TestNurbsEvaluationNumerics.cpp
-    Capabilities/Geometry3d/TestNurbsWeightExtremes.cpp
-    Capabilities/Geometry3d/TestNurbsProjectionIntersection.cpp
-    Capabilities/Geometry3d/TestNurbsRootIsolationLimits.cpp
-    Capabilities/Geometry3d/TestNurbsIntersectionIsolation.cpp
-    Capabilities/Geometry3d/TestNurbsSurfaceSearch.cpp
-    Capabilities/Geometry3d/TestNurbsSurfaceBudgets.cpp
-    Capabilities/Geometry3d/TestOffsetSurfaceEval.cpp
-    Capabilities/Geometry3d/TestSectionRebuildCore.cpp
-    Capabilities/Geometry3d/TestTriangleMeshCore.cpp
+    Capabilities/Geometry3d/TestProjection3d.cpp
+    Capabilities/Geometry3d/TestSegmentSearch3d.cpp
+    Capabilities/Geometry3d/TestGenericUvCurve3d.cpp
+    Capabilities/Geometry3d/TestCurveOnSurfaceInterface3d.cpp
+    Capabilities/Geometry3d/TestCurveOnSurfaceNumerics3d.cpp
+    Capabilities/Geometry3d/TestCurveOnSurfaceHighDegree3d.cpp
+    Capabilities/Geometry3d/TestCurveOnSurfaceRestrictionEvidence3d.cpp
+    Capabilities/Geometry3d/TestCurveOnSurfaceSeparation3d.cpp
+    Capabilities/Core/TestStableNumerics.cpp
+    Capabilities/Geometry3d/TestGeometryEvidence3d.cpp
+    Capabilities/Geometry3d/TestGeometryEvidenceIntersection3d.cpp
+    Capabilities/Geometry3d/TestGeometryEvidenceTopology3d.cpp
+    Capabilities/Geometry3d/TestMeshHealingContract3d.cpp
+    Capabilities/Geometry3d/TestNurbsNumerics3d.cpp
+    Capabilities/Geometry3d/TestNurbsEvaluationNumerics3d.cpp
+    Capabilities/Geometry3d/TestNurbsWeightExtremes3d.cpp
+    Capabilities/Geometry3d/TestNurbsProjectionIntersection3d.cpp
+    Capabilities/Geometry3d/TestNurbsRootIsolationLimits3d.cpp
+    Capabilities/Geometry3d/TestNurbsIntersectionIsolation3d.cpp
+    Capabilities/Geometry3d/TestNurbsSurfaceSearch3d.cpp
+    Capabilities/Geometry3d/TestNurbsSurfaceBudgets3d.cpp
+    Capabilities/Geometry3d/TestOffsetSurfaceEval3d.cpp
+    Capabilities/Geometry3d/TestSectionRebuildCore3d.cpp
+    Capabilities/Geometry3d/TestTriangleMeshCore3d.cpp
 )
 list(TRANSFORM SCGEOMETRY_CAPABILITY_TEST_SOURCES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
 
@@ -130,7 +141,7 @@ set(SCGEOMETRY_GAP_TEST_SOURCES
     Gaps/Geometry3d/TestConversion3dGaps.cpp
     Gaps/Geometry3d/TestHealing3dGaps.cpp
     Gaps/Geometry3d/TestSection3dGaps.cpp
-    Gaps/Geometry3d/TestMissingAlgorithmsGaps.cpp
+    Gaps/Geometry3d/TestMissingAlgorithms3dGaps.cpp
 )
 list(TRANSFORM SCGEOMETRY_GAP_TEST_SOURCES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
 

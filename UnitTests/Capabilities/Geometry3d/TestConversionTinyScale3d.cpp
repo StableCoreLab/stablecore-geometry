@@ -29,11 +29,11 @@ void PrintTo(const TinyScaleRepairCase& scenario, std::ostream* stream)
     *stream << scenario.name;
 }
 
-class TinyScaleRepairTest : public ::testing::TestWithParam<TinyScaleRepairCase>
+class TinyScaleRepair3dTest : public ::testing::TestWithParam<TinyScaleRepairCase>
 {
 };
 
-TEST_P(TinyScaleRepairTest, ConvertsToBrepWithExpectedTopology)
+TEST_P(TinyScaleRepair3dTest, ConvertsToBrepWithExpectedTopology)
 {
     const TinyScaleRepairCase& scenario = GetParam();
     const PolyhedronBody body = scenario.build();
@@ -55,7 +55,7 @@ TEST_P(TinyScaleRepairTest, ConvertsToBrepWithExpectedTopology)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Conversion3d, TinyScaleRepairTest,
+    Conversion3d, TinyScaleRepair3dTest,
     ::testing::Values(
         TinyScaleRepairCase{"NonPlanarFace", &BuildTinyScaleNonPlanarRepairBody, 1, 4, 4},
         TinyScaleRepairCase{"NonPlanarHoledFace", &BuildTinyScaleNonPlanarHoledRepairBody, 1, 8, 8},
@@ -73,7 +73,9 @@ INSTANTIATE_TEST_SUITE_P(
         TinyScaleRepairCase{"ChainMixedContentSupportMismatchDuplicateHole", &BuildTinyScaleSharedChainMixedContentSupportMismatchWithDuplicateHoleBody, 3, 12, 14, true},
         TinyScaleRepairCase{"ChainSupportMismatchCollinear", &BuildTinyScaleSharedChainSupportMismatchAndCollinearBody, 3, 13, 15},
         TinyScaleRepairCase{"ChainFullComposition", &BuildTinyScaleSharedChainFullCompositionBody, 3, 13, 15},
-        TinyScaleRepairCase{"ChainDualDuplicateFullComposition", &BuildTinyScaleSharedChainDualDuplicateFullCompositionBody, 3, 13, 15}),
+        TinyScaleRepairCase{"ChainDualDuplicateFullComposition", &BuildTinyScaleSharedChainDualDuplicateFullCompositionBody, 3, 13, 15},
+        TinyScaleRepairCase{"TriangularFaceChain", &BuildTinyScaleTriangularFaceChainBody, 3, 5, 7},
+        TinyScaleRepairCase{"TriangularFan", &BuildTinyScaleTriangularFanBody, 4, 5, 8}),
     [](const ::testing::TestParamInfo<TinyScaleRepairCase>& info) {
         return std::string(info.param.name);
     });
@@ -94,36 +96,4 @@ TEST(Conversion3dCapabilityTest, TinyScaleClosedTetrahedronConvertsToBrepBodyWit
     ASSERT_EQ(result.body.EdgeCount(), 6);
     ASSERT_EQ(result.body.ShellCount(), 1);
     ASSERT_TRUE(result.body.ShellAt(0).IsClosed());
-}
-
-// 验证三角面链逐面拟合后仍复用共享边顶点。
-TEST(Conversion3dCapabilityTest, TinyScaleTriangularFaceChainRepairsToBrepBodyWithSharedEdgeConsistency)
-{
-    const PolyhedronBody body = BuildTinyScaleTriangularFaceChainBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 3);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 3);
-    ASSERT_EQ(result.body.VertexCount(), 5);
-    ASSERT_EQ(result.body.EdgeCount(), 7);
-}
-
-// 验证四个三角面共享顶点的开放边界在支撑面修复后保持确定的顶点和边数量。
-TEST(Conversion3dCapabilityTest, TinyScaleTriangularFanRepairsToBrepBodyWithSharedApex)
-{
-    const PolyhedronBody body = BuildTinyScaleTriangularFanBody();
-    ASSERT_FALSE(body.IsValid());
-    ASSERT_EQ(body.FaceCount(), 4);
-
-    const PolyhedronBrepBodyConversion3d result = ConvertToBrepBody(body);
-    ASSERT_TRUE(result.success);
-    ASSERT_EQ(result.issue, BrepConversionIssue3d::None);
-    ASSERT_TRUE(result.body.IsValid());
-    ASSERT_EQ(result.body.FaceCount(), 4);
-    ASSERT_EQ(result.body.VertexCount(), 5);
-    ASSERT_EQ(result.body.EdgeCount(), 8);
 }

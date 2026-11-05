@@ -13,17 +13,23 @@ namespace Geometry::Detail
         double signedArea{0.0};
         double firstMomentX{0.0};
         double firstMomentY{0.0};
+        // 一阶矩在该局部基点下计算，避免全局坐标的平方／立方项相消。
+        SCPoint2d referencePoint{};
     };
 
     inline void AccumulateLineSegmentMoment(const SCPoint2d& startPoint, const SCPoint2d& endPoint, RingMoment2d& total)
     {
-        const double cross = startPoint.x * endPoint.y - endPoint.x * startPoint.y;
+        const double startX = startPoint.x - total.referencePoint.x;
+        const double startY = startPoint.y - total.referencePoint.y;
+        const double endX = endPoint.x - total.referencePoint.x;
+        const double endY = endPoint.y - total.referencePoint.y;
+        const double cross = startX * endY - endX * startY;
 
         total.signedArea += cross / 2.0;
-        total.firstMomentX += (endPoint.y - startPoint.y) *
-                              (startPoint.x * startPoint.x + startPoint.x * endPoint.x + endPoint.x * endPoint.x) / 6.0;
-        total.firstMomentY += (startPoint.x - endPoint.x) *
-                              (startPoint.y * startPoint.y + startPoint.y * endPoint.y + endPoint.y * endPoint.y) / 6.0;
+        total.firstMomentX += (endY - startY) *
+                              (startX * startX + startX * endX + endX * endX) / 6.0;
+        total.firstMomentY += (startX - endX) *
+                              (startY * startY + startY * endY + endY * endY) / 6.0;
     }
 
     inline double ArcFirstMomentXPrimitive(double centerX, double radius, double angle)
@@ -46,8 +52,8 @@ namespace Geometry::Detail
 
     inline void AccumulateArcSegmentMoment(const SCArcSegment2d& arc, RingMoment2d& total)
     {
-        const double cx = arc.center.x;
-        const double cy = arc.center.y;
+        const double cx = arc.center.x - total.referencePoint.x;
+        const double cy = arc.center.y - total.referencePoint.y;
         const double radius = arc.radius;
         const double startAngle = arc.startAngle;
         const double sweep = arc.sweepAngle;
@@ -70,6 +76,7 @@ namespace Geometry::Detail
     inline RingMoment2d ComputeRingMoment(const SCPolyline2d& ring)
     {
         RingMoment2d total{};
+        bool hasReference = false;
         for (std::size_t i = 0; i < ring.SegmentCount(); ++i)
         {
             std::unique_ptr<ISCSegment2d> segment = ring.SegmentAt(i);
@@ -78,6 +85,11 @@ namespace Geometry::Detail
                 continue;
             }
 
+            if (!hasReference)
+            {
+                total.referencePoint = segment->StartPoint();
+                hasReference = true;
+            }
             switch (segment->Kind())
             {
                 case SCSegmentKind2d::Line:

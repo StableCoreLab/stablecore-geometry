@@ -23,6 +23,7 @@ namespace Geometry::Detail
         const SCBrepFace& face, const SCGeometryTolerance3d& tolerance, SCPolygon2d& polygon)
     {
         if (face.SupportSurface() == nullptr || !face.OuterTrim().IsValid(tolerance) ||
+            face.OuterTrim().TryUvCurve() == nullptr || face.OuterTrim().TryUvCurve()->HasNonLineSegments() ||
             face.HoleTrims().size() != face.HoleCount() ||
             !SameSurfaceParameterization(*face.SupportSurface(), *face.OuterTrim().SupportSurface()) ||
             !CurveOnSurfaceUvInsideSupportDomain(face.OuterTrim()))
@@ -33,7 +34,8 @@ namespace Geometry::Detail
         holes.reserve(face.HoleTrims().size());
         for (const SCCurveOnSurface& trim : face.HoleTrims())
         {
-            if (!trim.IsValid(tolerance) ||
+            if (!trim.IsValid(tolerance) || trim.TryUvCurve() == nullptr ||
+                trim.TryUvCurve()->HasNonLineSegments() ||
                 !SameSurfaceParameterization(*face.SupportSurface(), *trim.SupportSurface()) ||
                 !CurveOnSurfaceUvInsideSupportDomain(trim))
             {

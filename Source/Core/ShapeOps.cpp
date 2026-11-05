@@ -7,9 +7,8 @@
 #include <vector>
 
 #include "../Detail/RingIntegral2d.h"
-#include "Core/Algorithms.h"
 #include "Detail/SegmentKernel2d.h"
-#include "../Detail/TolerancePolicy2d.h"
+#include "Support/Epsilon.h"
 
 namespace Geometry
 {
@@ -35,7 +34,15 @@ namespace Geometry
     SCRingOrientation2d Orientation(const SCPolyline2d& ring)
     {
         const double signedArea = SignedArea(ring);
-        if (std::abs(signedArea) <= Detail::kAreaEpsilon2d)
+        const SCBox2d bounds = ring.Bounds();
+        if (!bounds.IsValid() || !std::isfinite(signedArea))
+        {
+            return SCRingOrientation2d::Unknown;
+        }
+        // 将默认线性容差按环的几何尺度换算为面积量纲。
+        const double areaEpsilon = std::max(kDefaultEpsilon * kDefaultEpsilon,
+            kDefaultEpsilon * std::hypot(bounds.Width(), bounds.Height()));
+        if (std::abs(signedArea) <= areaEpsilon)
         {
             return SCRingOrientation2d::Unknown;
         }

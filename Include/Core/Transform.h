@@ -33,6 +33,7 @@ namespace Geometry
                                                  double angleRadians);
     [[nodiscard]] GEOMETRY_API SCPolygon2d Rotate(const SCPolygon2d& polygon, const SCPoint2d& origin, double angleRadians);
 
+    // 方向长度非有限或不大于 kDefaultEpsilon 时，各 Mirror 重载保持输入几何及环顺序。
     [[nodiscard]] GEOMETRY_API SCPoint2d Mirror(const SCPoint2d& point, const SCPoint2d& linePoint, const SCVector2d& lineDir);
     [[nodiscard]] GEOMETRY_API SCLineSegment2d Mirror(const SCLineSegment2d& segment,
                                                     const SCPoint2d& linePoint,

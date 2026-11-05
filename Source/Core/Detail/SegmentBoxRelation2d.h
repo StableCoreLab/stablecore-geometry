@@ -39,6 +39,8 @@ namespace Geometry::Detail
     // 对单条段与扩张闭盒 B_eps（已含调用方 eps）做精确分类。expandedBox 即 B_eps，
     // 内核不得再次把调用方 eps 用作几何扩张。所有 Line/Arc 求交、圆弧参数事件、PointAt()
     // 代表点和边界分类都在同一局部几何中完成，段参数 t 保持与原段一致。
+    // eps 仅用于原始段有效性校验；B_eps 已由调用方扩张，分类时不再扩张。
     [[nodiscard]] SCBoxSegmentClassification2d ClassifySegmentBox(const ISCSegment2d& segment,
-                                                                  const SCBox2d& expandedBox);
+                                                                  const SCBox2d& expandedBox,
+                                                                  double eps);
 }  // namespace Geometry::Detail

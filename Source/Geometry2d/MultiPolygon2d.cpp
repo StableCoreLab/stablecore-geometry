@@ -42,14 +42,9 @@ namespace Geometry
         {
             return false;
         }
-        for (const SCPolygon2d& polygon : polygons_)
-        {
-            if (!polygon.IsValid(eps))
-            {
-                return false;
-            }
-        }
-        return true;
+        return Detail::ContainerIsValid(polygons_, [eps](const SCPolygon2d& value) {
+            return value.IsValid(eps);
+        });
     }
 
     void SCMultiPolygon2d::Clear()
@@ -84,32 +79,23 @@ namespace Geometry
 
     std::size_t SCMultiPolygon2d::PointCount() const
     {
-        std::size_t count = 0;
-        for (const auto& polygon : polygons_)
-        {
-            count += polygon.PointCount();
-        }
-        return count;
+        return Detail::ContainerTotalCount(polygons_, [](const SCPolygon2d& value) {
+            return value.PointCount();
+        });
     }
 
     std::size_t SCMultiPolygon2d::SegmentCount() const
     {
-        std::size_t count = 0;
-        for (const auto& polygon : polygons_)
-        {
-            count += polygon.SegmentCount();
-        }
-        return count;
+        return Detail::ContainerTotalCount(polygons_, [](const SCPolygon2d& value) {
+            return value.SegmentCount();
+        });
     }
 
     std::size_t SCMultiPolygon2d::HoleCount() const
     {
-        std::size_t count = 0;
-        for (const auto& polygon : polygons_)
-        {
-            count += polygon.HoleCount();
-        }
-        return count;
+        return Detail::ContainerTotalCount(polygons_, [](const SCPolygon2d& value) {
+            return value.HoleCount();
+        });
     }
 
     SCBox2d SCMultiPolygon2d::Bounds() const

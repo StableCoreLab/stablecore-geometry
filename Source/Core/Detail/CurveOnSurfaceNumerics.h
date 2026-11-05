@@ -86,15 +86,10 @@ namespace Geometry::Detail
         {
             return false;
         }
-        for (std::size_t index = 0; index < curve.PointCount(); ++index)
-        {
-            const SCPoint2d uv = curve.UvPointAt(index);
-            if (!uv.IsValid() || !uRange.Contains(uv.x, 0.0) || !vRange.Contains(uv.y, 0.0))
-            {
-                return false;
-            }
-        }
-        return true;
+        const auto bounds = curve.UvGeometry().Bounds();
+        return bounds.IsValid() && uRange.Contains(bounds.MinPoint().x, 0.0) &&
+            uRange.Contains(bounds.MaxPoint().x, 0.0) && vRange.Contains(bounds.MinPoint().y, 0.0) &&
+            vRange.Contains(bounds.MaxPoint().y, 0.0);
     }
 
     struct CurveOnSurfaceSample
@@ -109,16 +104,11 @@ namespace Geometry::Detail
         const SCCurveOnSurface& curve, std::size_t segmentIndex, double parameter)
     {
         CurveOnSurfaceSample result{};
-        const std::size_t pointCount = curve.PointCount();
         const ISCSurface* surface = curve.SupportSurface();
-        if (surface == nullptr || pointCount < 2 || segmentIndex >= pointCount ||
-            !std::isfinite(parameter) || parameter < 0.0 || parameter > 1.0 ||
-            (!curve.UvCurve().IsClosed() && segmentIndex + 1 >= pointCount))
-        {
-            return result;
-        }
+        if (surface == nullptr || segmentIndex >= curve.UvPieceCount() ||
+            !std::isfinite(parameter) || parameter < 0.0 || parameter > 1.0) return result;
         result.parameter = parameter;
-        result.uv = curve.UvAt(static_cast<double>(segmentIndex) + parameter);
+        result.uv = curve.UvAt(curve.UvParameterAt(segmentIndex, parameter));
         if (!result.uv.IsValid())
         {
             return result;
@@ -177,13 +167,40 @@ namespace Geometry::Detail
         double w{0.0};
     };
 
-    [[nodiscard]] inline HomogeneousSurfaceControl LerpSurfaceControl(
+    [[nodiscard]] inline std::optional<HomogeneousSurfaceControl> CheckedHomogeneousSurfaceControl(
+        const SCPoint3d& point, double originalWeight, double scale)
+    {
+        const double weight = originalWeight / scale;
+        if (!(weight > 0.0) || !std::isfinite(weight)) return std::nullopt;
+        const HomogeneousSurfaceControl result{point.x * weight, point.y * weight,
+                                               point.z * weight, weight};
+        const auto preserved = [](double coordinate, double product) {
+            return std::isfinite(product) && (coordinate == 0.0 || product != 0.0);
+        };
+        if (!preserved(point.x, result.x) || !preserved(point.y, result.y) ||
+            !preserved(point.z, result.z)) return std::nullopt;
+        return result;
+    }
+
+    [[nodiscard]] inline std::optional<HomogeneousSurfaceControl> LerpSurfaceControl(
         const HomogeneousSurfaceControl& first, const HomogeneousSurfaceControl& second, double parameter)
     {
-        return {std::lerp(first.x, second.x, parameter),
-                std::lerp(first.y, second.y, parameter),
-                std::lerp(first.z, second.z, parameter),
-                std::lerp(first.w, second.w, parameter)};
+        if (!std::isfinite(parameter) || parameter < 0.0 || parameter > 1.0) return std::nullopt;
+        const HomogeneousSurfaceControl result{
+            std::lerp(first.x, second.x, parameter), std::lerp(first.y, second.y, parameter),
+            std::lerp(first.z, second.z, parameter), std::lerp(first.w, second.w, parameter)};
+        const auto preserved = [parameter](double a, double b, double value) {
+            if (!std::isfinite(value)) return false;
+            if (parameter == 0.0 || parameter == 1.0 || value != 0.0) return true;
+            // 同侧端点的内部凸组合不可能精确为零；异号相消及真实零仍允许。
+            return !((a > 0.0 && b >= 0.0) || (b > 0.0 && a >= 0.0) ||
+                     (a < 0.0 && b <= 0.0) || (b < 0.0 && a <= 0.0));
+        };
+        if (!(result.w > 0.0) || !std::isfinite(result.w) ||
+            !preserved(first.x, second.x, result.x) ||
+            !preserved(first.y, second.y, result.y) ||
+            !preserved(first.z, second.z, result.z)) return std::nullopt;
+        return result;
     }
 
     [[nodiscard]] inline std::vector<HomogeneousSurfaceControl> RestrictBezierControls(
@@ -198,6 +215,7 @@ namespace Geometry::Detail
 
         const auto splitLeft = [](const std::vector<HomogeneousSurfaceControl>& input,
                                   double parameter, bool retainRight) {
+            if (input.empty()) return std::vector<HomogeneousSurfaceControl>{};
             const std::size_t degree = input.size() - 1;
             auto work = input;
             std::vector<HomogeneousSurfaceControl> output(input.size());
@@ -206,7 +224,9 @@ namespace Geometry::Detail
             {
                 for (std::size_t index = 0; index <= degree - level; ++index)
                 {
-                    work[index] = LerpSurfaceControl(work[index], work[index + 1], parameter);
+                    const auto blended = LerpSurfaceControl(work[index], work[index + 1], parameter);
+                    if (!blended) return std::vector<HomogeneousSurfaceControl>{};
+                    work[index] = *blended;
                 }
                 output[retainRight ? degree - level : level] =
                     work[retainRight ? degree - level : 0];
@@ -266,6 +286,12 @@ namespace Geometry::Detail
                               (current.y - fraction * previous.y) * inverse,
                               (current.z - fraction * previous.z) * inverse,
                               (current.w - fraction * previous.w) * inverse};
+            const auto& candidate = reduced[index];
+            if (!(candidate.w > 0.0) || !std::isfinite(candidate.w) ||
+                !std::isfinite(candidate.x) || !std::isfinite(candidate.y) || !std::isfinite(candidate.z))
+            {
+                return false;
+            }
         }
 
         HomogeneousSurfaceControl scale{};
@@ -279,18 +305,18 @@ namespace Geometry::Detail
         const auto close = [](double actual, double expected, double magnitude) {
             return std::isfinite(expected) &&
                    std::abs(actual - expected) <=
-                       64.0 * std::numeric_limits<double>::epsilon() *
-                           std::max(magnitude, std::numeric_limits<double>::min());
+                       64.0 * std::numeric_limits<double>::epsilon() * magnitude;
         };
         for (int index = 0; index <= degree; ++index)
         {
-            const HomogeneousSurfaceControl expected =
-                index == 0 ? reduced.front() :
-                index == degree ? reduced.back() :
+            const std::optional<HomogeneousSurfaceControl> expected =
+                index == 0 ? std::optional<HomogeneousSurfaceControl>{reduced.front()} :
+                index == degree ? std::optional<HomogeneousSurfaceControl>{reduced.back()} :
                 LerpSurfaceControl(reduced[index], reduced[index - 1], static_cast<double>(index) / degree);
+            if (!expected) return false;
             const auto& actual = controls[index];
-            if (!close(actual.x, expected.x, scale.x) || !close(actual.y, expected.y, scale.y) ||
-                !close(actual.z, expected.z, scale.z) || !close(actual.w, expected.w, scale.w))
+            if (!close(actual.x, expected->x, scale.x) || !close(actual.y, expected->y, scale.y) ||
+                !close(actual.z, expected->z, scale.z) || !close(actual.w, expected->w, scale.w))
             {
                 return false;
             }
@@ -303,7 +329,8 @@ namespace Geometry::Detail
         const SCCurveOnSurface& curve, std::size_t segmentIndex, const SCGeometryTolerance3d& tolerance)
     {
         const auto* surface = dynamic_cast<const SCNurbsSurface*>(curve.SupportSurface());
-        if (surface == nullptr || segmentIndex >= curve.UvCurve().SegmentCount())
+        if (surface == nullptr || segmentIndex >= curve.UvPieceCount() ||
+            !curve.UvGeometry().IsLinearPiece(segmentIndex))
         {
             return std::nullopt;
         }
@@ -335,8 +362,8 @@ namespace Geometry::Detail
             return std::nullopt;
         }
 
-        const SCPoint2d first = curve.UvPointAt(segmentIndex);
-        const SCPoint2d second = curve.UvPointAt((segmentIndex + 1) % curve.PointCount());
+        const SCPoint2d first = curve.UvAt(curve.UvParameterAt(segmentIndex, 0.0));
+        const SCPoint2d second = curve.UvAt(curve.UvParameterAt(segmentIndex, 1.0));
         const double firstU = (first.x - knotsU.front()) / (knotsU.back() - knotsU.front());
         const double secondU = (second.x - knotsU.front()) / (knotsU.back() - knotsU.front());
         const double firstV = (first.y - knotsV.front()) / (knotsV.back() - knotsV.front());
@@ -366,11 +393,13 @@ namespace Geometry::Detail
             {
                 const std::size_t index = static_cast<std::size_t>(v) *
                                           (static_cast<std::size_t>(degreeU) + 1) + static_cast<std::size_t>(u);
-                const double weight = surfaceWeights[index] / weightScale;
-                row.push_back({points[index].x * weight, points[index].y * weight,
-                               points[index].z * weight, weight});
+                const auto control = CheckedHomogeneousSurfaceControl(
+                    points[index], surfaceWeights[index], weightScale);
+                if (!control) return std::nullopt;
+                row.push_back(*control);
             }
             uRestricted[v] = RestrictBezierControls(row, firstU, secondU);
+            if (uRestricted[v].empty()) return std::nullopt;
         }
 
         std::vector<std::vector<HomogeneousSurfaceControl>> restricted(degreeU + 1);
@@ -383,6 +412,7 @@ namespace Geometry::Detail
                 column.push_back(uRestricted[v][u]);
             }
             restricted[u] = RestrictBezierControls(column, firstV, secondV);
+            if (restricted[u].empty()) return std::nullopt;
         }
 
         std::vector<HomogeneousSurfaceControl> diagonalControls;
@@ -397,10 +427,17 @@ namespace Geometry::Detail
                 const int v = index - u;
                 const double factor = factors[static_cast<std::size_t>(u - first)];
                 const auto& term = restricted[u][v];
-                control.x += factor * term.x;
-                control.y += factor * term.y;
-                control.z += factor * term.z;
-                control.w += factor * term.w;
+                const auto scaled = CheckedHomogeneousSurfaceControl(
+                    {term.x, term.y, term.z}, factor, 1.0);
+                const double scaledWeight = factor * term.w;
+                if (!scaled || !(scaledWeight > 0.0) || !std::isfinite(scaledWeight))
+                {
+                    return std::nullopt;
+                }
+                control.x += scaled->x;
+                control.y += scaled->y;
+                control.z += scaled->z;
+                control.w += scaledWeight;
             }
             if (!(control.w > 0.0) || !std::isfinite(control.w) ||
                 !std::isfinite(control.x) || !std::isfinite(control.y) || !std::isfinite(control.z))
@@ -445,12 +482,12 @@ namespace Geometry::Detail
     {
         const auto* surface = dynamic_cast<const SCNurbsSurface*>(curve.SupportSurface());
         if (surface == nullptr || !surface->IsValid(tolerance) ||
-            segmentIndex >= curve.UvCurve().SegmentCount())
+            segmentIndex >= curve.UvPieceCount() || !curve.UvGeometry().IsLinearPiece(segmentIndex))
         {
             return std::nullopt;
         }
-        const SCPoint2d first = curve.UvPointAt(segmentIndex);
-        const SCPoint2d second = curve.UvPointAt((segmentIndex + 1) % curve.PointCount());
+        const SCPoint2d first = curve.UvAt(curve.UvParameterAt(segmentIndex, 0.0));
+        const SCPoint2d second = curve.UvAt(curve.UvParameterAt(segmentIndex, 1.0));
         const bool alongU = first.y == second.y && first.x != second.x;
         const bool alongV = first.x == second.x && first.y != second.y;
         if (!alongU && !alongV)
@@ -489,10 +526,11 @@ namespace Geometry::Detail
                     continue;
                 }
                 const std::size_t index = alongU ? fixed * countU + moving : moving * countU + fixed;
-                const double contribution = basis[fixed] * (surfaceWeights[index] / weightScale);
-                weight += contribution;
-                weightedPoint = weightedPoint + SCVector3d{surfacePoints[index].x, surfacePoints[index].y,
-                                                            surfacePoints[index].z} * contribution;
+                const auto contribution = CheckedHomogeneousSurfaceControl(
+                    surfacePoints[index], basis[fixed] * (surfaceWeights[index] / weightScale), 1.0);
+                if (!contribution) return std::nullopt;
+                weight += contribution->w;
+                weightedPoint = weightedPoint + SCVector3d{contribution->x, contribution->y, contribution->z};
             }
             if (!(weight > 0.0) || !std::isfinite(weight))
             {
@@ -546,12 +584,14 @@ namespace Geometry::Detail
         {
             const double denominator = knots[index + static_cast<std::size_t>(degree)] - knots[index];
             const double alpha = (knot - knots[index]) / denominator;
-            inserted[index] = LerpSurfaceControl(controls[index - 1], controls[index], alpha);
+            const auto blended = LerpSurfaceControl(controls[index - 1], controls[index], alpha);
+            if (!blended) return {};
+            inserted[index] = *blended;
         }
         return inserted;
     }
 
-    inline void RefineNurbsSurfaceAxis(RefinedNurbsSurfaceNet& net, int degree, bool alongU)
+    inline bool RefineNurbsSurfaceAxis(RefinedNurbsSurfaceNet& net, int degree, bool alongU)
     {
         auto& knots = alongU ? net.knotsU : net.knotsV;
         const std::size_t count = alongU ? net.countU : net.countV;
@@ -578,6 +618,7 @@ namespace Geometry::Detail
                         const auto begin = net.controls.begin() + v * net.countU;
                         const std::vector<HomogeneousSurfaceControl> row(begin, begin + net.countU);
                         const auto refined = InsertNurbsControlKnot(row, knots, degree, knot);
+                        if (refined.empty()) return false;
                         inserted.insert(inserted.end(), refined.begin(), refined.end());
                     }
                     ++net.countU;
@@ -594,6 +635,7 @@ namespace Geometry::Detail
                             column.push_back(net.controls[v * net.countU + u]);
                         }
                         const auto refined = InsertNurbsControlKnot(column, knots, degree, knot);
+                        if (refined.empty()) return false;
                         for (std::size_t v = 0; v <= net.countV; ++v)
                         {
                             inserted[v * net.countU + u] = refined[v];
@@ -605,9 +647,10 @@ namespace Geometry::Detail
                 knots.insert(knots.begin() + static_cast<std::ptrdiff_t>(span + 1), knot);
             }
         }
+        return true;
     }
 
-    // 投影须严格限制到 UV 段；求交可在整域求根后过滤段外参数。
+    // 投影及重合判定须严格限制到 UV 段；段外重合不能用离散命中过滤排除。
     [[nodiscard]] inline std::vector<RestrictedNurbsSurfaceCurve> RestrictNurbsSurfaceSegmentPieces(
         const SCCurveOnSurface& curve, std::size_t segmentIndex, const SCGeometryTolerance3d& tolerance,
         bool requireSegmentDomain = false)
@@ -636,16 +679,16 @@ namespace Geometry::Detail
         }
 
         const auto* surface = dynamic_cast<const SCNurbsSurface*>(curve.SupportSurface());
-        if (surface == nullptr || segmentIndex >= curve.UvCurve().SegmentCount() ||
-            !surface->IsValid(tolerance))
+        if (surface == nullptr || segmentIndex >= curve.UvPieceCount() ||
+            !surface->IsValid(tolerance) || !curve.UvGeometry().IsLinearPiece(segmentIndex))
         {
             return {};
         }
         const auto& originalU = surface->KnotsU();
         const auto& originalV = surface->KnotsV();
 
-        const SCPoint2d first = curve.UvPointAt(segmentIndex);
-        const SCPoint2d second = curve.UvPointAt((segmentIndex + 1) % curve.PointCount());
+        const SCPoint2d first = curve.UvAt(curve.UvParameterAt(segmentIndex, 0.0));
+        const SCPoint2d second = curve.UvAt(curve.UvParameterAt(segmentIndex, 1.0));
         const auto inside = [](double value, const std::vector<double>& knots,
                                int degree, std::size_t count) {
             return std::isfinite(value) && value >= knots[static_cast<std::size_t>(degree)] &&
@@ -671,12 +714,12 @@ namespace Geometry::Detail
         net.controls.reserve(points.size());
         for (std::size_t index = 0; index < points.size(); ++index)
         {
-            const double weight = weights[index] / weightScale;
-            net.controls.push_back({points[index].x * weight, points[index].y * weight,
-                                    points[index].z * weight, weight});
+            const auto control = CheckedHomogeneousSurfaceControl(points[index], weights[index], weightScale);
+            if (!control) return {};
+            net.controls.push_back(*control);
         }
-        RefineNurbsSurfaceAxis(net, surface->DegreeU(), true);
-        RefineNurbsSurfaceAxis(net, surface->DegreeV(), false);
+        if (!RefineNurbsSurfaceAxis(net, surface->DegreeU(), true) ||
+            !RefineNurbsSurfaceAxis(net, surface->DegreeV(), false)) return {};
 
         const std::vector<double> breaks = NurbsSurfaceUvSegmentBreaks(
             net.knotsU, net.knotsV, first, second);
@@ -812,7 +855,8 @@ namespace Geometry::Detail
         };
 
         // SCPlaneSurface maps every UV segment to an affine 3D segment.
-        if (dynamic_cast<const SCPlaneSurface*>(curve.SupportSurface()) != nullptr)
+        if (curve.UvGeometry().IsLinearPiece(segmentIndex) &&
+            dynamic_cast<const SCPlaneSurface*>(curve.SupportSurface()) != nullptr)
         {
             const CurveOnSurfaceSample start = EvaluateCurveOnSurfaceSegment(curve, segmentIndex, 0.0);
             const CurveOnSurfaceSample end = EvaluateCurveOnSurfaceSegment(curve, segmentIndex, 1.0);
@@ -1009,6 +1053,23 @@ namespace Geometry::Detail
         return best;
     }
 
+    template <typename WithinTolerance>
+    [[nodiscard]] inline bool CurveOnSurfaceIntervalWithinTolerance(
+        const SCCurveOnSurface& curve, std::size_t segmentIndex,
+        double firstParameter, double secondParameter,
+        const SCGeometryTolerance3d& tolerance, WithinTolerance&& withinTolerance)
+    {
+        // 两个独立候选各有参数误差；只按调用者精度判断误差区间是否相接。
+        if (std::abs(curve.UvParameterAt(segmentIndex, firstParameter) -
+                     curve.UvParameterAt(segmentIndex, secondParameter)) > 2.0 * tolerance.parameterEpsilon)
+        {
+            return false;
+        }
+        const auto middle = EvaluateCurveOnSurfaceSegment(
+            curve, segmentIndex, std::lerp(firstParameter, secondParameter, 0.5));
+        return middle.valid && withinTolerance(middle);
+    }
+
     [[nodiscard]] inline std::vector<CurveOnSurfaceSample> FindPlaneCurveOnSurfaceSegmentHits(
         const SCPlane& plane, const SCCurveOnSurface& curve, std::size_t segmentIndex,
         const SCGeometryTolerance3d& tolerance, bool* nonUnique = nullptr);
@@ -1038,7 +1099,7 @@ namespace Geometry::Detail
                 ? CurveOnSurfaceLineCandidate{true, sample, parameter, distance}
                 : CurveOnSurfaceLineCandidate{};
         };
-        for (const auto& restricted : RestrictNurbsSurfaceSegmentPieces(curve, segmentIndex, tolerance))
+        for (const auto& restricted : RestrictNurbsSurfaceSegmentPieces(curve, segmentIndex, tolerance, true))
         {
             const auto analytic = IntersectAllLineCurveWithStatus(line, restricted.curve, tolerance);
             if (analytic.state == SCGeometryOperationState::NonUnique)
@@ -1093,22 +1154,18 @@ namespace Geometry::Detail
             {
                 continue;
             }
-            if (!hits.empty() &&
-                std::abs(hits.back().sample.parameter - candidate.sample.parameter) <=
-                    std::max(tolerance.parameterEpsilon, 1e-8))
+            if (!hits.empty() && CurveOnSurfaceIntervalWithinTolerance(
+                    curve, segmentIndex, hits.back().sample.parameter, candidate.sample.parameter,
+                    tolerance, [&](const CurveOnSurfaceSample& middle) {
+                        const auto middleCandidate = distanceToLine(middle);
+                        return middleCandidate.valid && middleCandidate.distance <= tolerance.distanceEpsilon;
+                    }))
             {
-                const auto middle = EvaluateCurveOnSurfaceSegment(
-                    curve, segmentIndex,
-                    std::lerp(hits.back().sample.parameter, candidate.sample.parameter, 0.5));
-                const auto middleCandidate = middle.valid ? distanceToLine(middle) : CurveOnSurfaceLineCandidate{};
-                if (middleCandidate.valid && middleCandidate.distance <= tolerance.distanceEpsilon)
+                if (candidate.distance < hits.back().distance)
                 {
-                    if (candidate.distance < hits.back().distance)
-                    {
-                        hits.back() = candidate;
-                    }
-                    continue;
+                    hits.back() = candidate;
                 }
+                continue;
             }
             hits.push_back(candidate);
         }
@@ -1120,7 +1177,7 @@ namespace Geometry::Detail
         const SCGeometryTolerance3d& tolerance, bool* nonUnique)
     {
         std::vector<CurveOnSurfaceSample> hits;
-        for (const auto& restricted : RestrictNurbsSurfaceSegmentPieces(curve, segmentIndex, tolerance))
+        for (const auto& restricted : RestrictNurbsSurfaceSegmentPieces(curve, segmentIndex, tolerance, true))
         {
             const auto analytic = IntersectAllPlaneCurveWithStatus(plane, restricted.curve, tolerance);
             if (analytic.state == SCGeometryOperationState::NonUnique)
@@ -1283,16 +1340,12 @@ namespace Geometry::Detail
             return lhs.parameter < rhs.parameter;
         });
         hits.erase(std::unique(hits.begin(), hits.end(), [&](const auto& lhs, const auto& rhs) {
-            if (std::abs(lhs.parameter - rhs.parameter) >
-                std::max(tolerance.parameterEpsilon, 1e-8))
-            {
-                return false;
-            }
-            const auto middle = EvaluateCurveOnSurfaceSegment(
-                curve, segmentIndex, std::lerp(lhs.parameter, rhs.parameter, 0.5));
-            return middle.valid &&
-                   std::abs(plane.SignedDistanceTo(middle.point, tolerance.distanceEpsilon)) <=
-                       tolerance.distanceEpsilon;
+            return CurveOnSurfaceIntervalWithinTolerance(
+                curve, segmentIndex, lhs.parameter, rhs.parameter, tolerance,
+                [&](const CurveOnSurfaceSample& middle) {
+                    return std::abs(plane.SignedDistanceTo(middle.point, tolerance.distanceEpsilon)) <=
+                           tolerance.distanceEpsilon;
+                });
         }), hits.end());
         return hits;
     }

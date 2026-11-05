@@ -126,6 +126,15 @@ int main()
     const auto curveSurface = std::make_shared<SCPlaneSurface>(SCPlaneSurface::FromPlane(
         SCPlane::FromPointAndNormal({0, 0, 0}, {0, 0, 1}), {-2, 2}, {-2, 2}));
     const SCCurveOnSurface composedCurve(curveSurface, SCPolyline2d({{0, 0}, {1, 0}}));
+    const SCPolylineCurve2d uvAdapter(SCPolyline2d({{0,0},{1,0}}));
+    const ISCCurve2d& uvBase = uvAdapter;
+    if (!uvBase.IsValid() || !uvBase.Clone()->PointAt(0.5).AlmostEquals({0.5,0}) ||
+        !composedCurve.UvGeometry().PointAt(0.5).AlmostEquals({0.5,0})) return 31;
+    if (composedCurve.Evaluate(0.5, 1, SCGeometryTolerance3d{}).derivativeOrder != 1) return 32;
+    const SCCurveOnSurface clonedUvCurve(curveSurface, uvBase);
+    if (!clonedUvCurve.IsValid() || clonedUvCurve.UvPieceCount() != 1 ||
+        clonedUvCurve.UvParameterAt(0, 0.5) != 0.5 ||
+        !clonedUvCurve.Clone()->PointAt(0.5).AlmostEquals({0.5,0,0})) return 32;
     const ISCCurve3d& genericCurve = composedCurve;
     const bool genericCurveAvailable = genericCurve.IsValid() &&
         genericCurve.PointAt(0.5).AlmostEquals({0.5, 0, 0}) &&

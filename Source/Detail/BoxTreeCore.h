@@ -35,6 +35,7 @@ namespace Geometry::Detail
         }
 
         auto node = std::make_unique<Node>();
+        node->entryCount = indices.size();
         node->bounds = ComputeBoxTreeBounds<Entry, Traits>(entries, indices);
         if (indices.size() <= 4)
         {
@@ -62,9 +63,12 @@ namespace Geometry::Detail
         node.bounds = Traits::EmptyBox();
         if (node.IsLeaf())
         {
+            node.entryCount = node.leafIndices.size();
             node.bounds = ComputeBoxTreeBounds<Entry, Traits>(entries, node.leafIndices);
             return;
         }
+        node.entryCount = (node.left ? node.left->entryCount : 0) +
+                          (node.right ? node.right->entryCount : 0);
         if (node.left && node.left->bounds.IsValid())
         {
             Traits::ExpandBounds(node.bounds, node.left->bounds);
@@ -75,11 +79,24 @@ namespace Geometry::Detail
         }
     }
 
+    template <typename Node>
+    void CollectBoxTreeIndices(const Node& node, std::vector<std::size_t>& indices)
+    {
+        if (node.IsLeaf())
+        {
+            indices.insert(indices.end(), node.leafIndices.begin(), node.leafIndices.end());
+            return;
+        }
+        CollectBoxTreeIndices(*node.left, indices);
+        CollectBoxTreeIndices(*node.right, indices);
+    }
+
     template <typename Node, typename Entry, typename Traits>
     [[nodiscard]] int InsertBoxTreeIndex(std::unique_ptr<Node>& node,
                                          const std::vector<Entry>& entries,
                                          std::size_t index,
-                                         int depth)
+                                         int depth,
+                                         bool rebalance = false)
     {
         if (!node)
         {
@@ -109,8 +126,21 @@ namespace Geometry::Detail
         {
             const auto center = entries[index].box.Center();
             const int order = CompareBoxTreeDistances<Traits>(center, node->left->bounds, node->right->bounds);
+            auto& child = order <= 0 ? node->left : node->right;
+            const std::size_t newCount = node->entryCount + 1;
+            const std::size_t maximumChildCount = newCount - newCount / 4 - (newCount % 4 != 0);
+            if (rebalance && child->entryCount + 1 > maximumChildCount)
+            {
+                std::vector<std::size_t> indices;
+                indices.reserve(newCount);
+                CollectBoxTreeIndices(*node, indices);
+                indices.push_back(index);
+                // 在修改旧树之前完成分配；失败时调用方仍可撤销本次 entries 追加。
+                node = BuildBoxTree<Node, Entry, Traits>(entries, std::move(indices), depth);
+                return depth;
+            }
             insertedDepth = InsertBoxTreeIndex<Node, Entry, Traits>(
-                order <= 0 ? node->left : node->right, entries, index, depth + 1);
+                child, entries, index, depth + 1, rebalance);
         }
         RefreshBoxTreeBounds<Node, Entry, Traits>(*node, entries);
         return insertedDepth;

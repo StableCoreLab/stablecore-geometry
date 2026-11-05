@@ -55,18 +55,17 @@ namespace Geometry
     extern GEOMETRY_DATA_API const double kBooleanAreaEpsilon;
     extern GEOMETRY_DATA_API const double kBooleanRebuildFallbackEpsilon;
 
-    // Path helpers use these floors for parameter compacting, score comparison,
-    // and polygon rebuild retry logic.
+    // 旧 PathOps 导出常量保留兼容；当前内部路径不再依赖这组固定下限。
     extern GEOMETRY_DATA_API const double kPathOpsComparisonEpsilon;
     extern GEOMETRY_DATA_API const double kPathOpsAreaEpsilon;
     extern GEOMETRY_DATA_API const double kPathOpsRebuildFallbackEpsilon;
 
-    // Search helpers use a tight comparison epsilon when ranking candidate
-    // branches and rings.
+    // 旧 SearchPoly 比较常量保留兼容；当前候选排序使用严格次序，
+    // 评分近等解释按调用者容差与候选尺度判断。
     extern GEOMETRY_DATA_API const double kSearchPolyComparisonEpsilon;
 
-    // Offset helpers retry line-based rebuilding with a slightly looser
-    // epsilon.
+    // 旧 Offset 常量保留兼容；默认入口仍有扩大重建重试，显式 epsilon
+    // 入口关闭该重试。内部使用 TolerancePolicy2d.h 的共同定义。
     extern GEOMETRY_DATA_API const double kOffsetRebuildFallbackEpsilon;
 
     // Hole distances are weighted slightly higher during support-plane scoring

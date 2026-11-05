@@ -16,7 +16,6 @@
 #include "Detail/PolygonNesting2d.h"
 #include "../Detail/RingVertices2d.h"
 #include "Detail/SegmentSubdivision2d.h"
-#include "../Detail/TolerancePolicy2d.h"
 #include "Core/PolygonRelation2d.h"
 #include "Core/Editing.h"
 #include "Core/Intersection.h"

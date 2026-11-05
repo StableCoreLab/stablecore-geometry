@@ -320,7 +320,7 @@ TEST(MetricsPolylineBoxTest, ThinBoxDoesNotRejectLocalShortEdges)
 }
 
 // 局部坐标极小量级回归：极小有限坐标的盒和线段仍能正确分类。
-// 注意：SCLineSegment2d::IsValid() 以 kDefaultEpsilon(1e-9) 判定退化，段长须 > 1e-9。
+// 本例使用 eps=1e-6，段长高于调用者容差；更短段的显式容差见后续专项。
 TEST(MetricsPolylineBoxTest, TinyFiniteCoordinatesRegression)
 {
     const double tiny = 1e-6;
@@ -406,4 +406,39 @@ TEST(MetricsPolylineBoxTest, FullCircleArcCrossingBox)
     const SCPolyline2d polyline(std::move(segments), SCPolylineClosure::Open);
     EXPECT_FALSE(Contains(box, polyline, kDefaultEpsilon));
     EXPECT_TRUE(Intersects(box, polyline, kDefaultEpsilon));
+}
+
+TEST(MetricsPolylineBoxTest, CallerToleranceRetainsShortLines)
+{
+    constexpr double eps = 1e-15;
+    const auto path = MakeOpenPolyline({{-1e-10, 0.0}, {1e-10, 0.0}});
+    ASSERT_FALSE(path.IsValid());
+    ASSERT_TRUE(path.IsValid(eps));
+    const auto containingBox = MakeBox(-1.0, -1.0, 1.0, 1.0);
+    EXPECT_TRUE(Contains(containingBox, path, eps));
+    EXPECT_TRUE(Intersects(containingBox, path, eps));
+    EXPECT_FALSE(Contains(containingBox, path, kDefaultEpsilon));
+    EXPECT_FALSE(Intersects(containingBox, path, kDefaultEpsilon));
+    const auto crossingBox = MakeBox(-2e-11, -2e-11, 2e-11, 2e-11);
+    EXPECT_FALSE(Contains(crossingBox, path, eps));
+    EXPECT_TRUE(Intersects(crossingBox, path, eps));
+    const auto outsideBox = MakeBox(1.0, 1.0, 2.0, 2.0);
+    EXPECT_FALSE(Contains(outsideBox, path, eps));
+    EXPECT_FALSE(Intersects(outsideBox, path, eps));
+}
+
+TEST(MetricsPolylineBoxTest, CallerToleranceRetainsSmallSweepArcs)
+{
+    constexpr double eps = 1e-15;
+    const auto path = MakeArcPolyline({}, 1.0, 0.0, 1e-10);
+    ASSERT_FALSE(path.IsValid());
+    ASSERT_TRUE(path.IsValid(eps));
+    const auto containingBox = MakeBox(0.5, -0.5, 1.5, 0.5);
+    EXPECT_TRUE(Contains(containingBox, path, eps));
+    EXPECT_TRUE(Intersects(containingBox, path, eps));
+    EXPECT_FALSE(Contains(containingBox, path, kDefaultEpsilon));
+    EXPECT_FALSE(Intersects(containingBox, path, kDefaultEpsilon));
+    const auto outsideBox = MakeBox(2.0, 2.0, 3.0, 3.0);
+    EXPECT_FALSE(Contains(outsideBox, path, eps));
+    EXPECT_FALSE(Intersects(outsideBox, path, eps));
 }

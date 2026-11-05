@@ -171,7 +171,6 @@ namespace Geometry
 
         const SCLineSegment2d segment = SCLineSegment2d::FromEndpoints(segmentStart, segmentEnd);
         SCSegmentProjection2d projection = ProjectPointToLineSegment(point, segment, clampToSegment);
-        projection.isOnSegment = clampToSegment || projection.isOnSegment;
         return projection;
     }
 
@@ -183,10 +182,6 @@ namespace Geometry
     {
         SCSegmentProjection2d projection = ProjectPointToLineSegment(
             point, SCLineSegment2d::FromEndpoints(segmentStart, segmentEnd), clampToSegment, epsilon);
-        if (projection.IsValid())
-        {
-            projection.isOnSegment = clampToSegment || projection.isOnSegment;
-        }
         return projection;
     }
 

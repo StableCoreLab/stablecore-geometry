@@ -307,20 +307,12 @@ namespace Geometry
 
     bool SCKDTree2d::Remove(std::size_t id)
     {
-        std::vector<std::size_t> mapping(entries_.size());
-        std::size_t retained = 0;
-        for (std::size_t index = 0; index < entries_.size(); ++index)
-        {
-            mapping[index] = entries_[index].id == id ? entries_.size() : retained++;
-        }
-        if (retained == entries_.size())
+        const auto mapping = Detail::EraseEntriesByIdWithMapping(entries_, id);
+        if (!mapping)
         {
             return false;
         }
-        entries_.erase(std::remove_if(entries_.begin(), entries_.end(),
-                                      [id](const SCKDTreeEntry2d& entry) { return entry.id == id; }),
-                       entries_.end());
-        RemapIndices(root_.get(), mapping);
+        RemapIndices(root_.get(), *mapping);
         if (entries_.empty())
         {
             root_.reset();
@@ -335,8 +327,7 @@ namespace Geometry
 
     void SCKDTree2d::Update(std::size_t id, const SCPoint2d& point)
     {
-        const auto it = std::find_if(
-            entries_.begin(), entries_.end(), [id](const SCKDTreeEntry2d& entry) { return entry.id == id; });
+        const auto it = Detail::FindEntryIteratorById(entries_, id);
         if (it != entries_.end())
         {
             const std::size_t index = static_cast<std::size_t>(it - entries_.begin());

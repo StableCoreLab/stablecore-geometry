@@ -5,28 +5,12 @@
 #include <limits>
 
 #include "Geometry3d/SCPlaneSurface.h"
+#include "Types/Geometry2d/SCVector2.h"
 
 namespace Geometry
 {
     namespace
     {
-        [[nodiscard]] bool HasValidLineUvCurve(const SCPolyline2d& uvCurve, double eps)
-        {
-            if (!uvCurve.IsValid(eps) || uvCurve.SegmentCount() == 0)
-            {
-                return false;
-            }
-            for (std::size_t index = 0; index < uvCurve.SegmentCount(); ++index)
-            {
-                const auto segment = uvCurve.SegmentAt(index);
-                if (segment == nullptr || segment->Kind() != SCSegmentKind2d::Line)
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
         [[nodiscard]] double PositiveParameterEpsilon(double eps)
         {
             // 折线显式入口要求正容差；用最小正值表达精确的零参数容差。
@@ -48,17 +32,25 @@ namespace Geometry
             return false;
         }
         const double uvEps = PositiveParameterEpsilon(tolerance.parameterEpsilon);
-        if (!HasValidLineUvCurve(uvCurve_, uvEps))
+        if (!uvCurve_ || !uvCurve_->IsValid(uvEps) || UvPieceCount() == 0)
         {
             return false;
         }
 
-        if (dynamic_cast<const SCPlaneSurface*>(supportSurface_.get()) != nullptr)
+        if (!uvCurve_->Bounds().IsValid()) return false;
+        const auto range = uvCurve_->ParameterRange();
+        if (!range.IsValid() || !(range.min < range.max)) return false;
+        double previous = range.min;
+        for (std::size_t piece = 0; piece < UvPieceCount(); ++piece)
         {
-            return true;
+            const auto part = uvCurve_->PieceRange(piece);
+            if (!part.IsValid() || part.min != previous || !(part.min < part.max)) return false;
+            previous = part.max;
         }
+        if (previous != range.max) return false;
+        if (dynamic_cast<const SCPlaneSurface*>(supportSurface_.get()) != nullptr) return true;
 
-        const SCBox2d uvBounds = uvCurve_.Bounds(uvEps);
+        const SCBox2d uvBounds = uvCurve_->Bounds();
         const SCIntervald uRange = supportSurface_->URange();
         const SCIntervald vRange = supportSurface_->VRange();
         return uvBounds.IsValid() && uRange.IsValid() && vRange.IsValid() &&
@@ -70,13 +62,19 @@ namespace Geometry
 
     SCIntervald SCCurveOnSurface::ParameterRange() const
     {
-        return {0.0, static_cast<double>(uvCurve_.SegmentCount())};
+        return uvCurve_ ? uvCurve_->ParameterRange() : SCIntervald{};
     }
 
     bool SCCurveOnSurface::IsClosed(const SCGeometryTolerance3d& tolerance) const
     {
-        return IsValid(tolerance) && PointAt(0.0).AlmostEquals(
-            PointAt(ParameterRange().max), tolerance.distanceEpsilon);
+        if (!IsValid(tolerance)) return false;
+        const auto range = ParameterRange();
+        // 显式校验通过后直接映射端点，避免无容差求值重新施加默认阈值。
+        const auto first = uvCurve_->Evaluate(range.min, 0).point;
+        const auto last = uvCurve_->Evaluate(range.max, 0).point;
+        if (!first.IsValid() || !last.IsValid()) return false;
+        return supportSurface_->PointAt(first.x, first.y).AlmostEquals(
+            supportSurface_->PointAt(last.x, last.y), tolerance.distanceEpsilon);
     }
 
     bool SCCurveOnSurface::IsPeriodic(const SCGeometryTolerance3d& tolerance) const
@@ -94,61 +92,62 @@ namespace Geometry
     {
         SCPoint2d invalid{};
         invalid.x = std::numeric_limits<double>::quiet_NaN();
-        const std::size_t segmentCount = uvCurve_.SegmentCount();
-        if (!HasValidLineUvCurve(uvCurve_, std::numeric_limits<double>::denorm_min()) ||
-            !std::isfinite(parameter) || parameter < 0.0 ||
-            parameter > static_cast<double>(segmentCount))
+        const auto range = ParameterRange();
+        if (!uvCurve_ || (!uvCurve_->IsValid(std::numeric_limits<double>::denorm_min()) && !uvCurve_->IsValid()) ||
+            !std::isfinite(parameter) || !range.Contains(parameter, 0.0))
         {
             return invalid;
         }
 
-        const std::size_t index = parameter == static_cast<double>(segmentCount)
-                                      ? segmentCount - 1
-                                      : static_cast<std::size_t>(parameter);
-        const double local = parameter - static_cast<double>(index);
-        const SCPoint2d first = uvCurve_.VertexAt(index);
-        const SCPoint2d second = uvCurve_.VertexAt((index + 1) % uvCurve_.PointCount());
-        return {std::lerp(first.x, second.x, local), std::lerp(first.y, second.y, local)};
+        return uvCurve_->Evaluate(parameter, 0).point;
     }
 
     SCCurveEval3d SCCurveOnSurface::Evaluate(double parameter, int derivativeOrder) const
     {
+        return EvaluateInternal(parameter, derivativeOrder, EvaluationTolerance(), true);
+    }
+
+    SCCurveEval3d SCCurveOnSurface::Evaluate(double parameter, int derivativeOrder,
+                                            const SCGeometryTolerance3d& tolerance) const
+    {
+        return EvaluateInternal(parameter, derivativeOrder, tolerance, false);
+    }
+
+    SCCurveEval3d SCCurveOnSurface::EvaluateInternal(double parameter, int derivativeOrder,
+        const SCGeometryTolerance3d& tolerance, bool allowDefaultFallback) const
+    {
         SCCurveEval3d result{};
         result.point.x = std::numeric_limits<double>::quiet_NaN();
-        const std::size_t segmentCount = uvCurve_.SegmentCount();
-        if (!IsValid(EvaluationTolerance()) || !std::isfinite(parameter) || parameter < 0.0 ||
-            parameter > static_cast<double>(segmentCount))
+        if ((!IsValid(tolerance) && !(allowDefaultFallback && IsValid())) || !std::isfinite(parameter) ||
+            !ParameterRange().Contains(parameter, 0.0))
         {
             return result;
         }
 
-        const std::size_t index = parameter == static_cast<double>(segmentCount)
-                                      ? segmentCount - 1
-                                      : static_cast<std::size_t>(parameter);
-        const SCPoint2d first = uvCurve_.VertexAt(index);
-        const SCPoint2d second = uvCurve_.VertexAt((index + 1) % uvCurve_.PointCount());
-        const SCPoint2d uv = UvAt(parameter);
-
         const int requestedOrder = std::clamp(derivativeOrder, 0, 1);
+        const SCCurveEval2d uvSample = uvCurve_->Evaluate(parameter, requestedOrder);
+        const SCPoint2d uv = uvSample.point;
+        if (!uv.IsValid()) return result;
+
         const SCSurfaceEval3d surfaceEval = supportSurface_->Evaluate(uv.x, uv.y, requestedOrder);
         result.point = surfaceEval.point;
         if (!result.point.IsValid())
         {
             return result;
         }
-        if (requestedOrder >= 1 && surfaceEval.derivativeOrder >= 1 &&
+        if (requestedOrder >= 1 && uvSample.derivativeOrder >= 1 && surfaceEval.derivativeOrder >= 1 &&
             surfaceEval.derivativeU.IsValid() && surfaceEval.derivativeV.IsValid())
         {
-            result.firstDerivative = surfaceEval.derivativeU * (second.x - first.x) +
-                                     surfaceEval.derivativeV * (second.y - first.y);
-            result.derivativeOrder = 1;
+            result.firstDerivative = surfaceEval.derivativeU * uvSample.firstDerivative.x +
+                                     surfaceEval.derivativeV * uvSample.firstDerivative.y;
+            if (result.firstDerivative.IsValid()) result.derivativeOrder = 1;
         }
         return result;
     }
 
     SCBox3d SCCurveOnSurface::Bounds() const
     {
-        if (!IsValid(EvaluationTolerance()))
+        if (!IsValid(EvaluationTolerance()) && !IsValid())
         {
             return {};
         }
@@ -159,20 +158,26 @@ namespace Geometry
         }
 
         SCBox3d bounds{};
-        for (std::size_t index = 0; index < uvCurve_.PointCount(); ++index)
-        {
-            bounds.ExpandToInclude(PointAt(index));
-        }
+        const auto uvBounds = uvCurve_->Bounds();
+        if (!uvBounds.IsValid()) return bounds;
+        // 仿射平面映射 UV 保守盒的四角，覆盖曲线内部极值。
+        for (const double u : {uvBounds.MinPoint().x, uvBounds.MaxPoint().x})
+            for (const double v : {uvBounds.MinPoint().y, uvBounds.MaxPoint().y})
+            {
+                const auto point = supportSurface_->PointAt(u, v);
+                if (!point.IsValid()) return {};
+                bounds.ExpandToInclude(point);
+            }
         return bounds;
     }
 
     std::unique_ptr<ISCCurve3d> SCCurveOnSurface::Clone() const
     {
-        if (supportSurface_ == nullptr)
+        if (supportSurface_ == nullptr || uvCurve_ == nullptr)
         {
             return std::make_unique<SCCurveOnSurface>();
         }
         return std::make_unique<SCCurveOnSurface>(
-            std::shared_ptr<ISCSurface>(supportSurface_->Clone().release()), uvCurve_);
+            std::shared_ptr<ISCSurface>(supportSurface_->Clone().release()), *uvCurve_);
     }
 }  // namespace Geometry

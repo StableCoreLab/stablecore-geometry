@@ -179,8 +179,3 @@ namespace Geometry
 
     // 2D snap result is declared in Geometry2dResults.h.
 }  // namespace Geometry
-
-
-
-
-

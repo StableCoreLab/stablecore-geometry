@@ -195,3 +195,110 @@ TEST(PolygonTest, SupportsCurvedBoundaryPolygons)
     ASSERT_EQ(LocatePoint(SCPoint2d(0.0, 0.0), fullCircle), SCPointContainment2d::Inside);
     EXPECT_TRUE(fullCircle.Centroid().AlmostEquals(SCPoint2d(0.0, 0.0), 1e-12));
 }
+
+TEST(PolygonTest, TranslationPreservesRectangleMeasurementsAndOrientation)
+{
+    for (const double origin : {0.0, 1e9, -1e9})
+    {
+        SCOPED_TRACE(origin);
+        const SCPolyline2d ring({{origin, -origin}, {origin + 3, -origin},
+            {origin + 3, -origin + 2}, {origin, -origin + 2}}, SCPolylineClosure::Closed);
+        ASSERT_TRUE(ring.IsValid());
+        for (const bool reverse : {false, true})
+        {
+            SCOPED_TRACE(reverse);
+            const SCPolyline2d boundary = reverse ? Geometry::Reverse(ring) : ring;
+            const SCPolygon2d polygon(boundary);
+            EXPECT_EQ(Orientation(boundary), reverse ? SCRingOrientation2d::Clockwise : SCRingOrientation2d::CounterClockwise);
+            EXPECT_TRUE(polygon.IsValid());
+            EXPECT_NEAR(polygon.Area(), 6.0, 1e-12);
+            EXPECT_NEAR(polygon.Centroid().x, origin + 1.5, 2e-7);
+            EXPECT_NEAR(polygon.Centroid().y, -origin + 1.0, 2e-7);
+        }
+    }
+}
+
+TEST(PolygonTest, TranslationPreservesMixedArcMeasurements)
+{
+    for (const double origin : {0.0, 1e9, -1e9})
+    {
+        SCOPED_TRACE(origin);
+        const SCPoint2d center{origin, -origin};
+        std::vector<std::shared_ptr<Geometry::ISCSegment2d>> segments;
+        segments.push_back(std::make_shared<SCLineSegment2d>(center, SCPoint2d{origin + 1, -origin}));
+        segments.push_back(std::make_shared<SCArcSegment2d>(center, 1.0, 0.0, Geometry::kPi * 0.5));
+        segments.push_back(std::make_shared<SCLineSegment2d>(SCPoint2d{origin, -origin + 1}, center));
+        const SCPolyline2d boundary(std::move(segments), SCPolylineClosure::Closed);
+        ASSERT_TRUE(boundary.IsValid());
+        for (const bool reverse : {false, true})
+        {
+            SCOPED_TRACE(reverse);
+            const SCPolygon2d polygon(reverse ? Geometry::Reverse(boundary) : boundary);
+            EXPECT_TRUE(polygon.IsValid());
+            EXPECT_NEAR(polygon.Area(), Geometry::kPi / 4.0, 1e-12);
+            EXPECT_NEAR(polygon.Centroid().x, origin + 4.0 / (3.0 * Geometry::kPi), 3e-7);
+            EXPECT_NEAR(polygon.Centroid().y, -origin + 4.0 / (3.0 * Geometry::kPi), 3e-7);
+        }
+    }
+}
+
+TEST(PolygonTest, RingDirectionsDoNotChangeTranslatedHoleCentroid)
+{
+    for (const double origin : {0.0, 1e9, -1e9})
+    {
+        SCOPED_TRACE(origin);
+        const SCPolyline2d outer({{origin, -origin}, {origin + 4, -origin},
+            {origin + 4, -origin + 4}, {origin, -origin + 4}}, SCPolylineClosure::Closed);
+        const SCPolyline2d hole({{origin + 1, -origin + 1}, {origin + 1, -origin + 2},
+            {origin + 2, -origin + 2}, {origin + 2, -origin + 1}}, SCPolylineClosure::Closed);
+        for (const bool reverseOuter : {false, true})
+            for (const bool reverseHole : {false, true})
+            {
+                SCOPED_TRACE(reverseOuter);
+                SCOPED_TRACE(reverseHole);
+                const SCPolygon2d polygon(reverseOuter ? Geometry::Reverse(outer) : outer,
+                    {reverseHole ? Geometry::Reverse(hole) : hole});
+                EXPECT_TRUE(polygon.IsValid());
+                EXPECT_NEAR(polygon.Area(), 15.0, 1e-12);
+                EXPECT_NEAR(polygon.Centroid().x, origin + 30.5 / 15.0, 3e-7);
+                EXPECT_NEAR(polygon.Centroid().y, -origin + 30.5 / 15.0, 3e-7);
+            }
+    }
+}
+
+TEST(PolygonTest, ExplicitPerimeterToleranceRetainsSmallSweepOuterAndHoleArcs)
+{
+    for (const double radius : {1.0, 1e10})
+    {
+        SCOPED_TRACE(radius);
+        const double eps = radius * 1e-15;
+        const SCPolyline2d square({{-2 * radius, -2 * radius}, {2 * radius, -2 * radius},
+            {2 * radius, 2 * radius}, {-2 * radius, 2 * radius}}, SCPolylineClosure::Closed);
+        for (const double sweep : {0.5, 1e-10})
+        {
+            SCOPED_TRACE(sweep);
+            const SCArcSegment2d arc(SCPoint2d{}, radius, 0.0, sweep);
+            ASSERT_TRUE(arc.IsValid(eps));
+            EXPECT_EQ(arc.IsValid(), sweep == 0.5);
+            std::vector<std::shared_ptr<Geometry::ISCSegment2d>> segments;
+            segments.push_back(std::make_shared<SCLineSegment2d>(SCPoint2d{}, arc.StartPoint()));
+            segments.push_back(std::make_shared<SCArcSegment2d>(arc));
+            segments.push_back(std::make_shared<SCLineSegment2d>(arc.EndPoint(), SCPoint2d{}));
+            const SCPolyline2d sector(std::move(segments), SCPolylineClosure::Closed);
+            ASSERT_TRUE(sector.IsValid(eps));
+            const SCPolygon2d diskSector(sector);
+            const SCPolygon2d squareWithHole(square, {sector});
+            ASSERT_TRUE(diskSector.IsValid(eps));
+            ASSERT_TRUE(squareWithHole.IsValid(eps));
+            EXPECT_NEAR(diskSector.Perimeter(eps), radius * (2.0 + sweep), radius * 1e-13);
+            EXPECT_NEAR(squareWithHole.Perimeter(eps), radius * (18.0 + sweep), radius * 1e-13);
+            if (sweep == 0.5 || radius == 1e10)
+            {
+                ASSERT_TRUE(diskSector.IsValid());
+                ASSERT_TRUE(squareWithHole.IsValid());
+                EXPECT_NEAR(diskSector.Perimeter(), diskSector.Perimeter(eps), radius * 1e-13);
+                EXPECT_NEAR(squareWithHole.Perimeter(), squareWithHole.Perimeter(eps), radius * 1e-13);
+            }
+        }
+    }
+}

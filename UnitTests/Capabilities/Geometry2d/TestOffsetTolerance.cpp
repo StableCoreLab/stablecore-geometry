@@ -206,3 +206,61 @@ TEST(OffsetTest, LimitedMiterNormalBlendPreservesUniformScale)
         }
     }
 }
+
+TEST(OffsetTest, InsetErasesThinConcaveRegionWithOrWithoutHole)
+{
+    for (const double scale : {1e-3,1.0,1e3})
+    {
+        SCOPED_TRACE(scale);
+        std::vector<SCPoint2d> outerPoints{{10,10},{9.9,10},{9.9,0.1},{0.1,0.1},
+                                          {0.1,10},{0,10},{0,0},{10,0}};
+        std::vector<SCPoint2d> holePoints{{9.93,2},{9.93,2.04},{9.97,2.04},{9.97,2}};
+        for (auto& point : outerPoints) { point.x *= scale; point.y *= scale; }
+        for (auto& point : holePoints) { point.x *= scale; point.y *= scale; }
+        const SCPolyline2d outer(outerPoints, SCPolylineClosure::Closed), hole(holePoints, SCPolylineClosure::Closed);
+        const double eps = 1e-9*scale;
+        for (const bool reverse : {false,true})
+        {
+            SCOPED_TRACE(reverse);
+            for (const bool withHole : {false,true})
+            {
+                SCOPED_TRACE(withHole);
+                const SCPolygon2d source(reverse ? Geometry::Reverse(outer) : outer,
+                    withHole ? std::vector<SCPolyline2d>{reverse ? Geometry::Reverse(hole) : hole} : std::vector<SCPolyline2d>{});
+                ASSERT_TRUE(source.IsValid(eps));
+                // 面积小于半径 2*scale 的圆，源区域不可能容纳该内缩半径。
+                EXPECT_LT(source.Area(eps)/(scale*scale), 4*Geometry::kPi);
+                for (const bool explicitTolerance : {false,true})
+                {
+                    SCOPED_TRACE(explicitTolerance);
+                    const auto single = explicitTolerance ? Geometry::Offset(source,-2*scale,{},eps) :
+                                                            Geometry::Offset(source,-2*scale);
+                    EXPECT_FALSE(single.IsValid(eps));
+                    EXPECT_EQ(single.PointCount(), 0u);
+                    const SCMultiPolygon2d inputs{source};
+                    EXPECT_TRUE((explicitTolerance ? Geometry::Offset(inputs,-2*scale,{},eps) :
+                                                     Geometry::Offset(inputs,-2*scale)).IsEmpty());
+                    EXPECT_TRUE((explicitTolerance ? Geometry::OffsetToMultiPolygon(source,-2*scale,{},eps) :
+                                                     Geometry::OffsetToMultiPolygon(source,-2*scale)).IsEmpty());
+                }
+                EXPECT_TRUE(Geometry::Offset(source,-0.01*scale,{},eps).IsValid(eps));
+            }
+        }
+    }
+}
+
+TEST(OffsetTest, ConcaveInsetAreaProofRetainsSmallInsetsAfterTranslation)
+{
+    for (const double shift : {-1e9,1e9})
+    {
+        SCOPED_TRACE(shift);
+        std::vector<SCPoint2d> points{{10,10},{9.9,10},{9.9,0.1},{0.1,0.1},
+                                     {0.1,10},{0,10},{0,0},{10,0}};
+        for (auto& point : points) { point.x += shift; point.y -= shift; }
+        const SCPolygon2d source(SCPolyline2d(points,SCPolylineClosure::Closed));
+        constexpr double eps = 1e-6;
+        ASSERT_TRUE(source.IsValid(eps));
+        EXPECT_FALSE(Geometry::Offset(source,-2,{},eps).IsValid(eps));
+        EXPECT_TRUE(Geometry::Offset(source,-0.01,{},eps).IsValid(eps));
+    }
+}

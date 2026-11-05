@@ -6,7 +6,7 @@
 
 using namespace Geometry;
 
-TEST(GeometryTest, ThreeDimensionalPointVectorComparisonAcrossTypes)
+TEST(Geometry3dTest, ThreeDimensionalPointVectorComparisonAcrossTypes)
 {
     const SCPoint3d coordinates{1.0, 2.0, 3.0};
     const SCVector3d components{1.0, 2.0, 3.0};
@@ -63,7 +63,7 @@ TEST(IntersectionResultValidity3dTest, RejectsEmptyOrInactiveAggregateHits)
     EXPECT_TRUE(meshHit.IsValid());
 }
 
-TEST(GeometryTest, ThreeDimensionalIntegerPrimitivesFollowTheTemplatedFamily)
+TEST(Geometry3dTest, ThreeDimensionalIntegerPrimitivesFollowTheTemplatedFamily)
 {
     const SCPoint3i minimum{1, 2, 3};
     const SCPoint3i maximum{4, 6, 8};
@@ -77,7 +77,7 @@ TEST(GeometryTest, ThreeDimensionalIntegerPrimitivesFollowTheTemplatedFamily)
     EXPECT_TRUE((SCVector3i{1, 2, 3} + SCVector3i{2, 3, 4}) == SCVector3i(3, 5, 7));
 }
 
-TEST(GeometryTest, ThreeDimensionalBoxCenterAvoidsFiniteCoordinateSumOverflow)
+TEST(Geometry3dTest, ThreeDimensionalBoxCenterAvoidsFiniteCoordinateSumOverflow)
 {
     const SCBox3d box = SCBox3d::FromMinMax({1e308, -1.5e308, 0.0},
                                             {1.5e308, -1e308, 2.0});
@@ -87,7 +87,7 @@ TEST(GeometryTest, ThreeDimensionalBoxCenterAvoidsFiniteCoordinateSumOverflow)
     EXPECT_DOUBLE_EQ(box.Center().z, 1.0);
 }
 
-TEST(GeometryTest, LineCurveEvaluationBoundsAndClone)
+TEST(Geometry3dTest, LineCurveEvaluationBoundsAndClone)
 {
     const SCLine3d line3 = SCLine3d::FromOriginAndDirection(SCPoint3d{1.0, 2.0, 3.0}, SCVector3d{2.0, 0.0, 0.0});
     const SCLineCurve3d lineCurve = SCLineCurve3d::FromLine(line3, SCIntervald{-2.0, 3.0});
@@ -113,7 +113,7 @@ TEST(GeometryTest, LineCurveEvaluationBoundsAndClone)
     ASSERT_TRUE(lineClone->PointAt(-2.0).AlmostEquals(SCPoint3d{-3.0, 2.0, 3.0}, 1e-12));
 }
 
-TEST(GeometryTest, LineValidityRejectsOverflowingDirectionLength)
+TEST(Geometry3dTest, LineValidityRejectsOverflowingDirectionLength)
 {
     const SCLine3d line = SCLine3d::FromOriginAndDirection(
         {0.0, 0.0, 0.0}, {1.5e308, 1.5e308, 0.0});
@@ -121,7 +121,7 @@ TEST(GeometryTest, LineValidityRejectsOverflowingDirectionLength)
     EXPECT_FALSE(line.IsValid());
 }
 
-TEST(GeometryTest, PlaneSurfaceEvaluationBoundsAndClone)
+TEST(Geometry3dTest, PlaneSurfaceEvaluationBoundsAndClone)
 {
     const SCPlane supportPlane = Geometry::Test::BuildSupportPlaneAtZ5();
     const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
@@ -147,7 +147,7 @@ TEST(GeometryTest, PlaneSurfaceEvaluationBoundsAndClone)
     EXPECT_NEAR(supportPlane.SignedDistanceTo(surfaceClone->PointAt(-2.0, -3.0)), 0.0, 1e-12);
 }
 
-TEST(GeometryTest, NurbsCurveEvaluationProjectionAndClone)
+TEST(Geometry3dTest, NurbsCurveEvaluationProjectionAndClone)
 {
     const SCNurbsCurve3d nurbsCurve(1,
                                   {
@@ -179,7 +179,7 @@ TEST(GeometryTest, NurbsCurveEvaluationProjectionAndClone)
     ASSERT_TRUE(nurbsCurveClone->PointAt(0.5).AlmostEquals(SCPoint3d{1.0, 1.0, 0.0}, 1e-12));
 }
 
-TEST(GeometryTest, NurbsSurfaceEvaluationBoundsAndClone)
+TEST(Geometry3dTest, NurbsSurfaceEvaluationBoundsAndClone)
 {
     const SCNurbsSurface nurbsSurface = Geometry::Test::BuildUnitNurbsSurface();
     ASSERT_TRUE(nurbsSurface.IsValid());
@@ -201,7 +201,7 @@ TEST(GeometryTest, NurbsSurfaceEvaluationBoundsAndClone)
     ASSERT_TRUE(nurbsSurfaceClone->PointAt(0.25, 0.75).AlmostEquals(SCPoint3d{0.5, 1.5, 0.0}, 1e-12));
 }
 
-TEST(GeometryTest, LineCurveQueriesAndRuledSurface)
+TEST(Geometry3dTest, LineCurveQueriesAndRuledSurface)
 {
     const SCLineCurve3d lowerRail = SCLineCurve3d::FromLine(
         SCLine3d::FromOriginAndDirection(SCPoint3d{0.0, 0.0, 0.0}, SCVector3d{2.0, 0.0, 0.0}), SCIntervald{0.0, 1.0});
@@ -235,7 +235,7 @@ TEST(GeometryTest, LineCurveQueriesAndRuledSurface)
     EXPECT_NEAR(ruledEval.normal.Length(), 4.0, 1e-12);
 }
 
-TEST(GeometryTest, OffsetSurfaceBoundsAndPoint)
+TEST(Geometry3dTest, OffsetSurfaceBoundsAndPoint)
 {
     const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
     const SCOffsetSurface offsetSurface = SCOffsetSurface::FromSurface(planeSurface, 2.0);
@@ -249,7 +249,7 @@ TEST(GeometryTest, OffsetSurfaceBoundsAndPoint)
     ASSERT_GE(offsetBounds.MaxPoint().z, 7.0 - 1e-12);
 }
 
-TEST(GeometryTest, CurveOnSurfaceQueries)
+TEST(Geometry3dTest, CurveOnSurfaceQueries)
 {
     const SCPlane supportPlane = Geometry::Test::BuildSupportPlaneAtZ5();
     const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
@@ -290,7 +290,7 @@ TEST(GeometryTest, CurveOnSurfaceQueries)
     ASSERT_EQ(LocatePoint(SCPoint3d{0.0, -1.0, 6.0}, curveOnSurface), SCPointContainment3d::Outside);
 }
 
-TEST(GeometryTest, PlaneAndNurbsSurfaceProjectionAndIntersection)
+TEST(Geometry3dTest, PlaneAndNurbsSurfaceProjectionAndIntersection)
 {
     const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();
     const SCNurbsSurface nurbsSurface = Geometry::Test::BuildUnitNurbsSurface();
@@ -326,7 +326,7 @@ TEST(GeometryTest, PlaneAndNurbsSurfaceProjectionAndIntersection)
     EXPECT_NEAR(nurbsSurfaceIntersection.point.z, 0.0, 1e-12);
 }
 
-TEST(GeometryTest, ThreeDimensionalDistanceAndLength)
+TEST(Geometry3dTest, ThreeDimensionalDistanceAndLength)
 {
     const SCPlane supportPlane = Geometry::Test::BuildSupportPlaneAtZ5();
     const SCPlaneSurface planeSurface = Geometry::Test::BuildFinitePlaneSurfaceAtZ5();

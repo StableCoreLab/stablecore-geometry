@@ -4,10 +4,11 @@
 
 #include <cstddef>
 #include <memory>
+#include <stdexcept>
 #include <type_traits>
 #include <utility>
 
-#include "Geometry2d/SCPolyline2d.h"
+#include "Geometry2d/SCPolylineCurve2d.h"
 #include "Geometry3d/ISCCurve3d.h"
 #include "Geometry3d/ISCSurface.h"
 
@@ -18,9 +19,12 @@ namespace Geometry
     public:
         SCCurveOnSurface() = default;
         SCCurveOnSurface(std::shared_ptr<ISCSurface> supportSurface, SCPolyline2d uvCurve)
-            : supportSurface_(std::move(supportSurface)), uvCurve_(std::move(uvCurve))
+            : supportSurface_(std::move(supportSurface)), uvCurve_(std::make_shared<SCPolylineCurve2d>(std::move(uvCurve)))
         {
         }
+
+        SCCurveOnSurface(std::shared_ptr<ISCSurface> supportSurface, const ISCCurve2d& uvCurve)
+            : supportSurface_(std::move(supportSurface)), uvCurve_(uvCurve.Clone()) {}
 
         [[nodiscard]] bool IsValid(const SCGeometryTolerance3d& tolerance = {}) const override;
         [[nodiscard]] SCIntervald ParameterRange() const override;
@@ -28,6 +32,8 @@ namespace Geometry
         [[nodiscard]] bool IsPeriodic(const SCGeometryTolerance3d& tolerance = {}) const override;
         [[nodiscard]] SCPoint3d PointAt(double parameter) const override;
         [[nodiscard]] SCCurveEval3d Evaluate(double parameter, int derivativeOrder = 1) const override;
+        [[nodiscard]] SCCurveEval3d Evaluate(double parameter, int derivativeOrder,
+                                            const SCGeometryTolerance3d& tolerance) const;
         [[nodiscard]] std::unique_ptr<ISCCurve3d> Clone() const override;
 
         [[nodiscard]] const ISCSurface* SupportSurface() const
@@ -35,31 +41,49 @@ namespace Geometry
             return supportSurface_.get();
         }
 
+        [[nodiscard]] const ISCCurve2d& UvGeometry() const
+        {
+            if (!uvCurve_) throw std::logic_error("SCCurveOnSurface has no UV geometry");
+            return *uvCurve_;
+        }
+
+        [[nodiscard]] const SCPolyline2d* TryUvCurve() const
+        {
+            const auto* adapter = dynamic_cast<const SCPolylineCurve2d*>(uvCurve_.get());
+            return adapter ? &adapter->Polyline() : nullptr;
+        }
         [[nodiscard]] const SCPolyline2d& UvCurve() const
         {
-            return uvCurve_;
+            const auto* path = TryUvCurve();
+            if (!path) throw std::logic_error("SCCurveOnSurface has no polyline UV view");
+            return *path;
+        }
+        [[nodiscard]] std::size_t UvPieceCount() const { return uvCurve_ ? uvCurve_->PieceCount() : 0; }
+        [[nodiscard]] double UvParameterAt(std::size_t piece, double local) const
+        {
+            return UvGeometry().ParameterAtPiece(piece, local);
         }
 
         [[nodiscard]] std::size_t PointCount() const
         {
-            return uvCurve_.PointCount();
+            return UvCurve().PointCount();
         }
 
         [[nodiscard]] SCPoint2d UvPointAt(std::size_t index) const
         {
-            return uvCurve_.VertexAt(index);
+            return UvCurve().VertexAt(index);
         }
 
         [[nodiscard]] SCPoint2d UvAt(double parameter) const;
 
         [[nodiscard]] SCPoint3d PointAt(std::size_t index) const
         {
-            if (supportSurface_ == nullptr || index >= uvCurve_.PointCount())
+            if (supportSurface_ == nullptr || index >= UvCurve().PointCount())
             {
                 return {};
             }
 
-            const SCPoint2d uv = uvCurve_.VertexAt(index);
+            const SCPoint2d uv = UvCurve().VertexAt(index);
             return supportSurface_->PointAt(uv.x, uv.y);
         }
 
@@ -80,8 +104,10 @@ namespace Geometry
         [[nodiscard]] SCBox3d Bounds() const override;
 
     private:
+        [[nodiscard]] SCCurveEval3d EvaluateInternal(double parameter, int derivativeOrder,
+            const SCGeometryTolerance3d& tolerance, bool allowDefaultFallback) const;
         std::shared_ptr<ISCSurface> supportSurface_{};
-        SCPolyline2d uvCurve_{};
+        std::shared_ptr<const ISCCurve2d> uvCurve_{std::make_shared<SCPolylineCurve2d>()};
     };
 }  // namespace Geometry
 

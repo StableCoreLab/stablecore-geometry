@@ -21,10 +21,16 @@ namespace Geometry
             return SCPoint2d{origin.x + delta.x * c - delta.y * s, origin.y + delta.x * s + delta.y * c};
         }
 
+        [[nodiscard]] double MirrorDirectionLength(const SCVector2d& direction)
+        {
+            const double length = std::hypot(direction.x, direction.y);
+            return std::isfinite(length) && length > Geometry::kDefaultEpsilon ? length : 0.0;
+        }
+
         [[nodiscard]] SCPoint2d MirrorPoint(const SCPoint2d& point, const SCPoint2d& linePoint, const SCVector2d& lineDir)
         {
-            const double length = std::hypot(lineDir.x, lineDir.y);
-            if (!std::isfinite(length) || length <= Geometry::kDefaultEpsilon)
+            const double length = MirrorDirectionLength(lineDir);
+            if (length == 0.0)
             {
                 return point;
             }
@@ -179,6 +185,10 @@ namespace Geometry
 
     SCArcSegment2d Mirror(const SCArcSegment2d& segment, const SCPoint2d& linePoint, const SCVector2d& lineDir)
     {
+        if (MirrorDirectionLength(lineDir) == 0.0)
+        {
+            return segment;
+        }
         const SCPoint2d newCenter = MirrorPoint(segment.center, linePoint, lineDir);
         return SCArcSegment2d(newCenter,
                             segment.radius,
@@ -196,6 +206,10 @@ namespace Geometry
 
     SCPolygon2d Mirror(const SCPolygon2d& polygon, const SCPoint2d& linePoint, const SCVector2d& lineDir)
     {
+        if (MirrorDirectionLength(lineDir) == 0.0)
+        {
+            return polygon;
+        }
         std::vector<SCPolyline2d> holes;
         holes.reserve(polygon.HoleCount());
         for (std::size_t i = 0; i < polygon.HoleCount(); ++i)

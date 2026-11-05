@@ -23,6 +23,30 @@ namespace Geometry
         {
             return std::hypot(vector.x, vector.y, vector.z);
         }
+
+        [[nodiscard]] SCGeometryTolerance3d UnitPieceTolerance(
+            const SCIntervald& range, const SCGeometryTolerance3d& tolerance)
+        {
+            auto local = tolerance;
+            const double width = range.max - range.min;
+            // 原参数容差换算到 [0,1]；异号端点的跨度可能不可表示。
+            if (tolerance.parameterEpsilon == 0.0)
+            {
+                // 即使分片宽度相减下溢为零，精确容差也必须保持为零。
+                local.parameterEpsilon = 0.0;
+            }
+            else if (std::isfinite(width) && width > 0.0)
+                local.parameterEpsilon = tolerance.parameterEpsilon / width;
+            else
+            {
+                const double scale = std::max(std::abs(range.min), std::abs(range.max));
+                local.parameterEpsilon = (tolerance.parameterEpsilon / scale) /
+                    (range.max / scale - range.min / scale);
+            }
+            // 极窄分片的比值可溢出，但结构容差必须保持有限。
+            local.parameterEpsilon = std::min(local.parameterEpsilon, std::numeric_limits<double>::max());
+            return local;
+        }
     }
 
     namespace
@@ -263,7 +287,7 @@ namespace Geometry
             }
             const bool planar = dynamic_cast<const SCPlaneSurface*>(surfaceCurve->SupportSurface()) != nullptr;
             bool complete = planar;
-            const std::size_t segmentCount = surfaceCurve->UvCurve().SegmentCount();
+            const std::size_t segmentCount = surfaceCurve->UvPieceCount();
             const auto appendHit = [&](const SCPlaneCurveIntersection3d& hit) {
                 if (!result.hits.empty())
                 {
@@ -278,7 +302,7 @@ namespace Geometry
             };
             for (std::size_t segment = 0; segment < segmentCount; ++segment)
             {
-                if (planar)
+                if (planar && surfaceCurve->UvGeometry().IsLinearPiece(segment))
                 {
                     const auto start = Detail::EvaluateCurveOnSurfaceSegment(*surfaceCurve, segment, 0.0);
                     const auto end = Detail::EvaluateCurveOnSurfaceSegment(*surfaceCurve, segment, 1.0);
@@ -294,7 +318,9 @@ namespace Geometry
                         complete = false;
                         continue;
                     }
-                    const auto local = IntersectAllPlaneCurveWithStatus(plane, localCurve, tolerance);
+                    const auto localTolerance = UnitPieceTolerance(
+                        surfaceCurve->UvGeometry().PieceRange(segment), tolerance);
+                    const auto local = IntersectAllPlaneCurveWithStatus(plane, localCurve, localTolerance);
                     if (local.state == SCGeometryOperationState::NonUnique)
                     {
                         result.hits.clear();
@@ -307,11 +333,12 @@ namespace Geometry
                     complete &= local.evidence.negativeCompleteness == SCGeometryEvidenceState::Verified;
                     for (const auto& hit : local.hits)
                     {
-                        appendHit({true, static_cast<double>(segment) + hit.curveParameter, hit.point});
+                        appendHit({true, surfaceCurve->UvParameterAt(segment, hit.curveParameter), hit.point});
                     }
                 }
                 else
                 {
+                    complete = false;
                     bool nonUnique = false;
                     const auto hits = Detail::FindPlaneCurveOnSurfaceSegmentHits(
                         plane, *surfaceCurve, segment, tolerance, &nonUnique);
@@ -326,7 +353,7 @@ namespace Geometry
                     }
                     for (const auto& hit : hits)
                     {
-                        appendHit({true, static_cast<double>(segment) + hit.parameter, hit.point});
+                        appendHit({true, surfaceCurve->UvParameterAt(segment, hit.parameter), hit.point});
                     }
                 }
             }
@@ -678,7 +705,7 @@ namespace Geometry
                 }
                 const bool planar = dynamic_cast<const SCPlaneSurface*>(surfaceCurve->SupportSurface()) != nullptr;
                 bool complete = planar;
-                const std::size_t segmentCount = surfaceCurve->UvCurve().SegmentCount();
+                const std::size_t segmentCount = surfaceCurve->UvPieceCount();
                 const auto appendHit = [&](const SCLineCurveIntersection3d& hit) {
                     if (!result.hits.empty())
                     {
@@ -693,7 +720,7 @@ namespace Geometry
                 };
                 for (std::size_t segment = 0; segment < segmentCount; ++segment)
                 {
-                    if (planar)
+                    if (planar && surfaceCurve->UvGeometry().IsLinearPiece(segment))
                     {
                         const auto start = Detail::EvaluateCurveOnSurfaceSegment(*surfaceCurve, segment, 0.0);
                         const auto end = Detail::EvaluateCurveOnSurfaceSegment(*surfaceCurve, segment, 1.0);
@@ -709,7 +736,9 @@ namespace Geometry
                             complete = false;
                             continue;
                         }
-                        const auto local = IntersectAllLineCurveWithStatus(line, localCurve, tolerance);
+                        const auto localTolerance = UnitPieceTolerance(
+                            surfaceCurve->UvGeometry().PieceRange(segment), tolerance);
+                        const auto local = IntersectAllLineCurveWithStatus(line, localCurve, localTolerance);
                         if (local.state == SCGeometryOperationState::NonUnique)
                         {
                             result.hits.clear();
@@ -723,11 +752,12 @@ namespace Geometry
                         for (const auto& hit : local.hits)
                         {
                             appendHit({true, hit.lineParameter,
-                                       static_cast<double>(segment) + hit.curveParameter, hit.point});
+                                       surfaceCurve->UvParameterAt(segment, hit.curveParameter), hit.point});
                         }
                     }
                     else
                     {
+                        complete = false;
                         bool nonUnique = false;
                         const auto candidates = Detail::FindLineCurveOnSurfaceSegmentHits(
                             line, *surfaceCurve, segment, tolerance, &nonUnique);
@@ -743,7 +773,7 @@ namespace Geometry
                         for (const auto& candidate : candidates)
                         {
                             appendHit({true, candidate.lineParameter,
-                                       static_cast<double>(segment) + candidate.sample.parameter,
+                                       surfaceCurve->UvParameterAt(segment, candidate.sample.parameter),
                                        candidate.sample.point});
                         }
                     }

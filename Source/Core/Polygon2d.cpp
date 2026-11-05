@@ -64,18 +64,6 @@ namespace Geometry
             return Detail::ComputeSignedArea(ring, eps);
         }
 
-        [[nodiscard]] std::pair<SCPoint2d, double> RingCentroidAndArea(const SCPolyline2d& ring)
-        {
-            const Detail::RingMoment2d moment = Detail::ComputeRingMoment(ring);
-            if (!std::isfinite(moment.signedArea) || moment.signedArea == 0.0)
-            {
-                return {SCPoint2d{}, 0.0};
-            }
-
-            return {SCPoint2d(moment.firstMomentX / moment.signedArea, moment.firstMomentY / moment.signedArea),
-                    moment.signedArea};
-        }
-
     }  // namespace
 
     struct SCPolygon2d::Impl
@@ -157,14 +145,14 @@ namespace Geometry
             return false;
         }
 
-        double totalPerimeter = impl_->outerRing.Length();
+        double totalPerimeter = impl_->outerRing.Length(eps);
         for (const auto& hole : impl_->holes)
         {
             if (!hole.IsValid(eps) || !hole.IsClosed())
             {
                 return false;
             }
-            totalPerimeter += hole.Length();
+            totalPerimeter += hole.Length(eps);
 
             if (HasSelfIntersection(hole, eps))
             {
@@ -294,10 +282,10 @@ namespace Geometry
             return 0.0;
         }
 
-        double total = impl_->outerRing.Length();
+        double total = impl_->outerRing.Length(eps);
         for (const auto& hole : impl_->holes)
         {
-            total += hole.Length();
+            total += hole.Length(eps);
         }
         return total;
     }
@@ -314,26 +302,33 @@ namespace Geometry
             return SCPoint2d{};
         }
 
-        const auto outer = RingCentroidAndArea(impl_->outerRing);
-        double weightedX = outer.first.x * outer.second;
-        double weightedY = outer.first.y * outer.second;
-        double signedArea = outer.second;
+        const Detail::RingMoment2d outer = Detail::ComputeRingMoment(impl_->outerRing);
+        const double outerSign = outer.signedArea > 0.0 ? 1.0 : -1.0;
+        double weightedX = outerSign * outer.firstMomentX;
+        double weightedY = outerSign * outer.firstMomentY;
+        double area = std::abs(outer.signedArea);
 
+        // 与 Area 一样按外环／孔角色加权；各孔矩平移到外环基点后再相减。
         for (const auto& hole : impl_->holes)
         {
-            const auto ring = RingCentroidAndArea(hole);
-            weightedX += ring.first.x * ring.second;
-            weightedY += ring.first.y * ring.second;
-            signedArea += ring.second;
+            const Detail::RingMoment2d ring = Detail::ComputeRingMoment(hole);
+            const double holeArea = std::abs(ring.signedArea);
+            const double holeSign = ring.signedArea > 0.0 ? 1.0 : -1.0;
+            weightedX -= holeSign * ring.firstMomentX +
+                         (ring.referencePoint.x - outer.referencePoint.x) * holeArea;
+            weightedY -= holeSign * ring.firstMomentY +
+                         (ring.referencePoint.y - outer.referencePoint.y) * holeArea;
+            area -= holeArea;
         }
 
-        if (!std::isfinite(signedArea) || signedArea == 0.0 ||
+        if (!std::isfinite(area) || area <= 0.0 ||
             !std::isfinite(weightedX) || !std::isfinite(weightedY))
         {
             return SCPoint2d{};
         }
 
-        return SCPoint2d(weightedX / signedArea, weightedY / signedArea);
+        return SCPoint2d(outer.referencePoint.x + weightedX / area,
+                         outer.referencePoint.y + weightedY / area);
     }
 
     SCBox2d SCPolygon2d::Bounds() const
