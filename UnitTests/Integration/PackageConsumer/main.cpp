@@ -1,4 +1,5 @@
 #include "Geometry.h"
+#include "Types/Geometry2d/SCTransform2d.h"
 
 #include <array>
 #include <memory>
@@ -11,6 +12,17 @@
 int main()
 {
     using namespace Geometry;
+    SCArcSegment2d constructedArc;
+    if (!CreateArcThroughThreePoints2d({1, 0}, {0, 1}, {-1, 0}, constructedArc) ||
+        !constructedArc.PointAt(0.5).AlmostEquals({0, 1})) return 33;
+    if (!CreateArcFromStartEndRadius2d({1, 0}, {0, 1}, 1,
+                                     SCArcDirection2d::Clockwise, true, constructedArc)) return 33;
+    const auto arcSolution = SolveArcThroughThreePoints({1, 0}, {0, 1}, {-1, 0});
+    const auto radiusSolution = SolveArcFromStartEndRadius(
+        {0, 0}, {2, 0}, 0.5, SCArcDirection2d::CounterClockwise, false);
+    const auto reflected = SCTransform2d::Reflection({5, 0}, {0, 2});
+    if (!arcSolution || !radiusSolution || !radiusSolution->radiusClamped ||
+        !reflected || !reflected->Apply(SCPoint2d{3, 4}).AlmostEquals({7, 4})) return 33;
     const bool exportedDataAvailable = kPi > 3.0 && kPi < 4.0 && kTwoPi == 2.0 * kPi &&
         kArcBoundsCriticalAngles == std::array<double, 4>{0.0, 0.5 * kPi, kPi, 1.5 * kPi};
     const SCLineSegment2d first{{0.0, 0.0}, {10.0, 0.0}};

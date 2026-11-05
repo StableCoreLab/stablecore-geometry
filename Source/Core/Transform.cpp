@@ -8,6 +8,7 @@
 #include "Core/ShapeOps.h"
 #include "Support/Epsilon.h"
 #include "Support/Geometry2d/Predicate2.h"
+#include "Types/Geometry2d/SCTransform2d.h"
 
 namespace Geometry
 {
@@ -21,24 +22,16 @@ namespace Geometry
             return SCPoint2d{origin.x + delta.x * c - delta.y * s, origin.y + delta.x * s + delta.y * c};
         }
 
-        [[nodiscard]] double MirrorDirectionLength(const SCVector2d& direction)
-        {
-            const double length = std::hypot(direction.x, direction.y);
-            return std::isfinite(length) && length > Geometry::kDefaultEpsilon ? length : 0.0;
-        }
-
         [[nodiscard]] SCPoint2d MirrorPoint(const SCPoint2d& point, const SCPoint2d& linePoint, const SCVector2d& lineDir)
         {
-            const double length = MirrorDirectionLength(lineDir);
-            if (length == 0.0)
+            // 使用同一反射工厂；在局部坐标中应用，避免远离原点时平移项抵消。
+            const auto reflection = SCTransform2d::Reflection(SCPoint2d{}, lineDir);
+            if (!reflection)
             {
                 return point;
             }
             const SCVector2d local = point - linePoint;
-            const SCVector2d unit = lineDir / length;
-            const double along = Dot(local, unit);
-            const SCPoint2d projected = linePoint + unit * along;
-            return projected + (projected - point);
+            return linePoint + reflection->Apply(local);
         }
 
         template <typename LineTransform, typename ArcTransform>
@@ -185,7 +178,7 @@ namespace Geometry
 
     SCArcSegment2d Mirror(const SCArcSegment2d& segment, const SCPoint2d& linePoint, const SCVector2d& lineDir)
     {
-        if (MirrorDirectionLength(lineDir) == 0.0)
+        if (!SCTransform2d::Reflection(SCPoint2d{}, lineDir))
         {
             return segment;
         }
@@ -206,7 +199,7 @@ namespace Geometry
 
     SCPolygon2d Mirror(const SCPolygon2d& polygon, const SCPoint2d& linePoint, const SCVector2d& lineDir)
     {
-        if (MirrorDirectionLength(lineDir) == 0.0)
+        if (!SCTransform2d::Reflection(SCPoint2d{}, lineDir))
         {
             return polygon;
         }

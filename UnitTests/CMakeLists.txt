@@ -2,6 +2,7 @@ include(GoogleTest)
 
 set(SCGEOMETRY_CAPABILITY_TEST_SOURCES
     Capabilities/Core/TestCoreAlgorithms.cpp
+    Capabilities/Core/TestArcConstruction2d.cpp
     Capabilities/Core/TestIntersection2d.cpp
     Capabilities/Core/TestProjection2d.cpp
     Capabilities/Core/TestAxisOps2d.cpp

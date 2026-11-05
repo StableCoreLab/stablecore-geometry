@@ -16,6 +16,7 @@
 #include "Brep/SCBrepVertex.h"
 #include "Brep/Tessellation.h"
 #include "Core/ArcOps3d.h"
+#include "Core/ArcConstruction2d.h"
 #include "Core/AxisOps.h"
 #include "Core/BodyBoolean.h"
 #include "Core/Boolean.h"

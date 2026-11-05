@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -42,6 +43,23 @@ namespace Geometry
         {
             const SCMatrix2d s{ratio, 0.0, 0.0, ratio};
             return SCTransform2d{s, origin - s * origin};
+        }
+
+        // 关于过 linePoint、方向为 lineDirection 的直线反射；允许非单位方向。
+        // 非法输入、方向长度不大于 eps 或结果不可表示时返回空值。
+        [[nodiscard]] static std::optional<SCTransform2d> Reflection(
+            const SCPoint2d& linePoint, const SCVector2d& lineDirection,
+            double eps = kDefaultEpsilon)
+        {
+            if (!linePoint.IsValid() || !std::isfinite(eps) || eps <= 0.0)
+                return std::nullopt;
+            SCVector2d unit;
+            if (!lineDirection.TryNormalized(unit, eps)) return std::nullopt;
+            const double diagonal = unit.x * unit.x - unit.y * unit.y;
+            const double offDiagonal = 2.0 * unit.x * unit.y;
+            const SCMatrix2d reflection{diagonal, offDiagonal, offDiagonal, -diagonal};
+            const SCTransform2d result{reflection, linePoint - reflection * linePoint};
+            return result.IsValid() ? std::optional<SCTransform2d>{result} : std::nullopt;
         }
 
         [[nodiscard]] bool IsValid() const

@@ -135,6 +135,7 @@ set(SCGEOMETRY_HEADERS
     Brep/Tessellation.h
     Brep/Topology.h
     Core/Algorithms.h
+    Core/ArcConstruction2d.h
     Core/ArcOps3d.h
     Core/AxisOps.h
     Core/BodyBoolean.h
@@ -278,6 +279,7 @@ set(SCGEOMETRY_SOURCES
     Brep/MeshOps.cpp
     Brep/Tessellation.cpp
     Core/ArcOps3d.cpp
+    Core/ArcConstruction2d.cpp
     Core/AxisOps.cpp
     Core/BodyBoolean.cpp
     Core/Boolean.cpp
